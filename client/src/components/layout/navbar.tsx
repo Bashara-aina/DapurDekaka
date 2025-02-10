@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Menu, X } from "lucide-react";
+import { Menu } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,8 +22,12 @@ export default function Navbar() {
       <div className="container mx-auto px-4">
         <div className="h-16 flex items-center justify-between">
           <Link href="/">
-            <a className="text-2xl font-bold text-primary">
-              Dapur Dekaka
+            <a className="flex items-center">
+              <img
+                src="/logo/logo.png"
+                alt="Dapur Dekaka"
+                className="h-12 w-auto"
+              />
             </a>
           </Link>
 
