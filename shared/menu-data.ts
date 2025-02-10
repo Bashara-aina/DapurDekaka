@@ -4,7 +4,7 @@ export const menuData = [
     name: "Dimsum Crabstick",
     description: "Dimsum premium dengan isian crabstick yang lezat.",
     price: 25000,
-    imageUrl: "/image/Dimsum Crabstick.png",
+    imageUrl: "/image/1. Dimsum Crabstick.png",
     category: "special"
   },
   {
@@ -12,7 +12,7 @@ export const menuData = [
     name: "Dimsum Jamur",
     description: "Dimsum lembut dengan isian jamur pilihan.",
     price: 25000,
-    imageUrl: "/image/Dimsum Jamur.png",
+    imageUrl: "/image/2. Dimsum Jamur.png",
     category: "vegetarian"
   },
   {
@@ -20,7 +20,7 @@ export const menuData = [
     name: "Dimsum Mozarella",
     description: "Dimsum spesial dengan lelehan keju mozzarella yang gurih.",
     price: 30000,
-    imageUrl: "/image/Dimsum Mozarella.png",
+    imageUrl: "/image/3. Dimsum Mozarella.png",
     category: "special"
   },
   {
@@ -28,7 +28,7 @@ export const menuData = [
     name: "Dimsum Tuna",
     description: "Dimsum dengan isian tuna segar berkualitas.",
     price: 28000,
-    imageUrl: "/image/Dimsum Tuna.png",
+    imageUrl: "/image/4. Dimsum Tuna.png",
     category: "seafood"
   },
   {
@@ -36,7 +36,7 @@ export const menuData = [
     name: "Dimsum Golden",
     description: "Dimsum goreng renyah dengan isian premium.",
     price: 27000,
-    imageUrl: "/image/Dimsum Golden.png",
+    imageUrl: "/image/5. Dimsum Golden.png",
     category: "special"
   },
   {
@@ -44,7 +44,7 @@ export const menuData = [
     name: "Dimsum Pedas",
     description: "Dimsum dengan bumbu pedas menggugah selera.",
     price: 25000,
-    imageUrl: "/image/Dimsum Pedas.png",
+    imageUrl: "/image/6. Dimsum Pedas.png",
     category: "spicy"
   },
   {
@@ -52,7 +52,7 @@ export const menuData = [
     name: "Lumpia Kulit Tahu",
     description: "Lumpia dengan kulit tahu, berisi ayam dan sayuran segar.",
     price: 23000,
-    imageUrl: "/image/Lumpia (Kulit Tahu).png",
+    imageUrl: "/image/7. Lumpia (Kulit Tahu).png",
     category: "classic"
   },
   {
@@ -60,7 +60,7 @@ export const menuData = [
     name: "Dimsum Nori",
     description: "Dimsum unik dibalut dengan rumput laut nori yang gurih.",
     price: 28000,
-    imageUrl: "/image/Dimsum Nori.png",
+    imageUrl: "/image/8. Dimsum Nori.png",
     category: "special"
   },
   {
@@ -68,7 +68,7 @@ export const menuData = [
     name: "Dimsum Rambutan",
     description: "Dimsum spesial berbentuk rambutan dengan rasa unik.",
     price: 28000,
-    imageUrl: "/image/Dimsum Rambutan.png",
+    imageUrl: "/image/9. Dimsum Rambutan.png",
     category: "special"
   },
   {
@@ -76,7 +76,7 @@ export const menuData = [
     name: "Ekado",
     description: "Dimsum dengan telur puyuh utuh di dalamnya, dibalut dengan ayam berbumbu.",
     price: 30000,
-    imageUrl: "/image/Ekado.png",
+    imageUrl: "/image/10. Ekado.png",
     category: "classic"
   },
   {
@@ -84,7 +84,7 @@ export const menuData = [
     name: "Pangsit Ayam",
     description: "Pangsit goreng renyah dengan isian ayam yang juicy.",
     price: 23000,
-    imageUrl: "/image/Pangsit Ayam.png",
+    imageUrl: "/image/11. Pangsit Ayam.png",
     category: "classic"
   }
 ];
