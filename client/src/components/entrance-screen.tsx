@@ -9,7 +9,7 @@ import {
   CarouselItem,
 } from "@/components/ui/carousel";
 import { Button } from "@/components/ui/button";
-import { menuData } from "@shared/menu-data";
+import { assetData } from "@shared/asset-data";
 
 export default function EntranceScreen() {
   const [, setLocation] = useLocation();
@@ -27,7 +27,7 @@ export default function EntranceScreen() {
       });
     };
 
-    Promise.all(menuData.map(item => loadImage(item.imageUrl)))
+    Promise.all(assetData.map(item => loadImage(item.imageUrl)))
       .then(() => setImagesLoaded(true))
       .catch(err => console.error('Error loading images:', err));
   }, []);
@@ -40,7 +40,7 @@ export default function EntranceScreen() {
   };
 
   const autoplayOptions = {
-    delay: 1000, // Changed from 500 to 1000 milliseconds
+    delay: 1000, // 1 second interval
     stopOnInteraction: false,
     stopOnMouseEnter: false,
     rootNode: (emblaRoot: any) => emblaRoot.parentElement,
@@ -69,12 +69,12 @@ export default function EntranceScreen() {
                 className="h-full"
               >
                 <CarouselContent className="-ml-1">
-                  {menuData.map((item, index) => (
+                  {assetData.map((item, index) => (
                     <CarouselItem key={index} className="pl-1 md:basis-1/3">
                       <div className="relative h-screen">
                         <img
                           src={item.imageUrl}
-                          alt={item.name}
+                          alt={`Background ${item.id}`}
                           className="w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 bg-black/40" />
