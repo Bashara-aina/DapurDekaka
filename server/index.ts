@@ -8,21 +8,27 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Serve static files from image and logo directories with proper configuration
-app.use('/image', express.static(path.join(process.cwd(), 'image'), {
-  setHeaders: (res) => {
-    res.set('Cache-Control', 'public, max-age=31536000');
-    res.set('Access-Control-Allow-Origin', '*');
-  },
-  fallthrough: false // Return 404 if file not found
-}));
+app.use(
+  "/image",
+  express.static(path.join(process.cwd(), "image"), {
+    setHeaders: (res) => {
+      res.set("Cache-Control", "public, max-age=31536000");
+      res.set("Access-Control-Allow-Origin", "*");
+    },
+    fallthrough: false, // Return 404 if file not found
+  }),
+);
 
-app.use('/logo', express.static(path.join(process.cwd(), 'logo'), {
-  setHeaders: (res) => {
-    res.set('Cache-Control', 'public, max-age=31536000');
-    res.set('Access-Control-Allow-Origin', '*');
-  },
-  fallthrough: false
-}));
+app.use(
+  "/logo",
+  express.static(path.join(process.cwd(), "logo"), {
+    setHeaders: (res) => {
+      res.set("Cache-Control", "public, max-age=31536000");
+      res.set("Access-Control-Allow-Origin", "*");
+    },
+    fallthrough: false,
+  }),
+);
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -62,7 +68,7 @@ app.use((req, res, next) => {
     const message = err.message || "Internal Server Error";
 
     res.status(status).json({ message });
-    console.error('Error:', err); // Add error logging
+    console.error("Error:", err); // Add error logging
   });
 
   if (app.get("env") === "development") {
