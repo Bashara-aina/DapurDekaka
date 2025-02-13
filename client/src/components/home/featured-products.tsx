@@ -10,15 +10,15 @@ export default function FeaturedProducts() {
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
-      const scrollAmount = direction === "left" ? -400 : 400;
+      const scrollAmount = direction === "left" ? -300 : 300;
       scrollRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
     }
   };
 
   return (
-    <section className="py-20 bg-white">
+    <section className="py-16 bg-white">
       <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center mb-12">
+        <div className="flex justify-between items-center mb-8">
           <div>
             <h2 className="text-3xl font-bold text-gray-900">Featured Products</h2>
             <p className="text-gray-600 mt-2">Discover our most loved dim sum selections</p>
@@ -43,18 +43,18 @@ export default function FeaturedProducts() {
 
         <div
           ref={scrollRef}
-          className="flex gap-6 overflow-x-auto scrollbar-hide snap-x snap-mandatory"
+          className="flex gap-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {menuData.slice(0, 11).map((item) => (
             <motion.div
               key={item.id}
-              className="min-w-[280px] snap-start"
+              className="min-w-[220px] snap-start"
               whileHover={{ scale: 1.02 }}
               transition={{ duration: 0.2 }}
             >
               <Card className="h-full flex flex-col">
-                <CardContent className="p-0 relative pb-[166.67%]">
+                <CardContent className="p-0 relative pb-[133.33%]">
                   <img
                     src={item.imageUrl}
                     alt={item.name}
@@ -62,8 +62,8 @@ export default function FeaturedProducts() {
                   />
                 </CardContent>
                 <CardFooter className="flex flex-col items-start gap-2 p-4">
-                  <h3 className="font-semibold text-lg">{item.name}</h3>
-                  <p className="text-sm text-gray-600">{item.description}</p>
+                  <h3 className="font-semibold text-base">{item.name}</h3>
+                  <p className="text-sm text-gray-600 line-clamp-2">{item.description}</p>
                   <p className="font-bold text-primary mt-auto">
                     Rp {item.price.toLocaleString()}
                   </p>
