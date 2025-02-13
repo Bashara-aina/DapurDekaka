@@ -49,22 +49,22 @@ export default function FeaturedProducts() {
           {menuData.slice(0, 11).map((item) => (
             <motion.div
               key={item.id}
-              className="min-w-[300px] snap-start"
+              className="min-w-[280px] snap-start"
               whileHover={{ scale: 1.02 }}
               transition={{ duration: 0.2 }}
             >
-              <Card>
-                <CardContent className="p-0">
+              <Card className="h-full flex flex-col">
+                <CardContent className="p-0 relative pb-[166.67%]">
                   <img
                     src={item.imageUrl}
                     alt={item.name}
-                    className="w-full h-48 object-cover"
+                    className="absolute inset-0 w-full h-full object-cover"
                   />
                 </CardContent>
                 <CardFooter className="flex flex-col items-start gap-2 p-4">
                   <h3 className="font-semibold text-lg">{item.name}</h3>
                   <p className="text-sm text-gray-600">{item.description}</p>
-                  <p className="font-bold text-primary">
+                  <p className="font-bold text-primary mt-auto">
                     Rp {item.price.toLocaleString()}
                   </p>
                 </CardFooter>

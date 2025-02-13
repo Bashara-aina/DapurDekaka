@@ -13,7 +13,7 @@ export default function Menu() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
         {menuData.map((item, index) => (
           <motion.div
             key={item.id}
@@ -21,18 +21,18 @@ export default function Menu() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: index * 0.1 }}
           >
-            <Card className="h-full">
-              <CardContent className="p-0">
+            <Card className="h-full flex flex-col">
+              <CardContent className="p-0 relative pb-[166.67%]">
                 <img
                   src={item.imageUrl}
                   alt={item.name}
-                  className="w-full h-48 object-cover"
+                  className="absolute inset-0 w-full h-full object-cover"
                 />
               </CardContent>
-              <CardFooter className="flex flex-col items-start gap-3 p-6">
+              <CardFooter className="flex flex-col items-start gap-3 p-6 flex-grow">
                 <h3 className="font-semibold text-xl">{item.name}</h3>
                 <p className="text-gray-600">{item.description}</p>
-                <div className="flex justify-between items-center w-full mt-4">
+                <div className="flex justify-between items-center w-full mt-auto pt-4">
                   <span className="font-bold text-primary">
                     Rp {item.price.toLocaleString()}
                   </span>
