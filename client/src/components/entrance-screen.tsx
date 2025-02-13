@@ -9,6 +9,7 @@ import {
   CarouselItem,
 } from "@/components/ui/carousel";
 import { Button } from "@/components/ui/button";
+import { LogoDisplay } from "./LogoDisplay";
 
 const assetImages = Array.from({ length: 33 }, (_, i) => `/asset/${i + 1}.jpg`);
 const MINIMUM_IMAGES_TO_START = 3;
@@ -120,10 +121,7 @@ export default function EntranceSection() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <div className="flex justify-center items-center gap-8 mb-8">
-                <img src="/logo/logo.png" alt="Dapur Dekaka Logo" className="h-24 w-auto" />
-                <img src="/logo/halal.png" alt="Halal Certification" className="h-24 w-auto" />
-              </div>
+              <LogoDisplay className="mb-8" />
               <h1 className="text-4xl md:text-6xl font-bold mb-4 max-w-4xl">
                 Dapur Dekaka
               </h1>
