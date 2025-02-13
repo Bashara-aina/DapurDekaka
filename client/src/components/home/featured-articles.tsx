@@ -28,27 +28,31 @@ export default function FeaturedArticles() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {articles.map((article) => (
-            <Card key={article.title} className="overflow-hidden hover:shadow-lg transition-shadow">
-              <div className="aspect-video relative">
-                <img
-                  src={article.imageUrl}
-                  alt={article.title}
-                  className="object-cover w-full h-full"
-                />
-              </div>
-              <CardHeader>
-                <CardTitle className="line-clamp-2">{article.title}</CardTitle>
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {new Date(article.publishedAt).toLocaleDateString()}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground line-clamp-3">
-                  {article.summary}
-                </p>
-              </CardContent>
-            </Card>
+            <Link key={article.id} href={`/articles/${article.id}`}>
+              <a className="block">
+                <Card className="overflow-hidden hover:shadow-lg transition-shadow h-full">
+                  <div className="aspect-video relative">
+                    <img
+                      src={article.imageUrl}
+                      alt={article.title}
+                      className="object-cover w-full h-full"
+                    />
+                  </div>
+                  <CardHeader>
+                    <CardTitle className="line-clamp-2">{article.title}</CardTitle>
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {new Date(article.publishedAt).toLocaleDateString()}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground line-clamp-3">
+                      {article.summary}
+                    </p>
+                  </CardContent>
+                </Card>
+              </a>
+            </Link>
           ))}
         </div>
       </div>
