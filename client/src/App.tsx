@@ -8,6 +8,7 @@ import Footer from "@/components/layout/footer";
 import Home from "@/pages/home";
 import Menu from "@/pages/menu";
 import About from "@/pages/about";
+import Articles from "@/pages/articles";
 import EntranceScreen from "@/components/entrance-screen";
 
 function Router() {
@@ -38,6 +39,15 @@ function Router() {
             <Navbar />
             <main className="flex-1">
               <About />
+            </main>
+            <Footer />
+          </div>
+        </Route>
+        <Route path="/articles">
+          <div className="min-h-screen flex flex-col">
+            <Navbar />
+            <main className="flex-1">
+              <Articles />
             </main>
             <Footer />
           </div>
