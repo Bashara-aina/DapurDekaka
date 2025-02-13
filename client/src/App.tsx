@@ -8,20 +8,50 @@ import Footer from "@/components/layout/footer";
 import Home from "@/pages/home";
 import Menu from "@/pages/menu";
 import About from "@/pages/about";
+import EntranceScreen from "@/components/entrance-screen";
 
 function Router() {
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
-      <main className="flex-1">
-        <Switch>
-          <Route path="/" component={Home} />
-          <Route path="/menu" component={Menu} />
-          <Route path="/about" component={About} />
-          <Route component={NotFound} />
-        </Switch>
-      </main>
-      <Footer />
+      <Switch>
+        <Route path="/" component={EntranceScreen} />
+        <Route path="/home">
+          <div className="min-h-screen flex flex-col">
+            <Navbar />
+            <main className="flex-1">
+              <Home />
+            </main>
+            <Footer />
+          </div>
+        </Route>
+        <Route path="/menu">
+          <div className="min-h-screen flex flex-col">
+            <Navbar />
+            <main className="flex-1">
+              <Menu />
+            </main>
+            <Footer />
+          </div>
+        </Route>
+        <Route path="/about">
+          <div className="min-h-screen flex flex-col">
+            <Navbar />
+            <main className="flex-1">
+              <About />
+            </main>
+            <Footer />
+          </div>
+        </Route>
+        <Route>
+          <div className="min-h-screen flex flex-col">
+            <Navbar />
+            <main className="flex-1">
+              <NotFound />
+            </main>
+            <Footer />
+          </div>
+        </Route>
+      </Switch>
     </div>
   );
 }
