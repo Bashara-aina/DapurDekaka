@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const navItems = [
-  { href: "/home", label: "Home" },
+  { href: "/", label: "Home" },
   { href: "/menu", label: "Menu" },
   { href: "/about", label: "About" },
 ];
@@ -54,7 +54,7 @@ export default function Navbar() {
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
-             <SheetContent>
+            <SheetContent>
               <div className="flex flex-col gap-4 mt-8">
                 {navItems.map((item) => (
                   <Link key={item.href} href={item.href}>
