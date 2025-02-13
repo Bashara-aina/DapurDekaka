@@ -1,5 +1,3 @@
-import Image from "next/image";
-
 export function Footer() {
   return (
     <footer className="w-full bg-white py-12 border-t">
