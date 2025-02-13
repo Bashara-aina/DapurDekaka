@@ -19,10 +19,22 @@ export default function About() {
           transition={{ duration: 0.5 }}
           className="text-center mb-16"
         >
-          <h1 className="text-4xl font-bold text-gray-900 mb-6">About Dapur Dekaka</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-6">
+            About Dapur Dekaka
+          </h1>
           <p className="text-lg text-gray-600">
-            We are passionate about creating authentic, premium dim sum experiences that bring people together.
-            Our commitment to quality and tradition drives everything we do.
+            Dapur Dekaka adalah usaha yang bergerak di bidang makanan beku
+            khususnya dimsum. Berawal dari usaha peninggalan keluarga,
+            menjadikan produk kami dibuat sepenuh hati dari keluarga kami untuk
+            anda. <br /> <br />
+            Berasal dari Bandung, usaha kami telah membantu pelaku bisnis
+            (restoran, cafe, online shop, distributor) dalam meningkatkan
+            keuntungan mereka dengan menjual produk kami yang terjangkau dan
+            berkualitas. <br />
+            <br />
+            Sertifikasi Halal MUI yang diberikan pada produk kami memberikan
+            kepercayaan lebih kepada konsumen akan kualitas bahan baku dan
+            proses Dapur Dekaka.
           </p>
         </motion.div>
 
@@ -34,7 +46,7 @@ export default function About() {
         >
           <div>
             <img
-              src="https://images.unsplash.com/photo-1552611052-33e04de081de"
+              src="asset/28.jpg"
               alt="Our Kitchen"
               className="rounded-lg shadow-lg"
             />
@@ -61,10 +73,11 @@ export default function About() {
         <div className="bg-gray-50 rounded-lg p-8">
           <h2 className="text-2xl font-bold mb-6">Our Story</h2>
           <p className="text-gray-600 leading-relaxed">
-            Dapur Dekaka was born from a passion for authentic dim sum and a vision to make premium 
-            quality halal dim sum accessible to everyone. Our journey began in a small kitchen, 
-            where we perfected our recipes using only the finest halal ingredients while maintaining 
-            the traditional techniques that make dim sum special.
+            Dapur Dekaka was born from a passion for authentic dim sum and a
+            vision to make premium quality halal dim sum accessible to everyone.
+            Our journey began in a small kitchen, where we perfected our recipes
+            using only the finest halal ingredients while maintaining the
+            traditional techniques that make dim sum special.
           </p>
         </div>
       </div>
