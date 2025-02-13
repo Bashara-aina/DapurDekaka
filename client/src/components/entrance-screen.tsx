@@ -9,7 +9,9 @@ import {
   CarouselItem,
 } from "@/components/ui/carousel";
 import { Button } from "@/components/ui/button";
-import { menuData } from "@shared/menu-data";
+
+// Asset paths array
+const assetImages = Array.from({ length: 33 }, (_, i) => `/asset/${i + 1}.JPG`);
 
 export default function EntranceScreen() {
   const [, setLocation] = useLocation();
@@ -27,7 +29,7 @@ export default function EntranceScreen() {
       });
     };
 
-    Promise.all(menuData.map(item => loadImage(item.imageUrl)))
+    Promise.all(assetImages.map(loadImage))
       .then(() => setImagesLoaded(true))
       .catch(err => console.error('Error loading images:', err));
   }, []);
@@ -65,16 +67,16 @@ export default function EntranceScreen() {
                   dragFree: true,
                   containScroll: false,
                 }}
-                plugins={[Autoplay(autoplayOptions)]}
+                plugins={[Autoplay(autoplayOptions) as any]}
                 className="h-full"
               >
                 <CarouselContent className="-ml-1">
-                  {menuData.map((item, index) => (
+                  {assetImages.map((imagePath, index) => (
                     <CarouselItem key={index} className="pl-1 md:basis-1/3">
                       <div className="relative h-screen">
                         <img
-                          src={item.imageUrl}
-                          alt={item.name}
+                          src={imagePath}
+                          alt={`Slide ${index + 1}`}
                           className="w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 bg-black/40" />
