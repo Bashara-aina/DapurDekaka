@@ -2,14 +2,10 @@ import { Link } from "wouter";
 import { Menu } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const navItems = [
-  { href: "/", label: "Home" },
+  { href: "/home", label: "Home" },
   { href: "/menu", label: "Menu" },
   { href: "/about", label: "About" },
 ];
@@ -41,7 +37,11 @@ export default function Navbar() {
               </Link>
             ))}
             <Button asChild>
-              <a href="https://wa.me/your-number" target="_blank" rel="noopener noreferrer">
+              <a
+                href="https://wa.me/your-number"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 Order Now
               </a>
             </Button>
@@ -54,11 +54,11 @@ export default function Navbar() {
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent>
+             <SheetContent>
               <div className="flex flex-col gap-4 mt-8">
                 {navItems.map((item) => (
                   <Link key={item.href} href={item.href}>
-                    <a 
+                    <a
                       className="text-lg text-gray-600 hover:text-primary transition-colors"
                       onClick={() => setIsOpen(false)}
                     >
@@ -67,9 +67,9 @@ export default function Navbar() {
                   </Link>
                 ))}
                 <Button asChild className="mt-4">
-                  <a 
-                    href="https://wa.me/your-number" 
-                    target="_blank" 
+                  <a
+                    href="https://wa.me/your-number"
+                    target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => setIsOpen(false)}
                   >
