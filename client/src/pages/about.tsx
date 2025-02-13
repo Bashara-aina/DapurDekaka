@@ -10,7 +10,7 @@ export default function About() {
           transition={{ duration: 0.5 }}
           className="text-center mb-16"
         >
-          <h1 className="text-4xl font-bold text-gray-900 mb-6">
+          <h1 className="text-6xl font-bold text-gray-900 mb-6">
             About Dapur Dekaka
           </h1>
         </motion.div>
@@ -29,20 +29,20 @@ export default function About() {
             />
           </div>
           <div className="flex flex-col justify-center">
-            <div className="prose prose-lg">
-              <p className="text-gray-600 leading-relaxed">
+            <div className="prose prose-xl">
+              <p className="text-2xl text-gray-600 leading-relaxed">
                 Dapur Dekaka adalah usaha yang bergerak di bidang makanan beku
                 khususnya dimsum. Berawal dari usaha peninggalan keluarga,
                 menjadikan produk kami dibuat sepenuh hati dari keluarga kami untuk
                 anda.
               </p>
-              <p className="text-gray-600 leading-relaxed mt-4">
+              <p className="text-2xl text-gray-600 leading-relaxed mt-6">
                 Berasal dari Bandung, usaha kami telah membantu pelaku bisnis
                 (restoran, cafe, online shop, distributor) dalam meningkatkan
                 keuntungan mereka dengan menjual produk kami yang terjangkau dan
                 berkualitas.
               </p>
-              <p className="text-gray-600 leading-relaxed mt-4">
+              <p className="text-2xl text-gray-600 leading-relaxed mt-6">
                 Sertifikasi Halal MUI yang diberikan pada produk kami memberikan
                 kepercayaan lebih kepada konsumen akan kualitas bahan baku dan
                 proses Dapur Dekaka.
