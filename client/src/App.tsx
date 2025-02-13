@@ -9,10 +9,12 @@ import Home from "@/pages/home";
 import Menu from "@/pages/menu";
 import About from "@/pages/about";
 import Articles from "@/pages/articles";
+import { HalalLogo } from "@/components/HalalLogo";
 
 function Router() {
   return (
     <div className="min-h-screen flex flex-col">
+      <HalalLogo />
       <Switch>
         <Route path="/">
           <div className="min-h-screen flex flex-col">
