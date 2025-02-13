@@ -9,6 +9,7 @@ import Home from "@/pages/home";
 import Menu from "@/pages/menu";
 import About from "@/pages/about";
 import Articles from "@/pages/articles";
+import Contact from "@/pages/contact";
 import { HalalLogo } from "@/components/HalalLogo";
 
 function Router() {
@@ -48,6 +49,15 @@ function Router() {
             <Navbar />
             <main className="flex-1">
               <Articles />
+            </main>
+            <Footer />
+          </div>
+        </Route>
+        <Route path="/contact">
+          <div className="min-h-screen flex flex-col">
+            <Navbar />
+            <main className="flex-1">
+              <Contact />
             </main>
             <Footer />
           </div>
