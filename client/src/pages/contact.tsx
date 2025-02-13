@@ -20,7 +20,7 @@ export default function Contact() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -34,7 +34,7 @@ export default function Contact() {
                     <MapPin className="h-6 w-6 text-primary" />
                     <div>
                       <h3 className="font-semibold">Address</h3>
-                      <p className="text-gray-600">123 Dim Sum Street, Jakarta, Indonesia</p>
+                      <p className="text-gray-600">Jl. Raya Sesetan No.270A, Sesetan, Denpasar Selatan, Kota Denpasar, Bali</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
@@ -112,6 +112,32 @@ export default function Contact() {
             </Card>
           </motion.div>
         </div>
+
+        {/* Interactive Map Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
+          className="w-full"
+        >
+          <Card>
+            <CardContent className="p-6">
+              <h2 className="text-2xl font-semibold mb-6">Find Us</h2>
+              <div className="aspect-video w-full rounded-lg overflow-hidden">
+                <iframe
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3944.1355280901837!2d115.22649687489658!3d-8.698343091818282!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2dd241b76e01290d%3A0x9f952b1535d3de51!2sDapur%20Dekaka!5e0!3m2!1sen!2sid!4v1707842380000!5m2!1sen!2sid"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  className="rounded-lg"
+                ></iframe>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
     </div>
   );
