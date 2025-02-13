@@ -125,7 +125,7 @@ export default function Contact() {
               <h2 className="text-2xl font-semibold mb-6">Find Us</h2>
               <div className="aspect-video w-full rounded-lg overflow-hidden">
                 <iframe
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3944.1355280901837!2d115.22649687489658!3d-8.698343091818282!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2dd241b76e01290d%3A0x9f952b1535d3de51!2sDapur%20Dekaka!5e0!3m2!1sen!2sid!4v1707842380000!5m2!1sen!2sid"
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3960.628663657452!2d107.62787277454113!3d-6.934907867883335!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e68e98f06fbfe3f%3A0xd60d9e2dbd74a207!2sDapur%20Dekaka!5e0!3m2!1sid!2sid!4v1739461694952!5m2!1sid!2sid"
                   width="100%"
                   height="100%"
                   style={{ border: 0 }}
