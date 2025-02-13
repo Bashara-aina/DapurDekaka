@@ -24,6 +24,15 @@ app.use('/logo', express.static(path.join(process.cwd(), 'logo'), {
   fallthrough: false
 }));
 
+// Add static file serving for asset directory
+app.use('/asset', express.static(path.join(process.cwd(), 'asset'), {
+  setHeaders: (res) => {
+    res.set('Cache-Control', 'public, max-age=31536000');
+    res.set('Access-Control-Allow-Origin', '*');
+  },
+  fallthrough: false
+}));
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;

@@ -14,22 +14,29 @@ import { assetData } from "@shared/asset-data";
 export default function EntranceScreen() {
   const [, setLocation] = useLocation();
   const [isExiting, setIsExiting] = useState(false);
-  const [imagesLoaded, setImagesLoaded] = useState(false);
+  const [imagesLoaded, setImagesLoaded] = useState(0);
+  const totalImages = assetData.length;
 
   // Preload images
   useEffect(() => {
-    const loadImage = (imageUrl: string) => {
+    const preloadPromises = assetData.map((item) => {
       return new Promise((resolve, reject) => {
         const img = new Image();
-        img.src = imageUrl;
-        img.onload = resolve;
-        img.onerror = reject;
+        img.src = `/asset/${item.id}.JPG`;
+        img.onload = () => {
+          setImagesLoaded(prev => prev + 1);
+          resolve(img);
+        };
+        img.onerror = (err) => {
+          console.error(`Error loading image /asset/${item.id}.JPG:`, err);
+          reject(err);
+        };
       });
-    };
+    });
 
-    Promise.all(assetData.map(item => loadImage(item.imageUrl)))
-      .then(() => setImagesLoaded(true))
-      .catch(err => console.error('Error loading images:', err));
+    Promise.all(preloadPromises).catch(error => {
+      console.error('Failed to load some images:', error);
+    });
   }, []);
 
   const handleEnterSite = () => {
@@ -40,18 +47,27 @@ export default function EntranceScreen() {
   };
 
   const autoplayOptions = {
-    delay: 1000, // 1 second interval
+    delay: 1000,
     stopOnInteraction: false,
     stopOnMouseEnter: false,
     rootNode: (emblaRoot: any) => emblaRoot.parentElement,
   };
+
+  // Show loading screen only if no images have loaded yet
+  if (imagesLoaded === 0) {
+    return (
+      <div className="fixed inset-0 z-50 bg-black flex items-center justify-center">
+        <div className="text-white text-lg">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <AnimatePresence>
       {!isExiting && (
         <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: imagesLoaded ? 1 : 0 }}
+          animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 bg-black"
         >
@@ -70,10 +86,10 @@ export default function EntranceScreen() {
               >
                 <CarouselContent className="-ml-1">
                   {assetData.map((item, index) => (
-                    <CarouselItem key={index} className="pl-1 md:basis-1/3">
+                    <CarouselItem key={index} className="pl-1 md:basis-1/2 lg:basis-1/3">
                       <div className="relative h-screen">
                         <img
-                          src={item.imageUrl}
+                          src={`/asset/${item.id}.JPG`}
                           alt={`Background ${item.id}`}
                           className="w-full h-full object-cover"
                         />
@@ -88,7 +104,7 @@ export default function EntranceScreen() {
             {/* Overlay Content */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: imagesLoaded ? 1 : 0, y: 0 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
               className="relative z-10 h-full flex flex-col items-center justify-center text-white text-center px-4"
             >
