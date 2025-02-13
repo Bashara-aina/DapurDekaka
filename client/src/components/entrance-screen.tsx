@@ -10,28 +10,44 @@ import {
 } from "@/components/ui/carousel";
 import { Button } from "@/components/ui/button";
 
-// Asset paths array
+// Asset paths array - explicitly include the full path with correct case
 const assetImages = Array.from({ length: 33 }, (_, i) => `/asset/${i + 1}.JPG`);
 
 export default function EntranceScreen() {
   const [, setLocation] = useLocation();
   const [isExiting, setIsExiting] = useState(false);
   const [imagesLoaded, setImagesLoaded] = useState(false);
+  const [loadedImages, setLoadedImages] = useState<string[]>([]);
 
-  // Preload images
+  // Preload images with better error handling and progress tracking
   useEffect(() => {
     const loadImage = (imageUrl: string) => {
       return new Promise((resolve, reject) => {
         const img = new Image();
+        img.onload = () => {
+          setLoadedImages(prev => [...prev, imageUrl]);
+          resolve(imageUrl);
+        };
+        img.onerror = () => {
+          console.error(`Failed to load image: ${imageUrl}`);
+          reject(new Error(`Failed to load image: ${imageUrl}`));
+        };
         img.src = imageUrl;
-        img.onload = resolve;
-        img.onerror = reject;
       });
     };
 
-    Promise.all(assetImages.map(loadImage))
-      .then(() => setImagesLoaded(true))
-      .catch(err => console.error('Error loading images:', err));
+    // Load all images concurrently
+    Promise.allSettled(assetImages.map(loadImage))
+      .then((results) => {
+        const successfullyLoaded = results.filter(result => result.status === 'fulfilled').length;
+        console.log(`Successfully loaded ${successfullyLoaded} out of ${assetImages.length} images`);
+        setImagesLoaded(true);
+      })
+      .catch(err => {
+        console.error('Error loading images:', err);
+        // Still set imagesLoaded to true to show at least the loaded images
+        setImagesLoaded(true);
+      });
   }, []);
 
   const handleEnterSite = () => {
@@ -42,7 +58,7 @@ export default function EntranceScreen() {
   };
 
   const autoplayOptions = {
-    delay: 1000, // Changed from 500 to 1000 milliseconds
+    delay: 1000,
     stopOnInteraction: false,
     stopOnMouseEnter: false,
     rootNode: (emblaRoot: any) => emblaRoot.parentElement,
@@ -57,6 +73,13 @@ export default function EntranceScreen() {
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 bg-black"
         >
+          {/* Loading indicator */}
+          {!imagesLoaded && (
+            <div className="absolute inset-0 flex items-center justify-center text-white">
+              <p>Loading images... {loadedImages.length}/{assetImages.length}</p>
+            </div>
+          )}
+
           <div className="relative h-screen overflow-hidden">
             {/* Background Carousel */}
             <div className="absolute inset-0">
