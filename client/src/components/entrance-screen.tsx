@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
+import { Link } from "wouter";
 import {
   Carousel,
   CarouselContent,
@@ -129,15 +130,8 @@ export default function EntranceSection() {
               <p className="text-xl md:text-2xl mb-8 max-w-2xl">
                 Nikmati Sensasi Dimsum Premium dengan Cita Rasa Autentik!
               </p>
-              <Button
-                size="lg"
-                onClick={() => {
-                  const element = document.getElementById('menu-section');
-                  element?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="text-lg px-8 py-6"
-              >
-                Lihat Menu Kami
+              <Button size="lg" className="text-lg px-8 py-6" asChild>
+                <Link href="/menu">Lihat Menu Kami</Link>
               </Button>
             </motion.div>
           </div>
