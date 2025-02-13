@@ -1,7 +1,14 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Facebook, Instagram, Twitter, MapPin, Phone, Mail } from "lucide-react";
+import {
+  Facebook,
+  Instagram,
+  Twitter,
+  MapPin,
+  Phone,
+  Mail,
+} from "lucide-react";
 
 export default function Contact() {
   return (
@@ -15,8 +22,8 @@ export default function Contact() {
         >
           <h1 className="text-4xl font-bold text-gray-900 mb-6">Contact Us</h1>
           <p className="text-lg text-gray-600">
-            Get in touch with us for any inquiries about our premium halal dim sum.
-            We'd love to hear from you!
+            Get in touch with us for any inquiries about our premium halal dim
+            sum. We'd love to hear from you!
           </p>
         </motion.div>
 
@@ -28,13 +35,18 @@ export default function Contact() {
           >
             <Card>
               <CardContent className="p-6">
-                <h2 className="text-2xl font-semibold mb-6">Contact Information</h2>
+                <h2 className="text-2xl font-semibold mb-6">
+                  Contact Information
+                </h2>
                 <div className="space-y-6">
                   <div className="flex items-center gap-4">
                     <MapPin className="h-6 w-6 text-primary" />
                     <div>
                       <h3 className="font-semibold">Address</h3>
-                      <p className="text-gray-600">Jl. Raya Sesetan No.270A, Sesetan, Denpasar Selatan, Kota Denpasar, Bali</p>
+                      <p className="text-gray-600">
+                        Jl. Sinom V No.7, Turangga, Kec. Lengkong, Kota Bandung,
+                        Jawa Barat 40264
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
