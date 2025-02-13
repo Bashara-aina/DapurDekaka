@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
+import useEmblaCarousel from 'embla-carousel-react';
+import Autoplay from 'embla-carousel-autoplay';
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
 } from "@/components/ui/carousel";
 import { Button } from "@/components/ui/button";
 import { menuData } from "@shared/menu-data";
@@ -14,6 +14,23 @@ import { menuData } from "@shared/menu-data";
 export default function EntranceScreen() {
   const [, setLocation] = useLocation();
   const [isExiting, setIsExiting] = useState(false);
+  const [imagesLoaded, setImagesLoaded] = useState(false);
+
+  // Preload images
+  useEffect(() => {
+    const loadImage = (imageUrl: string) => {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.src = imageUrl;
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+    };
+
+    Promise.all(menuData.map(item => loadImage(item.imageUrl)))
+      .then(() => setImagesLoaded(true))
+      .catch(err => console.error('Error loading images:', err));
+  }, []);
 
   const handleEnterSite = () => {
     setIsExiting(true);
@@ -22,12 +39,19 @@ export default function EntranceScreen() {
     }, 1000);
   };
 
+  const autoplayOptions = {
+    delay: 500,
+    stopOnInteraction: false,
+    stopOnMouseEnter: false,
+    rootNode: (emblaRoot: any) => emblaRoot.parentElement,
+  };
+
   return (
     <AnimatePresence>
       {!isExiting && (
         <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          animate={{ opacity: imagesLoaded ? 1 : 0 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 bg-black"
         >
@@ -41,6 +65,7 @@ export default function EntranceScreen() {
                   dragFree: true,
                   containScroll: false,
                 }}
+                plugins={[Autoplay(autoplayOptions)]}
                 className="h-full"
               >
                 <CarouselContent className="-ml-1">
@@ -63,8 +88,8 @@ export default function EntranceScreen() {
             {/* Overlay Content */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
+              animate={{ opacity: imagesLoaded ? 1 : 0, y: 0 }}
+              transition={{ delay: 0.2 }}
               className="relative z-10 h-full flex flex-col items-center justify-center text-white text-center px-4"
             >
               <h1 className="text-4xl md:text-6xl font-bold mb-4 max-w-4xl">
