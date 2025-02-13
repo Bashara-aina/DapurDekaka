@@ -10,8 +10,8 @@ import {
 } from "@/components/ui/carousel";
 import { Button } from "@/components/ui/button";
 
-// Asset paths array - explicitly include the full path with correct case
-const assetImages = Array.from({ length: 33 }, (_, i) => `/asset/${i + 1}.JPG`);
+// Asset paths array
+const assetImages = Array.from({ length: 33 }, (_, i) => `/asset/${i + 1}.jpg`);
 
 export default function EntranceScreen() {
   const [, setLocation] = useLocation();
@@ -19,7 +19,7 @@ export default function EntranceScreen() {
   const [imagesLoaded, setImagesLoaded] = useState(false);
   const [loadedImages, setLoadedImages] = useState<string[]>([]);
 
-  // Preload images with better error handling and progress tracking
+  // Preload images
   useEffect(() => {
     const loadImage = (imageUrl: string) => {
       return new Promise((resolve, reject) => {
@@ -36,17 +36,16 @@ export default function EntranceScreen() {
       });
     };
 
-    // Load all images concurrently
     Promise.allSettled(assetImages.map(loadImage))
       .then((results) => {
         const successfullyLoaded = results.filter(result => result.status === 'fulfilled').length;
-        console.log(`Successfully loaded ${successfullyLoaded} out of ${assetImages.length} images`);
-        setImagesLoaded(true);
+        if (successfullyLoaded > 0) {
+          setImagesLoaded(true);
+        }
       })
-      .catch(err => {
-        console.error('Error loading images:', err);
-        // Still set imagesLoaded to true to show at least the loaded images
-        setImagesLoaded(true);
+      .catch(error => {
+        console.error("Error preloading images:", error);
+        // Handle the error appropriately, perhaps display a fallback message.  For now, we'll still try to render.
       });
   }, []);
 
@@ -58,7 +57,7 @@ export default function EntranceScreen() {
   };
 
   const autoplayOptions = {
-    delay: 1000,
+    delay: 1000, // 1 second interval as requested
     stopOnInteraction: false,
     stopOnMouseEnter: false,
     rootNode: (emblaRoot: any) => emblaRoot.parentElement,
@@ -69,7 +68,7 @@ export default function EntranceScreen() {
       {!isExiting && (
         <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: imagesLoaded ? 1 : 0 }}
+          animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 bg-black"
         >
@@ -89,6 +88,7 @@ export default function EntranceScreen() {
                   loop: true,
                   dragFree: true,
                   containScroll: false,
+                  duration: 500, // 0.5 seconds transition speed
                 }}
                 plugins={[Autoplay(autoplayOptions) as any]}
                 className="h-full"
@@ -101,8 +101,12 @@ export default function EntranceScreen() {
                           src={imagePath}
                           alt={`Slide ${index + 1}`}
                           className="w-full h-full object-cover"
+                          loading="eager"
+                          onError={(e) => {
+                            console.error(`Error loading image at runtime: ${imagePath}`);
+                            // Consider a fallback image here
+                          }}
                         />
-                        <div className="absolute inset-0 bg-black/40" />
                       </div>
                     </CarouselItem>
                   ))}
@@ -113,7 +117,7 @@ export default function EntranceScreen() {
             {/* Overlay Content */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: imagesLoaded ? 1 : 0, y: 0 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
               className="relative z-10 h-full flex flex-col items-center justify-center text-white text-center px-4"
             >
