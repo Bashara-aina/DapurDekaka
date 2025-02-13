@@ -40,7 +40,7 @@ export default function EntranceScreen() {
   };
 
   const autoplayOptions = {
-    delay: 500,
+    delay: 1000, // Changed from 500 to 1000 milliseconds
     stopOnInteraction: false,
     stopOnMouseEnter: false,
     rootNode: (emblaRoot: any) => emblaRoot.parentElement,
