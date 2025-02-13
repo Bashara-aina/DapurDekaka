@@ -9,14 +9,12 @@ import Home from "@/pages/home";
 import Menu from "@/pages/menu";
 import About from "@/pages/about";
 import Articles from "@/pages/articles";
-import EntranceScreen from "@/components/entrance-screen";
 
 function Router() {
   return (
     <div className="min-h-screen flex flex-col">
       <Switch>
-        <Route path="/" component={EntranceScreen} />
-        <Route path="/home">
+        <Route path="/">
           <div className="min-h-screen flex flex-col">
             <Navbar />
             <main className="flex-1">
