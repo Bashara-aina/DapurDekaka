@@ -9,34 +9,27 @@ import {
   CarouselItem,
 } from "@/components/ui/carousel";
 import { Button } from "@/components/ui/button";
-import { assetData } from "@shared/asset-data";
+import { menuData } from "@shared/menu-data";
 
 export default function EntranceScreen() {
   const [, setLocation] = useLocation();
   const [isExiting, setIsExiting] = useState(false);
-  const [imagesLoaded, setImagesLoaded] = useState(0);
-  const totalImages = assetData.length;
+  const [imagesLoaded, setImagesLoaded] = useState(false);
 
   // Preload images
   useEffect(() => {
-    const preloadPromises = assetData.map((item) => {
+    const loadImage = (imageUrl: string) => {
       return new Promise((resolve, reject) => {
         const img = new Image();
-        img.src = `/asset/${item.id}.JPG`;
-        img.onload = () => {
-          setImagesLoaded(prev => prev + 1);
-          resolve(img);
-        };
-        img.onerror = (err) => {
-          console.error(`Error loading image /asset/${item.id}.JPG:`, err);
-          reject(err);
-        };
+        img.src = imageUrl;
+        img.onload = resolve;
+        img.onerror = reject;
       });
-    });
+    };
 
-    Promise.all(preloadPromises).catch(error => {
-      console.error('Failed to load some images:', error);
-    });
+    Promise.all(menuData.map(item => loadImage(item.imageUrl)))
+      .then(() => setImagesLoaded(true))
+      .catch(err => console.error('Error loading images:', err));
   }, []);
 
   const handleEnterSite = () => {
@@ -47,27 +40,18 @@ export default function EntranceScreen() {
   };
 
   const autoplayOptions = {
-    delay: 1000,
+    delay: 1000, // Changed from 500 to 1000 milliseconds
     stopOnInteraction: false,
     stopOnMouseEnter: false,
     rootNode: (emblaRoot: any) => emblaRoot.parentElement,
   };
-
-  // Show loading screen only if no images have loaded yet
-  if (imagesLoaded === 0) {
-    return (
-      <div className="fixed inset-0 z-50 bg-black flex items-center justify-center">
-        <div className="text-white text-lg">Loading...</div>
-      </div>
-    );
-  }
 
   return (
     <AnimatePresence>
       {!isExiting && (
         <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          animate={{ opacity: imagesLoaded ? 1 : 0 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 bg-black"
         >
@@ -85,12 +69,12 @@ export default function EntranceScreen() {
                 className="h-full"
               >
                 <CarouselContent className="-ml-1">
-                  {assetData.map((item, index) => (
-                    <CarouselItem key={index} className="pl-1 md:basis-1/2 lg:basis-1/3">
+                  {menuData.map((item, index) => (
+                    <CarouselItem key={index} className="pl-1 md:basis-1/3">
                       <div className="relative h-screen">
                         <img
-                          src={`/asset/${item.id}.JPG`}
-                          alt={`Background ${item.id}`}
+                          src={item.imageUrl}
+                          alt={item.name}
                           className="w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 bg-black/40" />
@@ -104,7 +88,7 @@ export default function EntranceScreen() {
             {/* Overlay Content */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+              animate={{ opacity: imagesLoaded ? 1 : 0, y: 0 }}
               transition={{ delay: 0.2 }}
               className="relative z-10 h-full flex flex-col items-center justify-center text-white text-center px-4"
             >
