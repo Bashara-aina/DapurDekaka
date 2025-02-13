@@ -46,7 +46,7 @@ export default function FeaturedProducts() {
           className="flex gap-6 overflow-x-auto scrollbar-hide snap-x snap-mandatory"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
-          {menuData.slice(0, 6).map((item) => (
+          {menuData.slice(0, 11).map((item) => (
             <motion.div
               key={item.id}
               className="min-w-[300px] snap-start"

@@ -1,0 +1,29 @@
+Create a modern, immersive enterance screen before the home page for the Dimsum website with the following detailed specifications:
+
+Landing Page (Pre-Homepage or entereance screen):
+
+Background:
+Use a continuous, full‑screen background composed of images sourced from the “asset” folder.
+The background should always display three images at a time, arranged side by side to fully cover the viewport.
+Implement a smooth, continuous horizontal scrolling effect: the images should scroll steadily to the left, and as an image completely leaves the left side of the screen, a new image should seamlessly enter from the right. This creates an infinite, looping carousel effect.
+Overlay Content:
+Display a prominent main tagline:
+"Innovating Indonesia's Future with Cutting-Edge Technology"
+Underneath, include a subtitle:
+"Leading provider of power systems, digital transformation, and defense solutions."
+Place a clear, call-to-action (CTA) button labeled:
+"Masuk ke Perjalanan Kami"
+Ensure the overlay content is centered and legible against the dynamic background.
+User Interaction & Transition:
+
+When the user clicks the CTA button, initiate a smooth transition effect (such as a fade-out or slide transition) that dismisses the landing page.
+Upon completion of the transition, redirect the user to the main homepage. This can be implemented as a separate section or a different URL (e.g., index.html).
+Design & Responsiveness:
+
+Ensure that the background image carousel and overlay content are fully responsive, scaling appropriately on desktops, tablets, and mobile devices.
+Optimize performance so that images load quickly. Consider lazy loading techniques and provide a static fallback image or simplified animation if continuous scrolling is unsupported on some mobile devices.
+Overall Aesthetic:
+
+The design should evoke a modern, professional feel that aligns with the Dimsum brand.
+The continuous, flowing movement of images should create a dynamic visual experience that draws users in and guides them toward exploring the site further.
+Please implement these features without referencing any video elements—use only the images from the “asset” folder for the dynamic background effect.
