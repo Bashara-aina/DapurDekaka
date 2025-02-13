@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ContactForm } from "@/components/contact-form";
 
 export default function HeroSection() {
   return (
@@ -23,11 +24,11 @@ export default function HeroSection() {
               <Button size="lg" asChild>
                 <a href="/menu">Lihat Menu</a>
               </Button>
-              <Button size="lg" variant="outline" asChild>
-                <a href="https://wa.me/your-number" target="_blank" rel="noopener noreferrer">
-                  Pesan Sekarang
-                </a>
-              </Button>
+              <ContactForm>
+                <Button size="lg" variant="outline">
+                  Contact Us
+                </Button>
+              </ContactForm>
             </div>
           </motion.div>
 
