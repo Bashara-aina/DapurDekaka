@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LogoDisplay } from "@/components/LogoDisplay";
 
 export default function HeroSection() {
   return (
@@ -13,7 +12,6 @@ export default function HeroSection() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <LogoDisplay className="mb-8 md:hidden" />
             <Badge className="mb-4">100% Halal Certified</Badge>
             <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
               Dapur Dekaka – Nikmati Sensasi Dimsum Premium dengan Cita Rasa Autentik!
@@ -39,7 +37,6 @@ export default function HeroSection() {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="relative"
           >
-            <LogoDisplay className="hidden md:block mb-8" />
             <img
               src="https://images.unsplash.com/photo-1496116218417-1a781b1c416c"
               alt="Premium Dim Sum"
