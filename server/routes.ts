@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { insertMenuItemSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { menuData } from "@shared/menu-data";
+import contactRouter from "./routes/contact";
 
 export async function initializeMenuItems() {
   try {
@@ -30,6 +31,9 @@ export async function initializeMenuItems() {
 export function registerRoutes(app: Express): Server {
   // Initialize menu items when the server starts
   initializeMenuItems();
+
+  // Register contact form routes
+  app.use(contactRouter);
 
   // Menu items routes
   app.get("/api/menu", async (_req, res) => {
