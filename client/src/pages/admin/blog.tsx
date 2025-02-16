@@ -9,12 +9,46 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Pencil, Trash2, Plus, Image as ImageIcon } from "lucide-react";
+import { useLocation } from "wouter";
 
 export default function AdminBlogPage() {
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
+
+  // Add authentication check
+  const { data: authStatus, isLoading: authLoading } = useQuery({
+    queryKey: ['auth-status'],
+    queryFn: async () => {
+      const response = await fetch('/api/auth/status', {
+        credentials: 'include'
+      });
+      if (!response.ok) return null;
+      return response.json();
+    }
+  });
+
+  if (authLoading) {
+    return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
+  }
+
+  if (!authStatus) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="w-full max-w-md p-6">
+          <div className="text-center space-y-4">
+            <h1 className="text-2xl font-bold">Admin Access Required</h1>
+            <p className="text-muted-foreground">Please log in to manage blog posts</p>
+            <Button onClick={() => setLocation("/auth")} className="w-full">
+              Login to Admin
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -137,7 +171,6 @@ export default function AdminBlogPage() {
     },
   });
 
-  // Query for fetching posts
   const { data: posts, isLoading } = useQuery<BlogPost[]>({
     queryKey: ["/api/blog"],
     queryFn: async () => {
@@ -152,7 +185,10 @@ export default function AdminBlogPage() {
   return (
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Blog Posts</h1>
+        <div>
+          <h1 className="text-3xl font-bold">Blog Posts</h1>
+          <p className="text-muted-foreground">Logged in as {authStatus?.username}</p>
+        </div>
         <Sheet>
           <SheetTrigger asChild>
             <Button>
