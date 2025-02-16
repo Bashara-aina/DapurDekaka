@@ -32,7 +32,7 @@ export const blogRouter = Router();
 // Create post
 blogRouter.post("/", authenticateToken, upload.single('image'), async (req, res) => {
   try {
-    const { title, content, published } = req.body;
+    const { title = '', content = '', published } = req.body;
     const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
     
     const post = await db.insert(blogPosts).values({
