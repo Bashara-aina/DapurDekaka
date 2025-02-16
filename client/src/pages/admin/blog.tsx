@@ -172,11 +172,13 @@ export default function AdminBlogPage() {
             </SheetHeader>
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Title</label>
+                <label className="text-sm font-medium">Title *</label>
                 <Input
                   name="title"
                   defaultValue={editingPost?.title}
                   required
+                  minLength={3}
+                  placeholder="Enter blog post title"
                 />
               </div>
 
@@ -200,11 +202,13 @@ export default function AdminBlogPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Content</label>
+                <label className="text-sm font-medium">Content *</label>
                 <Textarea
                   name="content"
                   defaultValue={editingPost?.content}
                   required
+                  minLength={10}
+                  placeholder="Enter blog post content"
                   className="min-h-[200px]"
                 />
               </div>
