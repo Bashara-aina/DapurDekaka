@@ -1,0 +1,36 @@
+I want the blog feature that meets my requirements:
+
+Blog & Articles Feature Prompt
+
+User Interface (UI) and User Experience (UX):
+
+Design a clean, responsive layout that ensures readability and accessibility.
+Utilize a consistent color scheme and typography that align with your brand identity.
+Implement a sticky navigation bar for easy access to other sections while scrolling.
+Include hover effects on clickable elements for better interactivity.
+Full Page Preview of the Blog:
+
+Create individual blog post pages that can be accessed directly from the Blog & Articles main page.
+Implement a seamless transition animation when navigating from the summary view to the full post.
+Display blog titles prominently with a captivating lead image at the top of each post.
+Allow users to exit the full page with a clear "Back to Blog" button.
+Clickable Articles:
+
+On the Blog & Articles page, display a grid or list of blog posts with brief summaries and feature images.
+Ensure each post is clickable and redirects users to its dedicated full article page.
+Image Upload Capability:
+
+Integrate an image upload function within the blog post creation interface.
+Ensure the uploaded images are resized and optimized for web use to prevent performance issues.
+Utilize a reliable cloud storage solution for saving uploaded images.
+SEO Optimization:
+
+Use relevant keywords in each blog post's title, meta description, and throughout the content.
+Implement structured data (schema markup) to enhance search engine visibility.
+Encourage internal linking between posts and to the main blog page for better SEO.
+Best Version of Blog & Articles:
+
+Incorporate a commenting system to foster user interaction and feedback.
+Implement social media sharing buttons to encourage readers to share posts on various platforms.
+Create tags or categories for posts to help users find related content easily.
+Include an "About the Author" section at the end of each post to provide a personal touch and establish credibility.
