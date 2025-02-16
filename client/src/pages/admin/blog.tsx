@@ -19,6 +19,29 @@ export default function AdminBlogPage() {
   const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const response = await fetch('/api/blog');
+      setIsAuthenticated(response.ok);
+    };
+    checkAuth();
+  }, []);
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="w-full max-w-md p-6 text-center">
+          <h1 className="text-2xl font-bold mb-4">Admin Access Required</h1>
+          <p className="text-muted-foreground mb-6">Please log in to manage blog posts</p>
+          <Button asChild>
+            <a href="/auth">Login</a>
+          </Button>
+        </Card>
+      </div>
+    );
+  }
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
