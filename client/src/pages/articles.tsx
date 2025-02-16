@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BlogPost } from "@shared/schema";
@@ -22,7 +21,11 @@ export default function Articles() {
     window.scrollTo(0, 0);
   }, []);
 
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading) return (
+    <div className="flex justify-center items-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+    </div>
+  );
 
   return (
     <>
@@ -63,12 +66,19 @@ export default function Articles() {
               >
                 <Card className="cursor-pointer h-full hover:shadow-lg transition-all duration-300">
                   {post.imageUrl && (
-                    <img
-                      src={post.imageUrl}
-                      alt={post.title}
-                      className="w-full h-48 object-cover rounded-t-lg"
-                      loading="lazy"
-                    />
+                    <div className="relative w-full h-48 overflow-hidden rounded-t-lg">
+                      <img
+                        src={post.imageUrl}
+                        alt={post.title}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = '/image/placeholder.jpg';
+                          target.onerror = null;
+                        }}
+                      />
+                    </div>
                   )}
                   <CardHeader>
                     <CardTitle className="line-clamp-2 hover:text-primary transition-colors">

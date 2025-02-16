@@ -25,8 +25,20 @@ export default function ArticleDetail() {
     window.scrollTo(0, 0);
   }, []);
 
-  if (isLoading) return <div>Loading...</div>;
-  if (!post) return <div>Article not found</div>;
+  if (isLoading) return (
+    <div className="flex justify-center items-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+    </div>
+  );
+
+  if (!post) return (
+    <div className="container mx-auto py-16 px-4">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold text-gray-900">Article not found</h1>
+        <p className="mt-2 text-gray-600">The article you're looking for doesn't exist or has been removed.</p>
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -46,16 +58,23 @@ export default function ArticleDetail() {
           className="max-w-3xl mx-auto"
         >
           {post.imageUrl && (
-            <img
-              src={post.imageUrl}
-              alt={post.title}
-              className="w-full h-[400px] object-cover rounded-lg mb-8"
-              loading="lazy"
-            />
+            <div className="relative w-full h-[400px] mb-8 rounded-lg overflow-hidden">
+              <img
+                src={post.imageUrl}
+                alt={post.title}
+                className="w-full h-full object-cover"
+                loading="lazy"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/image/placeholder.jpg';
+                  target.onerror = null;
+                }}
+              />
+            </div>
           )}
 
           <h1 className="text-4xl font-bold text-gray-900 mb-4">{post.title}</h1>
-          
+
           <div className="flex items-center text-sm text-gray-500 mb-8">
             <CalendarIcon className="mr-2 h-4 w-4" />
             {new Date(post.createdAt).toLocaleDateString('en-US', {
@@ -66,10 +85,12 @@ export default function ArticleDetail() {
           </div>
 
           <div className="prose prose-lg max-w-none">
-            {post.content.split('\n').map((paragraph, index) => (
-              <p key={index} className="mb-4">
-                {paragraph}
-              </p>
+            {post.content.split('\n\n').map((paragraph, index) => (
+              paragraph.trim() && (
+                <p key={index} className="mb-6 text-gray-700 leading-relaxed">
+                  {paragraph}
+                </p>
+              )
             ))}
           </div>
         </motion.article>
