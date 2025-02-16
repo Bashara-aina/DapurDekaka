@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { BlogPost } from "@shared/schema";
@@ -31,7 +30,19 @@ export default function AdminBlogPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    
+    const title = formData.get('title')?.toString().trim();
+    const content = formData.get('content')?.toString().trim();
+
+    if (!title || !content) {
+      toast({
+        title: "Error",
+        description: "Title and content are required",
+        variant: "destructive"
+      });
+      return;
+    }
+
+
     try {
       if (editingPost) {
         await updateMutation.mutateAsync({
@@ -46,6 +57,11 @@ export default function AdminBlogPage() {
       (e.target as HTMLFormElement).reset();
     } catch (error) {
       console.error("Form submission error:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create/update post",
+        variant: "destructive"
+      });
     }
   };
 
@@ -163,7 +179,7 @@ export default function AdminBlogPage() {
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Image</label>
                 <Input
