@@ -1,10 +1,11 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMenuItemSchema, insertBlogPostSchema, insertUserSchema } from "@shared/schema";
+import { insertMenuItemSchema, insertUserSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { menuData } from "@shared/menu-data";
 import contactRouter from "./routes/contact";
+import { blogRouter } from "./routes/blog";
 import bcrypt from "bcryptjs";
 import session from "express-session";
 
@@ -105,109 +106,8 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Blog post routes
-  app.get("/api/blog", async (req, res) => {
-    try {
-      const posts = await storage.getAllBlogPosts();
-      res.json(posts);
-    } catch (error) {
-      console.error("Fetch posts error:", error);
-      res.status(500).json({ message: "Failed to fetch blog posts" });
-    }
-  });
-
-  app.post("/api/blog", requireAuth, async (req, res) => {
-    try {
-      const { title, content, published } = req.body;
-
-      if (!req.session.userId) {
-        return res.status(401).json({ message: "Unauthorized - Please log in" });
-      }
-
-      // Validate input
-      const validation = insertBlogPostSchema.safeParse({
-        title,
-        content,
-        published: published ? 1 : 0,
-      });
-
-      if (!validation.success) {
-        return res.status(400).json({
-          message: fromZodError(validation.error).message,
-        });
-      }
-
-      // Create blog post with author ID from session
-      const createdPost = await storage.createBlogPost({
-        ...validation.data,
-        authorId: req.session.userId,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
-
-      if (!createdPost) {
-        return res.status(500).json({ message: "Failed to create blog post" });
-      }
-
-      res.status(201).json(createdPost);
-    } catch (error) {
-      console.error("Blog post creation error:", error);
-      res.status(500).json({ 
-        message: error instanceof Error ? error.message : "Failed to create blog post" 
-      });
-    }
-  });
-
-  app.put("/api/blog/:id", requireAuth, async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const post = await storage.getBlogPost(id);
-
-      if (!post) {
-        return res.status(404).json({ message: "Blog post not found" });
-      }
-
-      if (post.authorId !== req.session.userId) {
-        return res.status(403).json({ message: "Unauthorized to edit this post" });
-      }
-
-      const result = insertBlogPostSchema.partial().safeParse({
-        ...req.body,
-        updatedAt: new Date()
-      });
-
-      if (!result.success) {
-        return res.status(400).json({
-          message: fromZodError(result.error).message,
-        });
-      }
-
-      const updatedPost = await storage.updateBlogPost(id, result.data);
-      res.json(updatedPost);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to update blog post" });
-    }
-  });
-
-  app.delete("/api/blog/:id", requireAuth, async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const post = await storage.getBlogPost(id);
-
-      if (!post) {
-        return res.status(404).json({ message: "Blog post not found" });
-      }
-
-      if (post.authorId !== req.session.userId) {
-        return res.status(403).json({ message: "Unauthorized to delete this post" });
-      }
-
-      await storage.deleteBlogPost(id);
-      res.json({ message: "Blog post deleted successfully" });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete blog post" });
-    }
-  });
+  // Register blog routes
+  app.use("/api/blog", blogRouter);
 
   // Register contact form routes
   app.use(contactRouter);

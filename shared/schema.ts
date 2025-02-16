@@ -24,6 +24,7 @@ export const blogPosts = pgTable("blog_posts", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   content: text("content").notNull(),
+  imageUrl: text("image_url"),
   authorId: integer("author_id").notNull().references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -41,18 +42,14 @@ export const insertUserSchema = createInsertSchema(users)
     password: z.string().min(8, "Password must be at least 8 characters"),
   });
 
-// Simplified blog post schema that doesn't require timestamps
 export const insertBlogPostSchema = createInsertSchema(blogPosts)
   .pick({
     title: true,
     content: true,
-    published: true,
   })
   .extend({
-    title: z.string().optional(),
-    content: z.string().optional(),
-    published: z.number().optional(),
-    authorId: z.number().optional(), // Will be set by the server
+    published: z.number().optional().default(0),
+    imageUrl: z.string().optional(),
   });
 
 export type InsertMenuItem = z.infer<typeof insertMenuItemSchema>;
