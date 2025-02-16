@@ -46,7 +46,7 @@ export default function FeaturedArticles() {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
             >
-              <Link href={`/articles/${article.id}`}>
+              <Link href={`/article/${article.id}`}>
                 <Card className="group cursor-pointer overflow-hidden hover:shadow-lg transition-all duration-300">
                   <div className="aspect-video relative overflow-hidden">
                     <img
