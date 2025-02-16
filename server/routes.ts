@@ -34,15 +34,20 @@ export function registerRoutes(app: Express): Server {
 
   // Authentication middleware
   const requireAuth = async (req: any, res: any, next: any) => {
-    if (!req.session.userId) {
-      return res.status(401).json({ message: "Unauthorized" });
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const user = await storage.getUser(req.session.userId);
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      req.user = user;
+      next();
+    } catch (error) {
+      console.error("Auth middleware error:", error);
+      res.status(500).json({ message: "Authentication error" });
     }
-    const user = await storage.getUser(req.session.userId);
-    if (!user) {
-      return res.status(401).json({ message: "User not found" });
-    }
-    req.user = user;
-    next();
   };
 
   // User routes
@@ -50,22 +55,27 @@ export function registerRoutes(app: Express): Server {
     try {
       const { username, email, password } = req.body;
 
-      // Check if user already exists
+      // Validate input
+      const validation = insertUserSchema.safeParse({ username, email, password });
+      if (!validation.success) {
+        return res.status(400).json({ message: fromZodError(validation.error).message });
+      }
+
+      // Check if user exists
       const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {
         return res.status(400).json({ message: "Username already taken" });
       }
 
-      // Create new user
+      // Create user
       const newUser = await storage.createUser({
         username,
         email,
-        password
+        password,
       });
 
       // Set session
       req.session.userId = newUser.id;
-
       res.status(201).json({ message: "User registered successfully" });
     } catch (error) {
       console.error("Registration error:", error);
@@ -73,7 +83,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Login route
   app.post("/api/login", async (req, res) => {
     try {
       const { username, password } = req.body;
@@ -91,17 +100,9 @@ export function registerRoutes(app: Express): Server {
       req.session.userId = user.id;
       res.json({ message: "Logged in successfully" });
     } catch (error) {
+      console.error("Login error:", error);
       res.status(500).json({ message: "Login failed" });
     }
-  });
-
-  app.post("/api/logout", (req, res) => {
-    req.session.destroy((err) => {
-      if (err) {
-        return res.status(500).json({ message: "Logout failed" });
-      }
-      res.json({ message: "Logged out successfully" });
-    });
   });
 
   // Blog post routes
@@ -110,41 +111,36 @@ export function registerRoutes(app: Express): Server {
       const posts = await storage.getAllBlogPosts();
       res.json(posts);
     } catch (error) {
+      console.error("Fetch posts error:", error);
       res.status(500).json({ message: "Failed to fetch blog posts" });
-    }
-  });
-
-  app.get("/api/blog/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const post = await storage.getBlogPost(id);
-      if (!post) {
-        return res.status(404).json({ message: "Blog post not found" });
-      }
-      res.json(post);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch blog post" });
     }
   });
 
   app.post("/api/blog", requireAuth, async (req, res) => {
     try {
-      const newPost = {
-        ...req.body,
-        authorId: req.session.userId,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
+      const { title, content, published } = req.body;
 
-      const result = insertBlogPostSchema.safeParse(newPost);
+      // Validate input
+      const validation = insertBlogPostSchema.safeParse({
+        title,
+        content,
+        published: published ? 1 : 0,
+      });
 
-      if (!result.success) {
+      if (!validation.success) {
         return res.status(400).json({
-          message: fromZodError(result.error).message,
+          message: fromZodError(validation.error).message,
         });
       }
 
-      const createdPost = await storage.createBlogPost(result.data);
+      // Create blog post with author ID from session
+      const createdPost = await storage.createBlogPost({
+        ...validation.data,
+        authorId: req.session.userId!,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+
       res.status(201).json(createdPost);
     } catch (error) {
       console.error("Blog post creation error:", error);
@@ -222,10 +218,8 @@ export function registerRoutes(app: Express): Server {
 
 export async function initializeMenuItems() {
   try {
-    // Check if menu items already exist
     const existingItems = await storage.getAllMenuItems();
     if (existingItems.length === 0) {
-      // Add initial menu items
       for (const item of menuData) {
         await storage.createMenuItem({
           name: item.name,

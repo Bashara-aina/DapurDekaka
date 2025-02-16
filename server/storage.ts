@@ -18,7 +18,7 @@ export interface IStorage {
   updateBlogPost(id: number, post: Partial<InsertBlogPost>): Promise<BlogPost | undefined>;
   deleteBlogPost(id: number): Promise<boolean>;
 
-  // Existing menu item methods
+  // Menu item methods
   getAllMenuItems(): Promise<MenuItem[]>;
   getMenuItem(id: number): Promise<MenuItem | undefined>;
   createMenuItem(item: InsertMenuItem): Promise<MenuItem>;
@@ -39,15 +39,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBlogPost(post: InsertBlogPost): Promise<BlogPost> {
-    const [newPost] = await db
-      .insert(blogPosts)
-      .values({
-        ...post,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      })
-      .returning();
-    return newPost;
+    try {
+      const [newPost] = await db
+        .insert(blogPosts)
+        .values({
+          ...post,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+      return newPost;
+    } catch (error) {
+      console.error("Error creating blog post:", error);
+      throw error;
+    }
   }
 
   async updateBlogPost(id: number, post: Partial<InsertBlogPost>): Promise<BlogPost | undefined> {
@@ -79,23 +84,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(userData: InsertUser & { password: string }): Promise<User> {
-    const { password, ...rest } = userData;
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
+    try {
+      const { password, ...rest } = userData;
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash(password, salt);
 
-    const [newUser] = await db
-      .insert(users)
-      .values({
-        ...rest,
-        passwordHash,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      })
-      .returning();
-    return newUser;
+      const [newUser] = await db
+        .insert(users)
+        .values({
+          ...rest,
+          passwordHash,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+      return newUser;
+    } catch (error) {
+      console.error("Error creating user:", error);
+      throw error;
+    }
   }
 
-  // Existing menu item methods
+  // Menu item methods
   async getAllMenuItems(): Promise<MenuItem[]> {
     return await db.select().from(menuItems);
   }
