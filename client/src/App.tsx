@@ -11,6 +11,8 @@ import About from "@/pages/about";
 import Articles from "@/pages/articles";
 import Contact from "@/pages/contact";
 import { HalalLogo } from "@/components/HalalLogo";
+import AuthPage from "@/pages/auth";
+import AdminBlog from "@/pages/admin/blog";
 
 function Router() {
   return (
@@ -61,6 +63,12 @@ function Router() {
             </main>
             <Footer />
           </div>
+        </Route>
+        <Route path="/auth">
+          <AuthPage />
+        </Route>
+        <Route path="/admin/blog">
+          <AdminBlog />
         </Route>
         <Route>
           <div className="min-h-screen flex flex-col">
