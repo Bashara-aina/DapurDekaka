@@ -199,13 +199,17 @@ export default function AdminBlogPage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Content *</label>
-                <Textarea
-                  name="content"
-                  defaultValue={editingPost?.content}
-                  required
-                  minLength={10}
-                  placeholder="Enter blog post content"
-                  className="min-h-[200px]"
+                <RichEditor
+                  content={editingPost?.content || ''}
+                  onChange={(content) => {
+                    const textarea = document.createElement('textarea')
+                    textarea.innerHTML = content
+                    const form = document.querySelector('form')
+                    if (form) {
+                      const formData = new FormData(form)
+                      formData.set('content', content)
+                    }
+                  }}
                 />
               </div>
 

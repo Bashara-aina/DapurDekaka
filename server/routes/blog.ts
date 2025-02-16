@@ -27,6 +27,24 @@ const upload = multer({
 
 export const blogRouter = Router();
 
+// Image upload endpoint
+blogRouter.post("/upload", requireAuth, upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No image file provided" });
+    }
+
+    // Return the URL of the uploaded file
+    const url = `/uploads/${req.file.filename}`;
+    res.json({ url });
+  } catch (error) {
+    console.error("Error uploading image:", error);
+    res.status(500).json({ 
+      message: error instanceof Error ? error.message : "Failed to upload image" 
+    });
+  }
+});
+
 // Create post
 blogRouter.post("/", requireAuth, upload.single('image'), async (req, res) => {
   try {
