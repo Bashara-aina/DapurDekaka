@@ -27,16 +27,14 @@ export default function AdminBlogPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const form = e.currentTarget;
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.target as HTMLFormElement;
     const formData = new FormData(form);
-    
-    // Get and validate required fields
-    const title = formData.get('title')?.toString().trim();
-    const content = formData.get('content')?.toString().trim();
-    const image = formData.get('image') as File | null;
-    const published = formData.get('published') === 'true';
+
+    // Ensure title and content are present
+    const title = formData.get('title')?.toString();
+    const content = formData.get('content')?.toString();
 
     if (!title || !content) {
       toast({
@@ -47,31 +45,17 @@ export default function AdminBlogPage() {
       return;
     }
 
-    // Create new FormData with validated values
-    const validatedFormData = new FormData(form);
-    // Ensure boolean value for published
-    validatedFormData.set('published', validatedFormData.get('published') === 'true' ? '1' : '0');
-
-
     try {
       if (editingPost) {
-        await updateMutation.mutateAsync({
-          id: editingPost.id,
-          formData: validatedFormData
-        });
+        await updateMutation.mutateAsync({ id: editingPost.id, formData });
       } else {
-        await createMutation.mutateAsync(validatedFormData);
+        await createMutation.mutateAsync(formData);
       }
-      setImagePreview(null);
+      form.reset();
       setEditingPost(null);
-      (e.target as HTMLFormElement).reset();
+      setImagePreview(null);
     } catch (error) {
-      console.error("Form submission error:", error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create/update post",
-        variant: "destructive"
-      });
+      console.error('Error:', error);
     }
   };
 
