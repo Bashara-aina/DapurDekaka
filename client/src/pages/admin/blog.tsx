@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { RichEditor } from "@/components/ui/rich-editor";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { BlogPost } from "@shared/schema";
 import { Button } from "@/components/ui/button";
