@@ -166,67 +166,113 @@ export default function AdminBlogPage() {
                 {editingPost ? "Edit Blog Post" : "Create Blog Post"}
               </SheetTitle>
             </SheetHeader>
-            <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Title *</label>
-                <Input
-                  name="title"
-                  defaultValue={editingPost?.title}
-                  required
-                  minLength={3}
-                  placeholder="Enter blog post title"
-                />
-              </div>
+            <div className="grid grid-cols-2 gap-4 h-[80vh]">
+              <form onSubmit={handleSubmit} className="space-y-4 mt-4 overflow-y-auto pr-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Title *</label>
+                  <Input
+                    name="title"
+                    defaultValue={editingPost?.title}
+                    onChange={(e) => setEditingPost(prev => ({ ...prev!, title: e.target.value }))}
+                    required
+                    minLength={3}
+                    placeholder="Enter blog post title"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Image</label>
-                <Input
-                  type="file"
-                  name="image"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                />
-                {(imagePreview ?? editingPost?.imageUrl) && (
-                  <div className="mt-2">
-                    <img
-                      src={imagePreview ?? editingPost?.imageUrl}
-                      alt="Preview"
-                      className="max-h-40 rounded-md"
-                    />
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Image</label>
+                  <Input
+                    type="file"
+                    name="image"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                  />
+                  {(imagePreview ?? editingPost?.imageUrl) && (
+                    <div className="mt-2">
+                      <img
+                        src={imagePreview ?? editingPost?.imageUrl}
+                        alt="Preview"
+                        className="max-h-40 rounded-md"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Content *</label>
+                  <Textarea
+                    name="content"
+                    value={editingPost?.content || ''}
+                    onChange={(e) => setEditingPost(prev => ({ ...prev!, content: e.target.value }))}
+                    required
+                    minLength={10}
+                    placeholder="Enter blog post content"
+                    className="min-h-[200px]"
+                  />
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Input
+                    type="checkbox"
+                    name="published"
+                    value="true"
+                    defaultChecked={editingPost?.published === 1}
+                    className="w-4 h-4"
+                    id="published"
+                  />
+                  <label htmlFor="published" className="text-sm font-medium">
+                    Publish
+                  </label>
+                </div>
+
+                <Button type="submit" className="w-full">
+                  {editingPost ? "Update Post" : "Create Post"}
+                </Button>
+              </form>
+
+              <div className="border-l pl-4 overflow-y-auto">
+                <motion.article
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="max-w-3xl mx-auto"
+                >
+                  {(imagePreview ?? editingPost?.imageUrl) && (
+                    <div className="relative w-full h-[400px] mb-8 rounded-lg overflow-hidden">
+                      <img
+                        src={imagePreview ?? editingPost?.imageUrl}
+                        alt={editingPost?.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+
+                  <h1 className="text-4xl font-bold text-gray-900 mb-4">
+                    {editingPost?.title || 'Post Title'}
+                  </h1>
+
+                  <div className="flex items-center text-sm text-gray-500 mb-8">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {new Date().toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
                   </div>
-                )}
-              </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Content *</label>
-                <Textarea
-                  name="content"
-                  defaultValue={editingPost?.content}
-                  required
-                  minLength={10}
-                  placeholder="Enter blog post content"
-                  className="min-h-[200px]"
-                />
+                  <div className="prose prose-lg max-w-none">
+                    {(editingPost?.content || '').split('\n\n').map((paragraph, index) => (
+                      paragraph.trim() && (
+                        <p key={index} className="mb-6 text-gray-700 leading-relaxed">
+                          {paragraph}
+                        </p>
+                      )
+                    ))}
+                  </div>
+                </motion.article>
               </div>
-
-              <div className="flex items-center space-x-2">
-                <Input
-                  type="checkbox"
-                  name="published"
-                  value="true"
-                  defaultChecked={editingPost?.published === 1}
-                  className="w-4 h-4"
-                  id="published"
-                />
-                <label htmlFor="published" className="text-sm font-medium">
-                  Publish
-                </label>
-              </div>
-
-              <Button type="submit" className="w-full">
-                {editingPost ? "Update Post" : "Create Post"}
-              </Button>
-            </form>
+            </div>
           </SheetContent>
         </Sheet>
       </div>
