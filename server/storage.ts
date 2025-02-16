@@ -1,64 +1,104 @@
 import { users, type User, type InsertUser } from "@shared/schema";
 import { menuItems, type MenuItem, type InsertMenuItem } from "@shared/schema";
+import { blogPosts, type BlogPost, type InsertBlogPost } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
-
-// modify the interface with any CRUD methods
-// you might need
+import bcrypt from "bcryptjs";
 
 export interface IStorage {
+  // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  createUser(user: InsertUser & { password: string }): Promise<User>;
+
+  // Blog post methods
+  getAllBlogPosts(): Promise<BlogPost[]>;
+  getBlogPost(id: number): Promise<BlogPost | undefined>;
+  createBlogPost(post: InsertBlogPost): Promise<BlogPost>;
+  updateBlogPost(id: number, post: Partial<InsertBlogPost>): Promise<BlogPost | undefined>;
+  deleteBlogPost(id: number): Promise<boolean>;
+
+  // Existing menu item methods
   getAllMenuItems(): Promise<MenuItem[]>;
   getMenuItem(id: number): Promise<MenuItem | undefined>;
   createMenuItem(item: InsertMenuItem): Promise<MenuItem>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  currentId: number;
-
-  constructor() {
-    this.users = new Map();
-    this.currentId = 1;
+export class DatabaseStorage implements IStorage {
+  // Blog post methods
+  async getAllBlogPosts(): Promise<BlogPost[]> {
+    return await db.select().from(blogPosts);
   }
 
+  async getBlogPost(id: number): Promise<BlogPost | undefined> {
+    const [post] = await db
+      .select()
+      .from(blogPosts)
+      .where(eq(blogPosts.id, id));
+    return post;
+  }
+
+  async createBlogPost(post: InsertBlogPost): Promise<BlogPost> {
+    const [newPost] = await db
+      .insert(blogPosts)
+      .values(post)
+      .returning();
+    return newPost;
+  }
+
+  async updateBlogPost(id: number, post: Partial<InsertBlogPost>): Promise<BlogPost | undefined> {
+    const [updatedPost] = await db
+      .update(blogPosts)
+      .set({ ...post, updatedAt: new Date() })
+      .where(eq(blogPosts.id, id))
+      .returning();
+    return updatedPost;
+  }
+
+  async deleteBlogPost(id: number): Promise<boolean> {
+    const [deletedPost] = await db
+      .delete(blogPosts)
+      .where(eq(blogPosts.id, id))
+      .returning();
+    return !!deletedPost;
+  }
+
+  // User methods
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentId++;
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db.select().from(users).where(eq(users.username, username));
     return user;
   }
-  async getAllMenuItems(): Promise<MenuItem[]> {
-    throw new Error("Method not implemented.");
-  }
-  async getMenuItem(id: number): Promise<MenuItem | undefined> {
-    throw new Error("Method not implemented.");
-  }
-  async createMenuItem(item: InsertMenuItem): Promise<MenuItem> {
-    throw new Error("Method not implemented.");
-  }
-}
 
-export class DatabaseStorage implements IStorage {
+  async createUser(insertUser: InsertUser & { password: string }): Promise<User> {
+    const { password, ...userData } = insertUser;
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        ...userData,
+        passwordHash,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return newUser;
+  }
+
+  // Existing menu item methods
   async getAllMenuItems(): Promise<MenuItem[]> {
     return await db.select().from(menuItems);
   }
 
   async getMenuItem(id: number): Promise<MenuItem | undefined> {
     const [item] = await db.select().from(menuItems).where(eq(menuItems.id, id));
-    return item || undefined;
+    return item;
   }
 
   async createMenuItem(item: InsertMenuItem): Promise<MenuItem> {
@@ -67,15 +107,6 @@ export class DatabaseStorage implements IStorage {
       .values(item)
       .returning();
     return newItem;
-  }
-  async getUser(id: number): Promise<User | undefined> {
-    throw new Error("Method not implemented.");
-  }
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    throw new Error("Method not implemented.");
-  }
-  async createUser(user: InsertUser): Promise<User> {
-    throw new Error("Method not implemented.");
   }
 }
 
