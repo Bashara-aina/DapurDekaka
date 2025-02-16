@@ -1,6 +1,7 @@
+
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { BlogPost, InsertBlogPost } from "@shared/schema";
+import { BlogPost } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,32 +9,52 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Pencil, Trash2, Plus } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Pencil, Trash2, Plus, Image as ImageIcon } from "lucide-react";
 
 export default function AdminBlogPage() {
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch blog posts
-  const { data: posts, isLoading, error } = useQuery<BlogPost[]>({
-    queryKey: ["/api/blog"],
-    queryFn: async () => {
-      const response = await fetch("/api/blog");
-      if (!response.ok) throw new Error("Failed to fetch posts");
-      return response.json();
-    },
-  });
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
-  // Create blog post
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    
+    try {
+      if (editingPost) {
+        await updateMutation.mutateAsync({
+          id: editingPost.id,
+          formData
+        });
+      } else {
+        await createMutation.mutateAsync(formData);
+      }
+      setImagePreview(null);
+      setEditingPost(null);
+      (e.target as HTMLFormElement).reset();
+    } catch (error) {
+      console.error("Form submission error:", error);
+    }
+  };
+
   const createMutation = useMutation({
-    mutationFn: async (newPost: Partial<InsertBlogPost>) => {
+    mutationFn: async (formData: FormData) => {
       const response = await fetch("/api/blog", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: 'include',
-        body: JSON.stringify(newPost),
+        body: formData,
+        credentials: 'include'
       });
       if (!response.ok) {
         const error = await response.json();
@@ -54,20 +75,12 @@ export default function AdminBlogPage() {
     },
   });
 
-  // Update blog post
   const updateMutation = useMutation({
-    mutationFn: async ({
-      id,
-      data,
-    }: {
-      id: number;
-      data: Partial<InsertBlogPost>;
-    }) => {
+    mutationFn: async ({ id, formData }: { id: number; formData: FormData }) => {
       const response = await fetch(`/api/blog/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: 'include',
-        body: JSON.stringify(data),
+        body: formData,
+        credentials: 'include'
       });
       if (!response.ok) {
         const error = await response.json();
@@ -78,7 +91,6 @@ export default function AdminBlogPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/blog"] });
       toast({ title: "Success", description: "Blog post updated successfully" });
-      setEditingPost(null);
     },
     onError: (error: Error) => {
       toast({
@@ -89,12 +101,11 @@ export default function AdminBlogPage() {
     },
   });
 
-  // Delete blog post
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       const response = await fetch(`/api/blog/${id}`, {
         method: "DELETE",
-        credentials: 'include',
+        credentials: 'include'
       });
       if (!response.ok) {
         const error = await response.json();
@@ -114,41 +125,20 @@ export default function AdminBlogPage() {
     },
   });
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const data = {
-      title: formData.get("title") as string,
-      content: formData.get("content") as string,
-      published: formData.get("published") === "true" ? 1 : 0,
-    };
+  // Query for fetching posts
+  const { data: posts, isLoading } = useQuery<BlogPost[]>({
+    queryKey: ["/api/blog"],
+    queryFn: async () => {
+      const response = await fetch("/api/blog");
+      if (!response.ok) throw new Error("Failed to fetch posts");
+      return response.json();
+    },
+  });
 
-    try {
-      if (editingPost) {
-        await updateMutation.mutateAsync({ id: editingPost.id, data });
-      } else {
-        await createMutation.mutateAsync(data);
-      }
-      (e.target as HTMLFormElement).reset();
-    } catch (error) {
-      console.error("Form submission error:", error);
-    }
-  };
-
-  if (isLoading) {
-    return <div className="p-6">Loading...</div>;
-  }
-
-  if (error) {
-    return (
-      <Alert variant="destructive" className="m-6">
-        <AlertDescription>Failed to load blog posts</AlertDescription>
-      </Alert>
-    );
-  }
+  if (isLoading) return <div>Loading...</div>;
 
   return (
-    <div className="container mx-auto p-6 max-w-5xl">
+    <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Blog Posts</h1>
         <Sheet>
@@ -160,35 +150,65 @@ export default function AdminBlogPage() {
           </SheetTrigger>
           <SheetContent className="w-[400px] sm:w-[540px]">
             <SheetHeader>
-              <SheetTitle>Create Blog Post</SheetTitle>
+              <SheetTitle>
+                {editingPost ? "Edit Blog Post" : "Create Blog Post"}
+              </SheetTitle>
             </SheetHeader>
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Title</label>
-                <Input name="title" required className="w-full" />
+                <Input
+                  name="title"
+                  defaultValue={editingPost?.title}
+                  required
+                />
               </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Image</label>
+                <Input
+                  type="file"
+                  name="image"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                />
+                {(imagePreview || editingPost?.imageUrl) && (
+                  <div className="mt-2">
+                    <img
+                      src={imagePreview || editingPost?.imageUrl}
+                      alt="Preview"
+                      className="max-h-40 rounded-md"
+                    />
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Content</label>
-                <Textarea 
-                  name="content" 
-                  required 
+                <Textarea
+                  name="content"
+                  defaultValue={editingPost?.content}
+                  required
                   className="min-h-[200px]"
                 />
               </div>
+
               <div className="flex items-center space-x-2">
                 <Input
                   type="checkbox"
                   name="published"
                   value="true"
+                  defaultChecked={editingPost?.published === 1}
                   className="w-4 h-4"
                   id="published"
                 />
                 <label htmlFor="published" className="text-sm font-medium">
-                  Publish immediately
+                  Publish
                 </label>
               </div>
+
               <Button type="submit" className="w-full">
-                Create Post
+                {editingPost ? "Update Post" : "Create Post"}
               </Button>
             </form>
           </SheetContent>
@@ -206,9 +226,13 @@ export default function AdminBlogPage() {
                     {new Date(post.createdAt).toLocaleDateString()}
                   </p>
                   <p className="mt-2 text-gray-700">{post.content}</p>
-                  <div className="flex items-center space-x-2 text-sm text-gray-500">
-                    <span>Status: {post.published ? 'Published' : 'Draft'}</span>
-                  </div>
+                  {post.imageUrl && (
+                    <img
+                      src={post.imageUrl}
+                      alt={post.title}
+                      className="mt-2 max-h-40 rounded-md"
+                    />
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -235,55 +259,6 @@ export default function AdminBlogPage() {
           ))}
         </div>
       </ScrollArea>
-
-      {editingPost && (
-        <Sheet open={!!editingPost} onOpenChange={() => setEditingPost(null)}>
-          <SheetContent className="w-[400px] sm:w-[540px]">
-            <SheetHeader>
-              <SheetTitle>Edit Blog Post</SheetTitle>
-            </SheetHeader>
-            <form
-              onSubmit={handleSubmit}
-              className="space-y-4 mt-4"
-              key={editingPost.id}
-            >
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Title</label>
-                <Input
-                  name="title"
-                  defaultValue={editingPost.title}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Content</label>
-                <Textarea
-                  name="content"
-                  defaultValue={editingPost.content}
-                  required
-                  className="min-h-[200px]"
-                />
-              </div>
-              <div className="flex items-center space-x-2">
-                <Input
-                  type="checkbox"
-                  name="published"
-                  value="true"
-                  defaultChecked={editingPost.published === 1}
-                  className="w-4 h-4"
-                  id="edit-published"
-                />
-                <label htmlFor="edit-published" className="text-sm font-medium">
-                  Published
-                </label>
-              </div>
-              <Button type="submit" className="w-full">
-                Update Post
-              </Button>
-            </form>
-          </SheetContent>
-        </Sheet>
-      )}
     </div>
   );
 }
