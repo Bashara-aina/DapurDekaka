@@ -186,10 +186,10 @@ export default function AdminBlogPage() {
                   accept="image/*"
                   onChange={handleImageChange}
                 />
-                {(imagePreview || editingPost?.imageUrl) && (
+                {(imagePreview ?? editingPost?.imageUrl) && (
                   <div className="mt-2">
                     <img
-                      src={imagePreview || editingPost?.imageUrl}
+                      src={imagePreview ?? editingPost?.imageUrl}
                       alt="Preview"
                       className="max-h-40 rounded-md"
                     />

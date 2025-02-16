@@ -49,7 +49,7 @@ blogRouter.post("/", requireAuth, upload.single('image'), async (req, res) => {
     const createdPost = await storage.createBlogPost({
       ...validation.data,
       authorId: req.session.userId!,
-      imageUrl: req.file ? `/uploads/${req.file.filename}` : null
+      imageUrl: req.file ? `/uploads/${req.file.filename}` : undefined
     });
 
     res.status(201).json(createdPost);
