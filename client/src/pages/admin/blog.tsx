@@ -46,14 +46,25 @@ export default function AdminBlogPage() {
 
     // Create a new FormData with validated data
     const validatedFormData = new FormData();
-    validatedFormData.append('title', title);
-    validatedFormData.append('content', content);
+    // Ensure title and content are properly trimmed and not empty
+    const sanitizedTitle = title?.trim();
+    const sanitizedContent = content?.trim();
+    
+    if (!sanitizedTitle || !sanitizedContent) {
+      toast({
+        title: "Error",
+        description: "Title and content are required",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    validatedFormData.append('title', sanitizedTitle);
+    validatedFormData.append('content', sanitizedContent);
     if (formData.get('image')) {
       validatedFormData.append('image', formData.get('image') as File);
     }
-    if (formData.get('published')) {
-      validatedFormData.append('published', formData.get('published') as string);
-    }
+    validatedFormData.append('published', formData.get('published') ? '1' : '0');
 
     try {
       if (editingPost) {
