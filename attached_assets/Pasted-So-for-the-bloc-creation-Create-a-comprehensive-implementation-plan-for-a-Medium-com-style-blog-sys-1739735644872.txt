@@ -1,0 +1,152 @@
+So for the bloc creation. Create a comprehensive implementation plan for a Medium.com-style blog system with CRUD operations, customization features, and SEO optimization. Include detailed technical and UX specifications for the following components:
+
+1. Core CRUD Functionality
+A. Blog Creation (Create):
+
+Design a WYSIWYG editor similar to Medium's interface:
+
+Floating toolbar for text formatting (headers, bold/italic, lists, quotes)
+
+Drag-and-drop image/video embedding with auto-optimization (compress images to WebP format)
+
+Code block support with syntax highlighting
+
+Seamless draft autosave (every 15 seconds)
+
+Tagging system with suggested tags based on content
+
+"Publish Now" vs "Schedule Post" options
+
+B. Blog Reading (Read):
+
+Implement a clean reading experience:
+
+Clutter-free layout with optimal line length (50-75 characters)
+
+Table of Contents auto-generation for long posts
+
+Progress indicator for scroll position
+
+Social sharing buttons with click tracking
+
+Related posts algorithm (content-based filtering)
+
+C. Editing (Update):
+
+Version control system:
+
+Track changes with diffs
+
+30-day revision history
+
+One-click rollback
+
+Inline editing interface matching creation UI
+
+Post-update notifications for subscribers
+
+D. Deletion (Delete):
+
+Soft delete system with:
+
+7-day recovery period
+
+Bulk delete management
+
+Cascade deletion of associated comments/analytics
+
+Permanent deletion protocol with confirmation modals
+
+2. Medium-Style Customization
+Personalization features:
+
+Custom domain mapping
+
+Theme builder with:
+
+5 preset layouts
+
+CSS variable overrides
+
+Font selector (Google Fonts integration)
+
+Branding toolkit:
+
+Logo upload with retina support
+
+Accent color picker
+
+Custom footer HTML/CSS
+
+3. SEO Optimization Strategy
+Implement technical SEO including:
+
+Automatic schema markup generation for:
+
+Article schema
+
+Breadcrumbs
+
+FAQ schema (if Q&A format detected)
+
+URL structure: /blog/{slug}-{6-digit-hash}
+
+Dynamic meta tags:
+
+Twitter card optimization
+
+Open Graph images (auto-generated if none provided)
+
+Content optimization:
+
+Latent Semantic Indexing (LSI) keyword suggestions
+
+Readability scoring (target Flesch 60+)
+
+Internal linking engine (3-5 related posts)
+
+Technical SEO:
+
+Pre-rendered AMP versions
+
+Lazy-loaded images with decoding="async"
+
+Sitemap.xml auto-generation/updating
+
+4. Technical Implementation
+Specify:
+
+Recommended tech stack (e.g., React/Next.js frontend, Node.js/NestJS backend)
+
+Database schema for posts/versions/tags
+
+Caching strategy (Redis for API responses, CDN for assets)
+
+Authentication flow for contributors (OAuth2 + Magic Links)
+
+Analytics integration:
+
+User engagement tracking (scroll depth, time spent)
+
+Heatmap compatibility
+
+Google Search Console API sync
+
+5. UX Requirements
+Performance targets:
+
+<1s initial load (SSR/ISR)
+
+<100ms API response times
+
+Core Web Vitals compliance (LCP <2.5s, FID <100ms)
+
+Accessibility:
+
+WCAG 2.1 AA compliance
+
+Screen reader optimization
+
+Keyboard navigation support
+
+Provide architecture diagrams, sequence diagrams for critical flows (publishing/editing), and prioritized implementation roadmap with milestones. Include security considerations for user-generated content and GDPR compliance requirements.
