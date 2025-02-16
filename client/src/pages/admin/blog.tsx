@@ -29,9 +29,14 @@ export default function AdminBlogPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    
+    // Get and validate required fields
     const title = formData.get('title')?.toString().trim();
     const content = formData.get('content')?.toString().trim();
+    const image = formData.get('image') as File | null;
+    const published = formData.get('published') === 'true';
 
     if (!title || !content) {
       toast({
@@ -42,15 +47,24 @@ export default function AdminBlogPage() {
       return;
     }
 
+    // Create new FormData with validated values
+    const validatedFormData = new FormData();
+    validatedFormData.append('title', title);
+    validatedFormData.append('content', content);
+    if (image) {
+      validatedFormData.append('image', image);
+    }
+    validatedFormData.append('published', published ? '1' : '0');
+
 
     try {
       if (editingPost) {
         await updateMutation.mutateAsync({
           id: editingPost.id,
-          formData
+          formData: validatedFormData
         });
       } else {
-        await createMutation.mutateAsync(formData);
+        await createMutation.mutateAsync(validatedFormData);
       }
       setImagePreview(null);
       setEditingPost(null);
