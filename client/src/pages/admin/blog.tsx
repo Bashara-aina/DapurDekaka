@@ -260,10 +260,15 @@ export default function AdminBlogPage() {
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Blog Posts</h1>
-        <Button onClick={() => setIsEditing(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Create New Post
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <a href="/auth">Login</a>
+          </Button>
+          <Button onClick={() => setIsEditing(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Create New Post
+          </Button>
+        </div>
       </div>
 
       <ScrollArea className="h-[calc(100vh-200px)]">
