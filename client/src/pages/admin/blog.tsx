@@ -31,14 +31,21 @@ export default function AdminBlogPage() {
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
+    const title = formData.get('title')?.toString().trim();
+    const content = formData.get('content')?.toString().trim();
 
-    // Ensure title and content are included
-    const title = form.querySelector<HTMLInputElement>('input[name="title"]')?.value;
-    const content = form.querySelector<HTMLTextAreaElement>('textarea[name="content"]')?.value;
+    if (!title || !content) {
+      toast({
+        title: "Error",
+        description: "Title and content are required",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    formData.set('title', title || '');
-    formData.set('content', content || '');
-    formData.set('published', '0');
+    formData.set('title', title);
+    formData.set('content', content);
+    formData.set('published', formData.get('published') ? '1' : '0');
 
     try {
       if (editingPost) {
