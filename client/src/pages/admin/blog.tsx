@@ -38,7 +38,7 @@ export default function AdminBlogPage() {
     return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
   }
 
-  if (!authStatus || authStatus.authenticated !== true) {
+  if (!authStatus || !authStatus.isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Card className="w-full max-w-md p-6">
