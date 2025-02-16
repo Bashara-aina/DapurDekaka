@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { BlogPost, InsertBlogPost } from "@shared/schema";
@@ -8,7 +9,8 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Plus } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function AdminBlogPage() {
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
@@ -16,7 +18,7 @@ export default function AdminBlogPage() {
   const queryClient = useQueryClient();
 
   // Fetch blog posts
-  const { data: posts, isLoading } = useQuery<BlogPost[]>({
+  const { data: posts, isLoading, error } = useQuery<BlogPost[]>({
     queryKey: ["/api/blog"],
     queryFn: async () => {
       const response = await fetch("/api/blog");
@@ -31,19 +33,23 @@ export default function AdminBlogPage() {
       const response = await fetch("/api/blog", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: 'include',
         body: JSON.stringify(newPost),
       });
-      if (!response.ok) throw new Error("Failed to create post");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to create post");
+      }
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/blog"] });
       toast({ title: "Success", description: "Blog post created successfully" });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to create blog post",
+        description: error.message,
         variant: "destructive",
       });
     },
@@ -61,9 +67,13 @@ export default function AdminBlogPage() {
       const response = await fetch(`/api/blog/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
+        credentials: 'include',
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error("Failed to update post");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update post");
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -71,10 +81,10 @@ export default function AdminBlogPage() {
       toast({ title: "Success", description: "Blog post updated successfully" });
       setEditingPost(null);
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to update blog post",
+        description: error.message,
         variant: "destructive",
       });
     },
@@ -85,17 +95,21 @@ export default function AdminBlogPage() {
     mutationFn: async (id: number) => {
       const response = await fetch(`/api/blog/${id}`, {
         method: "DELETE",
+        credentials: 'include',
       });
-      if (!response.ok) throw new Error("Failed to delete post");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to delete post");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/blog"] });
       toast({ title: "Success", description: "Blog post deleted successfully" });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to delete blog post",
+        description: error.message,
         variant: "destructive",
       });
     },
@@ -110,48 +124,67 @@ export default function AdminBlogPage() {
       published: formData.get("published") === "true" ? 1 : 0,
     };
 
-    if (editingPost) {
-      await updateMutation.mutateAsync({ id: editingPost.id, data });
-    } else {
-      await createMutation.mutateAsync(data);
+    try {
+      if (editingPost) {
+        await updateMutation.mutateAsync({ id: editingPost.id, data });
+      } else {
+        await createMutation.mutateAsync(data);
+      }
+      (e.target as HTMLFormElement).reset();
+    } catch (error) {
+      console.error("Form submission error:", error);
     }
-    
-    (e.target as HTMLFormElement).reset();
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <div className="p-6">Loading...</div>;
+  }
+
+  if (error) {
+    return (
+      <Alert variant="destructive" className="m-6">
+        <AlertDescription>Failed to load blog posts</AlertDescription>
+      </Alert>
+    );
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="container mx-auto p-6 max-w-5xl">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Blog Posts</h1>
+        <h1 className="text-3xl font-bold">Blog Posts</h1>
         <Sheet>
           <SheetTrigger asChild>
-            <Button>Create New Post</Button>
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Create New Post
+            </Button>
           </SheetTrigger>
-          <SheetContent>
+          <SheetContent className="w-[400px] sm:w-[540px]">
             <SheetHeader>
               <SheetTitle>Create Blog Post</SheetTitle>
             </SheetHeader>
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Title</label>
-                <Input name="title" required />
+                <Input name="title" required className="w-full" />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Content</label>
-                <Textarea name="content" required className="min-h-[200px]" />
+                <Textarea 
+                  name="content" 
+                  required 
+                  className="min-h-[200px]"
+                />
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  <Input
-                    type="checkbox"
-                    name="published"
-                    value="true"
-                    className="mr-2"
-                  />
+              <div className="flex items-center space-x-2">
+                <Input
+                  type="checkbox"
+                  name="published"
+                  value="true"
+                  className="w-4 h-4"
+                  id="published"
+                />
+                <label htmlFor="published" className="text-sm font-medium">
                   Publish immediately
                 </label>
               </div>
@@ -163,17 +196,20 @@ export default function AdminBlogPage() {
         </Sheet>
       </div>
 
-      <ScrollArea className="h-[600px]">
+      <ScrollArea className="h-[calc(100vh-200px)]">
         <div className="space-y-4">
           {posts?.map((post) => (
-            <Card key={post.id} className="p-4">
+            <Card key={post.id} className="p-6">
               <div className="flex justify-between items-start">
-                <div>
+                <div className="space-y-2">
                   <h2 className="text-xl font-semibold">{post.title}</h2>
-                  <p className="text-muted-foreground mt-1">
+                  <p className="text-sm text-gray-500">
                     {new Date(post.createdAt).toLocaleDateString()}
                   </p>
-                  <p className="mt-2">{post.content}</p>
+                  <p className="mt-2 text-gray-700">{post.content}</p>
+                  <div className="flex items-center space-x-2 text-sm text-gray-500">
+                    <span>Status: {post.published ? 'Published' : 'Draft'}</span>
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -186,7 +222,11 @@ export default function AdminBlogPage() {
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => deleteMutation.mutate(post.id)}
+                    onClick={() => {
+                      if (confirm('Are you sure you want to delete this post?')) {
+                        deleteMutation.mutate(post.id);
+                      }
+                    }}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -199,7 +239,7 @@ export default function AdminBlogPage() {
 
       {editingPost && (
         <Sheet open={!!editingPost} onOpenChange={() => setEditingPost(null)}>
-          <SheetContent>
+          <SheetContent className="w-[400px] sm:w-[540px]">
             <SheetHeader>
               <SheetTitle>Edit Blog Post</SheetTitle>
             </SheetHeader>
@@ -225,15 +265,16 @@ export default function AdminBlogPage() {
                   className="min-h-[200px]"
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  <Input
-                    type="checkbox"
-                    name="published"
-                    value="true"
-                    defaultChecked={editingPost.published === 1}
-                    className="mr-2"
-                  />
+              <div className="flex items-center space-x-2">
+                <Input
+                  type="checkbox"
+                  name="published"
+                  value="true"
+                  defaultChecked={editingPost.published === 1}
+                  className="w-4 h-4"
+                  id="edit-published"
+                />
+                <label htmlFor="edit-published" className="text-sm font-medium">
                   Published
                 </label>
               </div>

@@ -120,6 +120,10 @@ export function registerRoutes(app: Express): Server {
     try {
       const { title, content, published } = req.body;
 
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Unauthorized - Please log in" });
+      }
+
       // Validate input
       const validation = insertBlogPostSchema.safeParse({
         title,
@@ -136,15 +140,21 @@ export function registerRoutes(app: Express): Server {
       // Create blog post with author ID from session
       const createdPost = await storage.createBlogPost({
         ...validation.data,
-        authorId: req.session.userId!,
+        authorId: req.session.userId,
         createdAt: new Date(),
         updatedAt: new Date()
       });
 
+      if (!createdPost) {
+        return res.status(500).json({ message: "Failed to create blog post" });
+      }
+
       res.status(201).json(createdPost);
     } catch (error) {
       console.error("Blog post creation error:", error);
-      res.status(500).json({ message: "Failed to create blog post" });
+      res.status(500).json({ 
+        message: error instanceof Error ? error.message : "Failed to create blog post" 
+      });
     }
   });
 
