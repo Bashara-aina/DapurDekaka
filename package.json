@@ -73,6 +73,7 @@
     "framer-motion": "^11.13.1",
     "google-auth-library": "^9.15.1",
     "google-spreadsheet": "^4.1.4",
+    "highlight.js": "^11.11.1",
     "input-otp": "^1.2.4",
     "lowlight": "^2.9.0",
     "lucide-react": "^0.453.0",

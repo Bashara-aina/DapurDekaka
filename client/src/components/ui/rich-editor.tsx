@@ -5,8 +5,13 @@ import Placeholder from '@tiptap/extension-placeholder'
 import Youtube from '@tiptap/extension-youtube'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { createLowlight } from 'lowlight'
-import { all } from 'lowlight/lib/all'
-const lowlight = createLowlight(all)
+import js from 'highlight.js/lib/languages/javascript'
+import html from 'highlight.js/lib/languages/xml'
+import css from 'highlight.js/lib/languages/css'
+const lowlight = createLowlight()
+lowlight.register('html', html)
+lowlight.register('css', css)
+lowlight.register('js', js)
 import { Button } from './button'
 import { 
   Bold, 
