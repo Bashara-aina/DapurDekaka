@@ -25,7 +25,7 @@ export default function AdminBlogPage() {
       const response = await fetch('/api/auth/status', {
         credentials: 'include'
       });
-      if (!response.ok) return null;
+      if (!response.ok) throw new Error('Failed to fetch auth status');
       return response.json();
     }
   });
