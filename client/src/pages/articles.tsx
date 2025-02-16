@@ -57,49 +57,51 @@ export default function Articles() {
         >
           {posts?.map((post, index) => (
             <Link key={post.id} href={`/article/${post.id}`}>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                whileHover={{ y: -5 }}
-                className="h-full"
-              >
-                <Card className="cursor-pointer h-full hover:shadow-lg transition-all duration-300">
-                  {post.imageUrl && (
-                    <div className="relative w-full h-48 overflow-hidden rounded-t-lg">
-                      <img
-                        src={post.imageUrl}
-                        alt={post.title}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = '/image/placeholder.jpg';
-                          target.onerror = null;
-                        }}
-                      />
-                    </div>
-                  )}
-                  <CardHeader>
-                    <CardTitle className="line-clamp-2 hover:text-primary transition-colors">
-                      {post.title}
-                    </CardTitle>
-                    <div className="flex items-center text-sm text-gray-500">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {new Date(post.createdAt).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600 line-clamp-3">
-                      {post.content}
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
+              <a className="block h-full">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  whileHover={{ y: -5 }}
+                  className="h-full"
+                >
+                  <Card className="cursor-pointer h-full hover:shadow-lg transition-all duration-300">
+                    {post.imageUrl && (
+                      <div className="relative w-full h-48 overflow-hidden rounded-t-lg">
+                        <img
+                          src={post.imageUrl}
+                          alt={post.title}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/image/placeholder.jpg';
+                            target.onerror = null;
+                          }}
+                        />
+                      </div>
+                    )}
+                    <CardHeader>
+                      <CardTitle className="line-clamp-2 hover:text-primary transition-colors">
+                        {post.title}
+                      </CardTitle>
+                      <div className="flex items-center text-sm text-gray-500">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {new Date(post.createdAt).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-gray-600 line-clamp-3">
+                        {post.content}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </a>
             </Link>
           ))}
         </motion.div>
