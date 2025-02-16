@@ -4,7 +4,8 @@ import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
 import Youtube from '@tiptap/extension-youtube'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
-import { common, createLowlight } from 'lowlight'
+import { createLowlight } from 'lowlight'
+import { common } from 'lowlight/lib/common'
 const lowlight = createLowlight(common)
 import { Button } from './button'
 import { 
