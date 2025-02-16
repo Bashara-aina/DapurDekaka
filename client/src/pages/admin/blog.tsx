@@ -31,11 +31,10 @@ export default function AdminBlogPage() {
     event.preventDefault();
     const form = event.target as HTMLFormElement;
     const formData = new FormData(form);
-
-    // Ensure title and content are present
-    const title = formData.get('title')?.toString();
-    const content = formData.get('content')?.toString();
-
+    
+    const title = formData.get('title')?.toString().trim();
+    const content = formData.get('content')?.toString().trim();
+    
     if (!title || !content) {
       toast({
         title: "Error",
@@ -45,11 +44,22 @@ export default function AdminBlogPage() {
       return;
     }
 
+    // Create a new FormData with validated data
+    const validatedFormData = new FormData();
+    validatedFormData.append('title', title);
+    validatedFormData.append('content', content);
+    if (formData.get('image')) {
+      validatedFormData.append('image', formData.get('image') as File);
+    }
+    if (formData.get('published')) {
+      validatedFormData.append('published', formData.get('published') as string);
+    }
+
     try {
       if (editingPost) {
-        await updateMutation.mutateAsync({ id: editingPost.id, formData });
+        await updateMutation.mutateAsync({ id: editingPost.id, formData: validatedFormData });
       } else {
-        await createMutation.mutateAsync(formData);
+        await createMutation.mutateAsync(validatedFormData);
       }
       form.reset();
       setEditingPost(null);
