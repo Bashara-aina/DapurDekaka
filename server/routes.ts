@@ -48,7 +48,6 @@ export function registerRoutes(app: Express): Server {
         username,
         email,
         password,
-        role: "user",
         createdAt: new Date(),
         updatedAt: new Date()
       });
@@ -127,18 +126,23 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/blog", requireAuth, async (req, res) => {
     try {
-      const result = insertBlogPostSchema.safeParse(req.body);
+      const result = insertBlogPostSchema.safeParse({
+        ...req.body,
+        authorId: req.session.userId,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+
       if (!result.success) {
         return res.status(400).json({
           message: fromZodError(result.error).message,
         });
       }
-      const newPost = await storage.createBlogPost({
-        ...result.data,
-        authorId: req.session.userId!,
-      });
+
+      const newPost = await storage.createBlogPost(result.data);
       res.status(201).json(newPost);
     } catch (error) {
+      console.error("Blog post creation error:", error);
       res.status(500).json({ message: "Failed to create blog post" });
     }
   });
