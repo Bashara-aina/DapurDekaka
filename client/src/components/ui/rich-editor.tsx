@@ -5,8 +5,8 @@ import Placeholder from '@tiptap/extension-placeholder'
 import Youtube from '@tiptap/extension-youtube'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { createLowlight } from 'lowlight'
-import { common } from 'lowlight/lib/common'
-const lowlight = createLowlight(common)
+import { all } from 'lowlight/lib/all'
+const lowlight = createLowlight(all)
 import { Button } from './button'
 import { 
   Bold, 
