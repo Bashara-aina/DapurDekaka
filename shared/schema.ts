@@ -49,6 +49,9 @@ export const insertBlogPostSchema = createInsertSchema(blogPosts)
     published: true,
   })
   .extend({
+    title: z.string().optional(),
+    content: z.string().optional(),
+    published: z.number().optional(),
     authorId: z.number().optional(), // Will be set by the server
   });
 
