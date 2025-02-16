@@ -8,13 +8,17 @@ import { motion } from "framer-motion";
 import { Helmet } from "react-helmet";
 
 export default function Articles() {
-  const { data: posts, isLoading } = useQuery<BlogPost[]>({
-    queryKey: ["/api/blog"],
+  const { data: posts, isLoading, error } = useQuery<BlogPost[]>({
+    queryKey: ["blog"],
     queryFn: async () => {
       const response = await fetch("/api/blog");
-      if (!response.ok) throw new Error("Failed to fetch posts");
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || "Failed to fetch posts");
+      }
       return response.json();
     },
+    retry: false
   });
 
   useEffect(() => {

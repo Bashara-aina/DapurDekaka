@@ -10,15 +10,19 @@ export default function ArticleDetail() {
   const [, params] = useRoute<{ id: string }>("/article/:id");
   const id = params?.id ? parseInt(params.id) : undefined;
 
-  const { data: post, isLoading } = useQuery<BlogPost>({
-    queryKey: ["/api/blog", id],
+  const { data: post, isLoading, error } = useQuery<BlogPost>({
+    queryKey: ["blog", id],
     queryFn: async () => {
       if (!id) throw new Error("Invalid article ID");
       const response = await fetch(`/api/blog/${id}`);
-      if (!response.ok) throw new Error("Failed to fetch article");
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || "Failed to fetch article");
+      }
       return response.json();
     },
     enabled: !!id,
+    retry: false
   });
 
   useEffect(() => {
