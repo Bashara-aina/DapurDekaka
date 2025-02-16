@@ -29,48 +29,22 @@ export default function AdminBlogPage() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const form = event.target as HTMLFormElement;
+    const form = event.currentTarget;
     const formData = new FormData(form);
-    
-    const title = formData.get('title')?.toString().trim();
-    const content = formData.get('content')?.toString().trim();
-    
-    if (!title || !content) {
-      toast({
-        title: "Error",
-        description: "Title and content are required",
-        variant: "destructive"
-      });
-      return;
-    }
 
-    // Create a new FormData with validated data
-    const validatedFormData = new FormData();
-    // Ensure title and content are properly trimmed and not empty
-    const sanitizedTitle = title?.trim();
-    const sanitizedContent = content?.trim();
-    
-    if (!sanitizedTitle || !sanitizedContent) {
-      toast({
-        title: "Error",
-        description: "Title and content are required",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    validatedFormData.append('title', sanitizedTitle);
-    validatedFormData.append('content', sanitizedContent);
-    if (formData.get('image')) {
-      validatedFormData.append('image', formData.get('image') as File);
-    }
-    validatedFormData.append('published', formData.get('published') ? '1' : '0');
+    // Ensure title and content are included
+    const title = form.querySelector<HTMLInputElement>('input[name="title"]')?.value;
+    const content = form.querySelector<HTMLTextAreaElement>('textarea[name="content"]')?.value;
+
+    formData.set('title', title || '');
+    formData.set('content', content || '');
+    formData.set('published', '0');
 
     try {
       if (editingPost) {
-        await updateMutation.mutateAsync({ id: editingPost.id, formData: validatedFormData });
+        await updateMutation.mutateAsync({ id: editingPost.id, formData });
       } else {
-        await createMutation.mutateAsync(validatedFormData);
+        await createMutation.mutateAsync(formData);
       }
       form.reset();
       setEditingPost(null);
