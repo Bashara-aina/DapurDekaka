@@ -32,6 +32,37 @@ export function registerRoutes(app: Express): Server {
     })
   );
 
+  // User routes
+  app.post("/api/register", async (req, res) => {
+    try {
+      const { username, email, password } = req.body;
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({ message: "Username already taken" });
+      }
+
+      // Create new user
+      const newUser = await storage.createUser({
+        username,
+        email,
+        password,
+        role: "user",
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+
+      // Set session
+      req.session.userId = newUser.id;
+
+      res.status(201).json({ message: "User registered successfully" });
+    } catch (error) {
+      console.error("Registration error:", error);
+      res.status(500).json({ message: "Failed to register user" });
+    }
+  });
+
   // Authentication middleware
   const requireAuth = (req: any, res: any, next: any) => {
     if (!req.session.userId) {
@@ -40,7 +71,7 @@ export function registerRoutes(app: Express): Server {
     next();
   };
 
-  // Auth routes
+  // Login route
   app.post("/api/login", async (req, res) => {
     try {
       const { username, password } = req.body;
