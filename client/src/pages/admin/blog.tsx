@@ -48,13 +48,9 @@ export default function AdminBlogPage() {
     }
 
     // Create new FormData with validated values
-    const validatedFormData = new FormData();
-    validatedFormData.append('title', title);
-    validatedFormData.append('content', content);
-    if (image) {
-      validatedFormData.append('image', image);
-    }
-    validatedFormData.append('published', published ? '1' : '0');
+    const validatedFormData = new FormData(form);
+    // Ensure boolean value for published
+    validatedFormData.set('published', validatedFormData.get('published') === 'true' ? '1' : '0');
 
 
     try {
