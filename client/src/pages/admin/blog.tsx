@@ -26,15 +26,19 @@ export default function AdminBlogPage() {
         credentials: 'include'
       });
       if (!response.ok) throw new Error('Failed to fetch auth status');
-      return response.json();
-    }
+      const data = await response.json();
+      console.log('Auth status:', data);
+      return data;
+    },
+    retry: false,
+    refetchOnWindowFocus: true
   });
 
   if (authLoading) {
     return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
   }
 
-  if (!authStatus?.authenticated) {
+  if (!authStatus || authStatus.authenticated !== true) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Card className="w-full max-w-md p-6">

@@ -5,7 +5,8 @@ import { requireAuth } from '../auth';
 const router = Router();
 
 router.get('/status', (req, res) => {
-  if (req.session.userId) {
+  console.log('Session:', req.session);
+  if (req.session && req.session.userId) {
     res.json({
       authenticated: true,
       username: req.session.username,
@@ -13,7 +14,8 @@ router.get('/status', (req, res) => {
     });
   } else {
     res.json({
-      authenticated: false
+      authenticated: false,
+      message: 'No active session'
     });
   }
 });
