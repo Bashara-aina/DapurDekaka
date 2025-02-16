@@ -71,3 +71,52 @@ export default function Articles() {
     </div>
   );
 }
+import { useState, useEffect } from "react";
+import { Link } from "wouter";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+interface BlogPost {
+  id: string;
+  title: string;
+  content: string;
+  imageUrl: string;
+  createdAt: string;
+}
+
+export default function Articles() {
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+
+  useEffect(() => {
+    fetch("/api/blog")
+      .then((res) => res.json())
+      .then(setPosts)
+      .catch(console.error);
+  }, []);
+
+  return (
+    <div className="container mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-8">Blog & Articles</h1>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {posts.map((post) => (
+          <Link key={post.id} href={`/article/${post.id}`}>
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+              {post.imageUrl && (
+                <img
+                  src={post.imageUrl}
+                  alt={post.title}
+                  className="w-full h-48 object-cover"
+                />
+              )}
+              <CardHeader>
+                <CardTitle>{post.title}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="line-clamp-3">{post.content}</p>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
