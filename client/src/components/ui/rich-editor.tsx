@@ -1,4 +1,3 @@
-
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
@@ -50,7 +49,7 @@ export function RichEditor({ content, onChange }: RichEditorProps) {
   const handleImageUpload = async (file: File) => {
     const formData = new FormData()
     formData.append('image', file)
-    
+
     try {
       const response = await fetch('/api/blog/upload', {
         method: 'POST',
