@@ -27,7 +27,7 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   // Blog post methods
   async getAllBlogPosts(): Promise<BlogPost[]> {
-    return await db.select().from(blogPosts);
+    return await db.select().from(blogPosts).orderBy(blogPosts.createdAt);
   }
 
   async getBlogPost(id: number): Promise<BlogPost | undefined> {
@@ -41,7 +41,11 @@ export class DatabaseStorage implements IStorage {
   async createBlogPost(post: InsertBlogPost): Promise<BlogPost> {
     const [newPost] = await db
       .insert(blogPosts)
-      .values(post)
+      .values({
+        ...post,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
       .returning();
     return newPost;
   }
@@ -74,18 +78,18 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(insertUser: InsertUser & { password: string }): Promise<User> {
-    const { password, ...userData } = insertUser;
+  async createUser(userData: InsertUser & { password: string }): Promise<User> {
+    const { password, ...rest } = userData;
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
     const [newUser] = await db
       .insert(users)
       .values({
-        ...userData,
+        ...rest,
         passwordHash,
         createdAt: new Date(),
-        updatedAt: new Date(),
+        updatedAt: new Date()
       })
       .returning();
     return newUser;

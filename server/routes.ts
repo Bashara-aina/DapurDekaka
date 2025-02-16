@@ -18,7 +18,7 @@ export function registerRoutes(app: Express): Server {
   // Initialize menu items when the server starts
   initializeMenuItems();
 
-  // Session middleware
+  // Session middleware with secure settings
   app.use(
     session({
       secret: process.env.SESSION_SECRET || "your-secret-key",
@@ -31,6 +31,19 @@ export function registerRoutes(app: Express): Server {
       },
     })
   );
+
+  // Authentication middleware
+  const requireAuth = async (req: any, res: any, next: any) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const user = await storage.getUser(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+    req.user = user;
+    next();
+  };
 
   // User routes
   app.post("/api/register", async (req, res) => {
@@ -47,9 +60,7 @@ export function registerRoutes(app: Express): Server {
       const newUser = await storage.createUser({
         username,
         email,
-        password,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        password
       });
 
       // Set session
@@ -61,14 +72,6 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ message: "Failed to register user" });
     }
   });
-
-  // Authentication middleware
-  const requireAuth = (req: any, res: any, next: any) => {
-    if (!req.session.userId) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-    next();
-  };
 
   // Login route
   app.post("/api/login", async (req, res) => {
@@ -126,12 +129,14 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/blog", requireAuth, async (req, res) => {
     try {
-      const result = insertBlogPostSchema.safeParse({
+      const newPost = {
         ...req.body,
         authorId: req.session.userId,
         createdAt: new Date(),
         updatedAt: new Date()
-      });
+      };
+
+      const result = insertBlogPostSchema.safeParse(newPost);
 
       if (!result.success) {
         return res.status(400).json({
@@ -139,8 +144,8 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
-      const newPost = await storage.createBlogPost(result.data);
-      res.status(201).json(newPost);
+      const createdPost = await storage.createBlogPost(result.data);
+      res.status(201).json(createdPost);
     } catch (error) {
       console.error("Blog post creation error:", error);
       res.status(500).json({ message: "Failed to create blog post" });
@@ -151,6 +156,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const id = parseInt(req.params.id);
       const post = await storage.getBlogPost(id);
+
       if (!post) {
         return res.status(404).json({ message: "Blog post not found" });
       }
@@ -159,7 +165,11 @@ export function registerRoutes(app: Express): Server {
         return res.status(403).json({ message: "Unauthorized to edit this post" });
       }
 
-      const result = insertBlogPostSchema.partial().safeParse(req.body);
+      const result = insertBlogPostSchema.partial().safeParse({
+        ...req.body,
+        updatedAt: new Date()
+      });
+
       if (!result.success) {
         return res.status(400).json({
           message: fromZodError(result.error).message,
@@ -177,6 +187,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const id = parseInt(req.params.id);
       const post = await storage.getBlogPost(id);
+
       if (!post) {
         return res.status(404).json({ message: "Blog post not found" });
       }
@@ -202,34 +213,6 @@ export function registerRoutes(app: Express): Server {
       res.json(items);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch menu items" });
-    }
-  });
-
-  app.get("/api/menu/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const item = await storage.getMenuItem(id);
-      if (!item) {
-        return res.status(404).json({ message: "Menu item not found" });
-      }
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch menu item" });
-    }
-  });
-
-  app.post("/api/menu", requireAuth, async (req, res) => {
-    try {
-      const result = insertMenuItemSchema.safeParse(req.body);
-      if (!result.success) {
-        return res.status(400).json({
-          message: fromZodError(result.error).message,
-        });
-      }
-      const newItem = await storage.createMenuItem(result.data);
-      res.status(201).json(newItem);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to create menu item" });
     }
   });
 
