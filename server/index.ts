@@ -7,16 +7,25 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Serve static files from image and logo directories with proper configuration
+// Serve static files from image, logo, and uploads directories
 app.use('/image', express.static(path.join(process.cwd(), 'image'), {
   setHeaders: (res) => {
     res.set('Cache-Control', 'public, max-age=31536000');
     res.set('Access-Control-Allow-Origin', '*');
   },
-  fallthrough: false // Return 404 if file not found
+  fallthrough: false
 }));
 
 app.use('/logo', express.static(path.join(process.cwd(), 'logo'), {
+  setHeaders: (res) => {
+    res.set('Cache-Control', 'public, max-age=31536000');
+    res.set('Access-Control-Allow-Origin', '*');
+  },
+  fallthrough: false
+}));
+
+// Add uploads directory for blog images
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
   setHeaders: (res) => {
     res.set('Cache-Control', 'public, max-age=31536000');
     res.set('Access-Control-Allow-Origin', '*');
@@ -62,7 +71,7 @@ app.use((req, res, next) => {
     const message = err.message || "Internal Server Error";
 
     res.status(status).json({ message });
-    console.error('Error:', err); // Add error logging
+    console.error('Error:', err);
   });
 
   if (app.get("env") === "development") {

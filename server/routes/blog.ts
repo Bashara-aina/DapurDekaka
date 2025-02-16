@@ -72,6 +72,23 @@ blogRouter.get("/", async (_req, res) => {
   }
 });
 
+// Add this route after the GET "/" route
+blogRouter.get("/:id", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const post = await storage.getBlogPost(id);
+
+    if (!post) {
+      return res.status(404).json({ message: "Blog post not found" });
+    }
+
+    res.json(post);
+  } catch (error) {
+    console.error("Error fetching post:", error);
+    res.status(500).json({ message: "Failed to fetch blog post" });
+  }
+});
+
 // Update post
 blogRouter.put("/:id", requireAuth, upload.single('image'), async (req, res) => {
   try {
