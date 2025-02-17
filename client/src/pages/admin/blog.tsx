@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { BlogPost } from "@shared/schema";
@@ -21,8 +21,8 @@ export default function AdminBlogPage() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
-  // Use TanStack Query for auth check instead of local state
-  const { data: isAuthenticated, isLoading } = useQuery({
+  // Auth check query
+  const { data: isAuthenticated, isLoading: authLoading } = useQuery({
     queryKey: ['/api/auth-check'],
     queryFn: async () => {
       const response = await fetch('/api/blog', {
@@ -40,66 +40,17 @@ export default function AdminBlogPage() {
     }
   });
 
-  // Show loading state
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
+  // Query for fetching posts
+  const { data: posts, isLoading: postsLoading } = useQuery<BlogPost[]>({
+    queryKey: ["/api/blog"],
+    queryFn: async () => {
+      const response = await fetch("/api/blog");
+      if (!response.ok) throw new Error("Failed to fetch posts");
+      return response.json();
+    },
+  });
 
-  // Redirect if not authenticated
-  if (!isAuthenticated) {
-    return null;
-  }
-
-  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-    const title = formData.get('title')?.toString().trim();
-    const content = formData.get('content')?.toString().trim();
-
-    if (!title || !content) {
-      toast({
-        title: "Error",
-        description: "Title and content are required",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    formData.set('title', title);
-    formData.set('content', content);
-    formData.set('published', formData.get('published') ? '1' : '0');
-
-    try {
-      if (editingPost) {
-        await updateMutation.mutateAsync({ id: editingPost.id, formData });
-      } else {
-        await createMutation.mutateAsync(formData);
-      }
-      form.reset();
-      setEditingPost(null);
-      setImagePreview(null);
-      setIsEditing(false);
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  };
-
+  // Define mutations at the top level
   const createMutation = useMutation({
     mutationFn: async (formData: FormData) => {
       const response = await fetch("/api/blog", {
@@ -176,17 +127,66 @@ export default function AdminBlogPage() {
     },
   });
 
-  // Query for fetching posts
-  const { data: posts, isLoading: postsLoading } = useQuery<BlogPost[]>({
-    queryKey: ["/api/blog"],
-    queryFn: async () => {
-      const response = await fetch("/api/blog");
-      if (!response.ok) throw new Error("Failed to fetch posts");
-      return response.json();
-    },
-  });
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
-  if (postsLoading) return <div>Loading...</div>;
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const title = formData.get('title')?.toString().trim();
+    const content = formData.get('content')?.toString().trim();
+
+    if (!title || !content) {
+      toast({
+        title: "Error",
+        description: "Title and content are required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    formData.set('title', title);
+    formData.set('content', content);
+    formData.set('published', formData.get('published') ? '1' : '0');
+
+    try {
+      if (editingPost) {
+        await updateMutation.mutateAsync({ id: editingPost.id, formData });
+      } else {
+        await createMutation.mutateAsync(formData);
+      }
+      form.reset();
+      setEditingPost(null);
+      setImagePreview(null);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+  // Show loading state
+  if (authLoading || postsLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  // Redirect if not authenticated
+  if (!isAuthenticated) {
+    return null;
+  }
+
 
   if (isEditing) {
     return (
@@ -283,9 +283,6 @@ export default function AdminBlogPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button asChild variant="outline">
-            <a href="/auth">Login</a>
-          </Button>
           <Button onClick={() => setIsEditing(true)}>
             <Plus className="w-4 h-4 mr-2" />
             Create New Post
