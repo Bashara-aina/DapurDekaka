@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Pencil, Trash2, Plus, Image as ImageIcon } from "lucide-react";
+import { Pencil, Trash2, Plus, Image as ImageIcon, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 
 export default function AdminBlogPage() {
@@ -19,33 +19,40 @@ export default function AdminBlogPage() {
   const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [, setLocation] = useLocation();
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await fetch('/api/blog', {
-          method: 'GET',
-          credentials: 'include'
-        });
-        const isAuth = response.status === 200;
-        setIsAuthenticated(isAuth);
-        if (!isAuth) {
-          setLocation('/auth');
-        }
-      } catch (error) {
-        console.error('Auth check error:', error);
-        setIsAuthenticated(false);
-        setLocation('/auth');
+  // Use TanStack Query for auth check instead of local state
+  const { data: isAuthenticated, isLoading } = useQuery({
+    queryKey: ['/api/auth-check'],
+    queryFn: async () => {
+      const response = await fetch('/api/blog', {
+        method: 'GET',
+        credentials: 'include'
+      });
+      if (response.status !== 200) {
+        throw new Error('Unauthorized');
       }
-    };
-    checkAuth();
+      return true;
+    },
+    retry: false,
+    onError: () => {
+      setLocation('/auth');
+    }
+  });
 
-    // Check auth status every 30 seconds
-    const interval = setInterval(checkAuth, 30000);
-    return () => clearInterval(interval);
-  }, [setLocation]);
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  // Redirect if not authenticated
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -170,7 +177,7 @@ export default function AdminBlogPage() {
   });
 
   // Query for fetching posts
-  const { data: posts, isLoading } = useQuery<BlogPost[]>({
+  const { data: posts, isLoading: postsLoading } = useQuery<BlogPost[]>({
     queryKey: ["/api/blog"],
     queryFn: async () => {
       const response = await fetch("/api/blog");
@@ -179,7 +186,7 @@ export default function AdminBlogPage() {
     },
   });
 
-  if (isLoading) return <div>Loading...</div>;
+  if (postsLoading) return <div>Loading...</div>;
 
   if (isEditing) {
     return (
@@ -216,10 +223,10 @@ export default function AdminBlogPage() {
               accept="image/*"
               onChange={handleImageChange}
             />
-            {(imagePreview ?? editingPost?.imageUrl) && (
+            {(imagePreview || editingPost?.imageUrl) && (
               <div className="mt-4">
                 <img
-                  src={imagePreview ?? editingPost?.imageUrl}
+                  src={imagePreview || editingPost?.imageUrl}
                   alt="Preview"
                   className="max-h-[400px] w-full object-cover rounded-lg"
                 />
@@ -258,10 +265,6 @@ export default function AdminBlogPage() {
         </form>
       </div>
     );
-  }
-
-  if (!isAuthenticated) {
-    return null; //Removed the unauthorized access card. Redirect handles this now.
   }
 
   return (
