@@ -24,17 +24,21 @@ export default function AdminBlogPage() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await fetch('/api/blog');
-        if (response.status === 401) {
-          setIsAuthenticated(false);
-        } else {
-          setIsAuthenticated(true);
-        }
+        const response = await fetch('/api/blog', {
+          method: 'GET',
+          credentials: 'include'
+        });
+        setIsAuthenticated(response.status === 200);
       } catch (error) {
+        console.error('Auth check error:', error);
         setIsAuthenticated(false);
       }
     };
     checkAuth();
+
+    // Check auth status every 30 seconds
+    const interval = setInterval(checkAuth, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
