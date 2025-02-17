@@ -325,13 +325,13 @@ export default function AdminBlogPage() {
         <div className="space-y-4">
           {posts?.map((post) => (
             <Card key={post.id} className="p-6">
-              <div className="flex justify-between items-start">
-                <div className="space-y-2">
+              <div className="flex justify-between items-start gap-4">
+                <div className="space-y-2 flex-1">
                   <h2 className="text-xl font-semibold">{post.title}</h2>
                   <p className="text-sm text-gray-500">
                     {new Date(post.createdAt).toLocaleDateString()}
                   </p>
-                  <p className="mt-2 text-gray-700">{post.content}</p>
+                  <div className="mt-2 text-gray-700 prose max-w-none" dangerouslySetInnerHTML={{ __html: post.content }} />
                   {post.imageUrl && (
                     <img
                       src={post.imageUrl}
@@ -340,7 +340,7 @@ export default function AdminBlogPage() {
                     />
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-shrink-0">
                   <Button
                     variant="outline"
                     size="icon"
