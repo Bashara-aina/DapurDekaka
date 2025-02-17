@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -12,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Pencil, Trash2, Plus, Image as ImageIcon } from "lucide-react";
+import { useLocation } from "wouter";
 
 export default function AdminBlogPage() {
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
@@ -20,6 +20,7 @@ export default function AdminBlogPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -28,10 +29,15 @@ export default function AdminBlogPage() {
           method: 'GET',
           credentials: 'include'
         });
-        setIsAuthenticated(response.status === 200);
+        const isAuth = response.status === 200;
+        setIsAuthenticated(isAuth);
+        if (!isAuth) {
+          setLocation('/auth');
+        }
       } catch (error) {
         console.error('Auth check error:', error);
         setIsAuthenticated(false);
+        setLocation('/auth');
       }
     };
     checkAuth();
@@ -39,7 +45,7 @@ export default function AdminBlogPage() {
     // Check auth status every 30 seconds
     const interval = setInterval(checkAuth, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [setLocation]);
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -255,17 +261,7 @@ export default function AdminBlogPage() {
   }
 
   if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card className="w-full max-w-md p-6 text-center">
-          <h1 className="text-2xl font-bold mb-4">Admin Access Required</h1>
-          <p className="text-muted-foreground mb-6">Please log in to manage blog posts</p>
-          <Button asChild>
-            <a href="/auth">Login</a>
-          </Button>
-        </Card>
-      </div>
-    );
+    return null; //Removed the unauthorized access card. Redirect handles this now.
   }
 
   return (
