@@ -14,10 +14,10 @@ export default function FeaturedArticles() {
       const response = await fetch("/api/blog");
       if (!response.ok) throw new Error("Failed to fetch posts");
       const posts = await response.json();
-      // Sort by creation date (latest first) and get only the latest 2 published posts
+      // Sort by ID (newest first) and get only the latest 2 published posts
       return posts
         .filter(post => post.published === 1)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .sort((a, b) => b.id - a.id)
         .slice(0, 2);
     },
   });
