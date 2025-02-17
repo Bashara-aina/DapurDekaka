@@ -30,15 +30,9 @@ export default function AdminBlogPage() {
         credentials: 'include'
       });
       // Only consider status 200 as authenticated
-      if (response.status === 200) {
-        return true;
-      }
-      throw new Error('Unauthorized');
+      return response.status === 200;
     },
-    retry: false,
-    onError: () => {
-      setLocation('/auth');
-    }
+    retry: false
   });
 
   // Query for fetching posts
@@ -185,6 +179,7 @@ export default function AdminBlogPage() {
 
   // Redirect if not authenticated
   if (!isAuthenticated) {
+    setLocation('/auth');
     return null;
   }
 
