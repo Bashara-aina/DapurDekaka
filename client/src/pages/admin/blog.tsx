@@ -249,6 +249,13 @@ export default function AdminBlogPage() {
               init={{
                 height: 500,
                 menubar: true,
+                setup: (editor) => {
+                  editor.on('init', () => {
+                    if (editingPost?.content) {
+                      editor.setContent(editingPost.content);
+                    }
+                  });
+                },
                 plugins: [
                   'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
                   'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
