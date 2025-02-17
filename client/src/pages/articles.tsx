@@ -70,7 +70,12 @@ export default function Articles() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-gray-600 line-clamp-3">{post.content}</p>
+                    <div 
+                      className="text-gray-600 line-clamp-3 prose"
+                      dangerouslySetInnerHTML={{ 
+                        __html: post.content.replace(/<[^>]+>/g, ' ').slice(0, 200) + '...'
+                      }} 
+                    />
                   </CardContent>
                 </Card>
               </Link>
