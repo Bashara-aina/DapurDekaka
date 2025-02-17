@@ -14,15 +14,6 @@ const navItems = [
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-useEffect(() => {
-  const checkAuth = async () => {
-    const response = await fetch('/api/blog');
-    setIsAuthenticated(response.ok);
-  };
-  checkAuth();
-}, []);
 
   return (
     <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-sm border-b">
@@ -48,8 +39,6 @@ useEffect(() => {
               </Link>
             ))}
             <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${isAuthenticated ? 'bg-green-500' : 'bg-red-500'}`} 
-                   title={isAuthenticated ? 'Logged In' : 'Not Logged In'} />
               <Button asChild variant="outline">
                 <Link href="/auth">Login</Link>
               </Button>
