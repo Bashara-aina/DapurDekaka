@@ -29,10 +29,11 @@ export default function AdminBlogPage() {
         method: 'GET',
         credentials: 'include'
       });
-      if (response.status !== 200) {
-        throw new Error('Unauthorized');
+      // Only consider status 200 as authenticated
+      if (response.status === 200) {
+        return true;
       }
-      return true;
+      throw new Error('Unauthorized');
     },
     retry: false,
     onError: () => {
