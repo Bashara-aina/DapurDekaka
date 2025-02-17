@@ -24,15 +24,19 @@ export default function AdminBlogPage() {
   const { data: isAuthenticated, isLoading: authLoading } = useQuery({
     queryKey: ['/api/auth-check'],
     queryFn: async () => {
-      const response = await fetch('/api/blog', {
-        method: 'GET',
-        credentials: 'include'
-      });
-      // Only consider status 200 as authenticated
-      if (response.status !== 200) {
+      try {
+        const response = await fetch('/api/blog', {
+          method: 'GET',
+          credentials: 'include'
+        });
+        if (response.status === 200) {
+          return true;
+        }
         throw new Error('Unauthorized');
+      } catch (error) {
+        setLocation('/auth');
+        throw error;
       }
-      return true;
     },
     retry: false,
     onError: () => {
