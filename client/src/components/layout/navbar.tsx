@@ -39,9 +39,6 @@ export default function Navbar() {
               </Link>
             ))}
             <div className="flex items-center gap-2">
-              <Button asChild variant="outline">
-                <Link href="/auth">Login</Link>
-              </Button>
               <Button asChild>
                 <a
                   href="https://wa.me/your-number"
