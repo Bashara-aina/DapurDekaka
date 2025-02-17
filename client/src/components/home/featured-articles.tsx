@@ -14,8 +14,8 @@ export default function FeaturedArticles() {
       const response = await fetch("/api/blog");
       if (!response.ok) throw new Error("Failed to fetch posts");
       const posts = await response.json();
-      // Get only the latest 4 published posts
-      return posts.filter(post => post.published === 1).slice(0, 4);
+      // Get only the latest 2 published posts
+      return posts.filter(post => post.published === 1).slice(0, 2);
     },
   });
 
