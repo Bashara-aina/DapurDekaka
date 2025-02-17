@@ -259,7 +259,18 @@ export default function AdminBlogPage() {
   return (
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Blog Posts</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-3xl font-bold">Blog Posts</h1>
+          <div className="flex items-center gap-2">
+            <div 
+              className={`w-2 h-2 rounded-full ${isAuthenticated ? 'bg-green-500' : 'bg-red-500'}`} 
+              title={isAuthenticated ? 'Logged In' : 'Not Logged In'} 
+            />
+            <span className="text-sm text-muted-foreground">
+              {isAuthenticated ? 'Logged In' : 'Not Logged In'}
+            </span>
+          </div>
+        </div>
         <div className="flex gap-2">
           <Button asChild variant="outline">
             <a href="/auth">Login</a>
