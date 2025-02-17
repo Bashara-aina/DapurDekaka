@@ -267,7 +267,7 @@ export default function AdminBlogPage() {
               title={isAuthenticated ? 'Logged In' : 'Not Logged In'} 
             />
             <span className="text-sm text-muted-foreground">
-              {isAuthenticated ? 'Logged In' : 'Not Logged In'}
+              {isAuthenticated ? 'Logged In' : 'Logged Out'}
             </span>
           </div>
         </div>
