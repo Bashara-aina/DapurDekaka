@@ -99,9 +99,7 @@ blogRouter.put("/:id", requireAuth, upload.single('image'), async (req, res) => 
       return res.status(404).json({ message: "Blog post not found" });
     }
 
-    if (post.authorId !== req.session.userId) {
-      return res.status(403).json({ message: "Unauthorized to edit this post" });
-    }
+    // Any authenticated user can edit posts
 
     const { title, content, published } = req.body;
     const validation = insertBlogPostSchema.partial().safeParse({
@@ -139,9 +137,7 @@ blogRouter.delete("/:id", requireAuth, async (req, res) => {
       return res.status(404).json({ message: "Blog post not found" });
     }
 
-    if (post.authorId !== req.session.userId) {
-      return res.status(403).json({ message: "Unauthorized to delete this post" });
-    }
+    // Any authenticated user can delete posts
 
     await storage.deleteBlogPost(id);
     res.status(204).send();
