@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Editor } from '@tinymce/tinymce-react';
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { BlogPost } from "@shared/schema";
@@ -243,14 +244,32 @@ export default function AdminBlogPage() {
 
           <div className="space-y-2">
             <label className="text-sm font-medium">Content *</label>
-            <Textarea
-              name="content"
-              defaultValue={editingPost?.content}
-              required
-              minLength={10}
-              placeholder="Enter blog post content"
-              className="min-h-[400px] text-lg"
+            <Editor
+              apiKey="no-api-key"
+              init={{
+                height: 500,
+                menubar: true,
+                plugins: [
+                  'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+                  'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                  'insertdatetime', 'media', 'table', 'help', 'wordcount'
+                ],
+                toolbar: 'undo redo | blocks | ' +
+                  'bold italic | alignleft aligncenter ' +
+                  'alignright alignjustify | bullist numlist outdent indent | ' +
+                  'removeformat | help',
+                content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }'
+              }}
+              initialValue={editingPost?.content || ''}
+              textareaName="content"
+              onEditorChange={(content) => {
+                const textarea = document.querySelector('textarea[name="content"]');
+                if (textarea) {
+                  (textarea as HTMLTextAreaElement).value = content;
+                }
+              }}
             />
+            <textarea name="content" defaultValue={editingPost?.content} hidden />
           </div>
 
           <div className="flex items-center space-x-2">

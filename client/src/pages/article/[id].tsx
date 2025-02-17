@@ -45,6 +45,34 @@ export default function ArticleDetail() {
   );
 
   return (
+    <div className="container mx-auto py-8 px-4">
+      <motion.article
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="prose prose-lg mx-auto"
+      >
+        <h1 className="text-4xl font-bold mb-4">{post.title}</h1>
+        <div className="flex items-center gap-2 text-gray-600 mb-8">
+          <CalendarIcon className="w-4 h-4" />
+          <time>{new Date(post.createdAt).toLocaleDateString()}</time>
+        </div>
+        {post.imageUrl && (
+          <img
+            src={post.imageUrl}
+            alt={post.title}
+            className="w-full h-[400px] object-cover rounded-lg mb-8"
+          />
+        )}
+        <div 
+          className="blog-content"
+          dangerouslySetInnerHTML={{ __html: post.content }}
+        />
+      </motion.article>
+    </div>
+  );
+
+  return (
     <>
       <Helmet>
         <title>{post.title} - Dapur Dekaka</title>
