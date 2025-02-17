@@ -23,8 +23,12 @@ export default function AdminBlogPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const response = await fetch('/api/blog');
-      setIsAuthenticated(response.ok);
+      try {
+        const response = await fetch('/api/blog');
+        setIsAuthenticated(response.status === 200);
+      } catch (error) {
+        setIsAuthenticated(false);
+      }
     };
     checkAuth();
   }, []);
