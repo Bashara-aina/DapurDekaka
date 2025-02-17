@@ -107,7 +107,11 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Register blog routes
-  app.use("/api/blog", blogRouter);
+  app.get("/api/auth-check", requireAuth, (_req, res) => {
+  res.json({ authenticated: true });
+});
+
+app.use("/api/blog", blogRouter);
 
   // Register contact form routes
   app.use(contactRouter);

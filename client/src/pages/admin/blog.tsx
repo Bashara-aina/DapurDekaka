@@ -24,25 +24,28 @@ export default function AdminBlogPage() {
   const { data: isAuthenticated, isLoading: authLoading } = useQuery({
     queryKey: ['/api/auth-check'],
     queryFn: async () => {
-      try {
-        const response = await fetch('/api/blog', {
-          method: 'GET',
-          credentials: 'include'
-        });
-        if (response.status === 200) {
-          return true;
-        }
+      const response = await fetch('/api/auth-check', {
+        credentials: 'include'
+      });
+      if (!response.ok) {
         throw new Error('Unauthorized');
-      } catch (error) {
-        setLocation('/auth');
-        throw error;
       }
+      return true;
     },
     retry: false,
+    staleTime: 0, // Don't cache the auth check
+    cacheTime: 0,
     onError: () => {
       setLocation('/auth');
     }
   });
+
+  // Force redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      setLocation('/auth');
+    }
+  }, [authLoading, isAuthenticated, setLocation]);
 
   // Query for fetching posts
   const { data: posts, isLoading: postsLoading } = useQuery<BlogPost[]>({
