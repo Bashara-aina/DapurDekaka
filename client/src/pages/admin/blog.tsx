@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { BlogPost } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { CalendarIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
@@ -30,9 +29,15 @@ export default function AdminBlogPage() {
         credentials: 'include'
       });
       // Only consider status 200 as authenticated
-      return response.status === 200;
+      if (response.status !== 200) {
+        throw new Error('Unauthorized');
+      }
+      return true;
     },
-    retry: false
+    retry: false,
+    onError: () => {
+      setLocation('/auth');
+    }
   });
 
   // Query for fetching posts
@@ -43,6 +48,7 @@ export default function AdminBlogPage() {
       if (!response.ok) throw new Error("Failed to fetch posts");
       return response.json();
     },
+    enabled: !!isAuthenticated, // Only run this query if authenticated
   });
 
   // Define mutations at the top level
@@ -179,10 +185,8 @@ export default function AdminBlogPage() {
 
   // Redirect if not authenticated
   if (!isAuthenticated) {
-    setLocation('/auth');
     return null;
   }
-
 
   if (isEditing) {
     return (
@@ -278,12 +282,10 @@ export default function AdminBlogPage() {
             </span>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => setIsEditing(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create New Post
-          </Button>
-        </div>
+        <Button onClick={() => setIsEditing(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Create New Post
+        </Button>
       </div>
 
       <ScrollArea className="h-[calc(100vh-200px)]">
