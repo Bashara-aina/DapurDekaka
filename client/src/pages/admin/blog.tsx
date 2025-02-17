@@ -25,7 +25,11 @@ export default function AdminBlogPage() {
     const checkAuth = async () => {
       try {
         const response = await fetch('/api/blog');
-        setIsAuthenticated(response.status === 200);
+        if (response.status === 401) {
+          setIsAuthenticated(false);
+        } else {
+          setIsAuthenticated(true);
+        }
       } catch (error) {
         setIsAuthenticated(false);
       }
