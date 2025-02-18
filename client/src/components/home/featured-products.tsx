@@ -64,9 +64,17 @@ export default function FeaturedProducts() {
                 <CardFooter className="flex flex-col items-start gap-2 p-4">
                   <h3 className="font-semibold text-base">{item.name}</h3>
                   <p className="text-sm text-gray-600 min-h-[4rem]">{item.description}</p>
-                  <p className="font-bold text-primary mt-auto">
-                    Rp {item.price.toLocaleString()}
-                  </p>
+                  <div className="flex justify-center w-full mt-auto">
+                    <Button size="sm" asChild>
+                      <a
+                        href={`https://wa.me/your-number?text=I would like to order ${item.name}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Pesan
+                      </a>
+                    </Button>
+                  </div>
                 </CardFooter>
               </Card>
             </motion.div>

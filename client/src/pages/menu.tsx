@@ -32,10 +32,7 @@ export default function Menu() {
               <CardFooter className="flex flex-col items-start gap-2 p-4 flex-grow">
                 <h3 className="font-semibold text-lg">{item.name}</h3>
                 <p className="text-sm text-gray-600 min-h-[4rem]">{item.description}</p>
-                <div className="flex justify-between items-center w-full mt-auto pt-2">
-                  <span className="font-bold text-primary">
-                    Rp {item.price.toLocaleString()}
-                  </span>
+                <div className="flex justify-center w-full mt-auto pt-2">
                   <Button size="sm" asChild>
                     <a
                       href={`https://wa.me/your-number?text=I would like to order ${item.name}`}
