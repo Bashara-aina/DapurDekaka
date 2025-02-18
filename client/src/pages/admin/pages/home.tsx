@@ -1,63 +1,66 @@
 
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/use-toast";
 import { Loader2, Upload } from "lucide-react";
 import AdminNavbar from "@/components/layout/admin-navbar";
 
-export default function AdminHomePage() {
-  const [content, setContent] = useState<any>(null);
-  const [files, setFiles] = useState<{ logo?: File[], carouselImages?: File[] }>({});
+export default function HomePageEditor() {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const [files, setFiles] = useState<{ [key: string]: File[] }>({
+    logo: [],
+    carouselImages: []
+  });
+  const [content, setContent] = useState({
+    hero: {
+      title: "",
+      subtitle: ""
+    }
+  });
 
-  const { data: homepage, isLoading } = useQuery({
-    queryKey: ["/api/pages/homepage"],
+  const { data: pageData, isLoading } = useQuery({
+    queryKey: ['homepage'],
     queryFn: async () => {
-      const response = await fetch("/api/pages/homepage");
-      if (!response.ok) throw new Error("Failed to fetch homepage data");
-      const data = await response.json();
-      setContent(data.content);
-      return data;
-    },
+      const response = await fetch('/api/pages/homepage');
+      if (!response.ok) throw new Error('Failed to fetch homepage data');
+      return response.json();
+    }
   });
 
   const updateMutation = useMutation({
     mutationFn: async () => {
       const formData = new FormData();
-      if (files.logo) {
-        formData.append("logo", files.logo[0]);
-      }
-      if (files.carouselImages) {
-        files.carouselImages.forEach(file => {
-          formData.append("carouselImages", file);
-        });
-      }
-      formData.append("content", JSON.stringify(content));
-
-      const response = await fetch("/api/pages/homepage", {
-        method: "PUT",
-        body: formData,
-        credentials: 'include'
+      files.logo?.[0] && formData.append('logo', files.logo[0]);
+      files.carouselImages?.forEach(file => {
+        formData.append('carouselImages', file);
       });
-      if (!response.ok) throw new Error("Failed to update homepage");
+      formData.append('content', JSON.stringify(content));
+
+      const response = await fetch('/api/pages/homepage', {
+        method: 'PUT',
+        body: formData
+      });
+      
+      if (!response.ok) throw new Error('Failed to update homepage');
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/pages/homepage"] });
-      toast({ title: "Success", description: "Homepage updated successfully" });
-    },
-    onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
+        title: "Success",
+        description: "Homepage updated successfully"
       });
     },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update homepage",
+        variant: "destructive"
+      });
+    }
   });
 
   if (isLoading) {
@@ -72,75 +75,96 @@ export default function AdminHomePage() {
     <>
       <AdminNavbar />
       <div className="container mx-auto p-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Homepage Management</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-medium mb-2">Logo</h3>
+        <h1 className="text-3xl font-bold mb-6">Edit Homepage</h1>
+        
+        <div className="grid gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Logo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4">
+                <img src={pageData?.logo} alt="Current Logo" className="w-32 h-32 object-contain" />
                 <Input
                   type="file"
-                  onChange={(e) => setFiles(prev => ({ ...prev, logo: e.target.files ? [e.target.files[0]] : undefined }))}
                   accept="image/*"
+                  onChange={(e) => setFiles(prev => ({ ...prev, logo: Array.from(e.target.files || []) }))}
                 />
-                {homepage?.logo && (
-                  <img src={homepage.logo} alt="Current logo" className="mt-2 h-20" />
-                )}
               </div>
+            </CardContent>
+          </Card>
 
-              <div>
-                <h3 className="text-lg font-medium mb-2">Carousel Images</h3>
+          <Card>
+            <CardHeader>
+              <CardTitle>Carousel Images</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4">
                 <Input
                   type="file"
+                  accept="image/*"
                   multiple
-                  onChange={(e) => setFiles(prev => ({ ...prev, carouselImages: e.target.files ? Array.from(e.target.files) : undefined }))}
-                  accept="image/*"
+                  onChange={(e) => setFiles(prev => ({ ...prev, carouselImages: Array.from(e.target.files || []) }))}
                 />
-                <ScrollArea className="h-40 mt-2">
-                  <div className="flex gap-2 flex-wrap">
-                    {homepage?.carousel.images.map((img: string, i: number) => (
-                      <img key={i} src={img} alt={`Carousel ${i + 1}`} className="h-20" />
-                    ))}
-                  </div>
-                </ScrollArea>
+                <div className="grid grid-cols-4 gap-4">
+                  {pageData?.carousel.images.map((img: string, i: number) => (
+                    <img key={i} src={img} alt={`Carousel ${i}`} className="w-full aspect-square object-cover rounded" />
+                  ))}
+                </div>
               </div>
+            </CardContent>
+          </Card>
 
-              <div>
-                <h3 className="text-lg font-medium mb-2">Hero Content</h3>
-                <div className="space-y-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Hero Section</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4">
+                <div>
+                  <label className="text-sm font-medium">Title</label>
                   <Input
-                    placeholder="Title"
-                    value={content?.hero?.title || ""}
+                    value={content.hero.title}
                     onChange={(e) => setContent(prev => ({
                       ...prev,
-                      hero: { ...prev?.hero, title: e.target.value }
+                      hero: { ...prev.hero, title: e.target.value }
                     }))}
+                    placeholder={pageData?.content.hero.title}
                   />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Subtitle</label>
                   <Input
-                    placeholder="Subtitle"
-                    value={content?.hero?.subtitle || ""}
+                    value={content.hero.subtitle}
                     onChange={(e) => setContent(prev => ({
                       ...prev,
-                      hero: { ...prev?.hero, subtitle: e.target.value }
+                      hero: { ...prev.hero, subtitle: e.target.value }
                     }))}
+                    placeholder={pageData?.content.hero.subtitle}
                   />
                 </div>
               </div>
+            </CardContent>
+          </Card>
 
-              <Button
-                onClick={() => updateMutation.mutate()}
-                disabled={updateMutation.isPending}
-              >
-                {updateMutation.isPending && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
+          <Button 
+            onClick={() => updateMutation.mutate()}
+            disabled={updateMutation.isPending}
+            className="w-full"
+          >
+            {updateMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Updating...
+              </>
+            ) : (
+              <>
+                <Upload className="mr-2 h-4 w-4" />
                 Save Changes
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              </>
+            )}
+          </Button>
+        </div>
       </div>
     </>
   );
