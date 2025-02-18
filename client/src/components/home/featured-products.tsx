@@ -22,6 +22,7 @@ export default function FeaturedProducts() {
       return response.json();
     },
     refetchOnMount: true,
+    refetchInterval: 1000,
     staleTime: 0
   });
 

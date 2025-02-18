@@ -145,9 +145,15 @@ export default function HomePageEditor() {
       if (!response.ok) throw new Error('Failed to update homepage');
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/pages/homepage'] });
-      queryClient.refetchQueries({ queryKey: ['/api/pages/homepage'] });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['/api/pages/homepage'] }),
+        queryClient.refetchQueries({ 
+          queryKey: ['/api/pages/homepage'],
+          exact: true,
+          type: 'active'
+        })
+      ]);
       toast({
         title: "Success",
         description: "Homepage updated successfully"
