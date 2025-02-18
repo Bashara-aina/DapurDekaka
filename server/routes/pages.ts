@@ -83,6 +83,22 @@ pagesRouter.put("/homepage", upload.fields([
   }
 });
 
+// New endpoint to handle carousel image reordering
+pagesRouter.put("/homepage/carousel/reorder", async (req, res) => {
+  try {
+    const { images } = req.body;
+    if (!Array.isArray(images)) {
+      return res.status(400).json({ message: "Invalid image array provided" });
+    }
+
+    homepageConfig.carousel.images = images;
+    res.json({ message: "Image order updated successfully" });
+  } catch (error) {
+    console.error("Error reordering images:", error);
+    res.status(500).json({ message: "Failed to reorder images" });
+  }
+});
+
 pagesRouter.delete("/homepage/carousel/:index", async (req, res) => {
   try {
     const index = parseInt(req.params.index);

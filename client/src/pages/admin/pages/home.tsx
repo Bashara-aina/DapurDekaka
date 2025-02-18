@@ -5,9 +5,75 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Upload, Trash2 } from "lucide-react";
+import { Loader2, Upload, Trash2, GripVertical } from "lucide-react";
 import AdminNavbar from "@/components/layout/admin-navbar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+type SortableImageProps = {
+  id: string;
+  url: string;
+  index: number;
+  onDelete: () => void;
+};
+
+const SortableImage = ({ id, url, onDelete }: SortableImageProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="relative group flex items-center gap-2 p-2 bg-white rounded-lg shadow-sm"
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing"
+      >
+        <GripVertical className="h-5 w-5 text-gray-400" />
+      </button>
+      <img src={url} alt={`Carousel ${id}`} className="w-24 h-24 object-cover rounded" />
+      <Button
+        variant="destructive"
+        size="icon"
+        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={onDelete}
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+};
 
 export default function HomePageEditor() {
   const { toast } = useToast();
@@ -23,6 +89,13 @@ export default function HomePageEditor() {
       description: ""
     }
   });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const { data: pageData, isLoading } = useQuery({
     queryKey: ['homepage'],
@@ -62,13 +135,40 @@ export default function HomePageEditor() {
         title: "Success",
         description: "Homepage updated successfully"
       });
-      // Reset file inputs after successful upload
       setFiles({ logo: [], carouselImages: [] });
     },
     onError: (error) => {
       toast({
         title: "Error",
         description: error.message || "Failed to update homepage",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const reorderImagesMutation = useMutation({
+    mutationFn: async (images: string[]) => {
+      const response = await fetch('/api/pages/homepage/carousel/reorder', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ images }),
+      });
+      if (!response.ok) throw new Error('Failed to reorder images');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['homepage'] });
+      toast({
+        title: "Success",
+        description: "Image order updated successfully"
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update image order",
         variant: "destructive"
       });
     }
@@ -98,6 +198,18 @@ export default function HomePageEditor() {
     }
   });
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = pageData.carousel.images.findIndex((url: string) => url === active.id);
+      const newIndex = pageData.carousel.images.findIndex((url: string) => url === over.id);
+
+      const newImages = arrayMove(pageData.carousel.images, oldIndex, newIndex);
+      reorderImagesMutation.mutate(newImages);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -113,6 +225,7 @@ export default function HomePageEditor() {
         <h1 className="text-3xl font-bold mb-6">Edit Homepage</h1>
         <ScrollArea className="h-[800px] w-full rounded-md border p-4">
           <div className="grid gap-6">
+            {/* Logo Section */}
             <Card>
               <CardHeader>
                 <CardTitle>Logo</CardTitle>
@@ -129,6 +242,7 @@ export default function HomePageEditor() {
               </CardContent>
             </Card>
 
+            {/* Hero Section */}
             <Card>
               <CardHeader>
                 <CardTitle>Hero Section</CardTitle>
@@ -172,6 +286,7 @@ export default function HomePageEditor() {
               </CardContent>
             </Card>
 
+            {/* Carousel Images Section */}
             <Card>
               <CardHeader>
                 <CardTitle>Carousel Images</CardTitle>
@@ -184,21 +299,28 @@ export default function HomePageEditor() {
                     multiple
                     onChange={(e) => setFiles(prev => ({ ...prev, carouselImages: Array.from(e.target.files || []) }))}
                   />
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {pageData?.carousel?.images.map((img: string, i: number) => (
-                      <div key={i} className="relative group">
-                        <img src={img} alt={`Carousel ${i}`} className="w-full aspect-square object-cover rounded" />
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => deleteCarouselImage.mutate(i)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={pageData?.carousel?.images || []}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className="grid gap-2">
+                        {pageData?.carousel?.images.map((img: string, i: number) => (
+                          <SortableImage
+                            key={img}
+                            id={img}
+                            url={img}
+                            index={i}
+                            onDelete={() => deleteCarouselImage.mutate(i)}
+                          />
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </SortableContext>
+                  </DndContext>
                 </div>
               </CardContent>
             </Card>
