@@ -40,7 +40,13 @@ export default function HomePageEditor() {
       files.carouselImages?.forEach(file => {
         formData.append('carouselImages', file);
       });
-      formData.append('content', JSON.stringify(content));
+      formData.append('content', JSON.stringify({
+        hero: {
+          title: content.hero.title || pageData?.content.hero.title,
+          subtitle: content.hero.subtitle || pageData?.content.hero.subtitle,
+          description: content.hero.description || pageData?.content.hero.description
+        }
+      }));
 
       const response = await fetch('/api/pages/homepage', {
         method: 'PUT',
@@ -56,11 +62,13 @@ export default function HomePageEditor() {
         title: "Success",
         description: "Homepage updated successfully"
       });
+      // Reset file inputs after successful upload
+      setFiles({ logo: [], carouselImages: [] });
     },
-    onError: () => {
+    onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to update homepage",
+        description: error.message || "Failed to update homepage",
         variant: "destructive"
       });
     }
@@ -79,6 +87,13 @@ export default function HomePageEditor() {
       toast({
         title: "Success",
         description: "Image deleted successfully"
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete image",
+        variant: "destructive"
       });
     }
   });
@@ -169,7 +184,7 @@ export default function HomePageEditor() {
                     multiple
                     onChange={(e) => setFiles(prev => ({ ...prev, carouselImages: Array.from(e.target.files || []) }))}
                   />
-                  <div className="grid grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {pageData?.carousel?.images.map((img: string, i: number) => (
                       <div key={i} className="relative group">
                         <img src={img} alt={`Carousel ${i}`} className="w-full aspect-square object-cover rounded" />
