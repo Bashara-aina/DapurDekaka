@@ -56,7 +56,7 @@ export default function AuthPage() {
         return;
       }
 
-      setLocation("/admin/blog");
+      setLocation("/admin");
     } catch (error) {
       toast({
         title: "Error",

@@ -79,6 +79,9 @@ function Router() {
         <Route path="/auth">
           <AuthPage />
         </Route>
+        <Route path="/admin">
+          <AdminDashboard />
+        </Route>
         <Route path="/admin/blog">
           <AdminBlog />
         </Route>
