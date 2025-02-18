@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { queryKeys } from "@/lib/queryClient";
 
 export default function HeroSection() {
   const { data: pageData, isLoading } = useQuery({
