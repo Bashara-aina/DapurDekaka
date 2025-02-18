@@ -31,21 +31,15 @@ export default function About() {
           <div className="flex flex-col justify-center">
             <div className="prose prose-xl">
               <p className="text-2xl text-gray-600 leading-relaxed">
-                Dapur Dekaka adalah usaha yang bergerak di bidang makanan beku
-                khususnya dimsum. Berawal dari usaha peninggalan keluarga,
-                menjadikan produk kami dibuat sepenuh hati dari keluarga kami untuk
-                anda.
-              </p>
-              <p className="text-2xl text-gray-600 leading-relaxed mt-6">
-                Berasal dari Bandung, usaha kami telah membantu pelaku bisnis
-                (restoran, cafe, online shop, distributor) dalam meningkatkan
-                keuntungan mereka dengan menjual produk kami yang terjangkau dan
-                berkualitas.
-              </p>
-              <p className="text-2xl text-gray-600 leading-relaxed mt-6">
-                Sertifikasi Halal MUI yang diberikan pada produk kami memberikan
-                kepercayaan lebih kepada konsumen akan kualitas bahan baku dan
-                proses Dapur Dekaka.
+                Dapur Dekaka adalah produsen frozen food dimsum berbagai varian.
+                Berlokasi di Bandung, kami telah mendistribusikan produk sampai
+                ke Jakarta, Bekasi, Tangerang, dan Palembang. Produk kami dibuat
+                dengan resep khas turun temurun yang sudah lebih dari 5 tahun,
+                alur produksinya memperhatikan keamanan pangan, kebersihan
+                terjamin, tidak pakai pengawet, tidak pakai pewarna buatan.
+                Prioritas kami terhadap konsistensi kualitas menjadikan kami
+                selalu dipercaya oleh restoran, kafe, reseller, dan para
+                pengusaha sebagai mitra.
               </p>
             </div>
           </div>
@@ -62,46 +56,56 @@ export default function About() {
               Kenapa Pilih Dapur Dekaka?
             </h2>
             <p className="text-xl text-gray-600 text-center mb-12">
-              Di Dapur Dekaka, kami sangat bersemangat untuk menghadirkan cita rasa otentik dim sum buatan
-              tangan ke meja Anda. Berbasis di Bandung, kami bangga memberikan produk berkualitas tinggi
-              yang menonjol karena rasa dan integritasnya. Inilah alasan mengapa Anda harus memilih kami:
+              Di Dapur Dekaka, kami sangat bersemangat untuk menghadirkan cita
+              rasa otentik dim sum buatan tangan ke meja Anda. Berbasis di
+              Bandung, kami bangga memberikan produk berkualitas tinggi yang
+              menonjol karena rasa dan integritasnya. Inilah alasan mengapa Anda
+              harus memilih kami:
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="p-6 bg-white rounded-lg shadow-lg">
-                <h3 className="text-2xl font-semibold mb-4">Bahan-bahan Premium</h3>
+                <h3 className="text-2xl font-semibold mb-4">
+                  Bahan-bahan Premium
+                </h3>
                 <p className="text-gray-600">
-                  Kami hanya menggunakan bahan-bahan terbaik untuk memastikan rasa
-                  dan kualitas yang luar biasa.
+                  Kami hanya menggunakan bahan-bahan terbaik untuk memastikan
+                  rasa dan kualitas yang luar biasa.
                 </p>
               </div>
 
               <div className="p-6 bg-white rounded-lg shadow-lg">
-                <h3 className="text-2xl font-semibold mb-4">Keunggulan Buatan Tangan</h3>
+                <h3 className="text-2xl font-semibold mb-4">
+                  Keunggulan Buatan Tangan
+                </h3>
                 <p className="text-gray-600">
-                  Setiap potongan dim sum dibuat dengan hati-hati, mempertahankan
-                  sentuhan tradisional.
+                  Setiap potongan dim sum dibuat dengan hati-hati,
+                  mempertahankan sentuhan tradisional.
                 </p>
               </div>
 
               <div className="p-6 bg-white rounded-lg shadow-lg">
-                <h3 className="text-2xl font-semibold mb-4">Bersertifikat Halal</h3>
+                <h3 className="text-2xl font-semibold mb-4">
+                  Bersertifikat Halal
+                </h3>
                 <p className="text-gray-600">
-                  Nikmati produk kami dengan tenang, karena telah memenuhi standar halal
-                  tertinggi.
+                  Nikmati produk kami dengan tenang, karena telah memenuhi
+                  standar halal tertinggi.
                 </p>
               </div>
 
               <div className="p-6 bg-white rounded-lg shadow-lg">
                 <h3 className="text-2xl font-semibold mb-4">Tanpa Pengawet</h3>
                 <p className="text-gray-600">
-                  Kesegaran dan rasa alami adalah prioritas kami, tanpa bahan pengawet.
+                  Kesegaran dan rasa alami adalah prioritas kami, tanpa bahan
+                  pengawet.
                 </p>
               </div>
             </div>
 
             <p className="text-2xl text-gray-800 text-center mt-12 font-semibold">
-              Rasakan perbedaannya dengan dim sum kami yang autentik, beraroma, dan sehat hari ini!
+              Rasakan perbedaannya dengan dim sum kami yang autentik, beraroma,
+              dan sehat hari ini!
             </p>
           </div>
         </motion.div>
