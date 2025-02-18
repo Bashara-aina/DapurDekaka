@@ -94,6 +94,8 @@ export default function EntranceSection() {
 
   console.log('Using title:', title);
   console.log('Using subtitle:', subtitle);
+  console.log('Homepage data:', pageData);
+  console.log('Logo path:', pageData?.logo);
 
   return (
     <section className="relative h-screen overflow-hidden">
@@ -149,7 +151,7 @@ export default function EntranceSection() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <LogoDisplay className="mb-8" />
+              <LogoDisplay className="mb-8" logoUrl={pageData?.logo} />
               <h1 className="text-4xl md:text-6xl font-bold mb-4 max-w-4xl">
                 {title}
               </h1>

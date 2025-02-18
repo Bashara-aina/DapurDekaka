@@ -2,13 +2,14 @@ import { cn } from "@/lib/utils";
 
 interface LogoDisplayProps {
   className?: string;
+  logoUrl?: string; // Add logoUrl prop
 }
 
-export function LogoDisplay({ className }: LogoDisplayProps) {
+export function LogoDisplay({ className, logoUrl }: LogoDisplayProps) {
   return (
     <div className={cn("flex flex-col items-center", className)}>
       <img 
-        src="/logo/logo.png" 
+        src={logoUrl || "/logo/logo.png"} 
         alt="Dekaka Logo" 
         className="w-[200px] h-[200px] object-contain"
       />
