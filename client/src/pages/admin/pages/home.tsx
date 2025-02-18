@@ -1,11 +1,10 @@
+
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Upload, Trash2, GripVertical } from "lucide-react";
 import AdminNavbar from "@/components/layout/admin-navbar";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -85,16 +84,7 @@ export default function HomePageEditor() {
     carouselImages: []
   });
   const [content, setContent] = useState({
-    hero: {
-      title: "",
-      subtitle: "",
-      description: ""
-    },
-    featuredProducts: {
-      title: "",
-      subtitle: ""
-    },
-    latestArticles: {
+    carousel: {
       title: "",
       subtitle: ""
     }
@@ -130,18 +120,9 @@ export default function HomePageEditor() {
         formData.append('carouselImages', file);
       });
       formData.append('content', JSON.stringify({
-        hero: {
-          title: content.hero.title || pageData?.content.hero.title,
-          subtitle: content.hero.subtitle || pageData?.content.hero.subtitle,
-          description: content.hero.description || pageData?.content.hero.description
-        },
-        featuredProducts: {
-          title: content.featuredProducts.title || pageData?.content.featuredProducts.title,
-          subtitle: content.featuredProducts.subtitle || pageData?.content.featuredProducts.subtitle
-        },
-        latestArticles: {
-          title: content.latestArticles.title || pageData?.content.latestArticles.title,
-          subtitle: content.latestArticles.subtitle || pageData?.content.latestArticles.subtitle
+        carousel: {
+          title: content.carousel.title || pageData?.content?.carousel?.title,
+          subtitle: content.carousel.subtitle || pageData?.content?.carousel?.subtitle
         }
       }));
 
@@ -168,9 +149,7 @@ export default function HomePageEditor() {
       });
       setFiles({ logo: [], carouselImages: [] });
       setContent({
-        hero: { title: "", subtitle: "", description: "" },
-        featuredProducts: { title: "", subtitle: "" },
-        latestArticles: { title: "", subtitle: "" }
+        carousel: { title: "", subtitle: "" }
       });
     },
     onError: (error) => {
@@ -280,44 +259,33 @@ export default function HomePageEditor() {
               </CardContent>
             </Card>
 
-            {/* Hero Section */}
+            {/* Carousel Text Section */}
             <Card>
               <CardHeader>
-                <CardTitle>Hero Section</CardTitle>
+                <CardTitle>Carousel Text</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4">
                   <div>
                     <label className="text-sm font-medium">Title</label>
                     <Input
-                      value={content.hero.title}
+                      value={content.carousel.title}
                       onChange={(e) => setContent(prev => ({
                         ...prev,
-                        hero: { ...prev.hero, title: e.target.value }
+                        carousel: { ...prev.carousel, title: e.target.value }
                       }))}
-                      placeholder={pageData?.content.hero.title}
+                      placeholder={pageData?.content?.carousel?.title || "Dapur Dekaka"}
                     />
                   </div>
                   <div>
                     <label className="text-sm font-medium">Subtitle</label>
                     <Input
-                      value={content.hero.subtitle}
+                      value={content.carousel.subtitle}
                       onChange={(e) => setContent(prev => ({
                         ...prev,
-                        hero: { ...prev.hero, subtitle: e.target.value }
+                        carousel: { ...prev.carousel, subtitle: e.target.value }
                       }))}
-                      placeholder={pageData?.content.hero.subtitle}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Description</label>
-                    <Textarea
-                      value={content.hero.description}
-                      onChange={(e) => setContent(prev => ({
-                        ...prev,
-                        hero: { ...prev.hero, description: e.target.value }
-                      }))}
-                      placeholder={pageData?.content.hero.description}
+                      placeholder={pageData?.content?.carousel?.subtitle || "Nikmati Sensasi Dimsum Premium dengan Cita Rasa Autentik!"}
                     />
                   </div>
                 </div>
