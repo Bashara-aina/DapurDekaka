@@ -87,6 +87,14 @@ export default function HomePageEditor() {
       title: "",
       subtitle: "",
       description: ""
+    },
+    featuredProducts: {
+      title: "",
+      subtitle: ""
+    },
+    latestArticles: {
+      title: "",
+      subtitle: ""
     }
   });
 
@@ -118,6 +126,14 @@ export default function HomePageEditor() {
           title: content.hero.title || pageData?.content.hero.title,
           subtitle: content.hero.subtitle || pageData?.content.hero.subtitle,
           description: content.hero.description || pageData?.content.hero.description
+        },
+        featuredProducts: {
+          title: content.featuredProducts.title || pageData?.content.featuredProducts.title,
+          subtitle: content.featuredProducts.subtitle || pageData?.content.featuredProducts.subtitle
+        },
+        latestArticles: {
+          title: content.latestArticles.title || pageData?.content.latestArticles.title,
+          subtitle: content.latestArticles.subtitle || pageData?.content.latestArticles.subtitle
         }
       }));
 
@@ -280,6 +296,72 @@ export default function HomePageEditor() {
                         hero: { ...prev.hero, description: e.target.value }
                       }))}
                       placeholder={pageData?.content.hero.description}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Featured Products Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Featured Products Section</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Title</label>
+                    <Input
+                      value={content.featuredProducts.title}
+                      onChange={(e) => setContent(prev => ({
+                        ...prev,
+                        featuredProducts: { ...prev.featuredProducts, title: e.target.value }
+                      }))}
+                      placeholder={pageData?.content.featuredProducts.title}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Subtitle</label>
+                    <Input
+                      value={content.featuredProducts.subtitle}
+                      onChange={(e) => setContent(prev => ({
+                        ...prev,
+                        featuredProducts: { ...prev.featuredProducts, subtitle: e.target.value }
+                      }))}
+                      placeholder={pageData?.content.featuredProducts.subtitle}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Latest Articles Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Latest Articles Section</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Title</label>
+                    <Input
+                      value={content.latestArticles.title}
+                      onChange={(e) => setContent(prev => ({
+                        ...prev,
+                        latestArticles: { ...prev.latestArticles, title: e.target.value }
+                      }))}
+                      placeholder={pageData?.content.latestArticles.title}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Subtitle</label>
+                    <Input
+                      value={content.latestArticles.subtitle}
+                      onChange={(e) => setContent(prev => ({
+                        ...prev,
+                        latestArticles: { ...prev.latestArticles, subtitle: e.target.value }
+                      }))}
+                      placeholder={pageData?.content.latestArticles.subtitle}
                     />
                   </div>
                 </div>

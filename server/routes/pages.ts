@@ -17,6 +17,14 @@ const defaultHomepage = {
       title: "Dapur Dekaka",
       subtitle: "Authentic Halal Dim Sum",
       description: "Experience the finest halal dim sum in town"
+    },
+    featuredProducts: {
+      title: "Featured Products",
+      subtitle: "Discover our most loved dim sum selections"
+    },
+    latestArticles: {
+      title: "Latest Articles",
+      subtitle: "Discover our latest news and updates"
     }
   }
 };
