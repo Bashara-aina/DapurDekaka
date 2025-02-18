@@ -10,13 +10,31 @@ import {
 } from "@/components/ui/carousel";
 import { Button } from "@/components/ui/button";
 import { LogoDisplay } from "./LogoDisplay";
-
-const assetImages = Array.from({ length: 33 }, (_, i) => `/asset/${i + 1}.jpg`);
-const MINIMUM_IMAGES_TO_START = 3;
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryClient";
 
 export default function EntranceSection() {
   const [loadedImages, setLoadedImages] = useState<string[]>([]);
   const [loadingProgress, setLoadingProgress] = useState(0);
+
+  const { data: pageData } = useQuery({
+    queryKey: queryKeys.homepage,
+    queryFn: async () => {
+      const response = await fetch('/api/pages/homepage', {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+        cache: 'no-store'
+      });
+      if (!response.ok) throw new Error('Failed to fetch homepage data');
+      return response.json();
+    }
+  });
+
+  // Use the API images if available, otherwise fall back to default
+  const assetImages = pageData?.carousel?.images || Array.from({ length: 33 }, (_, i) => `/asset/${i + 1}.jpg`);
+  const MINIMUM_IMAGES_TO_START = 3;
 
   useEffect(() => {
     let mounted = true;
@@ -56,7 +74,7 @@ export default function EntranceSection() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [assetImages]);
 
   const autoplayOptions = {
     delay: 2000,
@@ -66,6 +84,9 @@ export default function EntranceSection() {
   };
 
   const shouldShowCarousel = loadedImages.length >= MINIMUM_IMAGES_TO_START;
+
+  const title = pageData?.content?.carousel?.title || "Dapur Dekaka";
+  const subtitle = pageData?.content?.carousel?.subtitle || "Nikmati Sensasi Dimsum Premium dengan Cita Rasa Autentik!";
 
   return (
     <section className="relative h-screen overflow-hidden">
@@ -123,10 +144,10 @@ export default function EntranceSection() {
             >
               <LogoDisplay className="mb-8" />
               <h1 className="text-4xl md:text-6xl font-bold mb-4 max-w-4xl">
-                Dapur Dekaka
+                {title}
               </h1>
               <p className="text-xl md:text-2xl mb-8 max-w-2xl">
-                Nikmati Sensasi Dimsum Premium dengan Cita Rasa Autentik!
+                {subtitle}
               </p>
               <Button size="lg" className="text-lg px-8 py-6" asChild>
                 <Link href="/menu">Lihat Menu Kami</Link>

@@ -15,8 +15,11 @@ const defaultHomepage = {
   content: {
     hero: {
       title: "Dapur Dekaka",
-      subtitle: "Authentic Halal Dim Sum",
-      description: "Experience the finest halal dim sum in town"
+      subtitle: "Nikmati Sensasi Dimsum Premium dengan Cita Rasa Autentik!"
+    },
+    carousel: {
+      title: "Dapur Dekaka",
+      subtitle: "Nikmati Sensasi Dimsum Premium dengan Cita Rasa Autentik!"
     },
     featuredProducts: {
       title: "Featured Products",
@@ -71,7 +74,7 @@ pagesRouter.put("/homepage", upload.fields([
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     let content;
-    
+
     try {
       content = req.body.content ? JSON.parse(req.body.content) : null;
       console.log('[PUT] Received content update:', content);
@@ -81,21 +84,19 @@ pagesRouter.put("/homepage", upload.fields([
     }
 
     if (content) {
-      // Safely update content with fallbacks
+      // Update both hero and carousel sections
       homepageConfig.content = {
+        ...homepageConfig.content,
         hero: {
-          title: content.hero?.title ?? homepageConfig.content.hero.title,
-          subtitle: content.hero?.subtitle ?? homepageConfig.content.hero.subtitle,
-          description: content.hero?.description ?? homepageConfig.content.hero.description
+          title: content.carousel?.title ?? homepageConfig.content.hero.title,
+          subtitle: content.carousel?.subtitle ?? homepageConfig.content.hero.subtitle
         },
-        featuredProducts: {
-          title: content.featuredProducts?.title ?? homepageConfig.content.featuredProducts.title,
-          subtitle: content.featuredProducts?.subtitle ?? homepageConfig.content.featuredProducts.subtitle
+        carousel: {
+          title: content.carousel?.title ?? homepageConfig.content.carousel?.title,
+          subtitle: content.carousel?.subtitle ?? homepageConfig.content.carousel?.subtitle
         },
-        latestArticles: {
-          title: content.latestArticles?.title ?? homepageConfig.content.latestArticles.title,
-          subtitle: content.latestArticles?.subtitle ?? homepageConfig.content.latestArticles.subtitle
-        }
+        featuredProducts: homepageConfig.content.featuredProducts,
+        latestArticles: homepageConfig.content.latestArticles
       };
       console.log('[PUT] Updated content:', homepageConfig.content);
     }

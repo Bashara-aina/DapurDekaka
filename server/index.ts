@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import path from "path";
+import net from "net";
 
 const app = express();
 app.use(express.json());
@@ -63,6 +64,33 @@ app.use((req, res, next) => {
   next();
 });
 
+const findAvailablePort = (startPort: number): Promise<number> => {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.unref();
+
+    const tryPort = (port: number) => {
+      server.once('error', (err: any) => {
+        if (err.code === 'EADDRINUSE') {
+          tryPort(port + 1);
+        } else {
+          reject(err);
+        }
+      });
+
+      server.once('listening', () => {
+        server.close(() => {
+          resolve(port);
+        });
+      });
+
+      server.listen(port, '0.0.0.0');
+    };
+
+    tryPort(startPort);
+  });
+};
+
 (async () => {
   const server = registerRoutes(app);
 
@@ -80,8 +108,13 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  const PORT = Number(process.env.PORT) || 5000; // Changed from 3000 to 5000
-  server.listen(PORT, "0.0.0.0", () => { // Added "0.0.0.0" for external access
-    log(`serving on port ${PORT}`);
-  });
+  try {
+    const PORT = await findAvailablePort(Number(process.env.PORT) || 5000);
+    server.listen(PORT, "0.0.0.0", () => {
+      log(`Server is running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
 })();
