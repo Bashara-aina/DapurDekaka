@@ -20,8 +20,12 @@ export default function FeaturedProducts() {
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900">Featured Products</h2>
-            <p className="text-gray-600 mt-2">Discover our most loved dim sum selections</p>
+            <h2 className="text-3xl font-bold text-gray-900">
+              Featured Products
+            </h2>
+            <p className="text-gray-600 mt-2">
+              Discover our most loved dim sum selections
+            </p>
           </div>
           <div className="flex gap-2">
             <Button
@@ -63,7 +67,9 @@ export default function FeaturedProducts() {
                 </CardContent>
                 <CardFooter className="flex flex-col items-start gap-2 p-4 h-[250px]">
                   <h3 className="font-semibold text-base">{item.name}</h3>
-                  <p className="text-sm text-gray-600 flex-1">{item.description}</p>
+                  <p className="text-sm text-gray-600 flex-1">
+                    {item.description}
+                  </p>
                   <div className="flex justify-center w-full">
                     <Button size="sm" asChild>
                       <a
