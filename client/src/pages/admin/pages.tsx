@@ -12,6 +12,8 @@ const pages = [
   { id: 'contact', title: 'Contact Page', description: 'Edit contact information and form' }
 ];
 
+import AdminNavbar from "@/components/layout/admin-navbar";
+
 export default function AdminPages() {
   const [, setLocation] = useLocation();
   const { data: isAuthenticated, isLoading: authLoading } = useQuery({
@@ -52,7 +54,9 @@ export default function AdminPages() {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <>
+      <AdminNavbar />
+      <div className="container mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">Page Management</h1>
       <div className="grid md:grid-cols-2 gap-6">
         {pages.map((page) => (

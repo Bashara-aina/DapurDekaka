@@ -13,6 +13,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Pencil, Trash2, Plus, Image as ImageIcon, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 
+import AdminNavbar from "@/components/layout/admin-navbar";
+
 export default function AdminBlogPage() {
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -301,7 +303,9 @@ export default function AdminBlogPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <>
+      <AdminNavbar />
+      <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-4">
           <h1 className="text-3xl font-bold">Blog Posts</h1>
