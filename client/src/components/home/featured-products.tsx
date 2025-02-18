@@ -10,20 +10,21 @@ export default function FeaturedProducts() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: pageData, isLoading } = useQuery({
-    queryKey: ['/api/pages/homepage'],
+    queryKey: [queryKeys.homepage],
     queryFn: async () => {
       const response = await fetch('/api/pages/homepage', {
         headers: {
           'Cache-Control': 'no-cache',
           'Pragma': 'no-cache'
-        }
+        },
+        cache: 'no-store'
       });
       if (!response.ok) throw new Error('Failed to fetch homepage data');
       return response.json();
     },
-    refetchOnMount: true,
-    refetchInterval: 1000,
-    staleTime: 0
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: true
   });
 
   const scroll = (direction: "left" | "right") => {

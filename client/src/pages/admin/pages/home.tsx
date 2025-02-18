@@ -146,14 +146,10 @@ export default function HomePageEditor() {
       return response.json();
     },
     onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['/api/pages/homepage'] }),
-        queryClient.refetchQueries({ 
-          queryKey: ['/api/pages/homepage'],
-          exact: true,
-          type: 'active'
-        })
-      ]);
+      await queryClient.invalidateQueries({
+        queryKey: [queryKeys.homepage],
+        refetchType: 'all'
+      });
       toast({
         title: "Success",
         description: "Homepage updated successfully"
