@@ -106,7 +106,7 @@ export default function HomePageEditor() {
   );
 
   const { data: pageData, isLoading } = useQuery({
-    queryKey: ['homepage'],
+    queryKey: ['/api/pages/homepage'],
     queryFn: async () => {
       const response = await fetch('/api/pages/homepage');
       if (!response.ok) throw new Error('Failed to fetch homepage data');
@@ -146,12 +146,17 @@ export default function HomePageEditor() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['homepage'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/pages/homepage'] });
       toast({
         title: "Success",
         description: "Homepage updated successfully"
       });
       setFiles({ logo: [], carouselImages: [] });
+      setContent({
+        hero: { title: "", subtitle: "", description: "" },
+        featuredProducts: { title: "", subtitle: "" },
+        latestArticles: { title: "", subtitle: "" }
+      });
     },
     onError: (error) => {
       toast({
@@ -175,7 +180,7 @@ export default function HomePageEditor() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['homepage'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/pages/homepage'] });
       toast({
         title: "Success",
         description: "Image order updated successfully"
@@ -199,7 +204,7 @@ export default function HomePageEditor() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['homepage'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/pages/homepage'] });
       toast({
         title: "Success",
         description: "Image deleted successfully"
