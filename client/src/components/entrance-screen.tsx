@@ -28,8 +28,12 @@ export default function EntranceSection() {
         cache: 'no-store'
       });
       if (!response.ok) throw new Error('Failed to fetch homepage data');
-      return response.json();
-    }
+      const data = await response.json();
+      console.log('Fetched homepage data:', data); // Debug log
+      return data;
+    },
+    refetchInterval: 1000, // Refetch every second during development
+    staleTime: 0, // Consider data always stale
   });
 
   // Use the API images if available, otherwise fall back to default
@@ -87,6 +91,9 @@ export default function EntranceSection() {
 
   const title = pageData?.content?.carousel?.title || "Dapur Dekaka";
   const subtitle = pageData?.content?.carousel?.subtitle || "Nikmati Sensasi Dimsum Premium dengan Cita Rasa Autentik!";
+
+  console.log('Using title:', title);
+  console.log('Using subtitle:', subtitle);
 
   return (
     <section className="relative h-screen overflow-hidden">

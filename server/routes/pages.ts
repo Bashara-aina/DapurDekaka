@@ -60,7 +60,7 @@ pagesRouter.get("/homepage", async (req, res) => {
   console.log('[GET] Sending homepage data:', freshConfig);
   res.json({
     ...freshConfig,
-    timestamp: Date.now()
+    timestamp: Date.now() // Add timestamp to force cache invalidation
   });
 });
 
@@ -84,16 +84,16 @@ pagesRouter.put("/homepage", upload.fields([
     }
 
     if (content) {
-      // Update both hero and carousel sections
+      // Update both hero and carousel sections with the new content
       homepageConfig.content = {
         ...homepageConfig.content,
         hero: {
-          title: content.carousel?.title ?? homepageConfig.content.hero.title,
-          subtitle: content.carousel?.subtitle ?? homepageConfig.content.hero.subtitle
+          title: content.carousel?.title || homepageConfig.content.hero.title,
+          subtitle: content.carousel?.subtitle || homepageConfig.content.hero.subtitle
         },
         carousel: {
-          title: content.carousel?.title ?? homepageConfig.content.carousel?.title,
-          subtitle: content.carousel?.subtitle ?? homepageConfig.content.carousel?.subtitle
+          title: content.carousel?.title || homepageConfig.content.carousel.title,
+          subtitle: content.carousel?.subtitle || homepageConfig.content.carousel.subtitle
         },
         featuredProducts: homepageConfig.content.featuredProducts,
         latestArticles: homepageConfig.content.latestArticles
