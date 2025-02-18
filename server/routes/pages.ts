@@ -84,7 +84,6 @@ pagesRouter.put("/homepage", upload.fields([
     }
 
     if (content) {
-      // Update both hero and carousel sections with the new content
       homepageConfig.content = {
         ...homepageConfig.content,
         hero: {
@@ -98,15 +97,30 @@ pagesRouter.put("/homepage", upload.fields([
         featuredProducts: homepageConfig.content.featuredProducts,
         latestArticles: homepageConfig.content.latestArticles
       };
-      console.log('[PUT] Updated content:', homepageConfig.content);
     }
 
-    if (files.logo) {
+    if (files.logo && files.logo[0]) {
       const logo = files.logo[0];
-      const ext = path.extname(logo.originalname);
-      const newPath = path.join(process.cwd(), 'public', 'logo', `logo${ext}`);
+      const ext = path.extname(logo.originalname).toLowerCase();
+      const logoFileName = `logo${ext}`;
+      const logoDir = path.join(process.cwd(), 'public', 'logo');
+      const newPath = path.join(logoDir, logoFileName);
+
+      // Ensure logo directory exists
+      await fs.mkdir(logoDir, { recursive: true });
+
+      // Remove old logo if exists
+      try {
+        const oldLogoPath = path.join(process.cwd(), 'public', homepageConfig.logo.replace(/^\//, ''));
+        await fs.unlink(oldLogoPath);
+      } catch (error) {
+        console.warn('[PUT] Could not delete old logo:', error);
+      }
+
+      // Move new logo
       await fs.rename(logo.path, newPath);
-      homepageConfig.logo = `/logo/logo${ext}`;
+      homepageConfig.logo = `/logo/${logoFileName}`;
+      console.log('[PUT] Updated logo path:', homepageConfig.logo);
     }
 
     if (files.carouselImages) {
