@@ -237,7 +237,25 @@ export default function HomePageEditor() {
     <>
       <AdminNavbar />
       <div className="container mx-auto p-6">
-        <h1 className="text-3xl font-bold mb-6">Edit Homepage</h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">Edit Homepage</h1>
+          <Button
+            onClick={() => updateMutation.mutate()}
+            disabled={updateMutation.isPending}
+          >
+            {updateMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Updating...
+              </>
+            ) : (
+              <>
+                <Upload className="mr-2 h-4 w-4" />
+                Save Changes
+              </>
+            )}
+          </Button>
+        </div>
         <ScrollArea className="h-[800px] w-full rounded-md border p-4">
           <div className="grid gap-6">
             {/* Logo Section */}
@@ -330,24 +348,6 @@ export default function HomePageEditor() {
                 </div>
               </CardContent>
             </Card>
-
-            <Button
-              onClick={() => updateMutation.mutate()}
-              disabled={updateMutation.isPending}
-              className="w-full"
-            >
-              {updateMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                <>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Save Changes
-                </>
-              )}
-            </Button>
           </div>
         </ScrollArea>
       </div>
