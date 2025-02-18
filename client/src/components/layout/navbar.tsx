@@ -1,8 +1,9 @@
 import { Link } from "wouter";
 import { Menu } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 const navItems = [
   { href: "/", label: "Home" },
@@ -14,20 +15,31 @@ const navItems = [
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const { language, setLanguage } = useLanguage();
 
   return (
     <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-sm border-b">
       <div className="container mx-auto px-4">
         <div className="h-16 flex items-center justify-between">
-          <Link href="/">
-            <a className="flex items-center">
-              <img
-                src="/logo/logo.png"
-                alt="Dapur Dekaka"
-                className="h-12 w-auto"
-              />
-            </a>
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/">
+              <a className="flex items-center">
+                <img
+                  src="/logo/logo.png"
+                  alt="Dapur Dekaka"
+                  className="h-12 w-auto"
+                />
+              </a>
+            </Link>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLanguage(language === 'id' ? 'en' : 'id')}
+              className="bg-background/80 backdrop-blur-sm"
+            >
+              {language.toUpperCase()}
+            </Button>
+          </div>
 
           {/* Desktop Menu */}
           <div className="hidden md:flex gap-6">
