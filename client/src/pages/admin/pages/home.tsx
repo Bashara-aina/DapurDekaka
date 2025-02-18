@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Upload, Trash2, GripVertical } from "lucide-react";
 import AdminNavbar from "@/components/layout/admin-navbar";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -147,7 +148,7 @@ export default function HomePageEditor() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: [queryKeys.homepage],
+        queryKey: ['/api/pages/homepage'],
         refetchType: 'all'
       });
       toast({
@@ -225,11 +226,11 @@ export default function HomePageEditor() {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
-    if (over && active.id !== over.id) {
+    if (over && active.id !== over.id && pageData?.carousel?.images) {
       const oldIndex = pageData.carousel.images.findIndex((url: string) => url === active.id);
       const newIndex = pageData.carousel.images.findIndex((url: string) => url === over.id);
 
-      const newImages = arrayMove(pageData.carousel.images, oldIndex, newIndex);
+      const newImages = arrayMove(pageData.carousel.images as string[], oldIndex, newIndex);
       reorderImagesMutation.mutate(newImages);
     }
   };
@@ -256,7 +257,9 @@ export default function HomePageEditor() {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-4">
-                  <img src={pageData?.logo} alt="Current Logo" className="w-32 h-32 object-contain" />
+                  {pageData?.logo && (
+                    <img src={pageData.logo} alt="Current Logo" className="w-32 h-32 object-contain" />
+                  )}
                   <Input
                     type="file"
                     accept="image/*"
@@ -310,72 +313,6 @@ export default function HomePageEditor() {
               </CardContent>
             </Card>
 
-            {/* Featured Products Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Featured Products Section</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4">
-                  <div>
-                    <label className="text-sm font-medium">Title</label>
-                    <Input
-                      value={content.featuredProducts.title}
-                      onChange={(e) => setContent(prev => ({
-                        ...prev,
-                        featuredProducts: { ...prev.featuredProducts, title: e.target.value }
-                      }))}
-                      placeholder={pageData?.content.featuredProducts.title}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Subtitle</label>
-                    <Input
-                      value={content.featuredProducts.subtitle}
-                      onChange={(e) => setContent(prev => ({
-                        ...prev,
-                        featuredProducts: { ...prev.featuredProducts, subtitle: e.target.value }
-                      }))}
-                      placeholder={pageData?.content.featuredProducts.subtitle}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Latest Articles Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Latest Articles Section</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4">
-                  <div>
-                    <label className="text-sm font-medium">Title</label>
-                    <Input
-                      value={content.latestArticles.title}
-                      onChange={(e) => setContent(prev => ({
-                        ...prev,
-                        latestArticles: { ...prev.latestArticles, title: e.target.value }
-                      }))}
-                      placeholder={pageData?.content.latestArticles.title}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Subtitle</label>
-                    <Input
-                      value={content.latestArticles.subtitle}
-                      onChange={(e) => setContent(prev => ({
-                        ...prev,
-                        latestArticles: { ...prev.latestArticles, subtitle: e.target.value }
-                      }))}
-                      placeholder={pageData?.content.latestArticles.subtitle}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
             {/* Carousel Images Section */}
             <Card>
               <CardHeader>
@@ -399,7 +336,7 @@ export default function HomePageEditor() {
                       strategy={verticalListSortingStrategy}
                     >
                       <div className="grid gap-2">
-                        {pageData?.carousel?.images.map((img: string, i: number) => (
+                        {pageData?.carousel?.images?.map((img: string, i: number) => (
                           <SortableImage
                             key={img}
                             id={img}
