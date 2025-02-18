@@ -3,7 +3,7 @@ export const menuData = [
   {
     id: 1,
     name: "Dimsum Crabstick",
-    description: "Dimsum premium dengan isian crabstick yang lezat.",
+    description: "Shumai dengan dasar olahan daging ayam disertai 5 varian topping, yaitu wortel, jamur, smoked beef, tuna, dan crabstick",
     price: 25000,
     imageUrl: "/image/1.%20Dimsum%20Crabstick.png",
     category: "special"
@@ -11,7 +11,7 @@ export const menuData = [
   {
     id: 2,
     name: "Dimsum Jamur",
-    description: "Dimsum lembut dengan isian jamur pilihan.",
+    description: "Shumai dengan dasar olahan daging ayam disertai 5 varian topping, yaitu wortel, jamur, smoked beef, tuna, dan crabstick",
     price: 25000,
     imageUrl: "/image/2.%20Dimsum%20Jamur.png",
     category: "vegetarian"
@@ -19,7 +19,7 @@ export const menuData = [
   {
     id: 3,
     name: "Dimsum Mozarella",
-    description: "Dimsum spesial dengan lelehan keju mozzarella yang gurih.",
+    description: "Shumai dengan dasar olahan daging ayam serta topping keju mozzarela",
     price: 30000,
     imageUrl: "/image/3.%20Dimsum%20Mozarella.png",
     category: "special"
@@ -27,7 +27,7 @@ export const menuData = [
   {
     id: 4,
     name: "Dimsum Tuna",
-    description: "Dimsum dengan isian tuna segar berkualitas.",
+    description: "Shumai dengan dasar olahan daging ayam disertai 5 varian topping, yaitu wortel, jamur, smoked beef, tuna, dan crabstick",
     price: 28000,
     imageUrl: "/image/4.%20Dimsum%20Tuna.png",
     category: "seafood"
@@ -35,7 +35,7 @@ export const menuData = [
   {
     id: 5,
     name: "Dimsum Golden",
-    description: "Dimsum goreng renyah dengan isian premium.",
+    description: "Shumai dengan dasar olahan daging ayam disertai 5 varian topping, yaitu wortel, jamur, smoked beef, tuna, dan crabstick",
     price: 27000,
     imageUrl: "/image/5.%20Dimsum%20Golden.png",
     category: "special"
@@ -43,7 +43,7 @@ export const menuData = [
   {
     id: 6,
     name: "Dimsum Pedas",
-    description: "Dimsum dengan bumbu pedas menggugah selera.",
+    description: "Shumai dengan dasar olahan daging ayam yang dipadu dengan cita rasa pedas",
     price: 25000,
     imageUrl: "/image/6.%20Dimsum%20Pedas.png",
     category: "spicy"
@@ -51,7 +51,7 @@ export const menuData = [
   {
     id: 7,
     name: "Lumpia Kulit Tahu",
-    description: "Lumpia dengan kulit tahu, berisi ayam dan sayuran segar.",
+    description: "Olahan daging ayam yang dibalut dengan kulit tahu berbentuk memanjang. Dapat disajikan dengan cara dikukus/digoreng",
     price: 23000,
     imageUrl: "/image/7.%20Lumpia%20(Kulit%20Tahu).png",
     category: "classic"
@@ -59,7 +59,7 @@ export const menuData = [
   {
     id: 8,
     name: "Dimsum Nori",
-    description: "Dimsum unik dibalut dengan rumput laut nori yang gurih.",
+    description: "Olahan daging ayam yang dibalut nori (rumput laut panggang)",
     price: 28000,
     imageUrl: "/image/8.%20Dimsum%20Nori.png",
     category: "special"
@@ -67,7 +67,7 @@ export const menuData = [
   {
     id: 9,
     name: "Dimsum Rambutan",
-    description: "Dimsum spesial berbentuk rambutan dengan rasa unik.",
+    description: "Olahan daging ayam yang dibalut lembaran kulit pangsi sehingga garing ketika digoreng",
     price: 28000,
     imageUrl: "/image/9.%20Dimsum%20Rambutan.png",
     category: "special"
@@ -75,7 +75,7 @@ export const menuData = [
   {
     id: 10,
     name: "Ekado",
-    description: "Dimsum dengan telur puyuh utuh di dalamnya, dibalut dengan ayam berbumbu.",
+    description: "Olahan daging ayam dengan isi telur puyuh yang dibalut dengan kulit tahu",
     price: 30000,
     imageUrl: "/image/10.%20Ekado.png",
     category: "classic"
@@ -83,7 +83,7 @@ export const menuData = [
   {
     id: 11,
     name: "Pangsit Ayam",
-    description: "Pangsit goreng renyah dengan isian ayam yang juicy.",
+    description: "Olahan daging ayam yang dibalut dengan kulit pangsit berbentuk melengkung. Dapat disajikan dengan cara dikukus/digoreng",
     price: 23000,
     imageUrl: "/image/11.%20Pangsit%20Ayam.png",
     category: "classic"
