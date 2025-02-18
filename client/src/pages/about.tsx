@@ -64,7 +64,8 @@ export default function About() {
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="p-6 bg-white rounded-lg shadow-lg">
+              <div className="p-6 bg-white rounded-lg shadow-lg overflow-hidden">
+                <img src="/asset/13.jpg" alt="Premium Ingredients" className="w-full h-48 object-cover rounded-lg mb-4" />
                 <h3 className="text-2xl font-semibold mb-4">
                   Bahan-bahan Premium
                 </h3>
@@ -74,7 +75,8 @@ export default function About() {
                 </p>
               </div>
 
-              <div className="p-6 bg-white rounded-lg shadow-lg">
+              <div className="p-6 bg-white rounded-lg shadow-lg overflow-hidden">
+                <img src="/asset/21.jpg" alt="Handmade Excellence" className="w-full h-48 object-cover rounded-lg mb-4" />
                 <h3 className="text-2xl font-semibold mb-4">
                   Keunggulan Buatan Tangan
                 </h3>
@@ -84,7 +86,8 @@ export default function About() {
                 </p>
               </div>
 
-              <div className="p-6 bg-white rounded-lg shadow-lg">
+              <div className="p-6 bg-white rounded-lg shadow-lg overflow-hidden">
+                <img src="/logo/halal.png" alt="Halal Certified" className="w-full h-48 object-contain rounded-lg mb-4 bg-white" />
                 <h3 className="text-2xl font-semibold mb-4">
                   Bersertifikat Halal
                 </h3>
@@ -94,7 +97,8 @@ export default function About() {
                 </p>
               </div>
 
-              <div className="p-6 bg-white rounded-lg shadow-lg">
+              <div className="p-6 bg-white rounded-lg shadow-lg overflow-hidden">
+                <img src="/asset/26.jpg" alt="No Preservatives" className="w-full h-48 object-cover rounded-lg mb-4" />
                 <h3 className="text-2xl font-semibold mb-4">Tanpa Pengawet</h3>
                 <p className="text-gray-600">
                   Kesegaran dan rasa alami adalah prioritas kami, tanpa bahan
