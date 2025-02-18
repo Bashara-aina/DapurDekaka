@@ -40,8 +40,10 @@ async function ensureDirectories() {
   for (const dir of dirs) {
     try {
       await fs.access(dir);
+      console.log(`[Directory Check] ${dir} exists`);
     } catch {
       await fs.mkdir(dir, { recursive: true });
+      console.log(`[Directory Check] Created ${dir}`);
     }
   }
 }
@@ -132,6 +134,15 @@ pagesRouter.put("/homepage", upload.fields([
       await fs.rename(logo.path, newPath);
       homepageConfig.logo = `/logo/${logoFileName}`;
       console.log('[PUT] Updated logo path:', homepageConfig.logo);
+
+      // Verify file exists after move
+      try {
+        await fs.access(newPath);
+        console.log('[PUT] Verified new logo exists at:', newPath);
+      } catch (error) {
+        console.error('[PUT] Error: New logo file not found after move:', error);
+        return res.status(500).json({ message: "Failed to save logo file" });
+      }
     }
 
     if (files.carouselImages) {
@@ -170,30 +181,6 @@ pagesRouter.put("/homepage/carousel/reorder", async (req, res) => {
   } catch (error) {
     console.error("Error reordering images:", error);
     res.status(500).json({ message: "Failed to reorder images" });
-  }
-});
-
-pagesRouter.delete("/homepage/carousel/:index", async (req, res) => {
-  try {
-    const index = parseInt(req.params.index);
-    if (isNaN(index) || index < 0 || index >= homepageConfig.carousel.images.length) {
-      return res.status(400).json({ message: "Invalid image index" });
-    }
-
-    const imagePath = homepageConfig.carousel.images[index];
-    const fullPath = path.join(process.cwd(), 'public', imagePath);
-
-    try {
-      await fs.unlink(fullPath);
-    } catch (error) {
-      console.warn("Could not delete file:", error);
-    }
-
-    homepageConfig.carousel.images.splice(index, 1);
-    res.json({ message: "Image deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting image:", error);
-    res.status(500).json({ message: "Failed to delete image" });
   }
 });
 

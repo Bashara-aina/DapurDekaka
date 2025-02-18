@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface LogoDisplayProps {
   className?: string;
@@ -8,17 +8,27 @@ interface LogoDisplayProps {
 
 export function LogoDisplay({ className, logoUrl }: LogoDisplayProps) {
   const [imageError, setImageError] = useState(false);
+  const [currentSrc, setCurrentSrc] = useState<string>(logoUrl || "/logo/logo.png");
 
-  // Reset error state when logoUrl changes
+  // Reset error state and update src when logoUrl changes
+  useEffect(() => {
+    console.log("LogoDisplay: Logo URL changed to:", logoUrl);
+    setImageError(false);
+    setCurrentSrc(logoUrl || "/logo/logo.png");
+  }, [logoUrl]);
+
   const handleError = () => {
-    console.error("Failed to load logo from:", logoUrl);
+    console.error("LogoDisplay: Failed to load logo from:", currentSrc);
     setImageError(true);
+    setCurrentSrc("/logo/logo.png");
   };
+
+  console.log("LogoDisplay: Rendering with src:", currentSrc, "logoUrl:", logoUrl);
 
   return (
     <div className={cn("flex flex-col items-center", className)}>
       <img 
-        src={imageError ? "/logo/logo.png" : (logoUrl || "/logo/logo.png")}
+        src={currentSrc}
         alt="Dekaka Logo" 
         className="w-[200px] h-[200px] object-contain"
         onError={handleError}
