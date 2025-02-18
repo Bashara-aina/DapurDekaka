@@ -14,6 +14,8 @@ import Contact from "@/pages/contact";
 import { HalalLogo } from "@/components/HalalLogo";
 import AuthPage from "@/pages/auth";
 import AdminBlog from "@/pages/admin/blog";
+import AdminPages from "@/pages/admin/pages";
+import AdminMenuPage from "@/pages/admin/pages/menu";
 
 function Router() {
   return (
