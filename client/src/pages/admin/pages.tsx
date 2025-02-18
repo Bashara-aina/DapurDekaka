@@ -1,6 +1,6 @@
 
-import { useState } from "react";
-import { Link } from "wouter";
+import { useState, useEffect } from "react";
+import { Link, useLocation } from "wouter";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
@@ -13,6 +13,7 @@ const pages = [
 ];
 
 export default function AdminPages() {
+  const [, setLocation] = useLocation();
   const { data: isAuthenticated, isLoading: authLoading } = useQuery({
     queryKey: ['/api/auth-check'],
     queryFn: async () => {
@@ -24,7 +25,19 @@ export default function AdminPages() {
       }
       return true;
     },
+    retry: false,
+    staleTime: 0,
+    cacheTime: 0,
+    onError: () => {
+      setLocation('/auth');
+    }
   });
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      setLocation('/auth');
+    }
+  }, [authLoading, isAuthenticated, setLocation]);
 
   if (authLoading) {
     return (
