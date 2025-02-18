@@ -80,6 +80,12 @@ function Router() {
         <Route path="/admin/blog">
           <AdminBlog />
         </Route>
+        <Route path="/admin/pages">
+          <AdminPages />
+        </Route>
+        <Route path="/admin/pages/menu">
+          <AdminMenuPage />
+        </Route>
         <Route>
           <div className="min-h-screen flex flex-col">
             <Navbar />
