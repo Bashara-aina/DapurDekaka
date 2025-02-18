@@ -1,4 +1,9 @@
+
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+
+export const queryKeys = {
+  homepage: '/api/pages/homepage'
+} as const;
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -40,12 +45,6 @@ export const getQueryFn: <T>(options: {
     await throwIfResNotOk(res);
     return await res.json();
   };
-
-export const queryKeys = {
-  homepage: '/api/pages/homepage'
-} as const;
-
-import { QueryClient } from "@tanstack/react-query";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
