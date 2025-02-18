@@ -70,24 +70,31 @@ pagesRouter.put("/homepage", upload.fields([
     setNoCacheHeaders(res);
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-    const content = req.body.content ? JSON.parse(req.body.content) : null;
-    console.log('[PUT] Received content update:', content);
+    let content;
+    
+    try {
+      content = req.body.content ? JSON.parse(req.body.content) : null;
+      console.log('[PUT] Received content update:', content);
+    } catch (parseError) {
+      console.error('[PUT] Error parsing content:', parseError);
+      return res.status(400).json({ message: "Invalid content format" });
+    }
 
     if (content) {
-      // Direct assignment of new content
+      // Safely update content with fallbacks
       homepageConfig.content = {
         hero: {
-          title: content.hero.title || homepageConfig.content.hero.title,
-          subtitle: content.hero.subtitle || homepageConfig.content.hero.subtitle,
-          description: content.hero.description || homepageConfig.content.hero.description
+          title: content.hero?.title ?? homepageConfig.content.hero.title,
+          subtitle: content.hero?.subtitle ?? homepageConfig.content.hero.subtitle,
+          description: content.hero?.description ?? homepageConfig.content.hero.description
         },
         featuredProducts: {
-          title: content.featuredProducts.title || homepageConfig.content.featuredProducts.title,
-          subtitle: content.featuredProducts.subtitle || homepageConfig.content.featuredProducts.subtitle
+          title: content.featuredProducts?.title ?? homepageConfig.content.featuredProducts.title,
+          subtitle: content.featuredProducts?.subtitle ?? homepageConfig.content.featuredProducts.subtitle
         },
         latestArticles: {
-          title: content.latestArticles.title || homepageConfig.content.latestArticles.title,
-          subtitle: content.latestArticles.subtitle || homepageConfig.content.latestArticles.subtitle
+          title: content.latestArticles?.title ?? homepageConfig.content.latestArticles.title,
+          subtitle: content.latestArticles?.subtitle ?? homepageConfig.content.latestArticles.subtitle
         }
       };
       console.log('[PUT] Updated content:', homepageConfig.content);
