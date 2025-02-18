@@ -43,14 +43,19 @@ async function ensureDirectories() {
   }
 }
 
-pagesRouter.get("/homepage", (req, res) => {
-  // Add cache control headers and timestamp to prevent caching
-  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-  res.set('Expires', '0');
+// Add strict no-cache headers
+const setNoCacheHeaders = (res: any) => {
+  res.set('Cache-Control', 'no-store, must-revalidate');
   res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+};
+
+pagesRouter.get("/homepage", (req, res) => {
+  setNoCacheHeaders(res);
+  console.log('Sending homepage data:', homepageConfig); 
   res.json({
     ...homepageConfig,
-    timestamp: Date.now() // Add timestamp to force client refresh
+    timestamp: Date.now()
   });
 });
 
@@ -60,10 +65,29 @@ pagesRouter.put("/homepage", upload.fields([
 ]), async (req, res) => {
   try {
     await ensureDirectories();
+    setNoCacheHeaders(res); 
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-    const content = req.body.content ? JSON.parse(req.body.content) : homepageConfig.content;
-    console.log('Received content update:', content); // Add logging
+    const content = req.body.content ? JSON.parse(req.body.content) : null;
+    console.log('Received content update:', content);
+
+    if (content) {
+      homepageConfig.content = {
+        hero: {
+          title: content.hero.title || homepageConfig.content.hero.title,
+          subtitle: content.hero.subtitle || homepageConfig.content.hero.subtitle,
+          description: content.hero.description || homepageConfig.content.hero.description
+        },
+        featuredProducts: {
+          title: content.featuredProducts.title || homepageConfig.content.featuredProducts.title,
+          subtitle: content.featuredProducts.subtitle || homepageConfig.content.featuredProducts.subtitle
+        },
+        latestArticles: {
+          title: content.latestArticles.title || homepageConfig.content.latestArticles.title,
+          subtitle: content.latestArticles.subtitle || homepageConfig.content.latestArticles.subtitle
+        }
+      };
+    }
 
     if (files.logo) {
       const logo = files.logo[0];
@@ -86,33 +110,17 @@ pagesRouter.put("/homepage", upload.fields([
       }
     }
 
-    // Update content with deep merge to ensure all fields are updated
-    if (content) {
-      homepageConfig.content = {
-        hero: {
-          ...homepageConfig.content.hero,
-          ...content.hero
-        },
-        featuredProducts: {
-          ...homepageConfig.content.featuredProducts,
-          ...content.featuredProducts
-        },
-        latestArticles: {
-          ...homepageConfig.content.latestArticles,
-          ...content.latestArticles
-        }
-      };
-    }
-
-    console.log('Updated homepage config:', homepageConfig); // Add logging
-    res.json(homepageConfig);
+    console.log('Updated homepage config:', homepageConfig);
+    res.json({
+      ...homepageConfig,
+      timestamp: Date.now()
+    });
   } catch (error) {
     console.error("Error updating homepage:", error);
     res.status(500).json({ message: "Failed to update homepage" });
   }
 });
 
-// New endpoint to handle carousel image reordering
 pagesRouter.put("/homepage/carousel/reorder", async (req, res) => {
   try {
     const { images } = req.body;

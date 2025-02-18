@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -7,7 +6,7 @@ import { queryKeys } from "@/lib/queryClient";
 
 export default function HeroSection() {
   const { data: pageData, isLoading } = useQuery({
-    queryKey: ['pages', 'homepage'],
+    queryKey: ['/api/pages/homepage'], // Updated queryKey
     queryFn: async () => {
       const response = await fetch('/api/pages/homepage', {
         headers: {
