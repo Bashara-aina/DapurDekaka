@@ -17,6 +17,7 @@ import AdminBlog from "@/pages/admin/blog";
 import AdminPages from "@/pages/admin/pages";
 import AdminMenuPage from "@/pages/admin/pages/menu";
 import AdminDashboard from "@/pages/admin/index";
+import HomePageEditor from "@/pages/admin/pages/home";
 
 function Router() {
   return (
@@ -91,13 +92,17 @@ function Router() {
         </Route>
         <Route path="/admin/pages/:pageId">
           {(params) => {
-            if (params.pageId === 'menu') {
-              return <AdminMenuPage />;
+            switch (params.pageId) {
+              case 'menu':
+                return <AdminMenuPage />;
+              case 'home':
+                return <HomePageEditor />;
+              default:
+                return <div className="container mx-auto p-6">
+                  <h1 className="text-3xl font-bold mb-6">Edit {params.pageId.charAt(0).toUpperCase() + params.pageId.slice(1)} Page</h1>
+                  <p>Page editor for {params.pageId} will be implemented here</p>
+                </div>;
             }
-            return <div className="container mx-auto p-6">
-              <h1 className="text-3xl font-bold mb-6">Edit {params.pageId.charAt(0).toUpperCase() + params.pageId.slice(1)} Page</h1>
-              <p>Page editor for {params.pageId} will be implemented here</p>
-            </div>;
           }}
         </Route>
         <Route>
