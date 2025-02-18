@@ -1,7 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 
 export const queryKeys = {
-  homepage: ['homepage']
+  homepage: ['/api/pages/homepage']
 } as const;
 
 async function throwIfResNotOk(res: Response) {
@@ -32,7 +32,14 @@ export const queryClient = new QueryClient({
     queries: {
       staleTime: 0,
       gcTime: 0,
-      refetchOnWindowFocus: true
+      refetchOnWindowFocus: true,
+      refetchOnMount: true,
+      refetchOnReconnect: true,
+      retry: false,
+      cacheTime: 0
+    },
+    mutations: {
+      retry: false
     }
   }
 });

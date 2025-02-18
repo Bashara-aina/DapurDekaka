@@ -107,19 +107,18 @@ export default function HomePageEditor() {
   );
 
   const { data: pageData, isLoading } = useQuery({
-    queryKey: ['/api/pages/homepage'],
+    queryKey: queryKeys.homepage, // Assumed queryKeys object is defined elsewhere
     queryFn: async () => {
       const response = await fetch('/api/pages/homepage', {
         headers: {
           'Cache-Control': 'no-cache',
           'Pragma': 'no-cache'
-        }
+        },
+        cache: 'no-store'
       });
       if (!response.ok) throw new Error('Failed to fetch homepage data');
       return response.json();
-    },
-    staleTime: 0,
-    gcTime: 0
+    }
   });
 
   const updateMutation = useMutation({
@@ -155,8 +154,12 @@ export default function HomePageEditor() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ['/api/pages/homepage'],
+        queryKey: queryKeys.homepage,
         refetchType: 'all'
+      });
+      await queryClient.refetchQueries({
+        queryKey: queryKeys.homepage,
+        type: 'all'
       });
       toast({
         title: "Success",
@@ -191,7 +194,7 @@ export default function HomePageEditor() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/pages/homepage'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.homepage }); // Updated queryKey
       toast({
         title: "Success",
         description: "Image order updated successfully"
@@ -215,7 +218,7 @@ export default function HomePageEditor() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/pages/homepage'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.homepage }); // Updated queryKey
       toast({
         title: "Success",
         description: "Image deleted successfully"
@@ -359,7 +362,7 @@ export default function HomePageEditor() {
               </CardContent>
             </Card>
 
-            <Button 
+            <Button
               onClick={() => updateMutation.mutate()}
               disabled={updateMutation.isPending}
               className="w-full"

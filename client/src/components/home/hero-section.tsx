@@ -6,7 +6,7 @@ import { queryKeys } from "@/lib/queryClient";
 
 export default function HeroSection() {
   const { data: pageData, isLoading } = useQuery({
-    queryKey: ['/api/pages/homepage'], // Updated queryKey
+    queryKey: queryKeys.homepage,
     queryFn: async () => {
       const response = await fetch('/api/pages/homepage', {
         headers: {
@@ -18,9 +18,9 @@ export default function HeroSection() {
       if (!response.ok) throw new Error('Failed to fetch homepage data');
       return response.json();
     },
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnMount: true
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchInterval: 1000 // Poll every second to ensure updates
   });
 
   if (isLoading) {
