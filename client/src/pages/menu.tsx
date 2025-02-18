@@ -29,10 +29,10 @@ export default function Menu() {
                   className="absolute inset-0 w-full h-full object-cover"
                 />
               </CardContent>
-              <CardFooter className="flex flex-col items-start gap-2 p-4 flex-grow">
+              <CardFooter className="flex flex-col items-start gap-2 p-4 h-[250px]">
                 <h3 className="font-semibold text-lg">{item.name}</h3>
-                <p className="text-sm text-gray-600 min-h-[4rem]">{item.description}</p>
-                <div className="flex justify-center w-full mt-auto pt-2">
+                <p className="text-sm text-gray-600 flex-1">{item.description}</p>
+                <div className="flex justify-center w-full">
                   <Button size="sm" asChild>
                     <a
                       href={`https://wa.me/your-number?text=I would like to order ${item.name}`}
