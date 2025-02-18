@@ -50,11 +50,13 @@ const setNoCacheHeaders = (res: any) => {
   res.set('Expires', '0');
 };
 
-pagesRouter.get("/homepage", (req, res) => {
+pagesRouter.get("/homepage", async (req, res) => {
   setNoCacheHeaders(res);
-  console.log('[GET] Sending homepage data:', homepageConfig);
+  // Force fresh config read
+  const freshConfig = { ...defaultHomepage, ...homepageConfig };
+  console.log('[GET] Sending homepage data:', freshConfig);
   res.json({
-    ...homepageConfig,
+    ...freshConfig,
     timestamp: Date.now()
   });
 });

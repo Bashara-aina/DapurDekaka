@@ -8,9 +8,9 @@ export default function HeroSection() {
   const { data: pageData, isLoading } = useQuery({
     queryKey: queryKeys.homepage,
     queryFn: async () => {
-      const response = await fetch('/api/pages/homepage', {
+      const response = await fetch('/api/pages/homepage?' + Date.now(), {
         headers: {
-          'Cache-Control': 'no-cache',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache'
         },
         cache: 'no-store'
@@ -18,6 +18,8 @@ export default function HeroSection() {
       if (!response.ok) throw new Error('Failed to fetch homepage data');
       return response.json();
     },
+    staleTime: 0,
+    cacheTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
     refetchInterval: 1000 // Poll every second to ensure updates

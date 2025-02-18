@@ -13,9 +13,9 @@ export default function FeaturedProducts() {
   const { data: pageData, isLoading } = useQuery({
     queryKey: ['pages', 'homepage'],
     queryFn: async () => {
-      const response = await fetch('/api/pages/homepage', {
+      const response = await fetch('/api/pages/homepage?' + Date.now(), {
         headers: {
-          'Cache-Control': 'no-cache',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache'
         },
         cache: 'no-store'
@@ -24,8 +24,10 @@ export default function FeaturedProducts() {
       return response.json();
     },
     staleTime: 0,
-    gcTime: 0,
-    refetchOnMount: true
+    cacheTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchInterval: 1000
   });
 
   const scroll = (direction: "left" | "right") => {
