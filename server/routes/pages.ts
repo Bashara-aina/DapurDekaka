@@ -1,11 +1,10 @@
-
 import { Router } from "express";
 import multer from "multer";
 import { storage } from "../storage";
 import path from "path";
 import fs from "fs/promises";
 
-const pagesRouter = Router();
+export const pagesRouter = Router();
 const upload = multer({ dest: "uploads/" });
 
 const defaultHomepage = {
@@ -16,7 +15,8 @@ const defaultHomepage = {
   content: {
     hero: {
       title: "Dapur Dekaka",
-      subtitle: "Authentic Halal Dim Sum"
+      subtitle: "Authentic Halal Dim Sum",
+      description: "Experience the finest halal dim sum in town"
     }
   }
 };
@@ -60,4 +60,16 @@ pagesRouter.put("/homepage", upload.fields([
   }
 });
 
-export default pagesRouter;
+pagesRouter.delete("/homepage/carousel/:index", async (req, res) => {
+  try {
+    const index = parseInt(req.params.index);
+    if (isNaN(index) || index < 0 || index >= homepageConfig.carousel.images.length) {
+      return res.status(400).json({ message: "Invalid image index" });
+    }
+
+    homepageConfig.carousel.images.splice(index, 1);
+    res.json({ message: "Image deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to delete image" });
+  }
+});

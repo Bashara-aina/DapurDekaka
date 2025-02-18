@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -7,7 +6,7 @@ import { Loader2 } from "lucide-react";
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
-  const { data: isAuthenticated, isLoading: authLoading } = useQuery({
+  const { data: isAuthenticated, isLoading: authLoading, isError } = useQuery({
     queryKey: ['/api/auth-check'],
     queryFn: async () => {
       const response = await fetch('/api/auth-check', {
@@ -20,17 +19,14 @@ export default function AdminDashboard() {
     },
     retry: false,
     staleTime: 0,
-    cacheTime: 0,
-    onError: () => {
-      setLocation('/auth');
-    }
+    gcTime: 0
   });
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
+    if (!authLoading && (isError || !isAuthenticated)) {
       setLocation('/auth');
     }
-  }, [authLoading, isAuthenticated, setLocation]);
+  }, [authLoading, isAuthenticated, isError, setLocation]);
 
   if (authLoading) {
     return (
@@ -48,16 +44,6 @@ export default function AdminDashboard() {
     <div className="container mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
       <div className="grid md:grid-cols-2 gap-6">
-        <a href="/admin/blog">
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle>Blog Management</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Manage blog posts and articles</p>
-            </CardContent>
-          </Card>
-        </a>
         <a href="/admin/pages">
           <Card className="cursor-pointer hover:shadow-lg transition-shadow">
             <CardHeader>
@@ -65,6 +51,16 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground">Manage website pages and content</p>
+            </CardContent>
+          </Card>
+        </a>
+        <a href="/admin/blog">
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle>Blog Management</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">Manage blog posts and articles</p>
             </CardContent>
           </Card>
         </a>

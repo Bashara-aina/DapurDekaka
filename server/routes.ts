@@ -6,7 +6,7 @@ import { fromZodError } from "zod-validation-error";
 import { menuData } from "@shared/menu-data";
 import contactRouter from "./routes/contact";
 import { blogRouter } from "./routes/blog";
-import pagesRouter from "./routes/pages";
+import { pagesRouter } from "./routes/pages"; // Corrected import
 import bcrypt from "bcryptjs";
 import session from "express-session";
 
@@ -107,15 +107,13 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Register blog routes
   app.get("/api/auth-check", requireAuth, (_req, res) => {
     res.json({ authenticated: true });
   });
 
+  // Apply routers
   app.use("/api/blog", blogRouter);
   app.use("/api/pages", pagesRouter);
-
-  // Register contact form routes
   app.use(contactRouter);
 
   // Menu items routes
