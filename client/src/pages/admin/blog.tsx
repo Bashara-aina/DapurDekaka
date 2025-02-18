@@ -373,5 +373,6 @@ export default function AdminBlogPage() {
         </div>
       </ScrollArea>
     </div>
+    </>
   );
 }
