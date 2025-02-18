@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,10 +21,6 @@ export default function HomePageEditor() {
     hero: {
       title: "",
       subtitle: "",
-      description: ""
-    },
-    featured: {
-      title: "",
       description: ""
     }
   });
@@ -100,7 +97,6 @@ export default function HomePageEditor() {
       <AdminNavbar />
       <div className="container mx-auto p-6">
         <h1 className="text-3xl font-bold mb-6">Edit Homepage</h1>
-
         <ScrollArea className="h-[800px] w-full rounded-md border p-4">
           <div className="grid gap-6">
             <Card>
