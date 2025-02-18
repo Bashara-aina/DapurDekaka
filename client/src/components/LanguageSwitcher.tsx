@@ -6,10 +6,10 @@ export function LanguageSwitcher() {
 
   return (
     <Button
-      variant="ghost"
+      variant="outline"
       size="sm"
       onClick={() => setLanguage(language === 'id' ? 'en' : 'id')}
-      className="fixed top-4 right-4 z-50"
+      className="absolute top-4 right-4 z-50 bg-background/80 backdrop-blur-sm"
     >
       {language.toUpperCase()}
     </Button>
