@@ -1,71 +1,62 @@
 
 import { Router } from "express";
 import multer from "multer";
+import { storage } from "../storage";
 import path from "path";
 import fs from "fs/promises";
 
 const pagesRouter = Router();
 const upload = multer({ dest: "uploads/" });
 
-// Mock data structure - replace with database in production
-const pageContents: Record<string, any> = {
-  about: {
-    title: "About Us",
-    content: {
-      mainHeading: "About Dapur Dekaka",
-      description: "Dapur Dekaka adalah produsen frozen food dimsum berbagai varian...",
-      features: "Di Dapur Dekaka, kami sangat bersemangat untuk menghadirkan cita rasa otentik..."
-    },
-    images: {
-      mainImage: "/asset/28.jpg",
-      featureImages: ["/asset/13.jpg", "/asset/21.jpg"]
-    }
+const defaultHomepage = {
+  carousel: {
+    images: Array.from({length: 33}, (_, i) => `/asset/${i + 1}.jpg`)
   },
-  contact: {
-    title: "Contact Us",
-    content: {
-      mainHeading: "Get in Touch",
-      contactInfo: "Contact information goes here..."
-    },
-    images: {
-      contactImage: "/asset/contact.jpg"
+  logo: "/logo/logo.png",
+  content: {
+    hero: {
+      title: "Dapur Dekaka",
+      subtitle: "Authentic Halal Dim Sum"
     }
   }
 };
 
-pagesRouter.get("/:pageId", async (req, res) => {
-  const { pageId } = req.params;
-  const pageContent = pageContents[pageId];
-  
-  if (!pageContent) {
-    return res.status(404).json({ message: "Page not found" });
-  }
-  
-  res.json(pageContent);
+let homepageConfig = {...defaultHomepage};
+
+pagesRouter.get("/homepage", (req, res) => {
+  res.json(homepageConfig);
 });
 
-pagesRouter.put("/:pageId", upload.array("images"), async (req, res) => {
-  const { pageId } = req.params;
-  const { content } = req.body;
-  
+pagesRouter.put("/homepage", upload.fields([
+  { name: 'logo', maxCount: 1 },
+  { name: 'carouselImages', maxCount: 33 }
+]), async (req, res) => {
   try {
-    pageContents[pageId] = {
-      ...pageContents[pageId],
-      content: JSON.parse(content)
-    };
-    
-    // Handle image uploads if any
-    if (req.files && Array.isArray(req.files)) {
-      for (const file of req.files) {
-        const newPath = path.join("uploads", file.filename + path.extname(file.originalname));
-        await fs.rename(file.path, newPath);
-        // Update image paths in content
-      }
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const content = req.body.content ? JSON.parse(req.body.content) : homepageConfig.content;
+
+    if (files.logo) {
+      const logo = files.logo[0];
+      const ext = path.extname(logo.originalname);
+      const newPath = `/logo/logo${ext}`;
+      await fs.rename(logo.path, `public${newPath}`);
+      homepageConfig.logo = newPath;
     }
-    
-    res.json(pageContents[pageId]);
+
+    if (files.carouselImages) {
+      const newImages = await Promise.all(files.carouselImages.map(async (file, i) => {
+        const ext = path.extname(file.originalname);
+        const newPath = `/asset/${i + 1}${ext}`;
+        await fs.rename(file.path, `public${newPath}`);
+        return newPath;
+      }));
+      homepageConfig.carousel.images = newImages;
+    }
+
+    homepageConfig.content = content;
+    res.json(homepageConfig);
   } catch (error) {
-    res.status(500).json({ message: "Failed to update page content" });
+    res.status(500).json({ message: "Failed to update homepage" });
   }
 });
 
