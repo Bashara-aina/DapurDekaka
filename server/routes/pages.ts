@@ -55,12 +55,10 @@ const setNoCacheHeaders = (res: any) => {
 
 pagesRouter.get("/homepage", async (req, res) => {
   setNoCacheHeaders(res);
-  // Force fresh config read
-  const freshConfig = { ...defaultHomepage, ...homepageConfig };
-  console.log('[GET] Sending homepage data:', freshConfig);
+  console.log('[GET] Sending homepage data:', homepageConfig);
   res.json({
-    ...freshConfig,
-    timestamp: Date.now() // Add timestamp to force cache invalidation
+    ...homepageConfig,
+    timestamp: Date.now()
   });
 });
 
@@ -71,6 +69,7 @@ pagesRouter.put("/homepage", upload.fields([
   try {
     await ensureDirectories();
     setNoCacheHeaders(res);
+    console.log('[PUT] Received files:', req.files);
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     let content;
@@ -101,10 +100,21 @@ pagesRouter.put("/homepage", upload.fields([
 
     if (files.logo && files.logo[0]) {
       const logo = files.logo[0];
-      const ext = path.extname(logo.originalname).toLowerCase();
+      console.log('[PUT] Processing logo file:', logo);
+
+      // Get the original file extension, defaulting to .png if none
+      const ext = path.extname(logo.originalname).toLowerCase() || '.png';
       const logoFileName = `logo${ext}`;
       const logoDir = path.join(process.cwd(), 'public', 'logo');
       const newPath = path.join(logoDir, logoFileName);
+
+      console.log('[PUT] Logo processing details:', {
+        originalName: logo.originalname,
+        tempPath: logo.path,
+        targetDir: logoDir,
+        targetPath: newPath,
+        extension: ext
+      });
 
       // Ensure logo directory exists
       await fs.mkdir(logoDir, { recursive: true });
@@ -113,6 +123,7 @@ pagesRouter.put("/homepage", upload.fields([
       try {
         const oldLogoPath = path.join(process.cwd(), 'public', homepageConfig.logo.replace(/^\//, ''));
         await fs.unlink(oldLogoPath);
+        console.log('[PUT] Removed old logo:', oldLogoPath);
       } catch (error) {
         console.warn('[PUT] Could not delete old logo:', error);
       }

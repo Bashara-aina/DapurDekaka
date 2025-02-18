@@ -1,17 +1,27 @@
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 
 interface LogoDisplayProps {
   className?: string;
-  logoUrl?: string; // Add logoUrl prop
+  logoUrl?: string;
 }
 
 export function LogoDisplay({ className, logoUrl }: LogoDisplayProps) {
+  const [imageError, setImageError] = useState(false);
+
+  // Reset error state when logoUrl changes
+  const handleError = () => {
+    console.error("Failed to load logo from:", logoUrl);
+    setImageError(true);
+  };
+
   return (
     <div className={cn("flex flex-col items-center", className)}>
       <img 
-        src={logoUrl || "/logo/logo.png"} 
+        src={imageError ? "/logo/logo.png" : (logoUrl || "/logo/logo.png")}
         alt="Dekaka Logo" 
         className="w-[200px] h-[200px] object-contain"
+        onError={handleError}
       />
     </div>
   );
