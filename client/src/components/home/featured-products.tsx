@@ -39,10 +39,10 @@ export default function FeaturedProducts() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h2 className="text-3xl font-bold text-gray-900">
-              {pageData?.content.featuredProducts.title || "Featured Products"}
+              {pageData?.content.featuredProducts.title}
             </h2>
             <p className="text-gray-600 mt-2">
-              {pageData?.content.featuredProducts.subtitle || "Discover our most loved dim sum selections"}
+              {pageData?.content.featuredProducts.subtitle}
             </p>
           </div>
           <div className="flex gap-2">

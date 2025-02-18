@@ -147,6 +147,7 @@ export default function HomePageEditor() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/pages/homepage'] });
+      queryClient.refetchQueries({ queryKey: ['/api/pages/homepage'] });
       toast({
         title: "Success",
         description: "Homepage updated successfully"
