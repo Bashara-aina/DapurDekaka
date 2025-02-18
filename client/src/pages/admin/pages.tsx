@@ -5,8 +5,14 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
+const pages = [
+  { id: 'home', title: 'Homepage', description: 'Edit homepage content and featured sections' },
+  { id: 'about', title: 'About Page', description: 'Update company information and story' },
+  { id: 'menu', title: 'Menu Page', description: 'Manage menu items and categories' },
+  { id: 'contact', title: 'Contact Page', description: 'Edit contact information and form' }
+];
+
 export default function AdminPages() {
-  // Auth check query
   const { data: isAuthenticated, isLoading: authLoading } = useQuery({
     queryKey: ['/api/auth-check'],
     queryFn: async () => {
@@ -31,13 +37,6 @@ export default function AdminPages() {
   if (!isAuthenticated) {
     return null;
   }
-
-  const pages = [
-    { id: 'home', title: 'Homepage', description: 'Edit homepage content and featured sections' },
-    { id: 'about', title: 'About Page', description: 'Update company information and story' },
-    { id: 'menu', title: 'Menu Page', description: 'Manage menu items and categories' },
-    { id: 'contact', title: 'Contact Page', description: 'Edit contact information and form' }
-  ];
 
   return (
     <div className="container mx-auto p-6">

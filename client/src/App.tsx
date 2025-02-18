@@ -85,8 +85,16 @@ function Router() {
         <Route path="/admin/pages">
           <AdminPages />
         </Route>
-        <Route path="/admin/pages/menu">
-          <AdminMenuPage />
+        <Route path="/admin/pages/:pageId">
+          {(params) => {
+            if (params.pageId === 'menu') {
+              return <AdminMenuPage />;
+            }
+            return <div className="container mx-auto p-6">
+              <h1 className="text-3xl font-bold mb-6">Edit {params.pageId.charAt(0).toUpperCase() + params.pageId.slice(1)} Page</h1>
+              <p>Page editor for {params.pageId} will be implemented here</p>
+            </div>;
+          }}
         </Route>
         <Route>
           <div className="min-h-screen flex flex-col">
