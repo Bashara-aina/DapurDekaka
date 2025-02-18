@@ -7,7 +7,7 @@ import { queryKeys } from "@/lib/queryClient";
 
 export default function HeroSection() {
   const { data: pageData, isLoading } = useQuery({
-    queryKey: [queryKeys.homepage],
+    queryKey: ['pages', 'homepage'],
     queryFn: async () => {
       const response = await fetch('/api/pages/homepage', {
         headers: {

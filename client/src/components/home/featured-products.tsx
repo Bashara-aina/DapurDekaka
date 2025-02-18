@@ -11,7 +11,7 @@ export default function FeaturedProducts() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: pageData, isLoading } = useQuery({
-    queryKey: queryKeys.homepage,
+    queryKey: ['pages', 'homepage'],
     queryFn: async () => {
       const response = await fetch('/api/pages/homepage', {
         headers: {
