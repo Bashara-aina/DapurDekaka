@@ -44,9 +44,14 @@ async function ensureDirectories() {
 }
 
 pagesRouter.get("/homepage", (req, res) => {
-  // Add cache control headers to prevent browser caching
+  // Add cache control headers and timestamp to prevent caching
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-  res.json(homepageConfig);
+  res.set('Expires', '0');
+  res.set('Pragma', 'no-cache');
+  res.json({
+    ...homepageConfig,
+    timestamp: Date.now() // Add timestamp to force client refresh
+  });
 });
 
 pagesRouter.put("/homepage", upload.fields([
@@ -72,7 +77,7 @@ pagesRouter.put("/homepage", upload.fields([
       const newImages = await Promise.all(files.carouselImages.map(async (file, i) => {
         const ext = path.extname(file.originalname);
         const newPath = path.join(process.cwd(), 'public', 'asset', `${i + 1}${ext}`);
-        await fs.rename(logo.path, newPath);
+        await fs.rename(file.path, newPath);
         return `/asset/${i + 1}${ext}`;
       }));
 
