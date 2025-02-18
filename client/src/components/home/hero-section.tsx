@@ -1,16 +1,25 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
+import { Loader2 } from "lucide-react";
 
 export default function HeroSection() {
-  const { data: pageData } = useQuery({
-    queryKey: ['homepage'],
+  const { data: pageData, isLoading } = useQuery({
+    queryKey: ['/api/pages/homepage'],
     queryFn: async () => {
       const response = await fetch('/api/pages/homepage');
       if (!response.ok) throw new Error('Failed to fetch homepage data');
       return response.json();
     }
   });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   if (!pageData) return null;
 

@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { menuData } from "@shared/menu-data";
@@ -9,8 +9,8 @@ import { useQuery } from "@tanstack/react-query";
 export default function FeaturedProducts() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const { data: pageData } = useQuery({
-    queryKey: ['homepage'],
+  const { data: pageData, isLoading } = useQuery({
+    queryKey: ['/api/pages/homepage'],
     queryFn: async () => {
       const response = await fetch('/api/pages/homepage');
       if (!response.ok) throw new Error('Failed to fetch homepage data');
@@ -24,6 +24,14 @@ export default function FeaturedProducts() {
       scrollRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <section className="py-8 bg-white">

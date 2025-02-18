@@ -1,26 +1,41 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { BlogPost } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CalendarIcon, ArrowRight } from "lucide-react";
+import { CalendarIcon, ArrowRight, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 
 export default function FeaturedArticles() {
-  const { data: posts } = useQuery<BlogPost[]>({
+  const { data: posts, isLoading: postsLoading } = useQuery<BlogPost[]>({
     queryKey: ["/api/blog"],
     queryFn: async () => {
       const response = await fetch("/api/blog");
       if (!response.ok) throw new Error("Failed to fetch posts");
       const posts = await response.json();
-      // Sort by creation date (latest first) and get only the latest 2 published posts
       return posts
         .filter(post => post.published === 1)
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, 2);
     },
   });
+
+  const { data: pageData, isLoading: pageLoading } = useQuery({
+    queryKey: ['/api/pages/homepage'],
+    queryFn: async () => {
+      const response = await fetch('/api/pages/homepage');
+      if (!response.ok) throw new Error('Failed to fetch homepage data');
+      return response.json();
+    }
+  });
+
+  if (postsLoading || pageLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   if (!posts?.length) return null;
 
@@ -35,8 +50,12 @@ export default function FeaturedArticles() {
           className="flex justify-between items-center mb-12"
         >
           <div>
-            <h2 className="text-3xl font-bold text-gray-900">Latest Articles</h2>
-            <p className="text-gray-600 mt-2">Discover our latest news and updates</p>
+            <h2 className="text-3xl font-bold text-gray-900">
+              {pageData?.content.latestArticles.title || "Latest Articles"}
+            </h2>
+            <p className="text-gray-600 mt-2">
+              {pageData?.content.latestArticles.subtitle || "Discover our latest news and updates"}
+            </p>
           </div>
           <Link href="/articles">
             <Button variant="ghost" className="group">
