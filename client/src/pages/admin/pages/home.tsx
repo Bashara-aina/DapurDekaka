@@ -1,6 +1,5 @@
-
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function HomePageEditor() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [files, setFiles] = useState<{ [key: string]: File[] }>({
     logo: [],
     carouselImages: []
@@ -50,11 +50,12 @@ export default function HomePageEditor() {
         method: 'PUT',
         body: formData
       });
-      
+
       if (!response.ok) throw new Error('Failed to update homepage');
       return response.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['homepage'] });
       toast({
         title: "Success",
         description: "Homepage updated successfully"
@@ -78,6 +79,7 @@ export default function HomePageEditor() {
       return response.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['homepage'] });
       toast({
         title: "Success",
         description: "Image deleted successfully"
@@ -98,7 +100,7 @@ export default function HomePageEditor() {
       <AdminNavbar />
       <div className="container mx-auto p-6">
         <h1 className="text-3xl font-bold mb-6">Edit Homepage</h1>
-        
+
         <ScrollArea className="h-[800px] w-full rounded-md border p-4">
           <div className="grid gap-6">
             <Card>
@@ -162,38 +164,6 @@ export default function HomePageEditor() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Featured Section</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4">
-                  <div>
-                    <label className="text-sm font-medium">Title</label>
-                    <Input
-                      value={content.featured.title}
-                      onChange={(e) => setContent(prev => ({
-                        ...prev,
-                        featured: { ...prev.featured, title: e.target.value }
-                      }))}
-                      placeholder={pageData?.content.featured.title}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Description</label>
-                    <Textarea
-                      value={content.featured.description}
-                      onChange={(e) => setContent(prev => ({
-                        ...prev,
-                        featured: { ...prev.featured, description: e.target.value }
-                      }))}
-                      placeholder={pageData?.content.featured.description}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
                 <CardTitle>Carousel Images</CardTitle>
               </CardHeader>
               <CardContent>
@@ -205,7 +175,7 @@ export default function HomePageEditor() {
                     onChange={(e) => setFiles(prev => ({ ...prev, carouselImages: Array.from(e.target.files || []) }))}
                   />
                   <div className="grid grid-cols-4 gap-4">
-                    {pageData?.carousel.images.map((img: string, i: number) => (
+                    {pageData?.carousel?.images.map((img: string, i: number) => (
                       <div key={i} className="relative group">
                         <img src={img} alt={`Carousel ${i}`} className="w-full aspect-square object-cover rounded" />
                         <Button
