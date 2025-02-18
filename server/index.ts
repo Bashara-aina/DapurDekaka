@@ -80,8 +80,8 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  const PORT = Number(process.env.PORT) || 3000;
-  server.listen(PORT, () => {
+  const PORT = Number(process.env.PORT) || 5000; // Changed from 3000 to 5000
+  server.listen(PORT, "0.0.0.0", () => { // Added "0.0.0.0" for external access
     log(`serving on port ${PORT}`);
   });
 })();
