@@ -6,16 +6,16 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 const navItems = [
-  { href: "/", label: "Home" },
-  { href: "/menu", label: "Menu" },
-  { href: "/about", label: "About" },
-  { href: "/articles", label: "Article" },
-  { href: "/contact", label: "Contact" },
+  { href: "/", labelKey: "nav.home" },
+  { href: "/menu", labelKey: "nav.menu" },
+  { href: "/about", labelKey: "nav.about" },
+  { href: "/articles", labelKey: "nav.articles" },
+  { href: "/contact", labelKey: "nav.contact" },
 ];
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
 
   return (
     <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-sm border-b">
@@ -46,7 +46,7 @@ export default function Navbar() {
             {navItems.map((item) => (
               <Link key={item.href} href={item.href}>
                 <a className="text-gray-600 hover:text-primary transition-colors">
-                  {item.label}
+                  {t(item.labelKey)}
                 </a>
               </Link>
             ))}
@@ -57,7 +57,7 @@ export default function Navbar() {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Order Now
+                  {t('nav.orderNow')}
                 </a>
               </Button>
             </div>
@@ -78,7 +78,7 @@ export default function Navbar() {
                       className="text-lg text-gray-600 hover:text-primary transition-colors"
                       onClick={() => setIsOpen(false)}
                     >
-                      {item.label}
+                      {t(item.labelKey)}
                     </a>
                   </Link>
                 ))}
@@ -89,7 +89,7 @@ export default function Navbar() {
                     rel="noopener noreferrer"
                     onClick={() => setIsOpen(false)}
                   >
-                    Order Now
+                    {t('nav.orderNow')}
                   </a>
                 </Button>
               </div>
