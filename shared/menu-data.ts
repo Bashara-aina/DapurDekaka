@@ -96,7 +96,7 @@ export const saucesData = [
     name: "Chilli Oil",
     description: "Dibuat dengan resep Dapur Dekaka yang rasa khas pedas, gurih, dan rempahnya tepat dijadikan pelengkap aneka dimsum",
     price: 15000,
-    imageUrl: "/sauce/Chilli Oil.jpg",
+    imageUrl: "/sauce/Chilli%20Oil.jpg",
     category: "sauce"
   },
   {
@@ -104,7 +104,7 @@ export const saucesData = [
     name: "Saos Mentai Mayo",
     description: "Saus mayones dan campuran tobiko khas jepang sedang populer dan sangat digemari konsumen sebagai pelengkap dimsum",
     price: 18000,
-    imageUrl: "/sauce/Saos Mentai Mayo.jpg",
+    imageUrl: "/sauce/Saos%20Mentai%20Mayo.jpg",
     category: "sauce"
   },
   {
@@ -112,7 +112,7 @@ export const saucesData = [
     name: "Saos Tartar",
     description: "Saus mayones yang manis dan gurih berpadu dengan asam dari acar timun melahirkan cita rasa unik sebagai pelengkap dimsum",
     price: 15000,
-    imageUrl: "/sauce/Saos Tartar.jpg",
+    imageUrl: "/sauce/Saos%20Tartar.jpg",
     category: "sauce"
   }
 ];
