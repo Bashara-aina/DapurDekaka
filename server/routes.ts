@@ -112,6 +112,7 @@ export function registerRoutes(app: Express): Server {
 });
 
 app.use("/api/blog", blogRouter);
+app.use("/api/pages", pagesRouter);
 
   // Register contact form routes
   app.use(contactRouter);
