@@ -44,6 +44,8 @@ async function ensureDirectories() {
 }
 
 pagesRouter.get("/homepage", (req, res) => {
+  // Add cache control headers to prevent browser caching
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   res.json(homepageConfig);
 });
 
@@ -56,6 +58,7 @@ pagesRouter.put("/homepage", upload.fields([
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     const content = req.body.content ? JSON.parse(req.body.content) : homepageConfig.content;
+    console.log('Received content update:', content); // Add logging
 
     if (files.logo) {
       const logo = files.logo[0];
@@ -69,21 +72,34 @@ pagesRouter.put("/homepage", upload.fields([
       const newImages = await Promise.all(files.carouselImages.map(async (file, i) => {
         const ext = path.extname(file.originalname);
         const newPath = path.join(process.cwd(), 'public', 'asset', `${i + 1}${ext}`);
-        await fs.rename(file.path, newPath);
+        await fs.rename(logo.path, newPath);
         return `/asset/${i + 1}${ext}`;
       }));
 
-      // Only update carousel images if new ones are uploaded
       if (newImages.length > 0) {
         homepageConfig.carousel.images = newImages;
       }
     }
 
-    // Update content if provided
+    // Update content with deep merge to ensure all fields are updated
     if (content) {
-      homepageConfig.content = content;
+      homepageConfig.content = {
+        hero: {
+          ...homepageConfig.content.hero,
+          ...content.hero
+        },
+        featuredProducts: {
+          ...homepageConfig.content.featuredProducts,
+          ...content.featuredProducts
+        },
+        latestArticles: {
+          ...homepageConfig.content.latestArticles,
+          ...content.latestArticles
+        }
+      };
     }
 
+    console.log('Updated homepage config:', homepageConfig); // Add logging
     res.json(homepageConfig);
   } catch (error) {
     console.error("Error updating homepage:", error);

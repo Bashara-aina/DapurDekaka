@@ -4,14 +4,21 @@ import { Link } from "wouter";
 import { Loader2 } from "lucide-react";
 
 export default function HeroSection() {
-  const { data: pageData, isLoading } = useQuery({
+  const { data: pageData, isLoading, error } = useQuery({
     queryKey: ['/api/pages/homepage'],
     queryFn: async () => {
       const response = await fetch('/api/pages/homepage');
       if (!response.ok) throw new Error('Failed to fetch homepage data');
       return response.json();
-    }
+    },
+    staleTime: 0, // Always fetch fresh data
+    refetchOnMount: true, // Refetch when component mounts
+    retry: false // Don't retry on error to avoid infinite loops
   });
+
+  if (error) {
+    console.error('Error loading hero section:', error);
+  }
 
   if (isLoading) {
     return (
