@@ -43,16 +43,16 @@ async function ensureDirectories() {
   }
 }
 
-// Add strict no-cache headers
+// Add strict no-cache headers and debug logging
 const setNoCacheHeaders = (res: any) => {
-  res.set('Cache-Control', 'no-store, must-revalidate');
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   res.set('Pragma', 'no-cache');
   res.set('Expires', '0');
 };
 
 pagesRouter.get("/homepage", (req, res) => {
   setNoCacheHeaders(res);
-  console.log('Sending homepage data:', homepageConfig); 
+  console.log('[GET] Sending homepage data:', homepageConfig);
   res.json({
     ...homepageConfig,
     timestamp: Date.now()
@@ -65,13 +65,14 @@ pagesRouter.put("/homepage", upload.fields([
 ]), async (req, res) => {
   try {
     await ensureDirectories();
-    setNoCacheHeaders(res); 
+    setNoCacheHeaders(res);
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     const content = req.body.content ? JSON.parse(req.body.content) : null;
-    console.log('Received content update:', content);
+    console.log('[PUT] Received content update:', content);
 
     if (content) {
+      // Direct assignment of new content
       homepageConfig.content = {
         hero: {
           title: content.hero.title || homepageConfig.content.hero.title,
@@ -87,6 +88,7 @@ pagesRouter.put("/homepage", upload.fields([
           subtitle: content.latestArticles.subtitle || homepageConfig.content.latestArticles.subtitle
         }
       };
+      console.log('[PUT] Updated content:', homepageConfig.content);
     }
 
     if (files.logo) {
@@ -110,13 +112,13 @@ pagesRouter.put("/homepage", upload.fields([
       }
     }
 
-    console.log('Updated homepage config:', homepageConfig);
+    console.log('[PUT] Final homepage config:', homepageConfig);
     res.json({
       ...homepageConfig,
       timestamp: Date.now()
     });
   } catch (error) {
-    console.error("Error updating homepage:", error);
+    console.error("[PUT] Error updating homepage:", error);
     res.status(500).json({ message: "Failed to update homepage" });
   }
 });

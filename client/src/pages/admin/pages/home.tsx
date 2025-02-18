@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Upload, Trash2, GripVertical } from "lucide-react";
 import AdminNavbar from "@/components/layout/admin-navbar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { queryKeys } from "@/lib/queryClient";
 import {
   DndContext,
   closestCenter,
@@ -107,7 +108,7 @@ export default function HomePageEditor() {
   );
 
   const { data: pageData, isLoading } = useQuery({
-    queryKey: queryKeys.homepage, // Assumed queryKeys object is defined elsewhere
+    queryKey: queryKeys.homepage,
     queryFn: async () => {
       const response = await fetch('/api/pages/homepage', {
         headers: {
@@ -194,7 +195,7 @@ export default function HomePageEditor() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.homepage }); // Updated queryKey
+      queryClient.invalidateQueries({ queryKey: queryKeys.homepage });
       toast({
         title: "Success",
         description: "Image order updated successfully"
@@ -218,7 +219,7 @@ export default function HomePageEditor() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.homepage }); // Updated queryKey
+      queryClient.invalidateQueries({ queryKey: queryKeys.homepage });
       toast({
         title: "Success",
         description: "Image deleted successfully"

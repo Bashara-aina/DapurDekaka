@@ -50,13 +50,13 @@ export default function HeroSection() {
           className="max-w-4xl mx-auto px-4"
         >
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-6">
-            {pageData?.content.hero.title}
+            {pageData?.content?.hero?.title}
           </h1>
           <p className="text-xl md:text-2xl text-white/90 mb-4">
-            {pageData?.content.hero.subtitle}
+            {pageData?.content?.hero?.subtitle}
           </p>
           <p className="text-lg md:text-xl text-white/80 mb-8">
-            {pageData?.content.hero.description}
+            {pageData?.content?.hero?.description}
           </p>
           <Button size="lg" asChild className="bg-primary hover:bg-primary/90">
             <a href="#menu">Explore Menu</a>
