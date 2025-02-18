@@ -6,9 +6,11 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { menuData } from "@shared/menu-data";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryClient";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export default function FeaturedProducts() {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { t } = useLanguage();
 
   const { data: pageData, isLoading } = useQuery({
     queryKey: ['pages', 'homepage'],
@@ -51,10 +53,10 @@ export default function FeaturedProducts() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h2 className="text-3xl font-bold text-gray-900">
-              {pageData?.content.featuredProducts.title}
+              {t('home.featured.title')}
             </h2>
             <p className="text-gray-600 mt-2">
-              {pageData?.content.featuredProducts.subtitle}
+              {t('home.featured.subtitle')}
             </p>
           </div>
           <div className="flex gap-2">
@@ -107,7 +109,7 @@ export default function FeaturedProducts() {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        Pesan
+                        {t('menu.orderButton')}
                       </a>
                     </Button>
                   </div>

@@ -3,18 +3,21 @@ import { Link, useLocation } from "wouter";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 const pages = [
-  { id: 'home', title: 'Homepage', description: 'Edit homepage content and featured sections' },
-  { id: 'about', title: 'About Page', description: 'Update company information and story' },
-  { id: 'menu', title: 'Menu Page', description: 'Manage menu items and categories' },
-  { id: 'contact', title: 'Contact Page', description: 'Edit contact information and form' }
+  { id: 'home', titleKey: 'admin.pages.home', descriptionKey: 'admin.pages.homeDesc' },
+  { id: 'about', titleKey: 'admin.pages.about', descriptionKey: 'admin.pages.aboutDesc' },
+  { id: 'menu', titleKey: 'admin.pages.menu', descriptionKey: 'admin.pages.menuDesc' },
+  { id: 'contact', titleKey: 'admin.pages.contact', descriptionKey: 'admin.pages.contactDesc' }
 ];
 
 import AdminNavbar from "@/components/layout/admin-navbar";
 
 export default function AdminPages() {
   const [, setLocation] = useLocation();
+  const { t } = useLanguage();
+
   const { data: isAuthenticated, isLoading: authLoading } = useQuery({
     queryKey: ['/api/auth-check'],
     queryFn: async () => {
@@ -53,16 +56,16 @@ export default function AdminPages() {
     <>
       <AdminNavbar />
       <div className="container mx-auto p-6">
-        <h1 className="text-3xl font-bold mb-6">Page Management</h1>
+        <h1 className="text-3xl font-bold mb-6">{t('admin.pages.title')}</h1>
         <div className="grid md:grid-cols-2 gap-6">
           {pages.map((page) => (
             <Link key={page.id} href={`/admin/pages/${page.id}`}>
               <Card className="cursor-pointer hover:shadow-lg transition-shadow">
                 <CardHeader>
-                  <CardTitle>{page.title}</CardTitle>
+                  <CardTitle>{t(page.titleKey)}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">{page.description}</p>
+                  <p className="text-muted-foreground">{t(page.descriptionKey)}</p>
                 </CardContent>
               </Card>
             </Link>
