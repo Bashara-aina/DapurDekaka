@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { menuData } from "@shared/menu-data";
 import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryClient";
 
 export default function FeaturedProducts() {
   const scrollRef = useRef<HTMLDivElement>(null);
