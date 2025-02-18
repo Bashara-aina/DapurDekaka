@@ -6,6 +6,7 @@ import { fromZodError } from "zod-validation-error";
 import { menuData } from "@shared/menu-data";
 import contactRouter from "./routes/contact";
 import { blogRouter } from "./routes/blog";
+import pagesRouter from "./routes/pages";
 import bcrypt from "bcryptjs";
 import session from "express-session";
 
