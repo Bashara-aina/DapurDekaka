@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { menuData } from "@shared/menu-data";
+import { menuData, saucesData } from "@shared/menu-data";
 
 export default function Menu() {
   return (
@@ -50,6 +50,48 @@ export default function Menu() {
             </Card>
           </motion.div>
         ))}
+      </div>
+
+      <div className="mt-16">
+        <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">Our Special Sauces</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {saucesData.map((sauce, index) => (
+            <motion.div
+              key={sauce.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+            >
+              <Card className="h-full flex flex-col">
+                <CardContent className="p-0 relative pb-[100%]">
+                  <img
+                    src={sauce.imageUrl}
+                    alt={sauce.name}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                </CardContent>
+                <CardFooter className="flex flex-col items-start gap-2 p-4 flex-grow">
+                  <h3 className="font-semibold text-lg">{sauce.name}</h3>
+                  <p className="text-sm text-gray-600 line-clamp-3">{sauce.description}</p>
+                  <div className="flex justify-between items-center w-full mt-auto pt-2">
+                    <span className="font-bold text-primary">
+                      Rp {sauce.price.toLocaleString()}
+                    </span>
+                    <Button size="sm" asChild>
+                      <a
+                        href={`https://wa.me/your-number?text=I would like to order ${sauce.name}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Pesan
+                      </a>
+                    </Button>
+                  </div>
+                </CardFooter>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
       </div>
     </div>
   );
