@@ -63,7 +63,7 @@ export default function FeaturedProducts() {
                 </CardContent>
                 <CardFooter className="flex flex-col items-start gap-2 p-4">
                   <h3 className="font-semibold text-base">{item.name}</h3>
-                  <p className="text-sm text-gray-600 line-clamp-2">{item.description}</p>
+                  <p className="text-sm text-gray-600 min-h-[4rem]">{item.description}</p>
                   <p className="font-bold text-primary mt-auto">
                     Rp {item.price.toLocaleString()}
                   </p>
