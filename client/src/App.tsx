@@ -16,6 +16,7 @@ import AuthPage from "@/pages/auth";
 import AdminBlog from "@/pages/admin/blog";
 import AdminPages from "@/pages/admin/pages";
 import AdminMenuPage from "@/pages/admin/pages/menu";
+import AdminDashboard from "@/pages/admin/index";
 
 function Router() {
   return (
