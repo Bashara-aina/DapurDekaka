@@ -1,3 +1,4 @@
+
 export const menuData = [
   {
     id: 1,
@@ -65,8 +66,30 @@ export const menuData = [
   },
   {
     id: 9,
+    name: "Dimsum Rambutan",
+    description: "Dimsum spesial berbentuk rambutan dengan rasa unik.",
+    price: 28000,
+    imageUrl: "/image/9.%20Dimsum%20Rambutan.png",
+    category: "special"
+  },
+  {
+    id: 10,
+    name: "Ekado",
+    description: "Dimsum dengan telur puyuh utuh di dalamnya, dibalut dengan ayam berbumbu.",
+    price: 30000,
+    imageUrl: "/image/10.%20Ekado.png",
+    category: "classic"
+  },
+  {
+    id: 11,
+    name: "Pangsit Ayam",
+    description: "Pangsit goreng renyah dengan isian ayam yang juicy.",
+    price: 23000,
+    imageUrl: "/image/11.%20Pangsit%20Ayam.png",
+    category: "classic"
+  }
+];
 
-// Sauces data
 export const saucesData = [
   {
     id: 1,
@@ -91,29 +114,5 @@ export const saucesData = [
     price: 15000,
     imageUrl: "/sauce/Saos Tartar.jpg",
     category: "sauce"
-  }
-];
-
-    name: "Dimsum Rambutan",
-    description: "Dimsum spesial berbentuk rambutan dengan rasa unik.",
-    price: 28000,
-    imageUrl: "/image/9.%20Dimsum%20Rambutan.png",
-    category: "special"
-  },
-  {
-    id: 10,
-    name: "Ekado",
-    description: "Dimsum dengan telur puyuh utuh di dalamnya, dibalut dengan ayam berbumbu.",
-    price: 30000,
-    imageUrl: "/image/10.%20Ekado.png",
-    category: "classic"
-  },
-  {
-    id: 11,
-    name: "Pangsit Ayam",
-    description: "Pangsit goreng renyah dengan isian ayam yang juicy.",
-    price: 23000,
-    imageUrl: "/image/11.%20Pangsit%20Ayam.png",
-    category: "classic"
   }
 ];
