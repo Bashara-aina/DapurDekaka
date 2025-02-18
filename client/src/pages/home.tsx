@@ -8,6 +8,7 @@ export default function Home() {
     <div className="relative">
       <EntranceSection />
       <div className="relative z-10">
+        <HeroSection />
         <FeaturedProducts />
         <FeaturedArticles />
       </div>

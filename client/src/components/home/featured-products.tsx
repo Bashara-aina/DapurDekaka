@@ -4,9 +4,19 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { menuData } from "@shared/menu-data";
+import { useQuery } from "@tanstack/react-query";
 
 export default function FeaturedProducts() {
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const { data: pageData } = useQuery({
+    queryKey: ['homepage'],
+    queryFn: async () => {
+      const response = await fetch('/api/pages/homepage');
+      if (!response.ok) throw new Error('Failed to fetch homepage data');
+      return response.json();
+    }
+  });
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -21,10 +31,10 @@ export default function FeaturedProducts() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h2 className="text-3xl font-bold text-gray-900">
-              Featured Products
+              {pageData?.content.featuredProducts.title || "Featured Products"}
             </h2>
             <p className="text-gray-600 mt-2">
-              Discover our most loved dim sum selections
+              {pageData?.content.featuredProducts.subtitle || "Discover our most loved dim sum selections"}
             </p>
           </div>
           <div className="flex gap-2">
