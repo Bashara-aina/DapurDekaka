@@ -1,4 +1,24 @@
-` tags, we will instead use a placeholder comment to indicate that the file should be deleted.
 
-<replit_final_file>
-// This file has been removed as it contains unused code.
+import { QueryClient } from "@tanstack/react-query";
+
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+export const queryKeys = {
+  pages: {
+    all: ["pages"],
+    home: ["pages", "home"],
+    menu: ["pages", "menu"],
+    blog: ["pages", "blog"],
+  },
+  articles: {
+    all: ["articles"],
+    detail: (id: string) => ["articles", id],
+  },
+};
