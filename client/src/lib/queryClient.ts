@@ -1,44 +1,4 @@
-import { QueryClient } from "@tanstack/react-query";
+` tags, we will instead use a placeholder comment to indicate that the file should be deleted.
 
-export const queryKeys = {
-  homepage: ['/api/pages/homepage']
-} as const;
-
-async function throwIfResNotOk(res: Response) {
-  if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
-  }
-}
-
-export async function apiRequest(
-  method: string,
-  url: string,
-  data?: unknown | undefined,
-): Promise<Response> {
-  const res = await fetch(url, {
-    method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
-  });
-
-  await throwIfResNotOk(res);
-  return res;
-}
-
-export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 0,
-      gcTime: 0,
-      refetchOnWindowFocus: true,
-      refetchOnMount: true,
-      refetchOnReconnect: true,
-      retry: false
-    },
-    mutations: {
-      retry: false
-    }
-  }
-});
+<replit_final_file>
+// This file has been removed as it contains unused code.
