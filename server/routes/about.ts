@@ -9,6 +9,7 @@ const router = express.Router();
 router.get("/api/pages/about", async (req, res) => {
   try {
     const aboutContent = await storage.getAboutPage();
+    res.setHeader('Content-Type', 'application/json');
     if (!aboutContent) {
       // Return a default structure if no content exists
       return res.json({
