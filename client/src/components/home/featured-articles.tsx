@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { CalendarIcon, ArrowRight, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export default function FeaturedArticles() {
+  const { t, language } = useLanguage();
   const { data: posts, isLoading: postsLoading } = useQuery<BlogPost[]>({
     queryKey: ["/api/blog"],
     queryFn: async () => {
@@ -51,15 +53,15 @@ export default function FeaturedArticles() {
         >
           <div>
             <h2 className="text-3xl font-bold text-gray-900">
-              {pageData?.content.latestArticles.title || "Latest Articles"}
+              {t('home.latest.title')}
             </h2>
             <p className="text-gray-600 mt-2">
-              {pageData?.content.latestArticles.subtitle || "Discover our latest news and updates"}
+              {t('home.latest.subtitle')}
             </p>
           </div>
           <Link href="/articles">
             <Button variant="ghost" className="group">
-              View All Articles
+              {t('common.readMore')}
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Button>
           </Link>
@@ -80,7 +82,7 @@ export default function FeaturedArticles() {
                     <div className="aspect-video relative overflow-hidden">
                       <img
                         src={post.imageUrl}
-                        alt={post.title}
+                        alt={t(`articles.featured.${post.title}.title`) || post.title}
                         className="object-cover w-full h-full transform group-hover:scale-105 transition-transform duration-300"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -88,11 +90,11 @@ export default function FeaturedArticles() {
                   )}
                   <CardHeader>
                     <CardTitle className="text-2xl group-hover:text-primary transition-colors duration-300">
-                      {post.title}
+                      {t(`articles.featured.${post.title}.title`) || post.title}
                     </CardTitle>
                     <div className="flex items-center text-sm text-gray-500">
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {new Date(post.createdAt).toLocaleDateString('id-ID', {
+                      {new Date(post.createdAt).toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', {
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric'
@@ -101,7 +103,7 @@ export default function FeaturedArticles() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-gray-600 line-clamp-2">
-                      {post.content.replace(/<[^>]+>/g, '')}
+                      {t(`articles.featured.${post.title}.content`) || post.content.replace(/<[^>]+>/g, '')}
                     </p>
                   </CardContent>
                 </Card>
