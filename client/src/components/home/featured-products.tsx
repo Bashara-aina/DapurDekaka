@@ -16,7 +16,8 @@ export default function FeaturedProducts() {
     queryFn: async () => {
       const response = await fetch('/api/menu/items');
       if (!response.ok) throw new Error('Failed to fetch menu items');
-      return response.json();
+      const items = await response.json();
+      return items.filter((item: any) => item.category !== 'sauce');
     }
   });
 
