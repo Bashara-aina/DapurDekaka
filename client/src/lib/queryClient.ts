@@ -1,4 +1,3 @@
-
 import { QueryClient } from "@tanstack/react-query";
 
 export const queryClient = new QueryClient({
@@ -16,6 +15,11 @@ export const queryKeys = {
     home: ["pages", "home"],
     menu: ["pages", "menu"],
     blog: ["pages", "blog"],
+  },
+  menu: {
+    all: ["menu"],
+    items: ["menu", "items"],
+    sauces: ["menu", "sauces"],
   },
   articles: {
     all: ["articles"],

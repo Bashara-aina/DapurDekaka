@@ -11,6 +11,15 @@ export const menuItems = pgTable("menu_items", {
   category: text("category").notNull(),
 });
 
+export const sauces = pgTable("sauces", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  price: integer("price").notNull(),
+  imageUrl: text("image_url").notNull(),
+  category: text("category").notNull().default('sauce'),
+});
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
@@ -35,9 +44,10 @@ export const footer = pgTable('footer',{
     id: serial('id').primaryKey(),
     address: text('address').notNull(),
     phone: text('phone').notNull()
-})
+});
 
 export const insertMenuItemSchema = createInsertSchema(menuItems);
+export const insertSauceSchema = createInsertSchema(sauces);
 
 export const insertUserSchema = createInsertSchema(users)
   .pick({
@@ -60,6 +70,9 @@ export const insertBlogPostSchema = createInsertSchema(blogPosts)
 
 export type InsertMenuItem = z.infer<typeof insertMenuItemSchema>;
 export type MenuItem = typeof menuItems.$inferSelect;
+
+export type InsertSauce = z.infer<typeof insertSauceSchema>;
+export type Sauce = typeof sauces.$inferSelect;
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
