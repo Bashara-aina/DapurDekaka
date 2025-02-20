@@ -40,8 +40,13 @@ export default function AboutEditor() {
     queryFn: async () => {
       const response = await fetch("/api/pages/about");
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to fetch about content");
+        const text = await response.text();
+        try {
+          const error = JSON.parse(text);
+          throw new Error(error.message || "Failed to fetch about content");
+        } catch (e) {
+          throw new Error("Failed to fetch about content");
+        }
       }
       return response.json();
     },
