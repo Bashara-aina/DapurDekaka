@@ -1,35 +1,32 @@
+
 import { useRef } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { menuData } from "@shared/menu-data";
 import { useQuery } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/queryClient";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export default function FeaturedProducts() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { t } = useLanguage();
 
-  const { data: pageData, isLoading } = useQuery({
+  const { data: menuItems, isLoading: menuLoading } = useQuery({
+    queryKey: ['menu', 'items'],
+    queryFn: async () => {
+      const response = await fetch('/api/menu/items');
+      if (!response.ok) throw new Error('Failed to fetch menu items');
+      return response.json();
+    }
+  });
+
+  const { data: pageData } = useQuery({
     queryKey: ['pages', 'homepage'],
     queryFn: async () => {
-      const response = await fetch('/api/pages/homepage?' + Date.now(), {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        },
-        cache: 'no-store'
-      });
+      const response = await fetch('/api/pages/homepage');
       if (!response.ok) throw new Error('Failed to fetch homepage data');
       return response.json();
-    },
-    staleTime: 0,
-    cacheTime: 0,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    refetchInterval: 1000
+    }
   });
 
   const scroll = (direction: "left" | "right") => {
@@ -39,7 +36,7 @@ export default function FeaturedProducts() {
     }
   };
 
-  if (isLoading) {
+  if (menuLoading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -82,7 +79,7 @@ export default function FeaturedProducts() {
           className="flex gap-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
-          {menuData.slice(0, 11).map((item) => (
+          {menuItems?.slice(0, 11).map((item) => (
             <motion.div
               key={item.id}
               className="min-w-[220px] snap-start"
