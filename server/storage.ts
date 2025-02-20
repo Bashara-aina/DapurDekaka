@@ -2,7 +2,7 @@ import { users, type User, type InsertUser } from "@shared/schema";
 import { menuItems, type MenuItem, type InsertMenuItem } from "@shared/schema";
 import { blogPosts, type BlogPost, type InsertBlogPost } from "@shared/schema";
 import { sauces, type Sauce, type InsertSauce } from "@shared/schema";
-import { aboutPage, type AboutPage, type InsertAboutPage } from "@shared/schema";
+import { pages, type Page, type PageContent } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
@@ -34,9 +34,9 @@ export interface IStorage {
   updateSauce(id: number, sauce: Partial<InsertSauce>): Promise<Sauce | undefined>;
   deleteSauce(id: number): Promise<boolean>;
 
-  // About page methods
-  getAboutPage(): Promise<AboutPage | undefined>;
-  updateAboutPage(content: InsertAboutPage): Promise<AboutPage>;
+  // New page content methods
+  getPageContent(pageName: string): Promise<PageContent | undefined>;
+  updatePageContent(pageName: string, content: PageContent): Promise<PageContent>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -234,57 +234,55 @@ export class DatabaseStorage implements IStorage {
     return !!deletedPost;
   }
 
-  // About page methods
-  async getAboutPage(): Promise<AboutPage | undefined> {
+
+  // Page content methods
+  async getPageContent(pageName: string): Promise<PageContent | undefined> {
     try {
-      const [page] = await db.select().from(aboutPage);
+      const [page] = await db
+        .select()
+        .from(pages)
+        .where(eq(pages.pageName, pageName));
+
       if (page) {
-        return {
-          ...page,
-          features: JSON.parse(page.features)
-        };
+        return { content: JSON.parse(page.content) };
       }
       return undefined;
     } catch (error) {
-      console.error("Error fetching about page:", error);
-      throw new Error("Failed to fetch about page");
+      console.error(`Error fetching page content for ${pageName}:`, error);
+      throw new Error(`Failed to fetch page content for ${pageName}`);
     }
   }
 
-  async updateAboutPage(content: InsertAboutPage): Promise<AboutPage> {
+  async updatePageContent(pageName: string, content: PageContent): Promise<PageContent> {
     try {
-      // First try to get existing page
-      const [existingPage] = await db.select().from(aboutPage);
+      const [page] = await db
+        .select()
+        .from(pages)
+        .where(eq(pages.pageName, pageName));
 
       let updatedPage;
-      if (existingPage) {
-        // If page exists, update it
+      if (page) {
         [updatedPage] = await db
-          .update(aboutPage)
+          .update(pages)
           .set({
-            ...content,
-            features: JSON.stringify(content.features)
+            content: JSON.stringify(content.content)
           })
-          .where(eq(aboutPage.id, existingPage.id))
+          .where(eq(pages.pageName, pageName))
           .returning();
       } else {
-        // If no page exists, create new one
         [updatedPage] = await db
-          .insert(aboutPage)
+          .insert(pages)
           .values({
-            ...content,
-            features: JSON.stringify(content.features)
+            pageName,
+            content: JSON.stringify(content.content)
           })
           .returning();
       }
 
-      return {
-        ...updatedPage,
-        features: JSON.parse(updatedPage.features)
-      };
+      return { content: JSON.parse(updatedPage.content) };
     } catch (error) {
-      console.error("Error updating about page:", error);
-      throw new Error("Failed to update about page");
+      console.error(`Error updating page content for ${pageName}:`, error);
+      throw new Error(`Failed to update page content for ${pageName}`);
     }
   }
 }

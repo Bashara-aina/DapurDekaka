@@ -5,18 +5,31 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 import AdminNavbar from "@/components/layout/admin-navbar";
-import type { InsertAboutPage } from "@shared/schema";
+import type { PageContent } from "@shared/schema";
 
-type FeatureCard = {
+interface Feature {
   id: string;
   title: string;
   description: string;
-  imageUrl: string;
-};
+  image: string;
+}
 
-type AboutContent = InsertAboutPage;
+interface Section {
+  id: string;
+  title: string;
+  description: string;
+  image: string;
+}
+
+interface AboutContent {
+  title: string;
+  description: string;
+  mainImage: string;
+  sections: Section[];
+  features: Feature[];
+}
 
 export default function AboutEditor() {
   const { toast } = useToast();
@@ -24,43 +37,33 @@ export default function AboutEditor() {
   const [content, setContent] = useState<AboutContent>({
     title: "",
     description: "",
-    whyChooseTitle: "",
-    whyChooseDescription: "",
     mainImage: "",
-    features: [
-      { id: "premium", title: "", description: "", imageUrl: "" },
-      { id: "handmade", title: "", description: "", imageUrl: "" },
-      { id: "halal", title: "", description: "", imageUrl: "" },
-      { id: "preservative", title: "", description: "", imageUrl: "" },
+    sections: [
+      {
+        id: "main",
+        title: "Why Choose Us",
+        description: "",
+        image: ""
+      }
     ],
+    features: [
+      { id: "premium", title: "", description: "", image: "" },
+      { id: "handmade", title: "", description: "", image: "" },
+      { id: "halal", title: "", description: "", image: "" },
+      { id: "preservative", title: "", description: "", image: "" }
+    ]
   });
 
-  const { data: aboutData, isLoading: dataLoading, error: fetchError } = useQuery({
+  const { data: pageData, isLoading: dataLoading, error: fetchError } = useQuery({
     queryKey: ["/api/pages/about"],
     queryFn: async () => {
-      try {
-        const response = await fetch("/api/pages/about", {
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        const contentType = response.headers.get("content-type");
-        if (!contentType?.includes("application/json")) {
-          throw new Error("Server returned non-JSON response");
-        }
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "Failed to fetch about content");
-        }
-
-        return response.json();
-      } catch (error) {
-        console.error("Fetch error:", error);
-        throw error;
+      const response = await fetch("/api/pages/about");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to fetch about content");
       }
+      const data = await response.json();
+      return data as PageContent;
     },
     retry: (failureCount, error) => {
       return failureCount < 2 && error instanceof Error && !error.message.includes("invalid response");
@@ -68,20 +71,20 @@ export default function AboutEditor() {
   });
 
   useEffect(() => {
-    if (aboutData) {
-      setContent(aboutData);
+    if (pageData) {
+      setContent(pageData.content as AboutContent);
     }
-  }, [aboutData]);
+  }, [pageData]);
 
   const updateMutation = useMutation({
     mutationFn: async (formData: AboutContent) => {
       const response = await fetch("/api/pages/about", {
         method: "PUT",
-        headers: { 
-          "Content-Type": "application/json",
+        headers: {
+          "Content-Type": "application/json"
         },
-        body: JSON.stringify(formData),
-        credentials: "include",
+        body: JSON.stringify({ content: formData }),
+        credentials: "include"
       });
 
       if (!response.ok) {
@@ -93,43 +96,25 @@ export default function AboutEditor() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/pages/about"] });
-      toast({ 
-        title: "Success", 
-        description: "About page updated successfully" 
+      toast({
+        title: "Success",
+        description: "About page updated successfully"
       });
     },
     onError: (error: Error) => {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
-    },
+    }
   });
-
-  const handleFeatureChange = (index: number, field: keyof FeatureCard, value: string) => {
-    const newFeatures = [...content.features];
-    newFeatures[index] = { ...newFeatures[index], [field]: value };
-    setContent({ ...content, features: newFeatures });
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Validate required fields
-    if (!content.title.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Title is required",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
       await updateMutation.mutateAsync(content);
     } catch (error) {
-      // Error is handled by mutation error callback
       console.error("Submission error:", error);
     }
   };
@@ -162,134 +147,189 @@ export default function AboutEditor() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Main Content */}
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Main Image URL</label>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Main Image</label>
                   <div className="flex gap-4 items-start">
-                    <div className="flex-1">
-                      <Input
-                        value={content.mainImage}
-                        onChange={(e) => setContent({ ...content, mainImage: e.target.value })}
-                        placeholder="Enter main image URL"
-                        className="w-full"
-                      />
-                    </div>
+                    <Input
+                      value={content.mainImage}
+                      onChange={(e) => setContent({ ...content, mainImage: e.target.value })}
+                      placeholder="Enter image URL"
+                      className="flex-1"
+                    />
                     {content.mainImage && (
-                      <div className="w-32 h-32 rounded-lg overflow-hidden bg-gray-100">
-                        <img
-                          src={content.mainImage}
-                          alt="Main"
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.src = "https://placehold.co/128x128/png?text=Invalid+Image";
-                          }}
-                        />
-                      </div>
+                      <img
+                        src={content.mainImage}
+                        alt="Preview"
+                        className="w-20 h-20 object-cover rounded"
+                        onError={(e) => {
+                          e.currentTarget.src = "https://placehold.co/64x64/png?text=Invalid+Image";
+                        }}
+                      />
                     )}
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Title</label>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Title</label>
                   <Input
                     value={content.title}
                     onChange={(e) => setContent({ ...content, title: e.target.value })}
                     placeholder="Enter title"
-                    required
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Description</label>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Description</label>
                   <Textarea
                     value={content.description}
                     onChange={(e) => setContent({ ...content, description: e.target.value })}
                     placeholder="Enter description"
                     rows={4}
-                    required
                   />
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Why Choose Section Title</label>
-                  <Input
-                    value={content.whyChooseTitle}
-                    onChange={(e) => setContent({ ...content, whyChooseTitle: e.target.value })}
-                    placeholder="Enter 'Why Choose' section title"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Why Choose Section Description</label>
-                  <Textarea
-                    value={content.whyChooseDescription}
-                    onChange={(e) => setContent({ ...content, whyChooseDescription: e.target.value })}
-                    placeholder="Enter 'Why Choose' section description"
-                    rows={4}
-                  />
-                </div>
-
-                <div className="space-y-6">
-                  <h3 className="text-lg font-semibold">Feature Cards</h3>
-                  {content.features.map((feature, index) => (
-                    <Card key={feature.id}>
-                      <CardContent className="pt-6 space-y-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Feature {index + 1} Image URL</label>
+              {/* Sections */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Sections</h3>
+                {content.sections.map((section, index) => (
+                  <Card key={section.id}>
+                    <CardContent className="pt-6">
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-1">Section Image</label>
                           <div className="flex gap-4 items-start">
-                            <div className="flex-1">
-                              <Input
-                                value={feature.imageUrl}
-                                onChange={(e) => handleFeatureChange(index, "imageUrl", e.target.value)}
-                                placeholder="Enter feature image URL"
+                            <Input
+                              value={section.image}
+                              onChange={(e) => {
+                                const newSections = [...content.sections];
+                                newSections[index] = { ...section, image: e.target.value };
+                                setContent({ ...content, sections: newSections });
+                              }}
+                              placeholder="Enter image URL"
+                              className="flex-1"
+                            />
+                            {section.image && (
+                              <img
+                                src={section.image}
+                                alt="Preview"
+                                className="w-20 h-20 object-cover rounded"
+                                onError={(e) => {
+                                  e.currentTarget.src = "https://placehold.co/64x64/png?text=Invalid+Image";
+                                }}
                               />
-                            </div>
-                            {feature.imageUrl && (
-                              <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100">
-                                <img
-                                  src={feature.imageUrl}
-                                  alt={feature.title}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    e.currentTarget.src = "https://placehold.co/96x96/png?text=Invalid+Image";
-                                  }}
-                                />
-                              </div>
                             )}
                           </div>
                         </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Feature {index + 1} Title</label>
+
+                        <div>
+                          <label className="block text-sm font-medium mb-1">Section Title</label>
+                          <Input
+                            value={section.title}
+                            onChange={(e) => {
+                              const newSections = [...content.sections];
+                              newSections[index] = { ...section, title: e.target.value };
+                              setContent({ ...content, sections: newSections });
+                            }}
+                            placeholder="Enter section title"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium mb-1">Section Description</label>
+                          <Textarea
+                            value={section.description}
+                            onChange={(e) => {
+                              const newSections = [...content.sections];
+                              newSections[index] = { ...section, description: e.target.value };
+                              setContent({ ...content, sections: newSections });
+                            }}
+                            placeholder="Enter section description"
+                            rows={3}
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Features */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Features</h3>
+                {content.features.map((feature, index) => (
+                  <Card key={feature.id}>
+                    <CardContent className="pt-6">
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-1">Feature Image</label>
+                          <div className="flex gap-4 items-start">
+                            <Input
+                              value={feature.image}
+                              onChange={(e) => {
+                                const newFeatures = [...content.features];
+                                newFeatures[index] = { ...feature, image: e.target.value };
+                                setContent({ ...content, features: newFeatures });
+                              }}
+                              placeholder="Enter image URL"
+                              className="flex-1"
+                            />
+                            {feature.image && (
+                              <img
+                                src={feature.image}
+                                alt="Preview"
+                                className="w-20 h-20 object-cover rounded"
+                                onError={(e) => {
+                                  e.currentTarget.src = "https://placehold.co/64x64/png?text=Invalid+Image";
+                                }}
+                              />
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium mb-1">Feature Title</label>
                           <Input
                             value={feature.title}
-                            onChange={(e) => handleFeatureChange(index, "title", e.target.value)}
+                            onChange={(e) => {
+                              const newFeatures = [...content.features];
+                              newFeatures[index] = { ...feature, title: e.target.value };
+                              setContent({ ...content, features: newFeatures });
+                            }}
                             placeholder="Enter feature title"
                           />
                         </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Feature {index + 1} Description</label>
+
+                        <div>
+                          <label className="block text-sm font-medium mb-1">Feature Description</label>
                           <Textarea
                             value={feature.description}
-                            onChange={(e) => handleFeatureChange(index, "description", e.target.value)}
+                            onChange={(e) => {
+                              const newFeatures = [...content.features];
+                              newFeatures[index] = { ...feature, description: e.target.value };
+                              setContent({ ...content, features: newFeatures });
+                            }}
                             placeholder="Enter feature description"
                             rows={3}
                           />
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={updateMutation.isPending}
                 className="w-full"
               >
                 {updateMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Updating...
+                    Saving...
                   </>
                 ) : (
                   "Save Changes"

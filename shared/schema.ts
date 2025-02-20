@@ -2,6 +2,7 @@ import { pgTable, text, serial, integer, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Keep existing tables
 export const menuItems = pgTable("menu_items", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -45,21 +46,19 @@ export const blogPosts = pgTable("blog_posts", {
 });
 
 export const footer = pgTable('footer',{
-    id: serial('id').primaryKey(),
-    address: text('address').notNull(),
-    phone: text('phone').notNull()
+  id: serial('id').primaryKey(),
+  address: text('address').notNull(),
+  phone: text('phone').notNull()
 });
 
-export const aboutPage = pgTable('about_page', {
-    id: serial('id').primaryKey(),
-    title: text('title').notNull(),
-    description: text('description').notNull(),
-    whyChooseTitle: text('why_choose_title').notNull(),
-    whyChooseDescription: text('why_choose_description').notNull(),
-    mainImage: text('main_image').notNull(),
-    features: text('features').notNull()
+// Simplified about page schema
+export const pages = pgTable('pages', {
+  id: serial('id').primaryKey(),
+  pageName: text('page_name').notNull(),
+  content: text('content').notNull(), // Will store JSON stringified content
 });
 
+// Keep existing schemas
 export const insertMenuItemSchema = createInsertSchema(menuItems).omit({
   id: true,
   createdAt: true,
@@ -91,16 +90,10 @@ export const insertBlogPostSchema = createInsertSchema(blogPosts)
     imageUrl: z.string().optional(),
   });
 
-export const insertAboutPageSchema = createInsertSchema(aboutPage)
-  .omit({ id: true })
-  .extend({
-    features: z.array(z.object({
-      id: z.string(),
-      title: z.string(),
-      description: z.string(),
-      imageUrl: z.string()
-    }))
-  });
+// New page content schema
+export const pageContentSchema = z.object({
+  content: z.record(z.unknown())
+});
 
 export type InsertMenuItem = z.infer<typeof insertMenuItemSchema>;
 export type MenuItem = typeof menuItems.$inferSelect;
@@ -114,5 +107,5 @@ export type User = typeof users.$inferSelect;
 export type InsertBlogPost = z.infer<typeof insertBlogPostSchema>;
 export type BlogPost = typeof blogPosts.$inferSelect;
 
-export type InsertAboutPage = z.infer<typeof insertAboutPageSchema>;
-export type AboutPage = typeof aboutPage.$inferSelect;
+export type PageContent = z.infer<typeof pageContentSchema>;
+export type Page = typeof pages.$inferSelect;
