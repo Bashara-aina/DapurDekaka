@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,6 +29,23 @@ export default function AdminMenuPage() {
   const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
+
+  const { data: isAuthenticated } = useQuery({
+    queryKey: ['/api/auth-check'],
+    queryFn: async () => {
+      const response = await fetch('/api/auth-check', {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        return false;
+      }
+      return true;
+    },
+    retry: false,
+    staleTime: 0,
+    gcTime: 0
+  });
 
   const { data: menuItems, isLoading: menuLoading } = useQuery({
     queryKey: queryKeys.menu.items,
