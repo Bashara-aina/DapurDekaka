@@ -1,3 +1,4 @@
+
 import express from "express";
 import { storage } from "../storage";
 import { insertAboutPageSchema } from "@shared/schema";
@@ -9,23 +10,19 @@ const router = express.Router();
 router.get("/api/pages/about", async (req, res) => {
   try {
     const aboutContent = await storage.getAboutPage();
-    if (!aboutContent) {
-      // Return a default structure if no content exists
-      return res.json({
-        title: "About Dapur Dekaka",
-        description: "",
-        whyChooseTitle: "Why Choose Us",
-        whyChooseDescription: "",
-        mainImage: "",
-        features: [
-          { id: "premium", title: "", description: "", imageUrl: "" },
-          { id: "handmade", title: "", description: "", imageUrl: "" },
-          { id: "halal", title: "", description: "", imageUrl: "" },
-          { id: "preservative", title: "", description: "", imageUrl: "" },
-        ],
-      });
-    }
-    res.json(aboutContent);
+    res.json(aboutContent || {
+      title: "About Dapur Dekaka",
+      description: "",
+      whyChooseTitle: "Why Choose Us",
+      whyChooseDescription: "",
+      mainImage: "",
+      features: [
+        { id: "premium", title: "", description: "", imageUrl: "" },
+        { id: "handmade", title: "", description: "", imageUrl: "" },
+        { id: "halal", title: "", description: "", imageUrl: "" },
+        { id: "preservative", title: "", description: "", imageUrl: "" },
+      ],
+    });
   } catch (error) {
     console.error("Error fetching about page:", error);
     res.status(500).json({ error: "Failed to fetch about page content" });

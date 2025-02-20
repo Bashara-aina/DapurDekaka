@@ -38,18 +38,26 @@ export default function AboutEditor() {
   const { data: aboutData, isLoading: dataLoading, error: fetchError } = useQuery({
     queryKey: ["/api/pages/about"],
     queryFn: async () => {
-      const response = await fetch("/api/pages/about");
-      if (!response.ok) {
-        const text = await response.text();
-        try {
-          const error = JSON.parse(text);
-          throw new Error(error.message || "Failed to fetch about content");
-        } catch (e) {
-          throw new Error("Failed to fetch about content");
+      try {
+        const response = await fetch("/api/pages/about");
+        if (!response.ok) {
+          const text = await response.text();
+          try {
+            const error = JSON.parse(text);
+            throw new Error(error.error || "Failed to fetch about content");
+          } catch (e) {
+            console.error("Response parse error:", text);
+            throw new Error("Server returned an invalid response");
+          }
         }
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error("Fetch error:", error);
+        throw error;
       }
-      return response.json();
     },
+    retry: 1,
   });
 
   useEffect(() => {
