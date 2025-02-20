@@ -5,6 +5,10 @@ import path from "path";
 import { createServer } from 'http';
 import fs from 'fs';
 
+// Force development mode and set Vite configuration
+process.env.NODE_ENV = 'development';
+process.env.VITE_ALLOW_HOSTS = 'all'; // This will be used in Vite config
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -27,7 +31,9 @@ const createRequiredDirectories = async () => {
 const startServer = async () => {
   try {
     console.log('[Startup] Beginning server initialization...');
-    const PORT = parseInt(process.env.PORT || '3000', 10); // Changed to port 3000
+    // Default to port 5000 as it seems to be required by the environment
+    const PORT = parseInt(process.env.PORT || '5000', 10);
+    console.log(`[Startup] Using port: ${PORT}`);
 
     // Create required directories first
     await createRequiredDirectories();
@@ -62,6 +68,7 @@ const startServer = async () => {
       });
 
       testServer.once('listening', () => {
+        console.log(`[Server] Port ${PORT} is available`);
         testServer.close(() => resolve());
       });
 
@@ -83,15 +90,12 @@ const startServer = async () => {
 
     // If server started successfully, setup middleware
     console.log('[Server] Setting up middleware...');
-    if (process.env.NODE_ENV === 'development') {
+    try {
       await setupVite(app, server);
-    } else {
-      try {
-        serveStatic(app);
-      } catch (error) {
-        console.log('[Server] Falling back to development mode due to static serving error');
-        await setupVite(app, server);
-      }
+      console.log('[Server] Vite middleware setup complete');
+    } catch (error) {
+      console.error('[Server] Error setting up Vite middleware:', error);
+      process.exit(1);
     }
 
     log(`[Server] Running and ready to accept connections`);
