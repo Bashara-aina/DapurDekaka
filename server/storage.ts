@@ -35,77 +35,127 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  // Existing menu item methods
+  // Menu item methods with optimized querying and error handling
   async getAllMenuItems(): Promise<MenuItem[]> {
-    return await db.select().from(menuItems);
+    try {
+      return await db.select().from(menuItems).orderBy(menuItems.category);
+    } catch (error) {
+      console.error("Error fetching menu items:", error);
+      throw new Error("Failed to fetch menu items");
+    }
   }
 
   async getMenuItem(id: number): Promise<MenuItem | undefined> {
-    const [item] = await db.select().from(menuItems).where(eq(menuItems.id, id));
-    return item;
+    try {
+      const [item] = await db.select().from(menuItems).where(eq(menuItems.id, id));
+      return item;
+    } catch (error) {
+      console.error(`Error fetching menu item ${id}:`, error);
+      throw new Error("Failed to fetch menu item");
+    }
   }
 
   async createMenuItem(item: InsertMenuItem): Promise<MenuItem> {
-    const [newItem] = await db
-      .insert(menuItems)
-      .values(item)
-      .returning();
-    return newItem;
+    try {
+      const [newItem] = await db
+        .insert(menuItems)
+        .values(item)
+        .returning();
+      return newItem;
+    } catch (error) {
+      console.error("Error creating menu item:", error);
+      throw new Error("Failed to create menu item");
+    }
   }
 
   async updateMenuItem(id: number, item: Partial<InsertMenuItem>): Promise<MenuItem | undefined> {
-    const [updatedItem] = await db
-      .update(menuItems)
-      .set(item)
-      .where(eq(menuItems.id, id))
-      .returning();
-    return updatedItem;
+    try {
+      const [updatedItem] = await db
+        .update(menuItems)
+        .set(item)
+        .where(eq(menuItems.id, id))
+        .returning();
+      return updatedItem;
+    } catch (error) {
+      console.error(`Error updating menu item ${id}:`, error);
+      throw new Error("Failed to update menu item");
+    }
   }
 
   async deleteMenuItem(id: number): Promise<boolean> {
-    const [deletedItem] = await db
-      .delete(menuItems)
-      .where(eq(menuItems.id, id))
-      .returning();
-    return !!deletedItem;
+    try {
+      const [deletedItem] = await db
+        .delete(menuItems)
+        .where(eq(menuItems.id, id))
+        .returning();
+      return !!deletedItem;
+    } catch (error) {
+      console.error(`Error deleting menu item ${id}:`, error);
+      throw new Error("Failed to delete menu item");
+    }
   }
 
-  // Sauce methods
+  // Sauce methods with optimized querying and error handling
   async getAllSauces(): Promise<Sauce[]> {
-    return await db.select().from(sauces);
+    try {
+      return await db.select().from(sauces).orderBy(sauces.name);
+    } catch (error) {
+      console.error("Error fetching sauces:", error);
+      throw new Error("Failed to fetch sauces");
+    }
   }
 
   async getSauce(id: number): Promise<Sauce | undefined> {
-    const [sauce] = await db.select().from(sauces).where(eq(sauces.id, id));
-    return sauce;
+    try {
+      const [sauce] = await db.select().from(sauces).where(eq(sauces.id, id));
+      return sauce;
+    } catch (error) {
+      console.error(`Error fetching sauce ${id}:`, error);
+      throw new Error("Failed to fetch sauce");
+    }
   }
 
   async createSauce(sauce: InsertSauce): Promise<Sauce> {
-    const [newSauce] = await db
-      .insert(sauces)
-      .values(sauce)
-      .returning();
-    return newSauce;
+    try {
+      const [newSauce] = await db
+        .insert(sauces)
+        .values(sauce)
+        .returning();
+      return newSauce;
+    } catch (error) {
+      console.error("Error creating sauce:", error);
+      throw new Error("Failed to create sauce");
+    }
   }
 
   async updateSauce(id: number, sauce: Partial<InsertSauce>): Promise<Sauce | undefined> {
-    const [updatedSauce] = await db
-      .update(sauces)
-      .set(sauce)
-      .where(eq(sauces.id, id))
-      .returning();
-    return updatedSauce;
+    try {
+      const [updatedSauce] = await db
+        .update(sauces)
+        .set(sauce)
+        .where(eq(sauces.id, id))
+        .returning();
+      return updatedSauce;
+    } catch (error) {
+      console.error(`Error updating sauce ${id}:`, error);
+      throw new Error("Failed to update sauce");
+    }
   }
 
   async deleteSauce(id: number): Promise<boolean> {
-    const [deletedSauce] = await db
-      .delete(sauces)
-      .where(eq(sauces.id, id))
-      .returning();
-    return !!deletedSauce;
+    try {
+      const [deletedSauce] = await db
+        .delete(sauces)
+        .where(eq(sauces.id, id))
+        .returning();
+      return !!deletedSauce;
+    } catch (error) {
+      console.error(`Error deleting sauce ${id}:`, error);
+      throw new Error("Failed to delete sauce");
+    }
   }
 
-  // Existing user methods remain unchanged
+  // Existing user methods
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
@@ -136,7 +186,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // Blog post methods remain unchanged
+  // Blog post methods
   async getAllBlogPosts(): Promise<BlogPost[]> {
     return await db.select().from(blogPosts).orderBy(blogPosts.createdAt);
   }

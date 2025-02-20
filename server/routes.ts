@@ -1,18 +1,16 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMenuItemSchema, insertUserSchema, insertSauceSchema } from "@shared/schema";
+import { insertUserSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
-import { menuData, saucesData } from "@shared/menu-data";
 import contactRouter from "./routes/contact";
 import { blogRouter } from "./routes/blog";
 import { pagesRouter } from "./routes/pages";
+import menuRouter from "./routes/menu";
 import bcrypt from "bcryptjs";
 import session from "express-session";
-import multer from "multer";
-
-// Configure multer for file uploads
-const upload = multer({ dest: 'uploads/' });
+import { requireAuth } from "./auth";
+import { menuData, saucesData } from "@shared/menu-data";
 
 declare module "express-session" {
   interface SessionData {
@@ -37,24 +35,6 @@ export function registerRoutes(app: Express): Server {
       },
     })
   );
-
-  // Authentication middleware
-  const requireAuth = async (req: any, res: any, next: any) => {
-    try {
-      if (!req.session.userId) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      const user = await storage.getUser(req.session.userId);
-      if (!user) {
-        return res.status(401).json({ message: "User not found" });
-      }
-      req.user = user;
-      next();
-    } catch (error) {
-      console.error("Auth middleware error:", error);
-      res.status(500).json({ message: "Authentication error" });
-    }
-  };
 
   // User routes
   app.post("/api/register", async (req, res) => {
@@ -115,136 +95,8 @@ export function registerRoutes(app: Express): Server {
     res.json({ authenticated: true });
   });
 
-  // Menu items routes
-  app.get("/api/menu/items", async (_req, res) => {
-    try {
-      const items = await storage.getAllMenuItems();
-      res.json(items);
-    } catch (error) {
-      console.error("Failed to fetch menu items:", error);
-      res.status(500).json({ message: "Failed to fetch menu items" });
-    }
-  });
-
-  app.get("/api/menu/sauces", async (_req, res) => {
-    try {
-      const sauces = await storage.getAllSauces();
-      res.json(sauces);
-    } catch (error) {
-      console.error("Failed to fetch sauces:", error);
-      res.status(500).json({ message: "Failed to fetch sauces" });
-    }
-  });
-
-  app.post("/api/menu/items", requireAuth, upload.single('image'), async (req, res) => {
-    try {
-      const data = {
-        ...req.body,
-        price: Number(req.body.price),
-        imageUrl: req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl,
-      };
-
-      const validation = insertMenuItemSchema.safeParse(data);
-      if (!validation.success) {
-        return res.status(400).json({ message: fromZodError(validation.error).message });
-      }
-
-      const menuItem = await storage.createMenuItem(validation.data);
-      res.status(201).json(menuItem);
-    } catch (error) {
-      console.error("Failed to create menu item:", error);
-      res.status(500).json({ message: "Failed to create menu item" });
-    }
-  });
-
-  app.post("/api/menu/sauces", requireAuth, upload.single('image'), async (req, res) => {
-    try {
-      const data = {
-        ...req.body,
-        price: Number(req.body.price),
-        imageUrl: req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl,
-      };
-
-      const validation = insertSauceSchema.safeParse(data);
-      if (!validation.success) {
-        return res.status(400).json({ message: fromZodError(validation.error).message });
-      }
-
-      const sauce = await storage.createSauce(validation.data);
-      res.status(201).json(sauce);
-    } catch (error) {
-      console.error("Failed to create sauce:", error);
-      res.status(500).json({ message: "Failed to create sauce" });
-    }
-  });
-
-  app.put("/api/menu/items/:id", requireAuth, upload.single('image'), async (req, res) => {
-    try {
-      const id = Number(req.params.id);
-      const data = {
-        ...req.body,
-        price: Number(req.body.price),
-        imageUrl: req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl,
-      };
-
-      const validation = insertMenuItemSchema.safeParse(data);
-      if (!validation.success) {
-        return res.status(400).json({ message: fromZodError(validation.error).message });
-      }
-
-      const menuItem = await storage.updateMenuItem(id, validation.data);
-      res.json(menuItem);
-    } catch (error) {
-      console.error("Failed to update menu item:", error);
-      res.status(500).json({ message: "Failed to update menu item" });
-    }
-  });
-
-  app.put("/api/menu/sauces/:id", requireAuth, upload.single('image'), async (req, res) => {
-    try {
-      const id = Number(req.params.id);
-      const data = {
-        ...req.body,
-        price: Number(req.body.price),
-        imageUrl: req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl,
-      };
-
-      const validation = insertSauceSchema.safeParse(data);
-      if (!validation.success) {
-        return res.status(400).json({ message: fromZodError(validation.error).message });
-      }
-
-      const sauce = await storage.updateSauce(id, validation.data);
-      res.json(sauce);
-    } catch (error) {
-      console.error("Failed to update sauce:", error);
-      res.status(500).json({ message: "Failed to update sauce" });
-    }
-  });
-
-  app.delete("/api/menu/items/:id", requireAuth, async (req, res) => {
-    try {
-      const id = Number(req.params.id);
-      await storage.deleteMenuItem(id);
-      res.json({ message: "Menu item deleted successfully" });
-    } catch (error) {
-      console.error("Failed to delete menu item:", error);
-      res.status(500).json({ message: "Failed to delete menu item" });
-    }
-  });
-
-  app.delete("/api/menu/sauces/:id", requireAuth, async (req, res) => {
-    try {
-      const id = Number(req.params.id);
-      await storage.deleteSauce(id);
-      res.json({ message: "Sauce deleted successfully" });
-    } catch (error) {
-      console.error("Failed to delete sauce:", error);
-      res.status(500).json({ message: "Failed to delete sauce" });
-    }
-  });
-
   // Apply routers
+  app.use("/api/menu", menuRouter);
   app.use("/api/blog", blogRouter);
   app.use("/api/pages", pagesRouter);
   app.use(contactRouter);
@@ -255,33 +107,50 @@ export function registerRoutes(app: Express): Server {
 
 export async function initializeMenuItems() {
   try {
+    console.log("Starting menu items initialization...");
     const existingItems = await storage.getAllMenuItems();
     const existingSauces = await storage.getAllSauces();
 
     if (existingItems.length === 0) {
+      console.log("No existing menu items found. Creating...");
       for (const item of menuData) {
-        await storage.createMenuItem({
-          name: item.name,
-          description: item.description,
-          price: item.price,
-          imageUrl: item.imageUrl,
-          category: item.category,
-        });
+        try {
+          await storage.createMenuItem({
+            name: item.name,
+            description: item.description,
+            price: item.price,
+            imageUrl: item.imageUrl,
+            category: item.category,
+          });
+          console.log(`Created menu item: ${item.name}`);
+        } catch (error) {
+          console.error(`Failed to create menu item ${item.name}:`, error);
+        }
       }
       console.log("Initialized menu items successfully");
+    } else {
+      console.log(`Found ${existingItems.length} existing menu items. Skipping initialization.`);
     }
 
     if (existingSauces.length === 0) {
+      console.log("No existing sauces found. Creating...");
       for (const sauce of saucesData) {
-        await storage.createSauce({
-          name: sauce.name,
-          description: sauce.description,
-          price: sauce.price,
-          imageUrl: sauce.imageUrl,
-          category: sauce.category,
-        });
+        try {
+          await storage.createSauce({
+            name: sauce.name,
+            description: sauce.description,
+            price: sauce.price,
+            imageUrl: sauce.imageUrl,
+            category: sauce.category,
+          });
+          console.log(`Created sauce: ${sauce.name}`);
+        } catch (error) {
+          console.error(`Failed to create sauce ${sauce.name}:`, error);
+        }
       }
       console.log("Initialized sauces successfully");
+    } else {
+      console.log(`Found ${existingSauces.length} existing sauces. Skipping initialization.`);
     }
   } catch (error) {
     console.error("Failed to initialize menu items and sauces:", error);

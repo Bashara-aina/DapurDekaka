@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import path from "path";
-import net from "net";
+import fs from 'fs';
 
 const app = express();
 app.use(express.json());
@@ -63,72 +63,73 @@ app.use((req, res, next) => {
   next();
 });
 
-const findAvailablePort = async (startPort: number, maxRetries = 10): Promise<number> => {
-  let currentPort = startPort;
-  let retries = 0;
+let server: any = null;
 
-  while (retries < maxRetries) {
-    try {
-      const server = net.createServer();
-
-      await new Promise<void>((resolve, reject) => {
-        server.once('error', (err: any) => {
-          if (err.code === 'EADDRINUSE') {
-            currentPort++;
-            server.close();
-            resolve();
-          } else {
-            reject(err);
-          }
-        });
-
-        server.once('listening', () => {
-          server.close(() => resolve());
-        });
-
-        server.listen(currentPort, '0.0.0.0');
-      });
-
-      return currentPort;
-    } catch (error) {
-      retries++;
-      currentPort++;
-
-      if (retries === maxRetries) {
-        throw new Error(`Could not find an available port after ${maxRetries} attempts`);
+const startServer = async () => {
+  try {
+    // Create directories if they don't exist
+    const dirs = ['uploads', 'image', 'logo'];
+    for (const dir of dirs) {
+      const dirPath = path.join(process.cwd(), dir);
+      try {
+        await fs.promises.mkdir(dirPath, { recursive: true });
+        console.log(`Created directory: ${dir}`);
+      } catch (error) {
+        if ((error as any).code !== 'EEXIST') {
+          console.error(`Error creating directory ${dir}:`, error);
+          throw error;
+        }
       }
     }
-  }
 
-  throw new Error('Failed to find available port');
-};
+    server = registerRoutes(app);
 
-(async () => {
-  const server = registerRoutes(app);
+    // Global error handler
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+      res.status(status).json({ message });
+      console.error('Error:', err);
+    });
 
-  // Global error handler
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    res.status(status).json({ message });
-    console.error('Error:', err);
-  });
+    if (app.get("env") === "development") {
+      await setupVite(app, server);
+    } else {
+      serveStatic(app);
+    }
 
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
-
-  try {
-    const preferredPort = Number(process.env.PORT) || 5000;
-    const port = await findAvailablePort(preferredPort);
-
-    server.listen(port, "0.0.0.0", () => {
-      log(`Server is running on port ${port}`);
+    return new Promise((resolve, reject) => {
+      const port = process.env.PORT || 5000;
+      server.listen(port, "0.0.0.0", () => {
+        log(`Server is running on port ${port}`);
+        resolve(server);
+      }).on('error', (error: any) => {
+        if (error.code === 'EADDRINUSE') {
+          console.error(`Port ${port} is already in use. Please ensure no other server is running.`);
+        }
+        reject(error);
+      });
     });
   } catch (error) {
     console.error('Failed to start server:', error);
-    process.exit(1);
+    throw error;
   }
-})();
+};
+
+const stopServer = () => {
+  if (server) {
+    server.close(() => {
+      console.log('Server stopped');
+    });
+  }
+};
+
+// Handle graceful shutdown
+process.on('SIGTERM', stopServer);
+process.on('SIGINT', stopServer);
+
+// Start the server
+startServer().catch((error) => {
+  console.error('Failed to start server:', error);
+  process.exit(1);
+});
