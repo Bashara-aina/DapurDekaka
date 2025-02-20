@@ -70,6 +70,16 @@ export default function AdminPages() {
               </Card>
             </Link>
           ))}
+        <Link href="/admin/pages/footer">
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle>{t('admin.pages.footer')}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">{t('admin.pages.footerDesc')}</p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       </div>
     </>

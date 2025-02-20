@@ -31,6 +31,12 @@ export const blogPosts = pgTable("blog_posts", {
   published: integer("published").default(0),
 });
 
+export const footer = pgTable('footer',{
+    id: serial('id').primaryKey(),
+    address: text('address').notNull(),
+    phone: text('phone').notNull()
+})
+
 export const insertMenuItemSchema = createInsertSchema(menuItems);
 
 export const insertUserSchema = createInsertSchema(users)
