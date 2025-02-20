@@ -34,6 +34,7 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
   fallthrough: false
 }));
 
+// Request logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -52,11 +53,9 @@ app.use((req, res, next) => {
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
-
       if (logLine.length > 80) {
         logLine = logLine.slice(0, 79) + "…";
       }
-
       log(logLine);
     }
   });
@@ -64,40 +63,53 @@ app.use((req, res, next) => {
   next();
 });
 
-const findAvailablePort = (startPort: number): Promise<number> => {
-  return new Promise((resolve, reject) => {
-    const server = net.createServer();
-    server.unref();
+const findAvailablePort = async (startPort: number, maxRetries = 10): Promise<number> => {
+  let currentPort = startPort;
+  let retries = 0;
 
-    const tryPort = (port: number) => {
-      server.once('error', (err: any) => {
-        if (err.code === 'EADDRINUSE') {
-          tryPort(port + 1);
-        } else {
-          reject(err);
-        }
-      });
+  while (retries < maxRetries) {
+    try {
+      const server = net.createServer();
 
-      server.once('listening', () => {
-        server.close(() => {
-          resolve(port);
+      await new Promise<void>((resolve, reject) => {
+        server.once('error', (err: any) => {
+          if (err.code === 'EADDRINUSE') {
+            currentPort++;
+            server.close();
+            resolve();
+          } else {
+            reject(err);
+          }
         });
+
+        server.once('listening', () => {
+          server.close(() => resolve());
+        });
+
+        server.listen(currentPort, '0.0.0.0');
       });
 
-      server.listen(port, '0.0.0.0');
-    };
+      return currentPort;
+    } catch (error) {
+      retries++;
+      currentPort++;
 
-    tryPort(startPort);
-  });
+      if (retries === maxRetries) {
+        throw new Error(`Could not find an available port after ${maxRetries} attempts`);
+      }
+    }
+  }
+
+  throw new Error('Failed to find available port');
 };
 
 (async () => {
   const server = registerRoutes(app);
 
+  // Global error handler
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-
     res.status(status).json({ message });
     console.error('Error:', err);
   });
@@ -109,9 +121,11 @@ const findAvailablePort = (startPort: number): Promise<number> => {
   }
 
   try {
-    const PORT = await findAvailablePort(Number(process.env.PORT) || 5000);
-    server.listen(PORT, "0.0.0.0", () => {
-      log(`Server is running on port ${PORT}`);
+    const preferredPort = Number(process.env.PORT) || 5000;
+    const port = await findAvailablePort(preferredPort);
+
+    server.listen(port, "0.0.0.0", () => {
+      log(`Server is running on port ${port}`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);

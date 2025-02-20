@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { MenuItem, Sauce } from "@shared/schema";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { MenuItem, Sauce, insertMenuItemSchema, insertSauceSchema } from "@shared/schema";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Loader2, Plus, Pencil, Trash2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AdminNavbar from "@/components/layout/admin-navbar";
-import { queryKeys } from "@/lib/queryClient";
+import { queryKeys, apiRequest } from "@/lib/queryClient";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 
 type EditingItem = (MenuItem | Sauce) & { type: 'menu' | 'sauce' };
 
@@ -21,39 +23,19 @@ export default function AdminMenuPage() {
 
   const { data: menuItems, isLoading: menuLoading } = useQuery({
     queryKey: queryKeys.menu.items,
-    queryFn: async () => {
-      const response = await fetch("/api/menu/items", {
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        },
-        cache: 'no-store'
-      });
-      if (!response.ok) throw new Error("Failed to fetch menu items");
-      return response.json();
-    }
+    queryFn: () => apiRequest("/api/menu/items")
   });
 
   const { data: sauces, isLoading: saucesLoading } = useQuery({
     queryKey: queryKeys.menu.sauces,
-    queryFn: async () => {
-      const response = await fetch("/api/menu/sauces", {
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        },
-        cache: 'no-store'
-      });
-      if (!response.ok) throw new Error("Failed to fetch sauces");
-      return response.json();
-    }
+    queryFn: () => apiRequest("/api/menu/sauces")
   });
 
   const createMutation = useMutation({
-    mutationFn: async ({ type, formData }: { type: 'menu' | 'sauce', formData: FormData }) => {
+    mutationFn: async ({ type, data }: { type: 'menu' | 'sauce', data: FormData }) => {
       const response = await fetch(`/api/menu/${type === 'menu' ? 'items' : 'sauces'}`, {
         method: "POST",
-        body: formData,
+        body: data,
       });
       if (!response.ok) throw new Error(`Failed to create ${type}`);
       return response.json();
@@ -62,16 +44,26 @@ export default function AdminMenuPage() {
       queryClient.invalidateQueries({ 
         queryKey: variables.type === 'menu' ? queryKeys.menu.items : queryKeys.menu.sauces 
       });
-      toast({ title: "Success", description: `${variables.type === 'menu' ? 'Menu item' : 'Sauce'} created successfully` });
+      toast({ 
+        title: "Success", 
+        description: `${variables.type === 'menu' ? 'Menu item' : 'Sauce'} created successfully` 
+      });
       setIsEditing(false);
     },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ type, id, formData }: { type: 'menu' | 'sauce', id: number, formData: FormData }) => {
+    mutationFn: async ({ type, id, data }: { type: 'menu' | 'sauce', id: number, data: FormData }) => {
       const response = await fetch(`/api/menu/${type === 'menu' ? 'items' : 'sauces'}/${id}`, {
         method: "PUT",
-        body: formData,
+        body: data,
       });
       if (!response.ok) throw new Error(`Failed to update ${type}`);
       return response.json();
@@ -80,9 +72,19 @@ export default function AdminMenuPage() {
       queryClient.invalidateQueries({ 
         queryKey: variables.type === 'menu' ? queryKeys.menu.items : queryKeys.menu.sauces 
       });
-      toast({ title: "Success", description: `${variables.type === 'menu' ? 'Menu item' : 'Sauce'} updated successfully` });
+      toast({ 
+        title: "Success", 
+        description: `${variables.type === 'menu' ? 'Menu item' : 'Sauce'} updated successfully` 
+      });
       setIsEditing(false);
     },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   });
 
   const deleteMutation = useMutation({
@@ -96,8 +98,18 @@ export default function AdminMenuPage() {
       queryClient.invalidateQueries({ 
         queryKey: variables.type === 'menu' ? queryKeys.menu.items : queryKeys.menu.sauces 
       });
-      toast({ title: "Success", description: `${variables.type === 'menu' ? 'Menu item' : 'Sauce'} deleted successfully` });
+      toast({ 
+        title: "Success", 
+        description: `${variables.type === 'menu' ? 'Menu item' : 'Sauce'} deleted successfully` 
+      });
     },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   });
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -109,11 +121,11 @@ export default function AdminMenuPage() {
         await updateMutation.mutateAsync({ 
           type: editingItem.type, 
           id: editingItem.id, 
-          formData 
+          data: formData 
         });
       } else {
         const type = formData.get('type') as 'menu' | 'sauce';
-        await createMutation.mutateAsync({ type, formData });
+        await createMutation.mutateAsync({ type, data: formData });
       }
       setEditingItem(null);
     } catch (error) {
@@ -173,7 +185,7 @@ export default function AdminMenuPage() {
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
-                          variant="outline"
+                          variant="destructive"
                           size="sm"
                           onClick={() => {
                             if (confirm('Are you sure you want to delete this item?')) {
@@ -204,6 +216,7 @@ export default function AdminMenuPage() {
                     <div className="space-y-2">
                       <h3 className="font-semibold">{sauce.name}</h3>
                       <p className="text-sm text-gray-600">{sauce.description}</p>
+                      <p className="font-medium">Rp {sauce.price.toLocaleString()}</p>
                       <div className="flex gap-2">
                         <Button
                           variant="outline"
@@ -216,7 +229,7 @@ export default function AdminMenuPage() {
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
-                          variant="outline"
+                          variant="destructive"
                           size="sm"
                           onClick={() => {
                             if (confirm('Are you sure you want to delete this sauce?')) {
@@ -274,17 +287,15 @@ export default function AdminMenuPage() {
                   required
                 />
               </div>
-              {(!editingItem || editingItem.type === 'menu') && (
-                <div>
-                  <Input
-                    type="number"
-                    name="price"
-                    placeholder="Price"
-                    defaultValue={editingItem?.type === 'menu' ? editingItem.price : ''}
-                    required={!editingItem || editingItem.type === 'menu'}
-                  />
-                </div>
-              )}
+              <div>
+                <Input
+                  type="number"
+                  name="price"
+                  placeholder="Price"
+                  defaultValue={editingItem?.price}
+                  required
+                />
+              </div>
               <div>
                 <Input
                   type="file"
@@ -292,8 +303,25 @@ export default function AdminMenuPage() {
                   accept="image/*"
                 />
               </div>
-              <Button type="submit">
-                {editingItem ? 'Update' : 'Create'}
+              {!editingItem && (
+                <div>
+                  <Input
+                    name="category"
+                    placeholder="Category"
+                    defaultValue={editingItem?.category}
+                    required
+                  />
+                </div>
+              )}
+              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                {(createMutation.isPending || updateMutation.isPending) ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {editingItem ? 'Updating...' : 'Creating...'}
+                  </>
+                ) : (
+                  editingItem ? 'Update' : 'Create'
+                )}
               </Button>
             </form>
           </SheetContent>

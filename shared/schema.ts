@@ -9,6 +9,8 @@ export const menuItems = pgTable("menu_items", {
   price: integer("price").notNull(),
   imageUrl: text("image_url").notNull(),
   category: text("category").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 export const sauces = pgTable("sauces", {
@@ -18,6 +20,8 @@ export const sauces = pgTable("sauces", {
   price: integer("price").notNull(),
   imageUrl: text("image_url").notNull(),
   category: text("category").notNull().default('sauce'),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 export const users = pgTable("users", {
@@ -46,8 +50,17 @@ export const footer = pgTable('footer',{
     phone: text('phone').notNull()
 });
 
-export const insertMenuItemSchema = createInsertSchema(menuItems);
-export const insertSauceSchema = createInsertSchema(sauces);
+export const insertMenuItemSchema = createInsertSchema(menuItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSauceSchema = createInsertSchema(sauces).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
 
 export const insertUserSchema = createInsertSchema(users)
   .pick({
