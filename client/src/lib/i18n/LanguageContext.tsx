@@ -1,21 +1,37 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import { Language, translations } from './translations';
 
 type LanguageContextType = {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguage] = useState<Language>('id');
+// Get initial language from localStorage or default to 'id'
+const getInitialLanguage = (): Language => {
+  if (typeof window !== 'undefined') {
+    const savedLanguage = localStorage.getItem('language');
+    if (savedLanguage === 'en' || savedLanguage === 'id') {
+      return savedLanguage;
+    }
+  }
+  return 'id';
+};
 
-  const t = (path: string) => {
+export function LanguageProvider({ children }: { children: React.ReactNode }) {
+  const [language, setLanguage] = useState<Language>(getInitialLanguage);
+
+  // Persist language choice
+  useEffect(() => {
+    localStorage.setItem('language', language);
+  }, [language]);
+
+  const t = (path: string, params?: Record<string, string | number>): string => {
     const keys = path.split('.');
     let current: any = translations[language];
-    
+
     for (const key of keys) {
       if (current[key] === undefined) {
         console.warn(`Translation missing for key: ${path}`);
@@ -23,7 +39,13 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       }
       current = current[key];
     }
-    
+
+    if (typeof current === 'string' && params) {
+      return Object.entries(params).reduce((str, [key, value]) => {
+        return str.replace(`{${key}}`, String(value));
+      }, current);
+    }
+
     return current;
   };
 
