@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Image as ImageIcon } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import AdminNavbar from "@/components/layout/admin-navbar";
+import type { InsertAboutPage } from "@shared/schema";
 
 type FeatureCard = {
   id: string;
@@ -15,14 +16,7 @@ type FeatureCard = {
   imageUrl: string;
 };
 
-type AboutContent = {
-  title: string;
-  description: string;
-  whyChooseTitle: string;
-  whyChooseDescription: string;
-  mainImage: string;
-  features: FeatureCard[];
-};
+type AboutContent = InsertAboutPage;
 
 export default function AboutEditor() {
   const { toast } = useToast();
@@ -41,11 +35,14 @@ export default function AboutEditor() {
     ],
   });
 
-  const { data: aboutData, isLoading: dataLoading, isError } = useQuery<AboutContent>({
+  const { data: aboutData, isLoading: dataLoading, error: fetchError } = useQuery({
     queryKey: ["/api/pages/about"],
     queryFn: async () => {
       const response = await fetch("/api/pages/about");
-      if (!response.ok) throw new Error("Failed to fetch about content");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to fetch about content");
+      }
       return response.json();
     },
   });
@@ -60,16 +57,26 @@ export default function AboutEditor() {
     mutationFn: async (formData: AboutContent) => {
       const response = await fetch("/api/pages/about", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(formData),
-        credentials: "include"
+        credentials: "include",
       });
-      if (!response.ok) throw new Error("Failed to update about page");
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update about page");
+      }
+
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/pages/about"] });
-      toast({ title: "Success", description: "About page updated successfully" });
+      toast({ 
+        title: "Success", 
+        description: "About page updated successfully" 
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -86,17 +93,25 @@ export default function AboutEditor() {
     setContent({ ...content, features: newFeatures });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.title.trim() || !content.description.trim()) {
+
+    // Validate required fields
+    if (!content.title.trim()) {
       toast({
         title: "Validation Error",
-        description: "Title and description are required",
+        description: "Title is required",
         variant: "destructive",
       });
       return;
     }
-    updateMutation.mutate(content);
+
+    try {
+      await updateMutation.mutateAsync(content);
+    } catch (error) {
+      // Error is handled by mutation error callback
+      console.error("Submission error:", error);
+    }
   };
 
   if (dataLoading) {
@@ -107,10 +122,12 @@ export default function AboutEditor() {
     );
   }
 
-  if (isError) {
+  if (fetchError) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-red-500">Error loading about page content</div>
+        <div className="text-red-500">
+          Error loading about page content: {fetchError instanceof Error ? fetchError.message : "Unknown error"}
+        </div>
       </div>
     );
   }

@@ -1,6 +1,8 @@
 import express from "express";
 import { storage } from "../storage";
 import { insertAboutPageSchema } from "@shared/schema";
+import { fromZodError } from "zod-validation-error";
+import { requireAuth } from "../auth";
 
 const router = express.Router();
 
@@ -8,7 +10,20 @@ router.get("/api/pages/about", async (req, res) => {
   try {
     const aboutContent = await storage.getAboutPage();
     if (!aboutContent) {
-      return res.status(404).json({ error: "About page content not found" });
+      // Return a default structure if no content exists
+      return res.json({
+        title: "About Dapur Dekaka",
+        description: "",
+        whyChooseTitle: "Why Choose Us",
+        whyChooseDescription: "",
+        mainImage: "",
+        features: [
+          { id: "premium", title: "", description: "", imageUrl: "" },
+          { id: "handmade", title: "", description: "", imageUrl: "" },
+          { id: "halal", title: "", description: "", imageUrl: "" },
+          { id: "preservative", title: "", description: "", imageUrl: "" },
+        ],
+      });
     }
     res.json(aboutContent);
   } catch (error) {
@@ -17,14 +32,23 @@ router.get("/api/pages/about", async (req, res) => {
   }
 });
 
-router.put("/api/pages/about", async (req, res) => {
+router.put("/api/pages/about", requireAuth, async (req, res) => {
   try {
-    const parsed = insertAboutPageSchema.parse(req.body);
-    const updatedContent = await storage.updateAboutPage(parsed);
+    const validation = insertAboutPageSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: fromZodError(validation.error).message 
+      });
+    }
+
+    const updatedContent = await storage.updateAboutPage(validation.data);
     res.json(updatedContent);
   } catch (error) {
     console.error("Error updating about page:", error);
-    res.status(500).json({ error: "Failed to update about page content" });
+    res.status(500).json({ 
+      error: "Failed to update about page content",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
   }
 });
 
