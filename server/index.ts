@@ -1,13 +1,13 @@
+// Force development mode and set Vite configuration
+process.env.NODE_ENV = 'development';
+process.env.VITE_ALLOW_HOSTS = 'all'; // This will be used in Vite config
+
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import path from "path";
 import { createServer } from 'http';
 import fs from 'fs';
-
-// Force development mode and set Vite configuration
-process.env.NODE_ENV = 'development';
-process.env.VITE_ALLOW_HOSTS = 'all'; // This will be used in Vite config
 
 const app = express();
 app.use(express.json());
@@ -28,12 +28,60 @@ const createRequiredDirectories = async () => {
   }
 };
 
+const tryBindPort = async (port: number, maxRetries = 3): Promise<number> => {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const currentPort = port + attempt;
+    const testServer = createServer();
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        testServer.once('error', (err: any) => {
+          if (err.code === 'EADDRINUSE') {
+            console.log(`[Server] Port ${currentPort} is in use, trying next port...`);
+            resolve(); // Continue to next attempt
+          } else {
+            reject(err);
+          }
+        });
+
+        testServer.once('listening', () => {
+          console.log(`[Server] Found available port: ${currentPort}`);
+          resolve();
+        });
+
+        testServer.listen(currentPort, '0.0.0.0');
+      });
+
+      // Properly close the test server
+      await new Promise<void>((resolve) => {
+        testServer.close(() => {
+          console.log(`[Server] Test server closed on port ${currentPort}`);
+          resolve();
+        });
+      });
+
+      // Add a longer delay after finding an available port
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      return currentPort;
+    } catch (error) {
+      await new Promise<void>((resolve) => {
+        testServer.close(() => resolve());
+      });
+
+      if (attempt === maxRetries - 1) {
+        throw new Error(`Failed to find available port after ${maxRetries} attempts`);
+      }
+    }
+  }
+  throw new Error('Failed to bind to any port');
+};
+
 const startServer = async () => {
   try {
     console.log('[Startup] Beginning server initialization...');
     // Default to port 5000 as it seems to be required by the environment
-    const PORT = parseInt(process.env.PORT || '5000', 10);
-    console.log(`[Startup] Using port: ${PORT}`);
+    const basePort = parseInt(process.env.PORT || '5000', 10);
+    console.log(`[Startup] Using base port: ${basePort}`);
 
     // Create required directories first
     await createRequiredDirectories();
@@ -42,6 +90,10 @@ const startServer = async () => {
     app.get('/test', (_req, res) => {
       res.json({ status: 'Server is running' });
     });
+
+    // Find an available port
+    const port = await tryBindPort(basePort);
+    console.log(`[Server] Successfully found available port: ${port}`);
 
     // Create server instance
     server = registerRoutes(app);
@@ -54,36 +106,15 @@ const startServer = async () => {
       res.status(status).json({ message });
     });
 
-    // Test if port is in use
-    const testServer = createServer();
-    await new Promise<void>((resolve, reject) => {
-      testServer.once('error', (err: any) => {
-        if (err.code === 'EADDRINUSE') {
-          console.error(`[Server] Port ${PORT} is already in use`);
-          testServer.close();
-          reject(new Error(`Port ${PORT} is already in use`));
-        } else {
-          reject(err);
-        }
-      });
-
-      testServer.once('listening', () => {
-        console.log(`[Server] Port ${PORT} is available`);
-        testServer.close(() => resolve());
-      });
-
-      testServer.listen(PORT, '0.0.0.0');
-    });
-
     // Start the actual server
     await new Promise<void>((resolve, reject) => {
-      server.listen(PORT, "0.0.0.0", async (error?: Error) => {
+      server.listen(port, "0.0.0.0", async (error?: Error) => {
         if (error) {
           console.error(`[Server] Failed to start:`, error);
           reject(error);
           return;
         }
-        console.log(`[Server] Successfully bound to port ${PORT}`);
+        console.log(`[Server] Successfully bound to port ${port}`);
         resolve();
       });
     });
