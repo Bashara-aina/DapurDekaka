@@ -4,10 +4,11 @@ import { storage } from "../storage";
 import { insertAboutPageSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { requireAuth } from "../auth";
+import cors from "cors";
 
 const router = express.Router();
 
-router.get("/api/pages/about", async (req, res) => {
+router.get("/api/pages/about", cors(), async (req, res) => {
   try {
     res.setHeader('Content-Type', 'application/json');
     const aboutContent = await storage.getAboutPage();

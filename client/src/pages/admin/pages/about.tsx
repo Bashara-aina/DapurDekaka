@@ -39,17 +39,23 @@ export default function AboutEditor() {
     queryKey: ["/api/pages/about"],
     queryFn: async () => {
       try {
-        const response = await fetch("/api/pages/about");
-        if (!response.ok) {
-          const text = await response.text();
-          try {
-            const error = JSON.parse(text);
-            throw new Error(error.error || "Failed to fetch about content");
-          } catch {
-            console.error("Server response:", text);
-            throw new Error("Failed to fetch about content");
-          }
+        const response = await fetch("/api/pages/about", {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        const contentType = response.headers.get("content-type");
+        if (!contentType?.includes("application/json")) {
+          throw new Error("Server returned non-JSON response");
         }
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to fetch about content");
+        }
+
         return response.json();
       } catch (error) {
         console.error("Fetch error:", error);
