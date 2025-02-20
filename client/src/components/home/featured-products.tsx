@@ -87,11 +87,11 @@ export default function FeaturedProducts() {
               transition={{ duration: 0.2 }}
             >
               <Card className="h-full flex flex-col">
-                <div className="aspect-square relative overflow-hidden">
+                <div className="relative w-full pt-[100%]">
                   <img
                     src={item.imageUrl}
                     alt={item.name}
-                    className="absolute inset-0 w-full h-full object-cover rounded-t-lg"
+                    className="absolute inset-0 w-full h-full object-cover object-center rounded-t-lg"
                   />
                 </div>
                 <CardFooter className="flex flex-col items-start gap-2 p-4 h-[160px]">
