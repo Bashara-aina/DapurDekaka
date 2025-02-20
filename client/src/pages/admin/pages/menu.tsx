@@ -13,7 +13,15 @@ import { queryKeys, apiRequest } from "@/lib/queryClient";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
-type EditingItem = (MenuItem | Sauce) & { type: 'menu' | 'sauce' };
+type EditingItem = {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  imageUrl: string;
+  category: string;
+  type: 'menu' | 'sauce';
+};
 
 export default function AdminMenuPage() {
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
@@ -37,7 +45,10 @@ export default function AdminMenuPage() {
         method: "POST",
         body: data,
       });
-      if (!response.ok) throw new Error(`Failed to create ${type}`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || `Failed to create ${type}`);
+      }
       return response.json();
     },
     onSuccess: (_, variables) => {
@@ -65,7 +76,10 @@ export default function AdminMenuPage() {
         method: "PUT",
         body: data,
       });
-      if (!response.ok) throw new Error(`Failed to update ${type}`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || `Failed to update ${type}`);
+      }
       return response.json();
     },
     onSuccess: (_, variables) => {
@@ -77,31 +91,7 @@ export default function AdminMenuPage() {
         description: `${variables.type === 'menu' ? 'Menu item' : 'Sauce'} updated successfully` 
       });
       setIsEditing(false);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async ({ type, id }: { type: 'menu' | 'sauce', id: number }) => {
-      const response = await fetch(`/api/menu/${type === 'menu' ? 'items' : 'sauces'}/${id}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) throw new Error(`Failed to delete ${type}`);
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ 
-        queryKey: variables.type === 'menu' ? queryKeys.menu.items : queryKeys.menu.sauces 
-      });
-      toast({ 
-        title: "Success", 
-        description: `${variables.type === 'menu' ? 'Menu item' : 'Sauce'} deleted successfully` 
-      });
+      setEditingItem(null);
     },
     onError: (error: Error) => {
       toast({
@@ -116,18 +106,52 @@ export default function AdminMenuPage() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
 
+    // Validate required fields
+    const name = formData.get('name');
+    const description = formData.get('description');
+    const price = formData.get('price');
+    const category = formData.get('category');
+    const image = formData.get('image');
+    const type = formData.get('type') as 'menu' | 'sauce';
+
+    if (!name || !description || !price || !category) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       if (editingItem) {
+        const data = new FormData();
+        data.append('name', name as string);
+        data.append('description', description as string);
+        data.append('price', price as string);
+        data.append('category', category as string);
+        if (image instanceof File && image.size > 0) {
+          data.append('image', image);
+        } else {
+          data.append('imageUrl', editingItem.imageUrl);
+        }
+
         await updateMutation.mutateAsync({ 
           type: editingItem.type, 
           id: editingItem.id, 
-          data: formData 
+          data 
         });
       } else {
-        const type = formData.get('type') as 'menu' | 'sauce';
+        if (!image || !(image instanceof File) || image.size === 0) {
+          toast({
+            title: "Error",
+            description: "Please select an image",
+            variant: "destructive"
+          });
+          return;
+        }
         await createMutation.mutateAsync({ type, data: formData });
       }
-      setEditingItem(null);
     } catch (error) {
       console.error('Error:', error);
     }
@@ -301,19 +325,27 @@ export default function AdminMenuPage() {
                   type="file"
                   name="image"
                   accept="image/*"
+                  className="cursor-pointer"
+                />
+                {editingItem && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Leave empty to keep the current image
+                  </p>
+                )}
+              </div>
+              <div>
+                <Input
+                  name="category"
+                  placeholder="Category"
+                  defaultValue={editingItem?.category || 'dimsum'}
+                  required
                 />
               </div>
-              {!editingItem && (
-                <div>
-                  <Input
-                    name="category"
-                    placeholder="Category"
-                    defaultValue={editingItem?.category}
-                    required
-                  />
-                </div>
-              )}
-              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+              <Button 
+                type="submit" 
+                disabled={createMutation.isPending || updateMutation.isPending}
+                className="w-full"
+              >
                 {(createMutation.isPending || updateMutation.isPending) ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
