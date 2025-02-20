@@ -2,69 +2,43 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import path from "path";
-import fs from 'fs';
-import { storage } from "./storage";
 import { createServer } from 'http';
+import fs from 'fs';
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Serve static files with proper cache headers
-const staticFileOptions = {
-  setHeaders: (res: Response) => {
-    res.set('Cache-Control', 'public, max-age=31536000');
-    res.set('Access-Control-Allow-Origin', '*');
-  },
-  fallthrough: false
-};
+let server: any = null;
 
-// Create required directories
 const createRequiredDirectories = async () => {
-  const dirs = ['uploads', 'image', 'logo'];
+  const dirs = ['uploads', 'image', 'logo', 'public'];
   for (const dir of dirs) {
     const dirPath = path.join(process.cwd(), dir);
     try {
       await fs.promises.mkdir(dirPath, { recursive: true });
       console.log(`[Directory] Created/verified: ${dir}`);
     } catch (error) {
-      if ((error as any).code !== 'EEXIST') {
-        console.error(`[Directory] Error creating ${dir}:`, error);
-        throw error;
-      }
+      console.error(`[Directory] Error creating ${dir}:`, error);
     }
   }
 };
 
-// Initialize menu items and database content
-const initializeContent = async () => {
-  try {
-    console.log('[Database] Starting data initialization...');
-    await storage.getAllMenuItems();
-    console.log('[Database] Data initialization complete');
-  } catch (error) {
-    console.error('[Database] Initialization error:', error);
-    // Continue running the server even if initialization fails
-    console.log('[Database] Continuing despite initialization error');
-  }
-};
-
-let server: any = null;
-
 const startServer = async () => {
   try {
     console.log('[Startup] Beginning server initialization...');
+    const PORT = parseInt(process.env.PORT || '3000', 10); // Changed to port 3000
 
-    // Get port from environment variable or default to 5000
-    const PORT = parseInt(process.env.PORT || '5000', 10);
+    // Create required directories first
+    await createRequiredDirectories();
 
-    // Create server instance first
+    // Add a test endpoint
+    app.get('/test', (_req, res) => {
+      res.json({ status: 'Server is running' });
+    });
+
+    // Create server instance
     server = registerRoutes(app);
-
-    // Setup middleware before starting server
-    app.use("/image", express.static(path.join(process.cwd(), 'image'), staticFileOptions));
-    app.use("/logo", express.static(path.join(process.cwd(), 'logo'), staticFileOptions));
-    app.use("/uploads", express.static(path.join(process.cwd(), 'uploads'), staticFileOptions));
 
     // Global error handler
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -74,39 +48,56 @@ const startServer = async () => {
       res.status(status).json({ message });
     });
 
-    // Start server immediately
+    // Test if port is in use
+    const testServer = createServer();
     await new Promise<void>((resolve, reject) => {
-      server.listen(PORT, "0.0.0.0", (error?: Error) => {
+      testServer.once('error', (err: any) => {
+        if (err.code === 'EADDRINUSE') {
+          console.error(`[Server] Port ${PORT} is already in use`);
+          testServer.close();
+          reject(new Error(`Port ${PORT} is already in use`));
+        } else {
+          reject(err);
+        }
+      });
+
+      testServer.once('listening', () => {
+        testServer.close(() => resolve());
+      });
+
+      testServer.listen(PORT, '0.0.0.0');
+    });
+
+    // Start the actual server
+    await new Promise<void>((resolve, reject) => {
+      server.listen(PORT, "0.0.0.0", async (error?: Error) => {
         if (error) {
-          console.error(`[Server] Failed to start on port ${PORT}:`, error);
+          console.error(`[Server] Failed to start:`, error);
           reject(error);
           return;
         }
-        log(`[Server] Running on port ${PORT}`);
+        console.log(`[Server] Successfully bound to port ${PORT}`);
         resolve();
       });
     });
 
-    // Setup Vite or static serving after server is running
+    // If server started successfully, setup middleware
+    console.log('[Server] Setting up middleware...');
     if (process.env.NODE_ENV === 'development') {
-      console.log('[Middleware] Setting up Vite development middleware');
       await setupVite(app, server);
     } else {
-      console.log('[Middleware] Setting up static file serving');
       try {
         serveStatic(app);
       } catch (error) {
-        console.log('[Middleware] Static serving failed, falling back to Vite middleware');
+        console.log('[Server] Falling back to development mode due to static serving error');
         await setupVite(app, server);
       }
     }
 
-    // Initialize directories and content after server is running
-    await createRequiredDirectories();
-    await initializeContent();
+    log(`[Server] Running and ready to accept connections`);
 
   } catch (error) {
-    console.error('[Startup] Failed:', error);
+    console.error('[Startup] Fatal error:', error);
     process.exit(1);
   }
 };
@@ -119,11 +110,9 @@ const stopServer = () => {
   }
 };
 
-// Handle graceful shutdown
 process.on('SIGTERM', stopServer);
 process.on('SIGINT', stopServer);
 
-// Start the server
 console.log('[Process] Starting server process...');
 startServer().catch((error) => {
   console.error('[Process] Fatal error:', error);
