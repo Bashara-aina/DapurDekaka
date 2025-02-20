@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,27 +7,30 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import AdminNavbar from "@/components/layout/admin-navbar";
 
+type FooterContent = {
+  address: string;
+  phone: string;
+};
+
 export default function FooterEditor() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
 
-  const { data: footerData, isLoading } = useQuery({
+  const { data: footerData, isLoading } = useQuery<FooterContent>({
     queryKey: ["/api/pages/footer"],
-    queryFn: async () => {
-      const response = await fetch("/api/pages/footer");
-      if (!response.ok) throw new Error("Failed to fetch footer content");
-      return response.json();
-    },
-    onSuccess: (data) => {
-      setAddress(data.address || "");
-      setPhone(data.phone || "");
-    }
   });
 
+  useEffect(() => {
+    if (footerData) {
+      setAddress(footerData.address || "");
+      setPhone(footerData.phone || "");
+    }
+  }, [footerData]);
+
   const updateMutation = useMutation({
-    mutationFn: async (formData: { address: string; phone: string }) => {
+    mutationFn: async (formData: FooterContent) => {
       const response = await fetch("/api/pages/footer", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -57,7 +59,11 @@ export default function FooterEditor() {
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
   return (

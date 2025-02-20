@@ -19,6 +19,8 @@ import AdminPages from "@/pages/admin/pages";
 import AdminMenuPage from "@/pages/admin/pages/menu";
 import AdminDashboard from "@/pages/admin/index";
 import HomePageEditor from "@/pages/admin/pages/home";
+import AboutPageEditor from "@/pages/admin/pages/about";
+import FooterEditor from "@/pages/admin/pages/footer";
 
 function Router() {
   return (
@@ -98,6 +100,10 @@ function Router() {
                 return <AdminMenuPage />;
               case 'home':
                 return <HomePageEditor />;
+              case 'about':
+                return <AboutPageEditor />;
+              case 'footer':
+                return <FooterEditor />;
               default:
                 return <div className="container mx-auto p-6">
                   <h1 className="text-3xl font-bold mb-6">Edit {params.pageId.charAt(0).toUpperCase() + params.pageId.slice(1)} Page</h1>

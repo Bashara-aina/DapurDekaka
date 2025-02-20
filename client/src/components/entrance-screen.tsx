@@ -20,7 +20,7 @@ export default function EntranceSection() {
   const { t } = useLanguage();
 
   const { data: pageData } = useQuery({
-    queryKey: queryKeys.homepage,
+    queryKey: ["/api/pages/homepage"],
     queryFn: async () => {
       const response = await fetch('/api/pages/homepage', {
         headers: {
