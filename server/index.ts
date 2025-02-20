@@ -1,6 +1,6 @@
 // Force development mode and set Vite configuration
 process.env.NODE_ENV = 'development';
-process.env.PORT = '5000'; // Explicitly set port for Replit
+process.env.PORT = '5000'; // Use Replit's default port
 
 // Remove VITE_ALLOW_HOSTS as it's handled internally by Vite configuration
 delete process.env.VITE_ALLOW_HOSTS;
@@ -31,20 +31,73 @@ const createRequiredDirectories = async () => {
   }
 };
 
+const cleanupServer = () => {
+  return new Promise<void>((resolve) => {
+    if (server) {
+      console.log('[Server] Cleaning up existing server...');
+      server.close(() => {
+        console.log('[Server] Existing server closed');
+        server = null;
+        resolve();
+      });
+    } else {
+      resolve();
+    }
+  });
+};
+
+const startServerWithRetry = async (port: number, retries = 3, delay = 1000): Promise<void> => {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      console.log(`[Server] Starting attempt ${attempt}/${retries}...`);
+
+      // Create a new server instance
+      server = createServer(app);
+
+      await new Promise<void>((resolve, reject) => {
+        server.listen(port, "0.0.0.0", (error?: Error) => {
+          if (error) {
+            console.error('[Server] Failed to start Express:', error);
+            reject(error);
+            return;
+          }
+          console.log(`[Server] Express server started successfully on port ${port}`);
+          resolve();
+        });
+      });
+
+      // If we get here, server started successfully
+      return;
+    } catch (error) {
+      console.error(`[Server] Attempt ${attempt} failed:`, error);
+
+      // Clean up the failed server instance
+      await cleanupServer();
+
+      if (attempt === retries) {
+        throw error;
+      }
+
+      // Wait before retrying
+      console.log(`[Server] Waiting ${delay}ms before retry...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+};
+
 const startServer = async () => {
   const startTime = Date.now();
   try {
     console.log('[Startup] Beginning server initialization...');
     console.log(`[Startup] Current NODE_ENV: ${process.env.NODE_ENV}`);
 
-    // Use the explicitly set port
     const port = parseInt(process.env.PORT || '5000', 10);
     console.log(`[Startup] Using port: ${port}`);
 
-    // Create required directories first
+    // Create required directories
     await createRequiredDirectories();
 
-    // Add a test endpoint to verify basic Express functionality
+    // Add test endpoint
     app.get('/test', (_req, res) => {
       res.json({
         status: 'Server is running',
@@ -63,56 +116,24 @@ const startServer = async () => {
       res.status(status).json({ message });
     });
 
-    // Start the server with retry logic
-    let serverStarted = false;
-    for (let attempt = 1; attempt <= 3 && !serverStarted; attempt++) {
-      try {
-        console.log(`[Server] Starting attempt ${attempt}/3...`);
+    // Ensure clean state before starting
+    await cleanupServer();
 
-        await new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            reject(new Error('Server startup timed out'));
-          }, 30000);
+    // Start Express server with retry mechanism
+    await startServerWithRetry(port);
 
-          server.listen(port, "0.0.0.0", (error?: Error) => {
-            clearTimeout(timeout);
-            if (error) {
-              console.error(`[Server] Failed to start (attempt ${attempt}):`, error);
-              reject(error);
-              return;
-            }
-            serverStarted = true;
-            const duration = Date.now() - startTime;
-            console.log(`[Server] Successfully bound to port ${port} (${duration}ms)`);
-            resolve();
-          });
-        });
-
-        if (serverStarted) break;
-      } catch (error) {
-        if (attempt === 3) {
-          throw error;
-        }
-        console.log(`[Server] Retrying server start in 2 seconds...`);
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
+    // Setup Vite middleware after Express is running
+    console.log('[Server] Setting up Vite middleware...');
+    try {
+      await setupVite(app, server);
+      console.log('[Server] Vite middleware setup complete');
+    } catch (error) {
+      console.error('[Server] Error setting up Vite middleware:', error);
+      // Don't exit on Vite error, continue with basic Express functionality
     }
 
-    // Only setup Vite if Express server started successfully
-    if (serverStarted) {
-      // Temporarily commenting out Vite setup to isolate Express functionality
-      // console.log('[Server] Setting up Vite middleware...');
-      // try {
-      //   await setupVite(app, server);
-      //   console.log('[Server] Vite middleware setup complete');
-      // } catch (error) {
-      //   console.error('[Server] Error setting up Vite middleware:', error);
-      //   process.exit(1);
-      // }
-
-      const totalDuration = Date.now() - startTime;
-      log(`[Server] Running and ready to accept connections (total startup: ${totalDuration}ms)`);
-    }
+    const totalDuration = Date.now() - startTime;
+    log(`[Server] Running and ready to accept connections (total startup: ${totalDuration}ms)`);
 
   } catch (error) {
     const duration = Date.now() - startTime;
@@ -126,6 +147,7 @@ const stopServer = () => {
     console.log('[Server] Initiating graceful shutdown...');
     server.close(() => {
       console.log('[Server] Stopped gracefully');
+      process.exit(0);
     });
   }
 };
