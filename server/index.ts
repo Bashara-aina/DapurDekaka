@@ -1,6 +1,9 @@
 // Force development mode and set Vite configuration
 process.env.NODE_ENV = 'development';
-process.env.VITE_ALLOW_HOSTS = 'true'; // Changed from 'all' to 'true' to match Vite's type expectations
+process.env.PORT = '5000'; // Explicitly set port for Replit
+
+// Remove VITE_ALLOW_HOSTS as it's handled internally by Vite configuration
+delete process.env.VITE_ALLOW_HOSTS;
 
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
@@ -28,61 +31,15 @@ const createRequiredDirectories = async () => {
   }
 };
 
-const findAvailablePort = async (startPort: number, maxAttempts = 5): Promise<number> => {
-  console.log(`[Port] Environment PORT=${process.env.PORT}`);
-  console.log(`[Port] Starting port search from ${startPort}`);
-
-  for (let port = startPort; port < startPort + maxAttempts; port++) {
-    const startTime = Date.now();
-    console.log(`[Port] Attempt ${port - startPort + 1}/${maxAttempts}: Testing port ${port}`);
-
-    try {
-      const testServer = createServer();
-
-      await new Promise<void>((resolve, reject) => {
-        testServer.once('error', (err: any) => {
-          if (err.code === 'EADDRINUSE') {
-            const duration = Date.now() - startTime;
-            console.log(`[Port] Port ${port} is in use (${duration}ms)`);
-            testServer.close();
-            resolve();
-          } else {
-            console.error(`[Port] Unexpected error testing port ${port}:`, err);
-            reject(err);
-          }
-        });
-
-        testServer.once('listening', () => {
-          const duration = Date.now() - startTime;
-          console.log(`[Port] Successfully bound to port ${port} (${duration}ms)`);
-          testServer.close(() => resolve());
-        });
-
-        console.log(`[Port] Attempting to bind to port ${port}...`);
-        testServer.listen(port, '0.0.0.0');
-      });
-
-      const totalDuration = Date.now() - startTime;
-      console.log(`[Port] Port ${port} test completed in ${totalDuration}ms`);
-      return port;
-    } catch (error) {
-      const duration = Date.now() - startTime;
-      console.error(`[Port] Error testing port ${port} (${duration}ms):`, error);
-      continue;
-    }
-  }
-  throw new Error(`Could not find an available port after ${maxAttempts} attempts`);
-};
-
 const startServer = async () => {
   const startTime = Date.now();
   try {
     console.log('[Startup] Beginning server initialization...');
     console.log(`[Startup] Current NODE_ENV: ${process.env.NODE_ENV}`);
 
-    // Start with port 3000 to avoid common conflicts
-    const basePort = parseInt(process.env.PORT || '3000', 10);
-    console.log(`[Startup] Using base port: ${basePort}`);
+    // Use the explicitly set port
+    const port = parseInt(process.env.PORT || '5000', 10);
+    console.log(`[Startup] Using port: ${port}`);
 
     // Create required directories first
     await createRequiredDirectories();
@@ -95,10 +52,6 @@ const startServer = async () => {
       });
     });
 
-    // Find an available port
-    const port = await findAvailablePort(basePort);
-    console.log(`[Server] Found available port: ${port}`);
-
     // Create server instance
     server = registerRoutes(app);
 
@@ -110,37 +63,56 @@ const startServer = async () => {
       res.status(status).json({ message });
     });
 
-    // Start the server with increased timeout
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Server startup timed out'));
-      }, 30000); // 30 second timeout
+    // Start the server with retry logic
+    let serverStarted = false;
+    for (let attempt = 1; attempt <= 3 && !serverStarted; attempt++) {
+      try {
+        console.log(`[Server] Starting attempt ${attempt}/3...`);
 
-      server.listen(port, "0.0.0.0", async (error?: Error) => {
-        clearTimeout(timeout);
-        if (error) {
-          console.error(`[Server] Failed to start:`, error);
-          reject(error);
-          return;
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error('Server startup timed out'));
+          }, 30000);
+
+          server.listen(port, "0.0.0.0", (error?: Error) => {
+            clearTimeout(timeout);
+            if (error) {
+              console.error(`[Server] Failed to start (attempt ${attempt}):`, error);
+              reject(error);
+              return;
+            }
+            serverStarted = true;
+            const duration = Date.now() - startTime;
+            console.log(`[Server] Successfully bound to port ${port} (${duration}ms)`);
+            resolve();
+          });
+        });
+
+        if (serverStarted) break;
+      } catch (error) {
+        if (attempt === 3) {
+          throw error;
         }
-        const duration = Date.now() - startTime;
-        console.log(`[Server] Successfully bound to port ${port} (${duration}ms)`);
-        resolve();
-      });
-    });
-
-    // Setup Vite middleware after server is running
-    console.log('[Server] Setting up middleware...');
-    try {
-      await setupVite(app, server);
-      console.log('[Server] Vite middleware setup complete');
-    } catch (error) {
-      console.error('[Server] Error setting up Vite middleware:', error);
-      process.exit(1);
+        console.log(`[Server] Retrying server start in 2 seconds...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
     }
 
-    const totalDuration = Date.now() - startTime;
-    log(`[Server] Running and ready to accept connections (total startup: ${totalDuration}ms)`);
+    // Only setup Vite if Express server started successfully
+    if (serverStarted) {
+      // Temporarily commenting out Vite setup to isolate Express functionality
+      // console.log('[Server] Setting up Vite middleware...');
+      // try {
+      //   await setupVite(app, server);
+      //   console.log('[Server] Vite middleware setup complete');
+      // } catch (error) {
+      //   console.error('[Server] Error setting up Vite middleware:', error);
+      //   process.exit(1);
+      // }
+
+      const totalDuration = Date.now() - startTime;
+      log(`[Server] Running and ready to accept connections (total startup: ${totalDuration}ms)`);
+    }
 
   } catch (error) {
     const duration = Date.now() - startTime;
@@ -151,12 +123,14 @@ const startServer = async () => {
 
 const stopServer = () => {
   if (server) {
+    console.log('[Server] Initiating graceful shutdown...');
     server.close(() => {
       console.log('[Server] Stopped gracefully');
     });
   }
 };
 
+// Ensure clean shutdown
 process.on('SIGTERM', stopServer);
 process.on('SIGINT', stopServer);
 
