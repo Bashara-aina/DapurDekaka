@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload } from "lucide-react";
 import AdminNavbar from "@/components/layout/admin-navbar";
 import type { PageContent } from "@shared/schema";
 
@@ -213,7 +213,10 @@ export default function AboutEditor() {
                     Saving...
                   </>
                 ) : (
-                  "Save Changes"
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Save Changes
+                  </>
                 )}
               </Button>
             </form>

@@ -55,6 +55,7 @@ export default function About() {
           </h1>
         </motion.div>
 
+        {/* Side by side main content */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -77,6 +78,7 @@ export default function About() {
           </div>
         </motion.div>
 
+        {/* Section with title and description */}
         {content?.sections.map((section, index) => (
           <motion.div
             key={index}
@@ -98,6 +100,7 @@ export default function About() {
           </motion.div>
         ))}
 
+        {/* Features grid */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -129,6 +132,7 @@ export default function About() {
           ))}
         </motion.div>
 
+        {/* Bottom tagline */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

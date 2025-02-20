@@ -92,9 +92,25 @@ export const insertBlogPostSchema = createInsertSchema(blogPosts)
 
 // New page content schema
 export const pageContentSchema = z.object({
-  content: z.record(z.unknown())
+  content: z.object({
+    title: z.string(),
+    description: z.string(),
+    mainImage: z.string(),
+    mainDescription: z.string(),
+    sections: z.array(z.object({
+      title: z.string(),
+      description: z.string()
+    })),
+    features: z.array(z.object({
+      id: z.string(),
+      title: z.string(),
+      description: z.string(),
+      image: z.string()
+    }))
+  })
 });
 
+// Keep existing type exports
 export type InsertMenuItem = z.infer<typeof insertMenuItemSchema>;
 export type MenuItem = typeof menuItems.$inferSelect;
 
