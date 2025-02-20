@@ -171,7 +171,7 @@ export default function AdminMenuPage() {
       <div className="container mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Menu Management</h1>
-          <Button onClick={() => setIsEditing(true)}>
+          <Button onClick={() => isAuthenticated ? setIsEditing(true) : setLocation('/auth')}>
             <Plus className="w-4 h-4 mr-2" />
             Add Item
           </Button>

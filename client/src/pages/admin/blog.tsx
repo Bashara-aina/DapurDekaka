@@ -46,9 +46,9 @@ export default function AdminBlogPage() {
   // Force redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      setLocation('/auth');
+      setIsEditing(false);
     }
-  }, [authLoading, isAuthenticated, setLocation]);
+  }, [authLoading, isAuthenticated]);
 
   // Query for fetching posts
   const { data: posts, isLoading: postsLoading } = useQuery<BlogPost[]>({
@@ -319,7 +319,9 @@ export default function AdminBlogPage() {
             </span>
           </div>
         </div>
-        <Button onClick={() => setIsEditing(true)}>
+        <Button 
+          onClick={() => isAuthenticated ? setIsEditing(true) : setLocation('/auth')}
+        >
           <Plus className="w-4 h-4 mr-2" />
           Create New Post
         </Button>
@@ -345,27 +347,31 @@ export default function AdminBlogPage() {
                   )}
                 </div>
                 <div className="flex gap-2 flex-shrink-0">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => {
-                      setEditingPost(post);
-                      setIsEditing(true);
-                    }}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => {
-                      if (confirm('Are you sure you want to delete this post?')) {
-                        deleteMutation.mutate(post.id);
-                      }
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {isAuthenticated && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => {
+                          setEditingPost(post);
+                          setIsEditing(true);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => {
+                          if (confirm('Are you sure you want to delete this post?')) {
+                            deleteMutation.mutate(post.id);
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             </Card>
