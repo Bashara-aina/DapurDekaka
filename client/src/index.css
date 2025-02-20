@@ -11,3 +11,21 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+.dimsum-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.dimsum-card .description {
+  flex-grow: 1;
+}
+
+.dimsum-card .pesan-button {
+  margin-top: auto;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
+}
