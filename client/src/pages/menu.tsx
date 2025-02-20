@@ -33,7 +33,6 @@ export default function Menu() {
         <h1 className="text-4xl font-bold text-gray-900 mb-4">
           {t("menu.title")}
         </h1>
-        <p className="text-lg text-gray-600">{t("menu.subtitle")}</p>
       </div>
 
       {/* Menu Items - 4 columns */}
