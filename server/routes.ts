@@ -20,13 +20,10 @@ declare module "express-session" {
 }
 
 export function registerRoutes(app: Express): Server {
-  console.log("[Routes] Starting route registration...");
-
   // Initialize menu items when the server starts
   initializeMenuItems();
 
   // Session middleware with secure settings
-  console.log("[Routes] Configuring session middleware...");
   app.use(
     session({
       secret: process.env.SESSION_SECRET || "your-secret-key",
@@ -39,19 +36,15 @@ export function registerRoutes(app: Express): Server {
       },
     })
   );
-  console.log("[Routes] Session middleware configured successfully");
 
   // Apply routers
-  console.log("[Routes] Registering API routes...");
   app.use("/api/menu", menuRouter);
   app.use("/api/blog", blogRouter);
   app.use("/api/pages", pagesRouter);
   app.use(contactRouter);
-  app.use("/api/about", aboutRouter);
-  console.log("[Routes] API routes registered successfully");
+  app.use("/api/about", aboutRouter); // Added aboutRouter
 
   // User routes
-  console.log("[Routes] Setting up authentication routes...");
   app.post("/api/register", async (req, res) => {
     try {
       const { username, email, password } = req.body;
@@ -79,7 +72,7 @@ export function registerRoutes(app: Express): Server {
       req.session.userId = newUser.id;
       res.status(201).json({ message: "User registered successfully" });
     } catch (error) {
-      console.error("[Routes] Registration error:", error);
+      console.error("Registration error:", error);
       res.status(500).json({ message: "Failed to register user" });
     }
   });
@@ -101,7 +94,7 @@ export function registerRoutes(app: Express): Server {
       req.session.userId = user.id;
       res.json({ message: "Logged in successfully" });
     } catch (error) {
-      console.error("[Routes] Login error:", error);
+      console.error("Login error:", error);
       res.status(500).json({ message: "Login failed" });
     }
   });
@@ -110,11 +103,7 @@ export function registerRoutes(app: Express): Server {
     res.json({ authenticated: true });
   });
 
-  console.log("[Routes] Authentication routes configured successfully");
-
   const httpServer = createServer(app);
-  console.log("[Routes] HTTP server created successfully");
-
   return httpServer;
 }
 
