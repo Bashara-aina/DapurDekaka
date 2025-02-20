@@ -1,3 +1,4 @@
+
 import { useRef } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
@@ -81,35 +82,34 @@ export default function FeaturedProducts() {
           {menuItems?.slice(0, 11).map((item) => (
             <motion.div
               key={item.id}
-              className="min-w-[280px] w-[280px] flex-shrink-0 snap-start"
+              className="min-w-[220px] snap-start"
               whileHover={{ scale: 1.02 }}
               transition={{ duration: 0.2 }}
             >
               <Card className="h-full flex flex-col">
-                <div className="relative w-full aspect-square overflow-hidden rounded-t-lg">
+                <div className="relative w-full pt-[100%]">
                   <img
                     src={item.imageUrl}
                     alt={item.name}
-                    className="absolute inset-0 w-full h-full object-cover"
-                    loading="lazy"
+                    className="absolute inset-0 w-full h-full object-cover object-center rounded-t-lg"
                   />
                 </div>
-                <CardContent className="flex-1 p-4">
-                  <h3 className="font-semibold text-base mb-2">{item.name}</h3>
-                  <p className="text-sm text-gray-600 line-clamp-2">
+                <CardFooter className="flex flex-col items-start gap-2 p-4 h-[160px]">
+                  <h3 className="font-semibold text-base">{item.name}</h3>
+                  <p className="text-sm text-gray-600 flex-1">
                     {item.description}
                   </p>
-                </CardContent>
-                <CardFooter className="p-4 pt-0">
-                  <Button className="w-full" asChild>
-                    <a
-                      href={`https://wa.me/your-number?text=I would like to order ${item.name}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {t('menu.orderButton')}
-                    </a>
-                  </Button>
+                  <div className="flex justify-center w-full">
+                    <Button size="sm" asChild>
+                      <a
+                        href={`https://wa.me/your-number?text=I would like to order ${item.name}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {t('menu.orderButton')}
+                      </a>
+                    </Button>
+                  </div>
                 </CardFooter>
               </Card>
             </motion.div>

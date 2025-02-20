@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,23 +28,6 @@ export default function AdminMenuPage() {
   const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
-
-  const { data: isAuthenticated } = useQuery({
-    queryKey: ['/api/auth-check'],
-    queryFn: async () => {
-      const response = await fetch('/api/auth-check', {
-        credentials: 'include'
-      });
-      if (!response.ok) {
-        return false;
-      }
-      return true;
-    },
-    retry: false,
-    staleTime: 0,
-    gcTime: 0
-  });
 
   const { data: menuItems, isLoading: menuLoading } = useQuery({
     queryKey: queryKeys.menu.items,
@@ -189,7 +171,7 @@ export default function AdminMenuPage() {
       <div className="container mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Menu Management</h1>
-          <Button onClick={() => isAuthenticated ? setIsEditing(true) : setLocation('/auth')}>
+          <Button onClick={() => setIsEditing(true)}>
             <Plus className="w-4 h-4 mr-2" />
             Add Item
           </Button>

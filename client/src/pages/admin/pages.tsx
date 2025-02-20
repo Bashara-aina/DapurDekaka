@@ -34,7 +34,11 @@ export default function AdminPages() {
     gcTime: 0
   });
 
-  
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      setLocation('/auth');
+    }
+  }, [authLoading, isAuthenticated, setLocation]);
 
   if (authLoading) {
     return (
