@@ -108,7 +108,7 @@ export default function About() {
           </div>
           <div className="flex flex-col justify-center">
             <div className="prose prose-xl">
-              <p className="text-3xl text-gray-600 leading-relaxed">
+              <p className="text-3xl text-gray-600 leading-relaxed text-justify">
                 {content.mainDescription}
               </p>
             </div>
@@ -159,7 +159,7 @@ export default function About() {
                 <h3 className="text-xl font-semibold mb-4">
                   {feature.title}
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-gray-600 text-justify">
                   {feature.description}
                 </p>
               </div>
