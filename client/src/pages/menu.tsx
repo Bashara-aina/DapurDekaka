@@ -1,9 +1,30 @@
 import { motion } from "framer-motion";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { menuData, saucesData } from "@shared/menu-data";
+import { useQuery } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
+import { queryKeys, apiRequest } from "@/lib/queryClient";
+import { MenuItem, Sauce } from "@shared/schema";
 
 export default function Menu() {
+  const { data: menuItems, isLoading: menuLoading } = useQuery({
+    queryKey: queryKeys.menu.items,
+    queryFn: () => apiRequest("/api/menu/items")
+  });
+
+  const { data: sauces, isLoading: saucesLoading } = useQuery({
+    queryKey: queryKeys.menu.sauces,
+    queryFn: () => apiRequest("/api/menu/sauces")
+  });
+
+  if (menuLoading || saucesLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-16">
       <div className="max-w-2xl mx-auto text-center mb-12">
@@ -14,7 +35,7 @@ export default function Menu() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {menuData.map((item, index) => (
+        {menuItems?.map((item: MenuItem, index: number) => (
           <motion.div
             key={item.id}
             initial={{ opacity: 0, y: 20 }}
@@ -52,7 +73,7 @@ export default function Menu() {
       <div className="mt-16">
         <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">Our Special Sauces</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {saucesData.map((sauce, index) => (
+          {sauces?.map((sauce: Sauce, index: number) => (
             <motion.div
               key={sauce.id}
               initial={{ opacity: 0, y: 20 }}
