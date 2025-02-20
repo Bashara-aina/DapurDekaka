@@ -10,7 +10,7 @@ const router = express.Router();
 router.get("/api/pages/about", async (req, res) => {
   try {
     const aboutContent = await storage.getAboutPage();
-    res.json(aboutContent || {
+    const defaultContent = {
       title: "About Dapur Dekaka",
       description: "",
       whyChooseTitle: "Why Choose Us",
@@ -22,7 +22,9 @@ router.get("/api/pages/about", async (req, res) => {
         { id: "halal", title: "", description: "", imageUrl: "" },
         { id: "preservative", title: "", description: "", imageUrl: "" },
       ],
-    });
+    };
+
+    res.json(aboutContent || defaultContent);
   } catch (error) {
     console.error("Error fetching about page:", error);
     res.status(500).json({ error: "Failed to fetch about page content" });
