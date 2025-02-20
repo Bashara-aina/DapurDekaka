@@ -9,6 +9,7 @@ const router = express.Router();
 
 router.get("/api/pages/about", async (req, res) => {
   try {
+    res.setHeader('Content-Type', 'application/json');
     const aboutContent = await storage.getAboutPage();
     const defaultContent = {
       title: "About Dapur Dekaka",
