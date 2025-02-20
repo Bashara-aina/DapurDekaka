@@ -1,11 +1,11 @@
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Image as ImageIcon } from "lucide-react";
 import AdminNavbar from "@/components/layout/admin-navbar";
 
 type FeatureCard = {
@@ -26,6 +26,7 @@ type AboutContent = {
 
 export default function AboutEditor() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [content, setContent] = useState<AboutContent>({
     title: "",
     description: "",
@@ -40,16 +41,20 @@ export default function AboutEditor() {
     ],
   });
 
-  const { isLoading, isError } = useQuery({
+  const { data: aboutData, isLoading: dataLoading, isError } = useQuery<AboutContent>({
     queryKey: ["/api/pages/about"],
     queryFn: async () => {
       const response = await fetch("/api/pages/about");
       if (!response.ok) throw new Error("Failed to fetch about content");
-      const data = await response.json();
-      setContent(data);
-      return data;
+      return response.json();
     },
   });
+
+  useEffect(() => {
+    if (aboutData) {
+      setContent(aboutData);
+    }
+  }, [aboutData]);
 
   const updateMutation = useMutation({
     mutationFn: async (formData: AboutContent) => {
@@ -63,6 +68,7 @@ export default function AboutEditor() {
       return response.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pages/about"] });
       toast({ title: "Success", description: "About page updated successfully" });
     },
     onError: (error: Error) => {
@@ -82,10 +88,18 @@ export default function AboutEditor() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!content.title.trim() || !content.description.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Title and description are required",
+        variant: "destructive",
+      });
+      return;
+    }
     updateMutation.mutate(content);
   };
 
-  if (isLoading) {
+  if (dataLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -112,35 +126,54 @@ export default function AboutEditor() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-4">
-                <div>
+                <div className="space-y-2">
                   <label className="text-sm font-medium">Main Image URL</label>
-                  <Input
-                    value={content.mainImage}
-                    onChange={(e) => setContent({ ...content, mainImage: e.target.value })}
-                    placeholder="Enter main image URL"
-                  />
+                  <div className="flex gap-4 items-start">
+                    <div className="flex-1">
+                      <Input
+                        value={content.mainImage}
+                        onChange={(e) => setContent({ ...content, mainImage: e.target.value })}
+                        placeholder="Enter main image URL"
+                        className="w-full"
+                      />
+                    </div>
+                    {content.mainImage && (
+                      <div className="w-32 h-32 rounded-lg overflow-hidden bg-gray-100">
+                        <img
+                          src={content.mainImage}
+                          alt="Main"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.src = "https://placehold.co/128x128/png?text=Invalid+Image";
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div>
+                <div className="space-y-2">
                   <label className="text-sm font-medium">Title</label>
                   <Input
                     value={content.title}
                     onChange={(e) => setContent({ ...content, title: e.target.value })}
                     placeholder="Enter title"
+                    required
                   />
                 </div>
 
-                <div>
+                <div className="space-y-2">
                   <label className="text-sm font-medium">Description</label>
                   <Textarea
                     value={content.description}
                     onChange={(e) => setContent({ ...content, description: e.target.value })}
                     placeholder="Enter description"
                     rows={4}
+                    required
                   />
                 </div>
 
-                <div>
+                <div className="space-y-2">
                   <label className="text-sm font-medium">Why Choose Section Title</label>
                   <Input
                     value={content.whyChooseTitle}
@@ -149,7 +182,7 @@ export default function AboutEditor() {
                   />
                 </div>
 
-                <div>
+                <div className="space-y-2">
                   <label className="text-sm font-medium">Why Choose Section Description</label>
                   <Textarea
                     value={content.whyChooseDescription}
@@ -164,15 +197,31 @@ export default function AboutEditor() {
                   {content.features.map((feature, index) => (
                     <Card key={feature.id}>
                       <CardContent className="pt-6 space-y-4">
-                        <div>
+                        <div className="space-y-2">
                           <label className="text-sm font-medium">Feature {index + 1} Image URL</label>
-                          <Input
-                            value={feature.imageUrl}
-                            onChange={(e) => handleFeatureChange(index, "imageUrl", e.target.value)}
-                            placeholder="Enter feature image URL"
-                          />
+                          <div className="flex gap-4 items-start">
+                            <div className="flex-1">
+                              <Input
+                                value={feature.imageUrl}
+                                onChange={(e) => handleFeatureChange(index, "imageUrl", e.target.value)}
+                                placeholder="Enter feature image URL"
+                              />
+                            </div>
+                            {feature.imageUrl && (
+                              <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100">
+                                <img
+                                  src={feature.imageUrl}
+                                  alt={feature.title}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.src = "https://placehold.co/96x96/png?text=Invalid+Image";
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div>
+                        <div className="space-y-2">
                           <label className="text-sm font-medium">Feature {index + 1} Title</label>
                           <Input
                             value={feature.title}
@@ -180,7 +229,7 @@ export default function AboutEditor() {
                             placeholder="Enter feature title"
                           />
                         </div>
-                        <div>
+                        <div className="space-y-2">
                           <label className="text-sm font-medium">Feature {index + 1} Description</label>
                           <Textarea
                             value={feature.description}
@@ -195,7 +244,11 @@ export default function AboutEditor() {
                 </div>
               </div>
 
-              <Button type="submit" disabled={updateMutation.isPending}>
+              <Button 
+                type="submit" 
+                disabled={updateMutation.isPending}
+                className="w-full"
+              >
                 {updateMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
