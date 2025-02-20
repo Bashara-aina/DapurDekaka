@@ -19,42 +19,7 @@ const staticFileOptions = {
   fallthrough: false
 };
 
-// Serve static files from image, logo, and uploads directories
-app.use('/image', express.static(path.join(process.cwd(), 'image'), staticFileOptions));
-app.use('/logo', express.static(path.join(process.cwd(), 'logo'), staticFileOptions));
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), staticFileOptions));
-
-// Request logging middleware
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-      log(logLine);
-    }
-  });
-
-  next();
-});
-
-let server: any = null;
-
+// Create required directories
 const createRequiredDirectories = async () => {
   const dirs = ['uploads', 'image', 'logo'];
   for (const dir of dirs) {
@@ -71,53 +36,35 @@ const createRequiredDirectories = async () => {
   }
 };
 
-const findAvailablePort = async (startPort: number, maxAttempts: number = 10): Promise<number> => {
-  return new Promise((resolve, reject) => {
-    let currentPort = startPort;
-    let attempts = 0;
-
-    const tryPort = () => {
-      const tempServer = createServer();
-      tempServer.listen(currentPort, '0.0.0.0');
-
-      tempServer.on('error', (err: any) => {
-        if (err.code === 'EADDRINUSE') {
-          console.log(`[Port] ${currentPort} is in use, trying next port`);
-          currentPort++;
-          attempts++;
-          if (attempts >= maxAttempts) {
-            reject(new Error(`Could not find available port after ${maxAttempts} attempts`));
-            return;
-          }
-          tempServer.close(() => tryPort());
-        } else {
-          reject(err);
-        }
-      });
-
-      tempServer.on('listening', () => {
-        const finalPort = (tempServer.address() as any).port;
-        tempServer.close(() => resolve(finalPort));
-      });
-    };
-
-    tryPort();
-  });
+// Initialize menu items and database content
+const initializeContent = async () => {
+  try {
+    console.log('[Database] Starting data initialization...');
+    await storage.getAllMenuItems();
+    console.log('[Database] Data initialization complete');
+  } catch (error) {
+    console.error('[Database] Initialization error:', error);
+    // Continue running the server even if initialization fails
+    console.log('[Database] Continuing despite initialization error');
+  }
 };
+
+let server: any = null;
 
 const startServer = async () => {
   try {
     console.log('[Startup] Beginning server initialization...');
 
-    // Create required directories
-    await createRequiredDirectories();
+    // Get port from environment variable or default to 5000
+    const PORT = parseInt(process.env.PORT || '5000', 10);
 
-    // Find available port
-    const port = await findAvailablePort(5000);
-    console.log(`[Port] Found available port: ${port}`);
-
-    // Register routes and create server
+    // Create server instance first
     server = registerRoutes(app);
+
+    // Setup middleware before starting server
+    app.use("/image", express.static(path.join(process.cwd(), 'image'), staticFileOptions));
+    app.use("/logo", express.static(path.join(process.cwd(), 'logo'), staticFileOptions));
+    app.use("/uploads", express.static(path.join(process.cwd(), 'uploads'), staticFileOptions));
 
     // Global error handler
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -127,7 +74,20 @@ const startServer = async () => {
       res.status(status).json({ message });
     });
 
-    // Setup middleware based on environment
+    // Start server immediately
+    await new Promise<void>((resolve, reject) => {
+      server.listen(PORT, "0.0.0.0", (error?: Error) => {
+        if (error) {
+          console.error(`[Server] Failed to start on port ${PORT}:`, error);
+          reject(error);
+          return;
+        }
+        log(`[Server] Running on port ${PORT}`);
+        resolve();
+      });
+    });
+
+    // Setup Vite or static serving after server is running
     if (process.env.NODE_ENV === 'development') {
       console.log('[Middleware] Setting up Vite development middleware');
       await setupVite(app, server);
@@ -136,34 +96,18 @@ const startServer = async () => {
       try {
         serveStatic(app);
       } catch (error) {
-        // If static serving fails (e.g., no build directory), fall back to Vite middleware
         console.log('[Middleware] Static serving failed, falling back to Vite middleware');
         await setupVite(app, server);
       }
     }
 
-    // Start the server
-    return new Promise((resolve, reject) => {
-      server.listen(port, "0.0.0.0", async () => {
-        log(`[Server] Running on port ${port}`);
-        try {
-          // Initialize database content after server is running
-          console.log('[Database] Starting data initialization...');
-          await storage.getAllMenuItems();
-          console.log('[Database] Data initialization complete');
-          resolve(server);
-        } catch (error) {
-          console.error('[Database] Initialization error:', error);
-          reject(error);
-        }
-      }).on('error', (error: any) => {
-        console.error('[Server] Failed to start:', error);
-        reject(error);
-      });
-    });
+    // Initialize directories and content after server is running
+    await createRequiredDirectories();
+    await initializeContent();
+
   } catch (error) {
     console.error('[Startup] Failed:', error);
-    throw error;
+    process.exit(1);
   }
 };
 
