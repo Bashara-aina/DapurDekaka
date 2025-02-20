@@ -108,7 +108,7 @@ export default function About() {
           </div>
           <div className="flex flex-col justify-center">
             <div className="prose prose-xl">
-              <p className="text-xl text-gray-600 leading-relaxed">
+              <p className="text-3xl text-gray-600 leading-relaxed">
                 {content.mainDescription}
               </p>
             </div>
