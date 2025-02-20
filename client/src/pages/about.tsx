@@ -1,3 +1,4 @@
+
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import type { PageContent } from "@shared/schema";
@@ -31,7 +32,43 @@ export default function About() {
     }
   });
 
-  const content = pageData?.content as AboutContent | undefined;
+  const defaultContent: AboutContent = {
+    title: "About Dapur Dekaka",
+    mainImage: "/asset/28.jpg",
+    mainDescription: "Dapur Dekaka adalah produsen frozen food dimsum berbagai varian. Berlokasi di Bandung, kami telah mendistribusikan produk sampai ke Jakarta, Bekasi, Tangerang, dan Palembang. Produk kami dibuat dengan resep khas turun temurun yang sudah lebih dari 5 tahun, alur produksinya memperhatikan keamanan pangan, kebersihan terjamin, tidak pakai pengawet, tidak pakai pewarna buatan. Prioritas kami terhadap konsistensi kualitas menjadikan kami selalu dipercaya oleh restoran, kafe, reseller, dan para pengusaha sebagai mitra.",
+    sections: [{
+      title: "Di Dapur Dekaka",
+      description: "Di Dapur Dekaka, kami sangat bersemangat untuk menghadirkan cita rasa otentik dim sum buatan tangan ke meja Anda. Berbasis di Bandung, kami bangga memberikan produk berkualitas tinggi yang menonjol karena rasa dan integritasnya. Inilah alasan mengapa Anda harus memilih kami:"
+    }],
+    features: [
+      {
+        id: "premium",
+        title: "Bahan-bahan Premium",
+        description: "Kami hanya menggunakan bahan-bahan terbaik untuk memastikan rasa dan kualitas yang luar biasa.",
+        image: "/asset/17.jpg"
+      },
+      {
+        id: "handmade",
+        title: "Keunggulan Buatan Tangan",
+        description: "Setiap potongan dim sum dibuat dengan hati-hati, mempertahankan sentuhan tradisional.",
+        image: "/asset/19.jpg"
+      },
+      {
+        id: "halal",
+        title: "Bersertifikat Halal",
+        description: "Nikmati produk kami dengan tenang, karena telah memenuhi standar halal tertinggi.",
+        image: "/asset/21.jpg"
+      },
+      {
+        id: "preservative",
+        title: "Tanpa Pengawet",
+        description: "Kesegaran dan rasa alami adalah prioritas kami, tanpa bahan pengawet.",
+        image: "/asset/23.jpg"
+      }
+    ]
+  };
+
+  const content = pageData?.content as AboutContent || defaultContent;
 
   if (isLoading) {
     return (
@@ -51,7 +88,7 @@ export default function About() {
           className="text-center mb-16"
         >
           <h1 className="text-6xl font-bold text-gray-900 mb-6">
-            {content?.title || "About Dapur Dekaka"}
+            {content.title}
           </h1>
         </motion.div>
 
@@ -64,7 +101,7 @@ export default function About() {
         >
           <div className="h-full">
             <img
-              src={content?.mainImage || "/asset/28.jpg"}
+              src={content.mainImage}
               alt="About Us"
               className="w-full h-full object-cover rounded-lg shadow-lg"
             />
@@ -72,14 +109,14 @@ export default function About() {
           <div className="flex flex-col justify-center">
             <div className="prose prose-xl">
               <p className="text-xl text-gray-600 leading-relaxed">
-                {content?.mainDescription || "Dapur Dekaka adalah produsen frozen food dimsum berbagai varian. Berlokasi di Bandung, kami telah mendistribusikan produk sampai ke Jakarta, Bekasi, Tangerang, dan Palembang. Produk kami dibuat dengan resep khas turun temurun yang sudah lebih dari 5 tahun, alur produksinya memperhatikan keamanan pangan, kebersihan terjamin, tidak pakai pengawet, tidak pakai pewarna buatan. Prioritas kami terhadap konsistensi kualitas menjadikan kami selalu dipercaya oleh restoran, kafe, reseller, dan para pengusaha sebagai mitra."}
+                {content.mainDescription}
               </p>
             </div>
           </div>
         </motion.div>
 
         {/* Section with title and description */}
-        {content?.sections.map((section, index) => (
+        {content.sections.map((section, index) => (
           <motion.div
             key={index}
             initial={{ opacity: 0 }}
@@ -89,12 +126,10 @@ export default function About() {
           >
             <div className="prose prose-xl max-w-none">
               <h2 className="text-4xl font-bold text-gray-900 mb-8 text-center">
-                {section.title || "Di Dapur Dekaka"}
+                {section.title}
               </h2>
               <div className="text-xl text-gray-600 text-center max-w-4xl mx-auto">
-                <p>
-                  {section.description || "Di Dapur Dekaka, kami sangat bersemangat untuk menghadirkan cita rasa otentik dim sum buatan tangan ke meja Anda. Berbasis di Bandung, kami bangga memberikan produk berkualitas tinggi yang menonjol karena rasa dan integritasnya. Inilah alasan mengapa Anda harus memilih kami:"}
-                </p>
+                <p>{section.description}</p>
               </div>
             </div>
           </motion.div>
@@ -107,7 +142,7 @@ export default function About() {
           transition={{ duration: 0.5, delay: 0.4 }}
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
         >
-          {content?.features.map((feature, index) => (
+          {content.features.map((feature, index) => (
             <motion.div
               key={feature.id}
               initial={{ opacity: 0, y: 20 }}
