@@ -18,6 +18,9 @@ export const translations = {
         ingredients: "Bahan",
         preparation: "Cara Penyajian",
         spicyLevel: "Tingkat Kepedasan"
+      },
+      sauces: {
+        title: "Saus Kami"
       }
     },
     home: {
@@ -133,6 +136,9 @@ export const translations = {
         ingredients: "Ingredients",
         preparation: "Preparation",
         spicyLevel: "Spicy Level"
+      },
+      sauces: {
+        title: "Our Sauces"
       }
     },
     home: {
