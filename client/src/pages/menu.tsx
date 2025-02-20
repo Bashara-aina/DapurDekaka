@@ -58,16 +58,18 @@ export default function Menu() {
                 <div className="p-4 flex flex-col gap-2">
                   <h3 className="text-lg font-semibold">{item.name}</h3>
                   <p className="text-sm text-gray-600 flex-grow">{item.description}</p>
-                  <Button className="w-full mt-2" variant="default" size="sm" asChild>
-                    <a
-                      href={`https://wa.me/your-number?text=I would like to order ${item.name}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full"
-                    >
-                      Pesan
-                    </a>
-                  </Button>
+                  <div className="flex justify-center w-full mt-2">
+                    <Button variant="default" size="sm" asChild>
+                      <a
+                        href={`https://wa.me/your-number?text=I would like to order ${item.name}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full text-center"
+                      >
+                        Pesan
+                      </a>
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
