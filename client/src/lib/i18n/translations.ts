@@ -18,28 +18,6 @@ export const translations = {
         ingredients: "Bahan",
         preparation: "Cara Penyajian",
         spicyLevel: "Tingkat Kepedasan"
-      },
-      items: {
-        hakau: {
-          name: "Hakau",
-          description: "Pangsit udang kristal dengan kulit transparan yang lembut"
-        },
-        siomai: {
-          name: "Siomay",
-          description: "Pangsit daging ayam dan udang dengan tambahan jamur"
-        },
-        // Add more menu items here
-      },
-      sauces: {
-        chiliOil: {
-          name: "Minyak Cabai",
-          description: "Minyak cabai yang pedas dan aromatik"
-        },
-        soySauce: {
-          name: "Kecap Asin",
-          description: "Kecap asin premium pilihan"
-        },
-        // Add more sauces here
       }
     },
     home: {
@@ -92,12 +70,12 @@ export const translations = {
         dimSumArt: {
           title: "Seni Dimsum: Perjalanan Kuliner",
           summary: "Temukan sejarah dan tradisi di balik dimsum, dari awal mulanya hingga interpretasi modern.",
-          content: "Dimsum, yang secara harfiah berarti \"sentuh hati\" dalam bahasa Kanton, telah menjadi tradisi kuliner yang dicintai selama berabad-abad. Bentuk seni kuliner ini berawal dari kedai teh di Tiongkok kuno, di mana para pelancong di Jalur Sutra berhenti untuk beristirahat dan menyegarkan diri."
+          content: "Dimsum, yang secara harfiah berarti \"sentuh hati\" dalam bahasa Kanton, telah menjadi tradisi kuliner yang dicintai selama berabad-abad. Bentuk seni kuliner ini berawal dari kedai teh di Tiongkok kuno, di mana para pelancong di Jalur Sutra berhenti untuk beristirahat dan menyegarkan diri. Saat ini, dimsum telah berkembang menjadi pengalaman bersantap yang canggih yang menggabungkan keahlian kuliner dengan berkumpul bersama."
         },
         dimSumVarieties: {
           title: "Variasi Dimsum Penting yang Harus Diketahui Pecinta Makanan",
           summary: "Pelajari tentang hidangan dimsum paling populer dan karakteristik uniknya.",
-          content: "Bagi pendatang baru di dunia dimsum, variasi hidangan bisa sangat beragam. Berikut panduan Anda untuk klasik yang wajib dicoba: 1. Har Gow, 2. Siu Mai, 3. Char Siu Bao, 4. Cheung Fun, 5. Lo Mai Gai"
+          content: "Bagi pendatang baru di dunia dimsum, variasi hidangan bisa sangat beragam. Berikut panduan Anda untuk klasik yang wajib dicoba:\n\n1. Har Gow (Pangsit Udang Kristal): Dikenal dengan kulitnya yang transparan dan isian udang yang lezat\n2. Siu Mai: Pangsit dengan bagian atas terbuka berisi daging babi dan udang\n3. Char Siu Bao: Bakpao kukus lembut berisi daging babi panggang\n4. Cheung Fun: Gulungan mi beras sutra dengan berbagai isian\n5. Lo Mai Gai: Nasi ketan dibungkus daun teratai"
         }
       }
     },
@@ -155,28 +133,6 @@ export const translations = {
         ingredients: "Ingredients",
         preparation: "Preparation",
         spicyLevel: "Spicy Level"
-      },
-      items: {
-        hakau: {
-          name: "Har Gow",
-          description: "Crystal shrimp dumplings with translucent skin"
-        },
-        siomai: {
-          name: "Siu Mai",
-          description: "Chicken and shrimp dumplings with mushroom"
-        },
-        // Add more menu items here
-      },
-      sauces: {
-        chiliOil: {
-          name: "Chili Oil",
-          description: "Spicy and aromatic chili oil"
-        },
-        soySauce: {
-          name: "Soy Sauce",
-          description: "Premium selected soy sauce"
-        },
-        // Add more sauces here
       }
     },
     home: {
@@ -229,12 +185,12 @@ export const translations = {
         dimSumArt: {
           title: "The Art of Dim Sum: A Culinary Journey",
           summary: "Discover the rich history and traditions behind dim sum, from its humble beginnings to modern interpretations.",
-          content: "Dim sum, which literally means \"touch the heart\" in Cantonese, has been a beloved culinary tradition for centuries. This delicate art form originated in the tea houses of ancient China, where travelers along the Silk Road would stop for rest and refreshment."
+          content: "Dim sum, which literally means \"touch the heart\" in Cantonese, has been a beloved culinary tradition for centuries. This delicate art form originated in the tea houses of ancient China, where travelers along the Silk Road would stop for rest and refreshment. Today, it has evolved into a sophisticated dining experience that combines culinary artistry with social gathering."
         },
         dimSumVarieties: {
           title: "Essential Dim Sum Varieties Every Food Lover Should Know",
           summary: "Learn about the most popular dim sum dishes and their unique characteristics.",
-          content: "For newcomers to dim sum, the variety of dishes can be overwhelming. Here's your guide to the must-try classics: 1. Har Gow, 2. Siu Mai, 3. Char Siu Bao, 4. Cheung Fun, 5. Lo Mai Gai"
+          content: "For newcomers to dim sum, the variety of dishes can be overwhelming. Here's your guide to the must-try classics:\n\n1. Har Gow (Crystal Shrimp Dumplings): Known for their translucent wrappers and succulent shrimp filling\n2. Siu Mai: Open-topped dumplings with pork and shrimp\n3. Char Siu Bao: Fluffy steamed buns filled with barbecue pork\n4. Cheung Fun: Silky rice noodle rolls with various fillings\n5. Lo Mai Gai: Sticky rice wrapped in lotus leaf"
         }
       }
     },
