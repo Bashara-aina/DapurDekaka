@@ -9,10 +9,23 @@ import { Loader2 } from "lucide-react";
 import AdminNavbar from "@/components/layout/admin-navbar";
 import type { PageContent } from "@shared/schema";
 
+interface Feature {
+  id: string;
+  title: string;
+  description: string;
+  image: string;
+}
+
 interface AboutContent {
   title: string;
   description: string;
   mainImage: string;
+  mainDescription: string;
+  sections: {
+    title: string;
+    description: string;
+  }[];
+  features: Feature[];
 }
 
 export default function AboutEditor() {
@@ -21,7 +34,20 @@ export default function AboutEditor() {
   const [content, setContent] = useState<AboutContent>({
     title: "",
     description: "",
-    mainImage: ""
+    mainImage: "",
+    mainDescription: "",
+    sections: [
+      {
+        title: "",
+        description: ""
+      }
+    ],
+    features: [
+      { id: "premium", title: "", description: "", image: "" },
+      { id: "handmade", title: "", description: "", image: "" },
+      { id: "halal", title: "", description: "", image: "" },
+      { id: "preservative", title: "", description: "", image: "" }
+    ]
   });
 
   const { data: pageData, isLoading } = useQuery({
@@ -97,12 +123,12 @@ export default function AboutEditor() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Description</label>
+                <label className="block text-sm font-medium mb-1">Main Description</label>
                 <Textarea
-                  value={content.description}
-                  onChange={(e) => setContent({ ...content, description: e.target.value })}
-                  placeholder="Enter description"
-                  rows={4}
+                  value={content.mainDescription}
+                  onChange={(e) => setContent({ ...content, mainDescription: e.target.value })}
+                  placeholder="Enter main description"
+                  rows={6}
                 />
               </div>
 
@@ -113,6 +139,67 @@ export default function AboutEditor() {
                   onChange={(e) => setContent({ ...content, mainImage: e.target.value })}
                   placeholder="Enter image URL"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Section Title</label>
+                <Input
+                  value={content.sections[0]?.title}
+                  onChange={(e) => setContent({
+                    ...content,
+                    sections: [{ ...content.sections[0], title: e.target.value }]
+                  })}
+                  placeholder="Enter section title"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Section Description</label>
+                <Textarea
+                  value={content.sections[0]?.description}
+                  onChange={(e) => setContent({
+                    ...content,
+                    sections: [{ ...content.sections[0], description: e.target.value }]
+                  })}
+                  placeholder="Enter section description"
+                  rows={4}
+                />
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Features</h3>
+                {content.features.map((feature, index) => (
+                  <div key={feature.id} className="space-y-2 p-4 border rounded-lg">
+                    <Input
+                      value={feature.title}
+                      onChange={(e) => {
+                        const newFeatures = [...content.features];
+                        newFeatures[index] = { ...feature, title: e.target.value };
+                        setContent({ ...content, features: newFeatures });
+                      }}
+                      placeholder="Feature title"
+                    />
+                    <Textarea
+                      value={feature.description}
+                      onChange={(e) => {
+                        const newFeatures = [...content.features];
+                        newFeatures[index] = { ...feature, description: e.target.value };
+                        setContent({ ...content, features: newFeatures });
+                      }}
+                      placeholder="Feature description"
+                      rows={3}
+                    />
+                    <Input
+                      value={feature.image}
+                      onChange={(e) => {
+                        const newFeatures = [...content.features];
+                        newFeatures[index] = { ...feature, image: e.target.value };
+                        setContent({ ...content, features: newFeatures });
+                      }}
+                      placeholder="Feature image URL"
+                    />
+                  </div>
+                ))}
               </div>
 
               <Button

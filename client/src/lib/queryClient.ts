@@ -16,6 +16,7 @@ export const queryKeys = {
     home: ["pages", "home"],
     menu: ["pages", "menu"],
     blog: ["pages", "blog"],
+    homepage: ["pages", "homepage"],  // Added homepage key
   },
   menu: {
     all: ["menu"],
