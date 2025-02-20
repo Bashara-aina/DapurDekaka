@@ -2,6 +2,7 @@ import { users, type User, type InsertUser } from "@shared/schema";
 import { menuItems, type MenuItem, type InsertMenuItem } from "@shared/schema";
 import { blogPosts, type BlogPost, type InsertBlogPost } from "@shared/schema";
 import { sauces, type Sauce, type InsertSauce } from "@shared/schema";
+import { aboutPage, type AboutPage, type InsertAboutPage } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
@@ -32,6 +33,10 @@ export interface IStorage {
   createSauce(sauce: InsertSauce): Promise<Sauce>;
   updateSauce(id: number, sauce: Partial<InsertSauce>): Promise<Sauce | undefined>;
   deleteSauce(id: number): Promise<boolean>;
+
+  // About page methods
+  getAboutPage(): Promise<AboutPage | undefined>;
+  updateAboutPage(content: InsertAboutPage): Promise<AboutPage>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -227,6 +232,60 @@ export class DatabaseStorage implements IStorage {
       .where(eq(blogPosts.id, id))
       .returning();
     return !!deletedPost;
+  }
+
+  // About page methods
+  async getAboutPage(): Promise<AboutPage | undefined> {
+    try {
+      const [page] = await db.select().from(aboutPage);
+      if (page) {
+        return {
+          ...page,
+          features: JSON.parse(page.features)
+        };
+      }
+      return undefined;
+    } catch (error) {
+      console.error("Error fetching about page:", error);
+      throw new Error("Failed to fetch about page");
+    }
+  }
+
+  async updateAboutPage(content: InsertAboutPage): Promise<AboutPage> {
+    try {
+      // First try to get existing page
+      const [existingPage] = await db.select().from(aboutPage);
+
+      let updatedPage;
+      if (existingPage) {
+        // If page exists, update it
+        [updatedPage] = await db
+          .update(aboutPage)
+          .set({
+            ...content,
+            features: JSON.stringify(content.features)
+          })
+          .where(eq(aboutPage.id, existingPage.id))
+          .returning();
+      } else {
+        // If no page exists, create new one
+        [updatedPage] = await db
+          .insert(aboutPage)
+          .values({
+            ...content,
+            features: JSON.stringify(content.features)
+          })
+          .returning();
+      }
+
+      return {
+        ...updatedPage,
+        features: JSON.parse(updatedPage.features)
+      };
+    } catch (error) {
+      console.error("Error updating about page:", error);
+      throw new Error("Failed to update about page");
+    }
   }
 }
 

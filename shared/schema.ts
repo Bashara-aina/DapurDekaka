@@ -50,6 +50,16 @@ export const footer = pgTable('footer',{
     phone: text('phone').notNull()
 });
 
+export const aboutPage = pgTable('about_page', {
+    id: serial('id').primaryKey(),
+    title: text('title').notNull(),
+    description: text('description').notNull(),
+    whyChooseTitle: text('why_choose_title').notNull(),
+    whyChooseDescription: text('why_choose_description').notNull(),
+    mainImage: text('main_image').notNull(),
+    features: text('features').notNull()
+});
+
 export const insertMenuItemSchema = createInsertSchema(menuItems).omit({
   id: true,
   createdAt: true,
@@ -81,6 +91,17 @@ export const insertBlogPostSchema = createInsertSchema(blogPosts)
     imageUrl: z.string().optional(),
   });
 
+export const insertAboutPageSchema = createInsertSchema(aboutPage)
+  .omit({ id: true })
+  .extend({
+    features: z.array(z.object({
+      id: z.string(),
+      title: z.string(),
+      description: z.string(),
+      imageUrl: z.string()
+    }))
+  });
+
 export type InsertMenuItem = z.infer<typeof insertMenuItemSchema>;
 export type MenuItem = typeof menuItems.$inferSelect;
 
@@ -92,3 +113,6 @@ export type User = typeof users.$inferSelect;
 
 export type InsertBlogPost = z.infer<typeof insertBlogPostSchema>;
 export type BlogPost = typeof blogPosts.$inferSelect;
+
+export type InsertAboutPage = z.infer<typeof insertAboutPageSchema>;
+export type AboutPage = typeof aboutPage.$inferSelect;

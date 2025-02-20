@@ -7,6 +7,7 @@ import contactRouter from "./routes/contact";
 import { blogRouter } from "./routes/blog";
 import { pagesRouter } from "./routes/pages";
 import menuRouter from "./routes/menu";
+import aboutRouter from "./routes/about";
 import bcrypt from "bcryptjs";
 import session from "express-session";
 import { requireAuth } from "./auth";
@@ -35,6 +36,13 @@ export function registerRoutes(app: Express): Server {
       },
     })
   );
+
+  // Apply routers
+  app.use("/api/menu", menuRouter);
+  app.use("/api/blog", blogRouter);
+  app.use("/api/pages", pagesRouter);
+  app.use(contactRouter);
+  app.use("/api/about", aboutRouter); // Added aboutRouter
 
   // User routes
   app.post("/api/register", async (req, res) => {
@@ -94,12 +102,6 @@ export function registerRoutes(app: Express): Server {
   app.get("/api/auth-check", requireAuth, (_req, res) => {
     res.json({ authenticated: true });
   });
-
-  // Apply routers
-  app.use("/api/menu", menuRouter);
-  app.use("/api/blog", blogRouter);
-  app.use("/api/pages", pagesRouter);
-  app.use(contactRouter);
 
   const httpServer = createServer(app);
   return httpServer;
