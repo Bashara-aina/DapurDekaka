@@ -107,12 +107,10 @@ export default function AdminMenuPage() {
     // Validate required fields
     const name = formData.get('name');
     const description = formData.get('description');
-    const price = formData.get('price');
-    const category = formData.get('category');
     const image = formData.get('image');
     const type = formData.get('type') as 'menu' | 'sauce';
 
-    if (!name || !description || !price || !category) {
+    if (!name || !description ) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -126,8 +124,6 @@ export default function AdminMenuPage() {
         const data = new FormData();
         data.append('name', name as string);
         data.append('description', description as string);
-        data.append('price', price as string);
-        data.append('category', category as string);
         if (image instanceof File && image.size > 0) {
           data.append('image', image);
         } else {
@@ -194,7 +190,6 @@ export default function AdminMenuPage() {
                     <div className="space-y-2">
                       <h3 className="font-semibold">{item.name}</h3>
                       <p className="text-sm text-gray-600">{item.description}</p>
-                      <p className="font-medium">Rp {item.price.toLocaleString()}</p>
                       <div className="flex gap-2">
                         <Button
                           variant="outline"
@@ -238,7 +233,6 @@ export default function AdminMenuPage() {
                     <div className="space-y-2">
                       <h3 className="font-semibold">{sauce.name}</h3>
                       <p className="text-sm text-gray-600">{sauce.description}</p>
-                      <p className="font-medium">Rp {sauce.price.toLocaleString()}</p>
                       <div className="flex gap-2">
                         <Button
                           variant="outline"
@@ -311,15 +305,6 @@ export default function AdminMenuPage() {
               </div>
               <div>
                 <Input
-                  type="number"
-                  name="price"
-                  placeholder="Price"
-                  defaultValue={editingItem?.price}
-                  required
-                />
-              </div>
-              <div>
-                <Input
                   type="file"
                   name="image"
                   accept="image/*"
@@ -330,14 +315,6 @@ export default function AdminMenuPage() {
                     Leave empty to keep the current image
                   </p>
                 )}
-              </div>
-              <div>
-                <Input
-                  name="category"
-                  placeholder="Category"
-                  defaultValue={editingItem?.category || 'dimsum'}
-                  required
-                />
               </div>
               <Button 
                 type="submit" 
