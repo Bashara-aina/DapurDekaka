@@ -17,9 +17,7 @@ type EditingItem = {
   id: number;
   name: string;
   description: string;
-  price: number;
   imageUrl: string;
-  category: string;
   type: 'menu' | 'sauce';
 };
 
