@@ -96,14 +96,22 @@ menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, r
       });
     }
 
-    if (!req.body.name || !req.body.description) {
+    if (!req.body.name || !req.body.description || !req.body.price) {
       console.error('Missing required fields:', {
         name: Boolean(req.body.name),
-        description: Boolean(req.body.description)
+        description: Boolean(req.body.description),
+        price: Boolean(req.body.price)
       });
       return res.status(400).json({
-        message: "Name and description are required",
+        message: "Name, description, and price are required",
         receivedFields: req.body
+      });
+    }
+
+    const price = parseFloat(req.body.price);
+    if (isNaN(price)) {
+      return res.status(400).json({
+        message: "Price must be a valid number"
       });
     }
 
@@ -131,6 +139,7 @@ menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, r
     const data = {
       name: req.body.name,
       description: req.body.description,
+      price: parseFloat(req.body.price),
       imageUrl: `/uploads/${req.file.filename}`
     };
 
