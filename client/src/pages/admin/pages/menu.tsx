@@ -70,13 +70,53 @@ export default function AdminMenuPage() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log('=== Form Submission Debug Start ===');
-    console.log('Form element:', e.currentTarget);
-    console.log('Form enctype:', e.currentTarget.enctype);
     
+    // Form Structure Debug (1-10)
+    console.log('=== Form Component Debug (Step 1-10) ===');
+    console.log('1. Form element exists:', !!e.currentTarget);
+    console.log('2. Form method:', e.currentTarget.method);
+    console.log('3. Form action:', e.currentTarget.action);
+    console.log('4. Form encoding:', e.currentTarget.enctype);
+    console.log('5. Form elements count:', e.currentTarget.elements.length);
+    console.log('6. Form elements names:', Array.from(e.currentTarget.elements).map(el => (el as HTMLElement).getAttribute('name')));
+    console.log('7. Form elements types:', Array.from(e.currentTarget.elements).map(el => (el as HTMLInputElement).type));
+    console.log('8. Form elements values:', Array.from(e.currentTarget.elements).map(el => (el as HTMLInputElement).value));
+    console.log('9. File input present:', !!e.currentTarget.querySelector('input[type="file"]'));
+    console.log('10. Submit button present:', !!e.currentTarget.querySelector('button[type="submit"]'));
+
+    // FormData Construction Debug (11-20)
+    console.log('=== FormData Construction Debug (Step 11-20) ===');
     const formData = new FormData(e.currentTarget);
-    console.log('Form fields:');
-    console.log('FormData fields:');
+    console.log('11. FormData created:', !!formData);
+    console.log('12. FormData entries:');
+    for (const [key, value] of formData.entries()) {
+      console.log(`13. Key: ${key}`);
+      console.log(`14. Value type: ${value instanceof File ? 'File' : typeof value}`);
+      if (value instanceof File) {
+        console.log(`15. File name: ${value.name}`);
+        console.log(`16. File size: ${value.size}`);
+        console.log(`17. File type: ${value.type}`);
+        console.log(`18. Last modified: ${value.lastModified}`);
+      }
+    }
+    console.log('19. All keys present:', Array.from(formData.keys()));
+    console.log('20. FormData length:', Array.from(formData.entries()).length);
+
+    // Request Preparation Debug (21-30)
+    console.log('=== Request Preparation Debug (Step 21-30) ===');
+    console.log('21. Request URL:', '/api/menu/items');
+    console.log('22. Request method:', 'POST');
+    console.log('23. Headers being sent:');
+    const headers = {
+      'Accept': 'application/json'
+    };
+    console.log('24. Headers:', headers);
+    console.log('25. Body type:', formData.constructor.name);
+    console.log('26. Authentication token present:', !!localStorage.getItem('token'));
+    console.log('27. Content-Type auto-set by FormData:', true);
+    console.log('28. Request credentials mode:', 'include');
+    console.log('29. Request mode:', 'cors');
+    console.log('30. Request cache:', 'no-cache');
     for (const [key, value] of formData.entries()) {
       if (value instanceof File) {
         console.log(`${key}: File(${value.name}, ${value.type}, ${value.size} bytes)`);
