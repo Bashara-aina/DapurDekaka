@@ -103,12 +103,13 @@ export default function FeaturedProducts() {
                   </p>
                 </CardContent>
                 <CardFooter className="p-4 pt-0">
-                  <OrderModal
+                  <OrderModal 
                     trigger={
                       <Button size="sm" className="w-full">
-                        {t("menu.orderButton")}
+                        Pesan
                       </Button>
                     }
+                    menuItem={item}
                   />
                 </CardFooter>
               </Card>

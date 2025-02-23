@@ -7,6 +7,7 @@ import { queryKeys, apiRequest } from "@/lib/queryClient";
 import { MenuItem, Sauce } from "@shared/schema";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
+import OrderModal from "@/components/OrderModal"; // Assuming this component exists
 
 export default function Menu() {
   const { t } = useLanguage();
@@ -61,21 +62,10 @@ export default function Menu() {
                     {item.description}
                   </p>
                   <div className="mt-auto pt-2">
-                    <Button
-                      className="w-full"
-                      variant="default"
-                      size="sm"
-                      asChild
-                    >
-                      <a
-                        href={`https://wa.me/your-number?text=I would like to order ${item.name}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full"
-                      >
-                        Pesan
-                      </a>
-                    </Button>
+                    <OrderModal
+                      trigger={<Button className="w-full">Pesan</Button>}
+                      menuItem={item}
+                    />
                   </div>
                 </div>
               </CardContent>
@@ -113,21 +103,10 @@ export default function Menu() {
                       <p className="text-sm text-gray-600 flex-grow">
                         {sauce.description}
                       </p>
-                      <Button
-                        className="w-full mt-2"
-                        variant="default"
-                        size="sm"
-                        asChild
-                      >
-                        <a
-                          href={`https://wa.me/your-number?text=I would like to order ${sauce.name}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-full"
-                        >
-                          Pesan
-                        </a>
-                      </Button>
+                      <OrderModal
+                        trigger={<Button className="w-full">Pesan</Button>}
+                        menuItem={sauce}
+                      />
                     </div>
                   </CardContent>
                 </Card>
