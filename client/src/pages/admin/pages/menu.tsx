@@ -25,9 +25,10 @@ export default function AdminMenuPage() {
   const handleDeleteItem = async (id: number) => {
     try {
       await apiRequest(`/api/menu/items/${id}`, { method: 'DELETE' });
-      queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
       toast({ title: "Menu item deleted successfully" });
     } catch (error) {
+      console.error('Delete error:', error);
       toast({ title: "Failed to delete menu item", variant: "destructive" });
     }
   };
@@ -40,9 +41,10 @@ export default function AdminMenuPage() {
   const handleDeleteSauce = async (id: number) => {
     try {
       await apiRequest(`/api/menu/sauces/${id}`, { method: 'DELETE' });
-      queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
       toast({ title: "Sauce deleted successfully" });
     } catch (error) {
+      console.error('Delete error:', error);
       toast({ title: "Failed to delete sauce", variant: "destructive" });
     }
   };
