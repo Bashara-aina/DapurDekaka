@@ -46,7 +46,7 @@ export default function Menu() {
             className="flex flex-col h-full"
           >
             <Card className="h-full flex flex-col">
-              <CardContent className="p-0">
+              <CardContent className="p-0 flex flex-col h-full">
                 <div className="relative aspect-square">
                   <img
                     src={item.imageUrl}
@@ -54,17 +54,18 @@ export default function Menu() {
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <div className="p-4 flex flex-col gap-2">
+                <div className="p-4 flex flex-col flex-grow gap-3">
                   <h3 className="text-lg font-semibold">{item.name}</h3>
-                  <p className="text-sm text-gray-600 flex-grow">
+                  <p className="text-sm text-gray-600">
                     {item.description}
                   </p>
-                  <Button
-                    className="w-full mt-2"
-                    variant="default"
-                    size="sm"
-                    asChild
-                  >
+                  <div className="mt-auto pt-2">
+                    <Button
+                      className="w-full"
+                      variant="default"
+                      size="sm"
+                      asChild
+                    >
                     <a
                       href={`https://wa.me/your-number?text=I would like to order ${item.name}`}
                       target="_blank"
@@ -74,6 +75,7 @@ export default function Menu() {
                       Pesan
                     </a>
                   </Button>
+                </div>
                 </div>
               </CardContent>
             </Card>

@@ -94,13 +94,13 @@ export default function FeaturedProducts() {
                     className="object-cover w-full h-full rounded-t-lg"
                   />
                 </AspectRatio>
-                <CardFooter className="flex flex-col items-start gap-2 p-4">
+                <CardFooter className="flex flex-col h-full p-4">
                   <h3 className="font-semibold text-base">{item.name}</h3>
-                  <p className="text-sm text-gray-600 line-clamp-2">
+                  <p className="text-sm text-gray-600 line-clamp-2 mt-2">
                     {item.description}
                   </p>
-                  <div className="flex justify-center w-full mt-2">
-                    <Button size="sm" asChild>
+                  <div className="mt-auto pt-3 w-full">
+                    <Button size="sm" className="w-full" asChild>
                       <a
                         href={`https://wa.me/your-number?text=I would like to order ${item.name}`}
                         target="_blank"
