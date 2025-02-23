@@ -14,21 +14,21 @@ export default function FeaturedProducts() {
   const { t } = useLanguage();
 
   const { data: menuItems, isLoading: menuLoading } = useQuery<MenuItem[]>({
-    queryKey: ['menu', 'items'],
+    queryKey: ["menu", "items"],
     queryFn: async () => {
-      const response = await fetch('/api/menu/items');
-      if (!response.ok) throw new Error('Failed to fetch menu items');
+      const response = await fetch("/api/menu/items");
+      if (!response.ok) throw new Error("Failed to fetch menu items");
       return response.json();
-    }
+    },
   });
 
   const { data: pageData } = useQuery({
-    queryKey: ['pages', 'homepage'],
+    queryKey: ["pages", "homepage"],
     queryFn: async () => {
-      const response = await fetch('/api/pages/homepage');
-      if (!response.ok) throw new Error('Failed to fetch homepage data');
+      const response = await fetch("/api/pages/homepage");
+      if (!response.ok) throw new Error("Failed to fetch homepage data");
       return response.json();
-    }
+    },
   });
 
   const scroll = (direction: "left" | "right") => {
@@ -52,10 +52,10 @@ export default function FeaturedProducts() {
         <div className="flex justify-between items-center mb-8">
           <div className="w-4/5">
             <h2 className="text-3xl font-bold text-gray-900">
-              {t('home.featured.title')}
+              {t("home.featured.title")}
             </h2>
             <p className="text-gray-600 mt-2 pr-4">
-              {t('home.featured.subtitle')}
+              {t("home.featured.subtitle")}
             </p>
           </div>
           <div className="flex gap-2">
@@ -98,16 +98,18 @@ export default function FeaturedProducts() {
                 </AspectRatio>
                 <CardContent className="flex-1 p-4">
                   <h3 className="font-semibold text-base">{item.name}</h3>
-                  <p className="text-sm text-gray-600 line-clamp-2 mt-2">
+                  <p className="text-sm text-gray-600 line-clamp-4 mt-2">
                     {item.description}
                   </p>
                 </CardContent>
                 <CardFooter className="p-4 pt-0">
-                  <OrderModal trigger={
-                    <Button size="sm" className="w-full">
-                      {t('menu.orderButton')}
-                    </Button>
-                  } />
+                  <OrderModal
+                    trigger={
+                      <Button size="sm" className="w-full">
+                        {t("menu.orderButton")}
+                      </Button>
+                    }
+                  />
                 </CardFooter>
               </Card>
             </motion.div>
