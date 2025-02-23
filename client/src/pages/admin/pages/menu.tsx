@@ -29,7 +29,13 @@ export default function AdminMenuPage() {
 
   const createMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      console.log("Sending form data:", Object.fromEntries(formData.entries()));
+      // Log exact form fields being sent
+      const formFields = Array.from(formData.entries()).map(([key, value]) => ({
+        key,
+        type: value instanceof File ? 'File' : 'Text',
+        filename: value instanceof File ? value.name : null
+      }));
+      console.log("Form fields being sent:", formFields);
       const response = await fetch("/api/menu/items", {
         method: "POST",
         body: formData,
