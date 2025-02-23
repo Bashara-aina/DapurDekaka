@@ -136,24 +136,45 @@ menuRouter.post("/sauces", requireAuth, upload.single('imageFile'), async (req, 
 menuRouter.put("/items/:id", requireAuth, upload.single('imageFile'), async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const data = {
-      ...req.body,
+    if (isNaN(id)) {
+      return res.status(400).json({ message: "Invalid menu item ID" });
+    }
+
+    // Check if menu item exists
+    const existingItem = await storage.getMenuItem(id);
+    if (!existingItem) {
+      return res.status(404).json({ message: "Menu item not found" });
+    }
+
+    // Prepare update data
+    const updateData = {
+      name: req.body.name,
+      description: req.body.description,
       imageUrl: req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl,
     };
 
-    const validation = insertMenuItemSchema.partial().safeParse(data);
+    // Validate update data
+    const validation = insertMenuItemSchema.partial().safeParse(updateData);
     if (!validation.success) {
-      return res.status(400).json({ message: fromZodError(validation.error).message });
+      return res.status(400).json({ 
+        message: "Invalid data", 
+        errors: fromZodError(validation.error).message 
+      });
     }
 
+    // Update the menu item
     const menuItem = await storage.updateMenuItem(id, validation.data);
     if (!menuItem) {
       return res.status(404).json({ message: "Menu item not found" });
     }
+
     res.json(menuItem);
   } catch (error) {
     console.error("Failed to update menu item:", error);
-    res.status(500).json({ message: "Failed to update menu item" });
+    res.status(500).json({ 
+      message: "Failed to update menu item",
+      error: error instanceof Error ? error.message : "Unknown error"
+    });
   }
 });
 

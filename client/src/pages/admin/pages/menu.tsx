@@ -23,11 +23,11 @@ export default function AdminMenuPage() {
   const handleEditItem = async (formData: FormData) => {
     try {
       if (!editingItem) return;
-      
+
       // Handle image upload first if there's a new image
       const imageFile = formData.get('imageFile') as File;
       let imageUrl = editingItem.imageUrl;
-      
+
       if (imageFile && imageFile.size > 0) {
         const imageFormData = new FormData();
         imageFormData.append('imageFile', imageFile);
@@ -35,36 +35,46 @@ export default function AdminMenuPage() {
           method: 'POST',
           body: imageFormData
         });
-        
+
         if (uploadResponse.ok) {
           const result = await uploadResponse.json();
           imageUrl = result.imageUrl;
+        } else {
+          throw new Error('Failed to upload image');
         }
       }
 
-      // Send update with proper JSON structure
+      // Prepare update data
+      const updateData = {
+        name: formData.get('name') as string,
+        description: formData.get('description') as string,
+        imageUrl: imageUrl
+      };
+
+      // Send update request
       const response = await apiRequest(`/api/menu/items/${editingItem.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          name: formData.get('name'),
-          description: formData.get('description'),
-          imageUrl: imageUrl
-        })
+        body: JSON.stringify(updateData)
       });
 
       if (!response.ok) {
-        throw new Error(response.statusText);
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update menu item');
       }
-      
+
       await queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
       toast({ title: "Menu item updated successfully" });
       setEditingItem(null);
     } catch (error) {
       console.error('Edit error:', error);
-      toast({ title: "Failed to update menu item", variant: "destructive" });
+      toast({ 
+        title: "Failed to update menu item", 
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive" 
+      });
     }
   };
 
@@ -372,7 +382,7 @@ export default function AdminMenuPage() {
           </TabsContent>
         </Tabs>
       </div>
-    <Dialog open={!!editingItem} onOpenChange={() => setEditingItem(null)}>
+      <Dialog open={!!editingItem} onOpenChange={() => setEditingItem(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Menu Item</DialogTitle>
