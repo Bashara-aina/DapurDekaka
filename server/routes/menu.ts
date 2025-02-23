@@ -52,9 +52,10 @@ menuRouter.get("/sauces", async (_req, res) => {
 // Create menu item (protected)
 menuRouter.post("/items", requireAuth, upload.single('image'), async (req, res) => {
   try {
-    const { name, description } = req.body;
+    console.log('Received form data:', req.body);
+    console.log('Received file:', req.file);
 
-    if (!name || !description) {
+    if (!req.body.name || !req.body.description) {
       return res.status(400).json({ message: "Name and description are required" });
     }
 
@@ -63,8 +64,8 @@ menuRouter.post("/items", requireAuth, upload.single('image'), async (req, res) 
     }
 
     const data = {
-      name,
-      description,
+      name: req.body.name,
+      description: req.body.description,
       imageUrl: `/uploads/${req.file.filename}`
     };
 

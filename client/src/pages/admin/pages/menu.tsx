@@ -32,9 +32,7 @@ export default function AdminMenuPage() {
 
   const createMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const type = formData.get('type') as string;
-      const endpoint = type === 'menu' ? '/api/menu/items' : '/api/menu/sauces';
-      const response = await fetch(endpoint, {
+      const response = await fetch('/api/menu/items', {
         method: 'POST',
         body: formData,
         credentials: 'include'
@@ -48,7 +46,6 @@ export default function AdminMenuPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
-      queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
       setIsEditing(false);
       toast({
         title: "Success",
@@ -68,14 +65,8 @@ export default function AdminMenuPage() {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
 
-    // Get the file from the input
-    const fileInput = event.currentTarget.querySelector('input[type="file"]') as HTMLInputElement;
-    if (fileInput && fileInput.files && fileInput.files[0]) {
-      // Remove the old file if it exists
-      formData.delete('imageUrl');
-      // Add the file with the correct field name
-      formData.append('image', fileInput.files[0]);
-    }
+    // Remove type field as it's not needed for menu items
+    formData.delete('type');
 
     await createMutation.mutate(formData);
   };
@@ -106,16 +97,6 @@ export default function AdminMenuPage() {
               <SheetTitle>Add New Item</SheetTitle>
             </SheetHeader>
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-              <Select name="type" defaultValue="menu">
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="menu">Menu Item</SelectItem>
-                  <SelectItem value="sauce">Sauce</SelectItem>
-                </SelectContent>
-              </Select>
-
               <Input
                 name="name"
                 placeholder="Name"
