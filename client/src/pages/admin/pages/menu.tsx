@@ -125,6 +125,25 @@ export default function AdminMenuPage() {
                   required
                 />
               </div>
+              <div className="space-y-2">
+                <label htmlFor="description" className="text-sm font-medium">Description</label>
+                <Textarea
+                  id="description"
+                  name="description"
+                  placeholder="Enter item description"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="image" className="text-sm font-medium">Image</label>
+                <Input
+                  id="image"
+                  name="image"
+                  type="file"
+                  accept="image/*"
+                  required
+                />
+              </div>
 
               <div className="space-y-2">
                 <label htmlFor="description" className="text-sm font-medium">Description</label>

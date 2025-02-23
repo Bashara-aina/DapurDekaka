@@ -109,7 +109,11 @@ menuRouter.post("/items", requireAuth, upload.single('image'), async (req, res) 
       });
     }
 
-    console.log('Creating menu item with validated data:', validation.data);
+    console.log('Creating menu item with data:', {
+      requestBody: req.body,
+      fileInfo: req.file,
+      validatedData: validation.data
+    });
     const menuItem = await storage.createMenuItem(validation.data);
 
     console.log('Menu item created successfully:', menuItem);
