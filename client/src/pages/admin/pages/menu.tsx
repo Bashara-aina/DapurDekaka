@@ -180,8 +180,8 @@ export default function AdminMenuPage() {
               <div className="space-y-2">
                 <label htmlFor="imageFile" className="text-sm font-medium">Image</label>
                 <Input
-                  id="imageFile"
-                  name="imageFile"
+                  id="image"
+                  name="image"
                   type="file"
                   accept="image/*"
                   required

@@ -136,12 +136,20 @@ menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, r
       });
     }
 
+    const price = parseFloat(req.body.price);
+    if (isNaN(price)) {
+      console.error('Invalid price value:', req.body.price);
+      return res.status(400).json({ message: "Price must be a valid number" });
+    }
+    
     const data = {
       name: req.body.name,
       description: req.body.description,
-      price: parseFloat(req.body.price),
+      price: price,
       imageUrl: `/uploads/${req.file.filename}`
     };
+    
+    console.log('Data to be inserted:', data);
 
     console.log('Prepared data for storage:', data);
 
