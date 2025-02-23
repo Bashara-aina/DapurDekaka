@@ -7,7 +7,7 @@ import { queryKeys, apiRequest } from "@/lib/queryClient";
 import { MenuItem, Sauce } from "@shared/schema";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import OrderModal from "@/components/OrderModal"; // Assuming this component exists
+import { OrderModal } from "@/components/OrderModal";
 
 export default function Menu() {
   const { t } = useLanguage();
