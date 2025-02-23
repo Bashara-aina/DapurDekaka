@@ -24,10 +24,35 @@ export default function AdminMenuPage() {
     try {
       if (!editingItem) return;
       
-      // Send the entire FormData directly to include image if present
+      // Handle image upload first if there's a new image
+      const imageFile = formData.get('imageFile') as File;
+      let imageUrl = editingItem.imageUrl;
+      
+      if (imageFile && imageFile.size > 0) {
+        const imageFormData = new FormData();
+        imageFormData.append('imageFile', imageFile);
+        const uploadResponse = await apiRequest('/api/menu/items/upload', {
+          method: 'POST',
+          body: imageFormData
+        });
+        
+        if (uploadResponse.ok) {
+          const result = await uploadResponse.json();
+          imageUrl = result.imageUrl;
+        }
+      }
+
+      // Send update with proper JSON structure
       const response = await apiRequest(`/api/menu/items/${editingItem.id}`, {
         method: 'PUT',
-        body: formData // Send FormData directly
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: formData.get('name'),
+          description: formData.get('description'),
+          imageUrl: imageUrl
+        })
       });
 
       if (!response.ok) {
