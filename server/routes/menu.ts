@@ -54,7 +54,7 @@ menuRouter.post("/items", requireAuth, upload.single('image'), async (req, res) 
   try {
     const data = {
       ...req.body,
-      price: Number(req.body.price),
+      price: req.body.price ? Number(req.body.price) : undefined,
       imageUrl: req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl,
     };
 
@@ -76,7 +76,7 @@ menuRouter.post("/sauces", requireAuth, upload.single('image'), async (req, res)
   try {
     const data = {
       ...req.body,
-      price: Number(req.body.price),
+      price: req.body.price ? Number(req.body.price) : undefined,
       imageUrl: req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl,
     };
 
@@ -99,7 +99,7 @@ menuRouter.put("/items/:id", requireAuth, upload.single('image'), async (req, re
     const id = Number(req.params.id);
     const data = {
       ...req.body,
-      price: Number(req.body.price),
+      price: req.body.price ? Number(req.body.price) : undefined,
       imageUrl: req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl,
     };
 
@@ -125,7 +125,7 @@ menuRouter.put("/sauces/:id", requireAuth, upload.single('image'), async (req, r
     const id = Number(req.params.id);
     const data = {
       ...req.body,
-      price: Number(req.body.price),
+      price: req.body.price ? Number(req.body.price) : undefined,
       imageUrl: req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl,
     };
 
