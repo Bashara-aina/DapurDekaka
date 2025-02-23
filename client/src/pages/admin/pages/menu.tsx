@@ -103,12 +103,29 @@ export default function AdminMenuPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-
-    // Validate required fields
-    const name = formData.get('name');
-    const description = formData.get('description');
-    const image = formData.get('image');
+    
+    // Get form values
+    const name = formData.get('name') as string;
+    const description = formData.get('description') as string;
+    const image = formData.get('image') as File;
     const type = formData.get('type') as 'menu' | 'sauce';
+
+    if (!name || !description) {
+      toast({
+        title: "Error",
+        description: "Name and description are required",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Ensure we're sending the right field names
+    const submitData = new FormData();
+    submitData.append('name', name);
+    submitData.append('description', description);
+    if (image) {
+      submitData.append('image', image);
+    }
 
     if (!name || !description ) {
       toast({
