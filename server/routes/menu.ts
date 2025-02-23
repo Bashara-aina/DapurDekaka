@@ -6,6 +6,7 @@ import { insertMenuItemSchema, insertSauceSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { requireAuth } from "../auth";
 
+// Enhance logging for file uploads
 const upload = multer({ 
   storage: multer.diskStorage({
     destination: 'uploads/',
@@ -16,6 +17,12 @@ const upload = multer({
   }),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (_req, file, cb) => {
+    console.log('Received file:', {
+      fieldname: file.fieldname,
+      originalname: file.originalname,
+      mimetype: file.mimetype
+    });
+
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
@@ -51,36 +58,24 @@ menuRouter.get("/sauces", async (_req, res) => {
 
 // Create menu item (protected)
 menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, res) => {
-  console.log('Request body:', req.body);
-  console.log('Uploaded file:', req.file);
-  try {
-    console.log('Received menu item creation request:', {
-      body: req.body,
-      file: req.file ? {
-        fieldname: req.file.fieldname,
-        originalname: req.file.originalname,
-        mimetype: req.file.mimetype,
-        size: req.file.size
-      } : 'No file uploaded',
-      headers: req.headers['content-type']
-    });
-    // Enhanced request logging
-    console.log('Creating menu item - Request details:', {
-      body: req.body,
-      file: req.file ? {
-        fieldname: req.file.fieldname,
-        originalname: req.file.originalname,
-        mimetype: req.file.mimetype,
-        size: req.file.size,
-        path: req.file.path
-      } : 'No file uploaded',
-      headers: {
-        'content-type': req.headers['content-type'],
-        'content-length': req.headers['content-length']
-      }
-    });
+  // Comprehensive request logging
+  console.log('Creating menu item - Complete request details:', {
+    body: req.body,
+    file: req.file ? {
+      fieldname: req.file.fieldname,
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      path: req.file.path
+    } : 'No file uploaded',
+    headers: {
+      'content-type': req.headers['content-type'],
+      'content-length': req.headers['content-length']
+    }
+  });
 
-    // Validate required fields
+  try {
+    // Validate required fields with detailed logging
     if (!req.body.name || !req.body.description) {
       console.log('Validation failed - Missing required fields:', {
         name: Boolean(req.body.name),
@@ -121,11 +116,7 @@ menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, r
       });
     }
 
-    console.log('Creating menu item with data:', {
-      requestBody: req.body,
-      fileInfo: req.file,
-      validatedData: validation.data
-    });
+    console.log('Creating menu item with validated data:', validation.data);
     const menuItem = await storage.createMenuItem(validation.data);
 
     console.log('Menu item created successfully:', menuItem);

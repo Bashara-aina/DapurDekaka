@@ -29,17 +29,21 @@ export default function AdminMenuPage() {
 
   const createMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      // Log exact form fields being sent
-      const formFields = Array.from(formData.entries()).map(([key, value]) => ({
-        key,
-        type: value instanceof File ? 'File' : 'Text',
-        filename: value instanceof File ? value.name : null
-      }));
-      console.log("Form fields being sent:", formFields);
+      // Debug log: Log all form fields before sending
+      console.log('Form data being sent:');
+      for (const [key, value] of formData.entries()) {
+        if (value instanceof File) {
+          console.log(`${key}: File(${value.name}, ${value.type}, ${value.size} bytes)`);
+        } else {
+          console.log(`${key}: ${value}`);
+        }
+      }
+
       const response = await fetch("/api/menu/items", {
         method: "POST",
         body: formData,
       });
+
       if (!response.ok) {
         const error = await response.text();
         throw new Error(`Failed to create menu item: ${error}`);
@@ -67,6 +71,17 @@ export default function AdminMenuPage() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+
+    // Debug log: Log form fields before mutation
+    console.log('FormData fields before submission:');
+    for (const [key, value] of formData.entries()) {
+      if (value instanceof File) {
+        console.log(`${key}: File(${value.name}, ${value.type}, ${value.size} bytes)`);
+      } else {
+        console.log(`${key}: ${value}`);
+      }
+    }
+
     createMutation.mutate(formData);
   };
 
@@ -115,9 +130,9 @@ export default function AdminMenuPage() {
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="image" className="text-sm font-medium">Image</label>
+                <label htmlFor="imageFile" className="text-sm font-medium">Image</label>
                 <Input
-                  id="image"
+                  id="imageFile"
                   name="imageFile"
                   type="file"
                   accept="image/*"
