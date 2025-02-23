@@ -6,6 +6,19 @@ import { CalendarIcon, ArrowRight, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 
+function decodeHtmlEntities(text: string) {
+  const textArea = document.createElement('textarea');
+  textArea.innerHTML = text;
+  return textArea.value;
+}
+
+function stripHtmlAndDecodeEntities(html: string) {
+  // First remove HTML tags
+  const strippedHtml = html.replace(/<[^>]+>/g, ' ');
+  // Then decode HTML entities
+  return decodeHtmlEntities(strippedHtml);
+}
+
 export default function FeaturedArticles() {
   const { data: posts, isLoading: postsLoading } = useQuery<BlogPost[]>({
     queryKey: ["/api/blog"],
@@ -14,8 +27,8 @@ export default function FeaturedArticles() {
       if (!response.ok) throw new Error("Failed to fetch posts");
       const posts = await response.json();
       return posts
-        .filter(post => post.published === 1)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .filter((post: BlogPost) => post.published === 1)
+        .sort((a: BlogPost, b: BlogPost) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, 2);
     },
   });
@@ -88,7 +101,7 @@ export default function FeaturedArticles() {
                   )}
                   <CardHeader>
                     <CardTitle className="text-2xl group-hover:text-primary transition-colors duration-300">
-                      {post.title}
+                      {decodeHtmlEntities(post.title)}
                     </CardTitle>
                     <div className="flex items-center text-sm text-gray-500">
                       <CalendarIcon className="mr-2 h-4 w-4" />
@@ -101,7 +114,7 @@ export default function FeaturedArticles() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-gray-600 line-clamp-2">
-                      {post.content.replace(/<[^>]+>/g, '')}
+                      {stripHtmlAndDecodeEntities(post.content)}
                     </p>
                   </CardContent>
                 </Card>
