@@ -14,7 +14,14 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 // Enhanced multer configuration with detailed logging
-const upload = multer({ 
+const upload = multer({
+  fileFilter: (_req, file, cb) => {
+    if (file.fieldname === 'imageFile') {
+      cb(null, true);
+    } else {
+      cb(new Error('Wrong field name for file upload'));
+    }
+  }, 
   storage: multer.diskStorage({
     destination: (_req, _file, cb) => {
       cb(null, uploadDir);
