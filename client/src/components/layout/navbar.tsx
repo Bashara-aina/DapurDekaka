@@ -53,7 +53,7 @@ export default function Navbar() {
             <div className="flex items-center gap-2">
               <Button asChild>
                 <a
-                  href="https://wa.me/your-number"
+                  href="https://wa.me/6282295986407"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
