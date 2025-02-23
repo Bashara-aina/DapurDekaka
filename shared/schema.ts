@@ -2,7 +2,7 @@ import { pgTable, text, serial, integer, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Keep existing tables
+// Keep existing tables but remove price and category from menuItems
 export const menuItems = pgTable("menu_items", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -20,6 +20,7 @@ export const sauces = pgTable("sauces", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// Rest of the schema remains unchanged
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
@@ -46,14 +47,13 @@ export const footer = pgTable('footer',{
   phone: text('phone').notNull()
 });
 
-// Simplified about page schema
 export const pages = pgTable('pages', {
   id: serial('id').primaryKey(),
   pageName: text('page_name').notNull(),
-  content: text('content').notNull(), // Will store JSON stringified content
+  content: text('content').notNull(),
 });
 
-// Update menu item schema to match form requirements
+// Update schemas
 export const insertMenuItemSchema = createInsertSchema(menuItems).omit({
   id: true,
   createdAt: true,
@@ -84,7 +84,6 @@ export const insertBlogPostSchema = createInsertSchema(blogPosts)
     imageUrl: z.string().optional(),
   });
 
-// New page content schema
 export const pageContentSchema = z.object({
   content: z.object({
     title: z.string(),
@@ -104,6 +103,7 @@ export const pageContentSchema = z.object({
   })
 });
 
+// Export types
 export type InsertMenuItem = z.infer<typeof insertMenuItemSchema>;
 export type MenuItem = typeof menuItems.$inferSelect;
 

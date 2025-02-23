@@ -13,41 +13,19 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Enhanced multer configuration with detailed logging
+// Enhanced multer configuration
 const upload = multer({
-  fileFilter: (_req, file, cb) => {
-    if (file.fieldname === 'imageFile') {
-      cb(null, true);
-    } else {
-      cb(new Error('Wrong field name for file upload'));
-    }
-  }, 
   storage: multer.diskStorage({
     destination: (_req, _file, cb) => {
       cb(null, uploadDir);
     },
     filename: (_req, file, cb) => {
-      console.log('\n=== Multer File Processing ===');
-      console.log('Processing uploaded file:', {
-        fieldname: file.fieldname,
-        originalname: file.originalname,
-        mimetype: file.mimetype,
-        encoding: file.encoding
-      });
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
       cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
     }
   }),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (_req, file, cb) => {
-    console.log('\n=== Multer File Validation ===');
-    console.log('Validating file:', {
-      fieldname: file.fieldname,
-      originalname: file.originalname,
-      mimetype: file.mimetype,
-      encoding: file.encoding
-    });
-
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
@@ -58,8 +36,6 @@ const upload = multer({
 });
 
 export const menuRouter = Router();
-
-import { upload } from '../storage';
 
 // Get all menu items 
 menuRouter.get("/items", async (_req, res) => {
@@ -83,62 +59,25 @@ menuRouter.get("/sauces", async (_req, res) => {
   }
 });
 
-// Enhanced create menu item route with detailed request parsing logs
+// Enhanced create menu item route
 menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, res) => {
   try {
-    console.log('\n=== Incoming Request Debug ===');
     console.log('Request Body:', req.body);
     console.log('File:', req.file);
-    console.log('Headers:', req.headers);
-    console.log('Content Type:', req.get('Content-Type'));
-    console.log('Form Data:', req.body);
-    
-    // Validate request
-    if (!req.file) {
-      console.error('File upload error: No file received');
-      return res.status(400).json({ 
-        error: 'No file uploaded',
-        requestBody: req.body,
-        headers: req.headers
-      });
-    }
-
-    if (!req.body.name || !req.body.description || !req.body.price) {
-      console.error('Missing required fields:', {
-        name: Boolean(req.body.name),
-        description: Boolean(req.body.description),
-        price: Boolean(req.body.price)
-      });
-      return res.status(400).json({
-        message: "Name, description, and price are required",
-        receivedFields: req.body
-      });
-    }
-
-    const price = parseFloat(req.body.price);
-    if (isNaN(price)) {
-      return res.status(400).json({
-        message: "Price must be a valid number"
-      });
-    }
 
     if (!req.file) {
-      console.error('No file uploaded');
-      return res.status(400).json({
-        message: "Image file is required"
+      return res.status(400).json({ 
+        message: "Image file is required",
+        requestBody: req.body
       });
     }
-      console.log('Missing required fields:', {
-        name: Boolean(req.body.name),
-        description: Boolean(req.body.description),
-        file: Boolean(req.file)
-      });
-      return res.status(400).json({ 
-        message: "Name, description, and image file are required",
+
+    if (!req.body.name || !req.body.description) {
+      return res.status(400).json({
+        message: "Name and description are required",
         receivedFields: {
           name: Boolean(req.body.name),
-          description: Boolean(req.body.description),
-          file: Boolean(req.file)
+          description: Boolean(req.body.description)
         }
       });
     }
@@ -148,22 +87,17 @@ menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, r
       description: req.body.description,
       imageUrl: `/uploads/${req.file.filename}`
     };
-    
-    console.log('Data to be inserted:', data);
 
-    console.log('Prepared data for storage:', data);
+    console.log('Data to be inserted:', data);
 
     const validation = insertMenuItemSchema.safeParse(data);
     if (!validation.success) {
-      console.log('Validation failed:', validation.error);
       return res.status(400).json({ 
-        message: fromZodError(validation.error).message,
-        details: validation.error.errors
+        message: fromZodError(validation.error).message
       });
     }
 
     const menuItem = await storage.createMenuItem(validation.data);
-    console.log('Created menu item:', menuItem);
     res.status(201).json(menuItem);
   } catch (error) {
     console.error('Error creating menu item:', error);
@@ -175,7 +109,7 @@ menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, r
 });
 
 // Create sauce (protected)
-menuRouter.post("/sauces", requireAuth, upload.single('image'), async (req, res) => {
+menuRouter.post("/sauces", requireAuth, upload.single('imageFile'), async (req, res) => {
   try {
     const data = {
       name: req.body.name,
@@ -186,8 +120,7 @@ menuRouter.post("/sauces", requireAuth, upload.single('image'), async (req, res)
     const validation = insertSauceSchema.safeParse(data);
     if (!validation.success) {
       return res.status(400).json({ 
-        message: fromZodError(validation.error).message,
-        details: validation.error.errors 
+        message: fromZodError(validation.error).message
       });
     }
 
@@ -200,7 +133,7 @@ menuRouter.post("/sauces", requireAuth, upload.single('image'), async (req, res)
 });
 
 // Update menu item (protected)
-menuRouter.put("/items/:id", requireAuth, upload.single('image'), async (req, res) => {
+menuRouter.put("/items/:id", requireAuth, upload.single('imageFile'), async (req, res) => {
   try {
     const id = Number(req.params.id);
     const data = {
@@ -225,7 +158,7 @@ menuRouter.put("/items/:id", requireAuth, upload.single('image'), async (req, re
 });
 
 // Update sauce (protected)
-menuRouter.put("/sauces/:id", requireAuth, upload.single('image'), async (req, res) => {
+menuRouter.put("/sauces/:id", requireAuth, upload.single('imageFile'), async (req, res) => {
   try {
     const id = Number(req.params.id);
     const data = {
