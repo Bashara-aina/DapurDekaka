@@ -17,6 +17,36 @@ export default function AdminMenuPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const handleEditItem = (item: MenuItem) => {
+    // TODO: Implement edit functionality
+    console.log("Edit item:", item);
+  };
+
+  const handleDeleteItem = async (id: number) => {
+    try {
+      await apiRequest(`/api/menu/items/${id}`, { method: 'DELETE' });
+      queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
+      toast({ title: "Menu item deleted successfully" });
+    } catch (error) {
+      toast({ title: "Failed to delete menu item", variant: "destructive" });
+    }
+  };
+
+  const handleEditSauce = (sauce: Sauce) => {
+    // TODO: Implement edit functionality
+    console.log("Edit sauce:", sauce);
+  };
+
+  const handleDeleteSauce = async (id: number) => {
+    try {
+      await apiRequest(`/api/menu/sauces/${id}`, { method: 'DELETE' });
+      queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
+      toast({ title: "Sauce deleted successfully" });
+    } catch (error) {
+      toast({ title: "Failed to delete sauce", variant: "destructive" });
+    }
+  };
+
   const { data: menuItems, isLoading: menuLoading } = useQuery({
     queryKey: queryKeys.menu.items,
     queryFn: () => apiRequest("/api/menu/items")
@@ -227,6 +257,14 @@ export default function AdminMenuPage() {
                     />
                     <h3 className="font-semibold">{item.name}</h3>
                     <p className="text-sm text-gray-600">{item.description}</p>
+                    <div className="flex gap-2 mt-4">
+                      <Button variant="outline" onClick={() => handleEditItem(item)}>
+                        Edit
+                      </Button>
+                      <Button variant="destructive" onClick={() => handleDeleteItem(item.id)}>
+                        Delete
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -245,6 +283,14 @@ export default function AdminMenuPage() {
                     />
                     <h3 className="font-semibold">{sauce.name}</h3>
                     <p className="text-sm text-gray-600">{sauce.description}</p>
+                    <div className="flex gap-2 mt-4">
+                      <Button variant="outline" onClick={() => handleEditSauce(sauce)}>
+                        Edit
+                      </Button>
+                      <Button variant="destructive" onClick={() => handleDeleteSauce(sauce.id)}>
+                        Delete
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
