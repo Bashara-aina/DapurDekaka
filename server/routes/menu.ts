@@ -52,7 +52,9 @@ const upload = multer({
 
 export const menuRouter = Router();
 
-// Get all menu items
+import { upload } from '../storage';
+
+// Get all menu items 
 menuRouter.get("/items", async (_req, res) => {
   try {
     const items = await storage.getAllMenuItems();
@@ -80,8 +82,25 @@ menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, r
     console.log('\n=== Incoming Request Debug ===');
     console.log('Request Body:', req.body);
     console.log('File:', req.file);
+    console.log('Headers:', req.headers);
 
-    if (!req.body.name || !req.body.description || !req.file) {
+    if (!req.body.name || !req.body.description) {
+      console.error('Missing required fields:', {
+        name: Boolean(req.body.name),
+        description: Boolean(req.body.description)
+      });
+      return res.status(400).json({
+        message: "Name and description are required",
+        receivedFields: req.body
+      });
+    }
+
+    if (!req.file) {
+      console.error('No file uploaded');
+      return res.status(400).json({
+        message: "Image file is required"
+      });
+    }
       console.log('Missing required fields:', {
         name: Boolean(req.body.name),
         description: Boolean(req.body.description),
