@@ -87,20 +87,21 @@ export default function FeaturedProducts() {
               transition={{ duration: 0.2 }}
             >
               <Card className="h-full flex flex-col">
-                <AspectRatio ratio={1} className="overflow-hidden rounded-t-lg"> {/*Enforces 1:1 aspect ratio*/}
+                <AspectRatio ratio={1} className="overflow-hidden rounded-t-lg">
                   <img
                     src={item.imageUrl}
                     alt={item.name}
                     className="object-cover w-full h-full"
                   />
                 </AspectRatio>
-                <CardFooter className="flex flex-col p-4">
+                <CardContent className="flex-1 p-4">
                   <h3 className="font-semibold text-base">{item.name}</h3>
                   <p className="text-sm text-gray-600 line-clamp-2 mt-2">
                     {item.description}
                   </p>
-                  <div className="mt-auto pt-3 w-full">
-                    <Button size="sm" className="w-full" asChild>
+                </CardContent>
+                <CardFooter className="p-4 pt-0">
+                  <Button size="sm" className="w-full" asChild>
                       <a
                         href={`https://wa.me/your-number?text=I would like to order ${item.name}`}
                         target="_blank"
