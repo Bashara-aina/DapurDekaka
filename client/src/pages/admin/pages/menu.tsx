@@ -17,9 +17,24 @@ export default function AdminMenuPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const handleEditItem = (item: MenuItem) => {
-    // TODO: Implement edit functionality
-    console.log("Edit item:", item);
+  const handleEditItem = async (item: MenuItem) => {
+    try {
+      const formData = new FormData();
+      formData.append('name', item.name);
+      formData.append('description', item.description);
+      formData.append('imageUrl', item.imageUrl);
+
+      await apiRequest(`/api/menu/items/${item.id}`, {
+        method: 'PUT',
+        body: formData
+      });
+      
+      queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
+      toast({ title: "Menu item updated successfully" });
+    } catch (error) {
+      console.error('Edit error:', error);
+      toast({ title: "Failed to update menu item", variant: "destructive" });
+    }
   };
 
   const handleDeleteItem = async (id: number) => {
@@ -33,9 +48,24 @@ export default function AdminMenuPage() {
     }
   };
 
-  const handleEditSauce = (sauce: Sauce) => {
-    // TODO: Implement edit functionality
-    console.log("Edit sauce:", sauce);
+  const handleEditSauce = async (sauce: Sauce) => {
+    try {
+      const formData = new FormData();
+      formData.append('name', sauce.name);
+      formData.append('description', sauce.description);
+      formData.append('imageUrl', sauce.imageUrl);
+
+      await apiRequest(`/api/menu/sauces/${sauce.id}`, {
+        method: 'PUT',
+        body: formData
+      });
+      
+      queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
+      toast({ title: "Sauce updated successfully" });
+    } catch (error) {
+      console.error('Edit error:', error);
+      toast({ title: "Failed to update sauce", variant: "destructive" });
+    }
   };
 
   const handleDeleteSauce = async (id: number) => {
