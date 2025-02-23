@@ -1,4 +1,5 @@
-import { createContext, useContext, useState } from 'react';
+
+import { createContext, useContext, useState, useEffect } from 'react';
 import { Language, translations } from './translations';
 
 type LanguageContextType = {
@@ -9,8 +10,23 @@ type LanguageContextType = {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
+function getBrowserLanguage(): Language {
+  const browserLang = navigator.language.split('-')[0];
+  return browserLang === 'id' ? 'id' : 'en';
+}
+
+function getInitialLanguage(): Language {
+  const savedLanguage = localStorage.getItem('language') as Language;
+  return savedLanguage || getBrowserLanguage();
+}
+
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguage] = useState<Language>('id');
+  const [language, setLanguageState] = useState<Language>(getInitialLanguage);
+
+  const setLanguage = (newLanguage: Language) => {
+    setLanguageState(newLanguage);
+    localStorage.setItem('language', newLanguage);
+  };
 
   const t = (path: string) => {
     const keys = path.split('.');
@@ -26,6 +42,13 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     
     return current;
   };
+
+  useEffect(() => {
+    const savedLanguage = localStorage.getItem('language');
+    if (!savedLanguage) {
+      setLanguage(getBrowserLanguage());
+    }
+  }, []);
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>
