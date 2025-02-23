@@ -102,15 +102,14 @@ export default function FeaturedProducts() {
                 </CardContent>
                 <CardFooter className="p-4 pt-0">
                   <Button size="sm" className="w-full" asChild>
-                      <a
-                        href={`https://wa.me/your-number?text=I would like to order ${item.name}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {t('menu.orderButton')}
-                      </a>
-                    </Button>
-                  </div>
+                    <a
+                      href={`https://wa.me/your-number?text=I would like to order ${item.name}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {t('menu.orderButton')}
+                    </a>
+                  </Button>
                 </CardFooter>
               </Card>
             </motion.div>
