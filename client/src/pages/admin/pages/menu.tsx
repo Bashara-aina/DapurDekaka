@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { MenuItem, Sauce, insertMenuItemSchema, insertSauceSchema } from "@shared/schema";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Loader2, Plus, Pencil, Trash2 } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AdminNavbar from "@/components/layout/admin-navbar";
 import { queryKeys, apiRequest } from "@/lib/queryClient";
@@ -15,16 +15,7 @@ import { useForm } from "react-hook-form";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-type EditingItem = {
-  id?: number;
-  name: string;
-  description: string;
-  imageUrl?: string;
-  type: 'menu' | 'sauce';
-};
-
 export default function AdminMenuPage() {
-  const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -45,7 +36,8 @@ export default function AdminMenuPage() {
       const endpoint = type === 'menu' ? '/api/menu/items' : '/api/menu/sauces';
       const response = await fetch(endpoint, {
         method: 'POST',
-        body: formData
+        body: formData,
+        credentials: 'include'
       });
 
       if (!response.ok) {
@@ -127,19 +119,7 @@ export default function AdminMenuPage() {
               />
 
               <Input
-                name="price"
-                type="number"
-                placeholder="Price"
-                required
-              />
-
-              <Input
-                name="category"
-                placeholder="Category"
-              />
-
-              <Input
-                name="image"
+                name="imageUrl"
                 type="file"
                 accept="image/*"
                 required

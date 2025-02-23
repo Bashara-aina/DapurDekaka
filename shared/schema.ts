@@ -53,7 +53,7 @@ export const pages = pgTable('pages', {
   content: text('content').notNull(), // Will store JSON stringified content
 });
 
-// Keep existing schemas
+// Update menu item schema to match form requirements
 export const insertMenuItemSchema = createInsertSchema(menuItems).omit({
   id: true,
   createdAt: true,
@@ -104,7 +104,6 @@ export const pageContentSchema = z.object({
   })
 });
 
-// Keep existing type exports
 export type InsertMenuItem = z.infer<typeof insertMenuItemSchema>;
 export type MenuItem = typeof menuItems.$inferSelect;
 
