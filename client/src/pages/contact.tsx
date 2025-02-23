@@ -94,7 +94,7 @@ export default function Contact() {
                         rel="noopener noreferrer"
                         className="hover:text-primary"
                       >
-                        <Icon icon="simple-icons:grab" className="h-5 w-5" />
+                        <Icon icon="simple-icons:grab" className="h-[30px] w-[30px] -m-[5px]" />
                       </a>
                     </Button>
                   </div>
