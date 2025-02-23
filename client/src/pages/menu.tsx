@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import { queryKeys, apiRequest } from "@/lib/queryClient";
 import { MenuItem, Sauce } from "@shared/schema";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import AspectRatio from "@/components/ui/AspectRatio"; // Assuming this component exists
 
 export default function Menu() {
   const { t } = useLanguage();
@@ -47,13 +48,13 @@ export default function Menu() {
           >
             <Card className="h-full flex flex-col">
               <CardContent className="p-0 flex flex-col h-full">
-                <div className="relative aspect-square">
+                <AspectRatio ratio={1} className="overflow-hidden rounded-lg"> {/* Use AspectRatio component */}
                   <img
                     src={item.imageUrl}
                     alt={item.name}
-                    className="w-full h-full object-cover"
+                    className="object-cover w-full h-full"
                   />
-                </div>
+                </AspectRatio>
                 <div className="p-4 flex flex-col flex-grow gap-3">
                   <h3 className="text-lg font-semibold">{item.name}</h3>
                   <p className="text-sm text-gray-600">
@@ -66,16 +67,16 @@ export default function Menu() {
                       size="sm"
                       asChild
                     >
-                    <a
-                      href={`https://wa.me/your-number?text=I would like to order ${item.name}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full"
-                    >
-                      Pesan
-                    </a>
-                  </Button>
-                </div>
+                      <a
+                        href={`https://wa.me/your-number?text=I would like to order ${item.name}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full"
+                      >
+                        Pesan
+                      </a>
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -100,13 +101,13 @@ export default function Menu() {
               >
                 <Card className="h-full flex flex-col">
                   <CardContent className="p-0">
-                    <div className="relative aspect-square">
+                    <AspectRatio ratio={1} className="overflow-hidden rounded-lg"> {/* Use AspectRatio component */}
                       <img
                         src={sauce.imageUrl}
                         alt={sauce.name}
-                        className="w-full h-full object-cover"
+                        className="object-cover w-full h-full"
                       />
-                    </div>
+                    </AspectRatio>
                     <div className="p-4 flex flex-col gap-2">
                       <h3 className="text-lg font-semibold">{sauce.name}</h3>
                       <p className="text-sm text-gray-600 flex-grow">

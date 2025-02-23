@@ -86,15 +86,15 @@ export default function FeaturedProducts() {
               whileHover={{ scale: 1.02 }}
               transition={{ duration: 0.2 }}
             >
-              <Card className="h-full flex flex-col overflow-hidden">
-                <AspectRatio ratio={1}>
+              <Card className="h-full flex flex-col">
+                <AspectRatio ratio={1} className="overflow-hidden rounded-t-lg"> {/*Enforces 1:1 aspect ratio*/}
                   <img
                     src={item.imageUrl}
                     alt={item.name}
-                    className="object-cover w-full h-full rounded-t-lg"
+                    className="object-cover w-full h-full"
                   />
                 </AspectRatio>
-                <CardFooter className="flex flex-col h-full p-4">
+                <CardFooter className="flex flex-col p-4">
                   <h3 className="font-semibold text-base">{item.name}</h3>
                   <p className="text-sm text-gray-600 line-clamp-2 mt-2">
                     {item.description}
