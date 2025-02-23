@@ -2,7 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import path from "path";
 import { storage } from "../storage";
-import { insertMenuItemSchema } from "@shared/schema";
+import { insertMenuItemSchema, insertSauceSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { requireAuth } from "../auth";
 
@@ -98,13 +98,17 @@ menuRouter.post("/items", requireAuth, upload.single('image'), async (req, res) 
 menuRouter.post("/sauces", requireAuth, upload.single('image'), async (req, res) => {
   try {
     const data = {
-      ...req.body,
+      name: req.body.name,
+      description: req.body.description,
       imageUrl: req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl,
     };
 
     const validation = insertSauceSchema.safeParse(data);
     if (!validation.success) {
-      return res.status(400).json({ message: fromZodError(validation.error).message });
+      return res.status(400).json({ 
+        message: fromZodError(validation.error).message,
+        details: validation.error.errors 
+      });
     }
 
     const sauce = await storage.createSauce(validation.data);
@@ -121,7 +125,6 @@ menuRouter.put("/items/:id", requireAuth, upload.single('image'), async (req, re
     const id = Number(req.params.id);
     const data = {
       ...req.body,
-      price: req.body.price ? Number(req.body.price) : undefined,
       imageUrl: req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl,
     };
 

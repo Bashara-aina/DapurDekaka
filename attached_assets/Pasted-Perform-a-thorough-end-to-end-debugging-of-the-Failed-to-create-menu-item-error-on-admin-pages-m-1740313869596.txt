@@ -1,0 +1,30 @@
+Perform a thorough, end-to-end debugging of the 'Failed to create menu item' error on /admin/pages/menu. Verify that the front-end form, back-end route, file upload, and database logic are correctly aligned. Specifically:
+
+Front-End Form & Request
+
+Confirm that the form fields (name, description, file upload) match exactly what the server expects (e.g., name="itemName", name="description", name="imageFile").
+Ensure no extra or missing fields exist (we removed price/category).
+Check that the form submission uses the correct HTTP method (POST) and endpoint.
+File Upload Middleware
+
+Verify the middleware configuration (e.g., Multer) is set up for a single file or multiple fields, matching the field name in the form.
+Look for any file size or file type restrictions that might cause the request to fail.
+Back-End Route & Validation
+
+Inspect the create menu item route to confirm it no longer expects or validates price/category.
+Confirm the request payload is parsed correctly, and that the server is handling the file upload path or file data properly.
+Error Logs & Stack Traces
+
+Check the server logs or console output for any specific error messages (e.g., validation failures, database errors, file system errors).
+If possible, log the exact fields received in the route handler to confirm they match the form submission.
+Database Interaction
+
+Ensure the schema or table doesn’t require price/category fields.
+Confirm the new item insertion logic is correct and that the image (if stored) is handled properly.
+Check for non-null constraints or triggers that could block item creation.
+Testing & Iteration
+
+After each fix, try creating a new menu item again.
+If an error persists, capture and analyze the updated error messages, then address them.
+Continue until the form submission works end-to-end, successfully creating a new menu item without price/category fields.
+Please provide detailed reasoning, code snippets (if needed), and the exact error messages at each step. Continue until the form creates a new menu item without errors.
