@@ -50,11 +50,11 @@ export default function FeaturedProducts() {
     <section className="py-8 bg-white">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center mb-8">
-          <div>
+          <div className="w-4/5">
             <h2 className="text-3xl font-bold text-gray-900">
               {t('home.featured.title')}
             </h2>
-            <p className="text-gray-600 mt-2">
+            <p className="text-gray-600 mt-2 pr-4">
               {t('home.featured.subtitle')}
             </p>
           </div>
