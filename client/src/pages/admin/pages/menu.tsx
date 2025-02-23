@@ -31,28 +31,33 @@ export default function AdminMenuPage() {
       if (imageFile && imageFile.size > 0) {
         const imageFormData = new FormData();
         imageFormData.append('imageFile', imageFile);
-        const uploadResponse = await apiRequest('/api/menu/items/upload', {
+        const uploadResponse = await fetch('/api/menu/items/upload', {
           method: 'POST',
-          body: imageFormData
+          body: imageFormData,
+          credentials: 'include'
         });
 
-        if (uploadResponse.ok) {
-          const result = await uploadResponse.json();
-          imageUrl = result.imageUrl;
-        } else {
+        if (!uploadResponse.ok) {
           throw new Error('Failed to upload image');
         }
+        const uploadResult = await uploadResponse.json();
+        imageUrl = uploadResult.imageUrl;
       }
 
       // Prepare update data
       const updateData = {
         name: formData.get('name') as string,
         description: formData.get('description') as string,
-        imageUrl: imageUrl
+        imageUrl
       };
 
-      // Send update request
-      const response = await apiRequest(`/api/menu/items/${editingItem.id}`, {
+      // Validate required fields
+      if (!updateData.name || !updateData.description) {
+        throw new Error('Name and description are required');
+      }
+
+      // Send update request using apiRequest
+      const result = await apiRequest(`/api/menu/items/${editingItem.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -60,11 +65,7 @@ export default function AdminMenuPage() {
         body: JSON.stringify(updateData)
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update menu item');
-      }
-
+      // apiRequest already returns parsed JSON
       await queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
       toast({ title: "Menu item updated successfully" });
       setEditingItem(null);
