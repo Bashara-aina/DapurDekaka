@@ -81,12 +81,26 @@ const findAvailablePort = async (startPort: number, maxAttempts: number = 10): P
     let attempts = 0;
 
     const tryPort = () => {
+      console.log(`[Port] Attempting to bind to port ${currentPort}...`);
       const tempServer = createServer();
-      tempServer.listen(currentPort, '0.0.0.0');
 
-      tempServer.on('error', (err: any) => {
+      // Set a timeout for the connection attempt
+      const timeout = setTimeout(() => {
+        console.log(`[Port] Timeout while trying to bind to port ${currentPort}`);
+        tempServer.close();
+        currentPort++;
+        attempts++;
+        if (attempts >= maxAttempts) {
+          reject(new Error(`Could not find available port after ${maxAttempts} attempts`));
+          return;
+        }
+        tryPort();
+      }, 2000); // 2 second timeout
+
+      tempServer.once('error', (err: any) => {
+        clearTimeout(timeout);
         if (err.code === 'EADDRINUSE') {
-          console.log(`[Port] ${currentPort} is in use, trying next port`);
+          console.log(`[Port] ${currentPort} is in use (${err.message})`);
           currentPort++;
           attempts++;
           if (attempts >= maxAttempts) {
@@ -95,14 +109,19 @@ const findAvailablePort = async (startPort: number, maxAttempts: number = 10): P
           }
           tempServer.close(() => tryPort());
         } else {
+          console.error(`[Port] Unexpected error while binding to port ${currentPort}:`, err);
           reject(err);
         }
       });
 
-      tempServer.on('listening', () => {
+      tempServer.once('listening', () => {
+        clearTimeout(timeout);
         const finalPort = (tempServer.address() as any).port;
+        console.log(`[Port] Successfully bound to port ${finalPort}`);
         tempServer.close(() => resolve(finalPort));
       });
+
+      tempServer.listen(currentPort, '0.0.0.0');
     };
 
     tryPort();
@@ -116,16 +135,17 @@ const startServer = async () => {
     // Create required directories
     await createRequiredDirectories();
 
-    // Find available port
+    // Find available port with improved logging
+    console.log('[Port] Starting port availability check...');
     const port = await findAvailablePort(5000);
-    console.log(`[Port] Found available port: ${port}`);
+    console.log(`[Port] Selected port ${port} for server`);
 
     // Register routes before static files
     server = registerRoutes(app);
 
-    // Global error handler
+    // Global error handler with improved logging
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      console.error('[Error]', err);
+      console.error('[Error] Detailed server error:', err);
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
       res.status(status).json({ message });
@@ -140,12 +160,11 @@ const startServer = async () => {
       serveStatic(app);
     }
 
-    // Start the server
+    // Start the server with improved error handling
     return new Promise((resolve, reject) => {
       server.listen(port, "0.0.0.0", async () => {
         log(`[Server] Running on port ${port}`);
         try {
-          // Initialize database content
           console.log('[Database] Starting data initialization...');
           await storage.getAllMenuItems();
           console.log('[Database] Data initialization complete');
