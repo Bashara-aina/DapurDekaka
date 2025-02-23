@@ -1,13 +1,8 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  MapPin,
-  Phone,
-  Mail,
-  Instagram as InstagramIcon,
-} from "lucide-react";
-import { Icon } from '@iconify/react';
+import { MapPin, Phone, Mail, Instagram as InstagramIcon } from "lucide-react";
+import { Icon } from "@iconify/react";
 
 export default function Contact() {
   return (
@@ -52,14 +47,14 @@ export default function Contact() {
                     <Phone className="h-6 w-6 text-primary" />
                     <div>
                       <h3 className="font-semibold">Phone</h3>
-                      <p className="text-gray-600">+62 XXX-XXXX-XXXX</p>
+                      <p className="text-gray-600">+62 8229-5986-407</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
                     <Mail className="h-6 w-6 text-primary" />
                     <div>
                       <h3 className="font-semibold">Email</h3>
-                      <p className="text-gray-600">info@dapurdekaka.com</p>
+                      <p className="text-gray-600">dapurdekaka@gmail.com</p>
                     </div>
                   </div>
                 </div>
@@ -68,8 +63,8 @@ export default function Contact() {
                   <h3 className="font-semibold mb-4">Follow Us</h3>
                   <div className="flex gap-4">
                     <Button variant="outline" size="icon" asChild>
-                      <a 
-                        href="https://shopee.co.id/dapurdekaka" 
+                      <a
+                        href="https://shopee.co.id/dapurdekaka"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="hover:text-primary"
@@ -78,8 +73,8 @@ export default function Contact() {
                       </a>
                     </Button>
                     <Button variant="outline" size="icon" asChild>
-                      <a 
-                        href="https://instagram.com/dapurdekaka" 
+                      <a
+                        href="https://instagram.com/dapurdekaka"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="hover:text-primary"
@@ -88,13 +83,16 @@ export default function Contact() {
                       </a>
                     </Button>
                     <Button variant="outline" size="icon" asChild>
-                      <a 
-                        href="https://mart.grab.com/id/id/merchant/6-C62BTTXXSB33TE" 
+                      <a
+                        href="https://mart.grab.com/id/id/merchant/6-C62BTTXXSB33TE"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="hover:text-primary"
                       >
-                        <Icon icon="simple-icons:grab" className="h-[30px] w-[30px] -m-[5px]" />
+                        <Icon
+                          icon="simple-icons:grab"
+                          className="h-[50px] w-[50px]"
+                        />
                       </a>
                     </Button>
                   </div>
