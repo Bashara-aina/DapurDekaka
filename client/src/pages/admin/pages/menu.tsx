@@ -67,6 +67,16 @@ export default function AdminMenuPage() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
+
+    // Get the file from the input
+    const fileInput = event.currentTarget.querySelector('input[type="file"]') as HTMLInputElement;
+    if (fileInput && fileInput.files && fileInput.files[0]) {
+      // Remove the old file if it exists
+      formData.delete('imageUrl');
+      // Add the file with the correct field name
+      formData.append('image', fileInput.files[0]);
+    }
+
     await createMutation.mutate(formData);
   };
 
@@ -119,7 +129,7 @@ export default function AdminMenuPage() {
               />
 
               <Input
-                name="imageUrl"
+                name="image"
                 type="file"
                 accept="image/*"
                 required
