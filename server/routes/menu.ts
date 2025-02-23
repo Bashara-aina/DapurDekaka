@@ -83,6 +83,18 @@ menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, r
     console.log('Request Body:', req.body);
     console.log('File:', req.file);
     console.log('Headers:', req.headers);
+    console.log('Content Type:', req.get('Content-Type'));
+    console.log('Form Data:', req.body);
+    
+    // Validate request
+    if (!req.file) {
+      console.error('File upload error: No file received');
+      return res.status(400).json({ 
+        error: 'No file uploaded',
+        requestBody: req.body,
+        headers: req.headers
+      });
+    }
 
     if (!req.body.name || !req.body.description) {
       console.error('Missing required fields:', {

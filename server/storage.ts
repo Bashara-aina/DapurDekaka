@@ -5,7 +5,13 @@ import path from 'path';
 export const upload = multer({
   storage: multer.diskStorage({
     destination: (_req, _file, cb) => {
-      cb(null, 'uploads/');
+      // Ensure uploads directory exists
+      const fs = require('fs');
+      const dir = 'uploads/';
+      if (!fs.existsSync(dir)){
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      cb(null, dir);
     },
     filename: (_req, file, cb) => {
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -84,14 +90,35 @@ export class DatabaseStorage implements IStorage {
   async createMenuItem(item: InsertMenuItem): Promise<MenuItem> {
     try {
       console.log("Creating menu item with data:", item);
+      
+      // Validate image URL
+      if (!item.imageUrl) {
+        throw new Error("Image URL is required");
+      }
+
+      // Validate data before insertion
+      if (!item.name || !item.description) {
+        throw new Error("Name and description are required");
+      }
+
       const [newItem] = await db
         .insert(menuItems)
         .values(item)
         .returning();
+
+      if (!newItem) {
+        throw new Error("Database insert failed - no item returned");
+      }
+
+      console.log("Successfully created menu item:", newItem);
       return newItem;
     } catch (error) {
-      console.error("Error creating menu item:", error);
-      throw new Error("Failed to create menu item");
+      console.error("Detailed error creating menu item:", {
+        error: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : undefined,
+        item
+      });
+      throw error;
     }
   }
 
