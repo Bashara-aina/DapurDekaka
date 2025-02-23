@@ -1,15 +1,24 @@
 import { Router } from "express";
 import multer from "multer";
 import path from "path";
+import fs from "fs";
 import { storage } from "../storage";
 import { insertMenuItemSchema, insertSauceSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { requireAuth } from "../auth";
 
+// Create uploads directory if it doesn't exist
+const uploadDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 // Enhanced multer configuration with detailed logging
 const upload = multer({ 
   storage: multer.diskStorage({
-    destination: 'uploads/',
+    destination: (_req, _file, cb) => {
+      cb(null, uploadDir);
+    },
     filename: (_req, file, cb) => {
       console.log('\n=== Multer File Processing ===');
       console.log('Processing uploaded file:', {
@@ -67,49 +76,25 @@ menuRouter.get("/sauces", async (_req, res) => {
 
 // Enhanced create menu item route with detailed request parsing logs
 menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, res) => {
-  console.log('\n=== Incoming Request Debug ===');
-  console.log('Request Headers:', {
-    'content-type': req.headers['content-type'],
-    'content-length': req.headers['content-length'],
-    'authorization': req.headers.authorization ? 'Present' : 'Missing'
-  });
-
-  console.log('\n=== Parsed Form Fields ===');
-  console.log('Body Fields:', req.body);
-
-  console.log('\n=== Uploaded File Details ===');
-  console.log('File:', req.file ? {
-    fieldname: req.file.fieldname,
-    originalname: req.file.originalname,
-    encoding: req.file.encoding,
-    mimetype: req.file.mimetype,
-    size: req.file.size,
-    destination: req.file.destination,
-    filename: req.file.filename,
-    path: req.file.path
-  } : 'No file uploaded');
-
   try {
-    // Field validation with detailed logging
-    if (!req.body.name || !req.body.description) {
-      console.log('\n=== Validation Failed ===');
-      console.log('Missing Required Fields:', {
+    console.log('\n=== Incoming Request Debug ===');
+    console.log('Request Body:', req.body);
+    console.log('File:', req.file);
+
+    if (!req.body.name || !req.body.description || !req.file) {
+      console.log('Missing required fields:', {
         name: Boolean(req.body.name),
-        description: Boolean(req.body.description)
+        description: Boolean(req.body.description),
+        file: Boolean(req.file)
       });
       return res.status(400).json({ 
-        message: "Name and description are required",
+        message: "Name, description, and image file are required",
         receivedFields: {
           name: Boolean(req.body.name),
-          description: Boolean(req.body.description)
+          description: Boolean(req.body.description),
+          file: Boolean(req.file)
         }
       });
-    }
-
-    if (!req.file) {
-      console.log('\n=== Validation Failed ===');
-      console.log('Missing Required File: imageFile');
-      return res.status(400).json({ message: "Image file is required" });
     }
 
     const data = {
@@ -118,29 +103,22 @@ menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, r
       imageUrl: `/uploads/${req.file.filename}`
     };
 
-    console.log('\n=== Processing Data ===');
-    console.log('Prepared Data:', data);
+    console.log('Prepared data for storage:', data);
 
-    // Schema validation
     const validation = insertMenuItemSchema.safeParse(data);
     if (!validation.success) {
-      console.log('\n=== Schema Validation Failed ===');
-      console.log('Validation Errors:', validation.error.errors);
+      console.log('Validation failed:', validation.error);
       return res.status(400).json({ 
         message: fromZodError(validation.error).message,
         details: validation.error.errors
       });
     }
 
-    console.log('\n=== Creating Menu Item ===');
     const menuItem = await storage.createMenuItem(validation.data);
-
-    console.log('\n=== Success ===');
-    console.log('Created Menu Item:', menuItem);
+    console.log('Created menu item:', menuItem);
     res.status(201).json(menuItem);
   } catch (error) {
-    console.error('\n=== Error ===');
-    console.error('Failed to create menu item:', error);
+    console.error('Error creating menu item:', error);
     res.status(500).json({ 
       message: "Failed to create menu item",
       error: error instanceof Error ? error.message : "Unknown error"
