@@ -81,15 +81,10 @@ export default function AdminMenuPage() {
   const handleDeleteItem = async (id: number) => {
     try {
       await apiRequest(`/api/menu/items/${id}`, { method: 'DELETE' });
-      // Immediately update UI state
-      queryClient.setQueryData(queryKeys.menu.items, (oldData: MenuItem[] | undefined) => {
-        return oldData ? oldData.filter(item => item.id !== id) : [];
-      });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
-      toast({ title: "Menu item deleted successfully" });
+      window.location.reload();
     } catch (error) {
       console.error('Delete error:', error);
-      toast({ title: "Failed to delete menu item", variant: "destructive" });
+      window.location.reload();
     }
   };
 
