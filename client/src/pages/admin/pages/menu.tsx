@@ -24,9 +24,34 @@ export default function AdminMenuPage() {
     try {
       if (!editingItem) return;
       
+      // Properly structure the form data
+      const data = {
+        name: formData.get('name') as string,
+        description: formData.get('description') as string,
+        imageUrl: editingItem.imageUrl
+      };
+
+      // If there's a new image file, handle it first
+      const imageFile = formData.get('imageFile') as File;
+      if (imageFile && imageFile.size > 0) {
+        const imageFormData = new FormData();
+        imageFormData.append('imageFile', imageFile);
+        const uploadResponse = await apiRequest('/api/upload', {
+          method: 'POST',
+          body: imageFormData
+        });
+        if (uploadResponse.ok) {
+          const { imageUrl } = await uploadResponse.json();
+          data.imageUrl = imageUrl;
+        }
+      }
+
       const response = await apiRequest(`/api/menu/items/${editingItem.id}`, {
         method: 'PUT',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
       });
 
       if (!response.ok) {
