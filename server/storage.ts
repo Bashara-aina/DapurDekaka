@@ -43,6 +43,7 @@ export class DatabaseStorage implements IStorage {
   // Menu item methods with optimized querying and error handling
   async getAllMenuItems(): Promise<MenuItem[]> {
     try {
+      console.log("Fetching all menu items");
       return await db.select().from(menuItems);
     } catch (error) {
       console.error("Error fetching menu items:", error);
@@ -52,6 +53,7 @@ export class DatabaseStorage implements IStorage {
 
   async getMenuItem(id: number): Promise<MenuItem | undefined> {
     try {
+      console.log(`Fetching menu item with ID: ${id}`);
       const [item] = await db.select().from(menuItems).where(eq(menuItems.id, id));
       return item;
     } catch (error) {
@@ -62,6 +64,7 @@ export class DatabaseStorage implements IStorage {
 
   async createMenuItem(item: InsertMenuItem): Promise<MenuItem> {
     try {
+      console.log("Creating menu item with data:", item);
       const [newItem] = await db
         .insert(menuItems)
         .values(item)
@@ -75,6 +78,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateMenuItem(id: number, item: Partial<InsertMenuItem>): Promise<MenuItem | undefined> {
     try {
+      console.log(`Updating menu item ${id} with data:`, item);
       const [updatedItem] = await db
         .update(menuItems)
         .set(item)
@@ -89,6 +93,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMenuItem(id: number): Promise<boolean> {
     try {
+      console.log(`Deleting menu item with ID: ${id}`);
       const [deletedItem] = await db
         .delete(menuItems)
         .where(eq(menuItems.id, id))
@@ -103,6 +108,7 @@ export class DatabaseStorage implements IStorage {
   // Sauce methods with optimized querying and error handling
   async getAllSauces(): Promise<Sauce[]> {
     try {
+      console.log("Fetching all sauces");
       return await db.select().from(sauces).orderBy(sauces.name);
     } catch (error) {
       console.error("Error fetching sauces:", error);
@@ -112,6 +118,7 @@ export class DatabaseStorage implements IStorage {
 
   async getSauce(id: number): Promise<Sauce | undefined> {
     try {
+      console.log(`Fetching sauce with ID: ${id}`);
       const [sauce] = await db.select().from(sauces).where(eq(sauces.id, id));
       return sauce;
     } catch (error) {
@@ -122,6 +129,7 @@ export class DatabaseStorage implements IStorage {
 
   async createSauce(sauce: InsertSauce): Promise<Sauce> {
     try {
+      console.log("Creating sauce with data:", sauce);
       const [newSauce] = await db
         .insert(sauces)
         .values(sauce)
@@ -135,6 +143,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateSauce(id: number, sauce: Partial<InsertSauce>): Promise<Sauce | undefined> {
     try {
+      console.log(`Updating sauce ${id} with data:`, sauce);
       const [updatedSauce] = await db
         .update(sauces)
         .set(sauce)
@@ -149,6 +158,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSauce(id: number): Promise<boolean> {
     try {
+      console.log(`Deleting sauce with ID: ${id}`);
       const [deletedSauce] = await db
         .delete(sauces)
         .where(eq(sauces.id, id))
@@ -162,17 +172,20 @@ export class DatabaseStorage implements IStorage {
 
   // Existing user methods
   async getUser(id: number): Promise<User | undefined> {
+    console.log(`Fetching user with ID: ${id}`);
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
+    console.log(`Fetching user with username: ${username}`);
     const [user] = await db.select().from(users).where(eq(users.username, username));
     return user;
   }
 
   async createUser(userData: InsertUser & { password: string }): Promise<User> {
     try {
+      console.log("Creating user with data:", userData);
       const { password, ...rest } = userData;
       const salt = await bcrypt.genSalt(10);
       const passwordHash = await bcrypt.hash(password, salt);
@@ -193,10 +206,12 @@ export class DatabaseStorage implements IStorage {
 
   // Blog post methods
   async getAllBlogPosts(): Promise<BlogPost[]> {
+    console.log("Fetching all blog posts");
     return await db.select().from(blogPosts).orderBy(blogPosts.createdAt);
   }
 
   async getBlogPost(id: number): Promise<BlogPost | undefined> {
+    console.log(`Fetching blog post with ID: ${id}`);
     const [post] = await db
       .select()
       .from(blogPosts)
@@ -206,6 +221,7 @@ export class DatabaseStorage implements IStorage {
 
   async createBlogPost(post: InsertBlogPost & { authorId: number }): Promise<BlogPost> {
     try {
+      console.log("Creating blog post with data:", post);
       const [newPost] = await db
         .insert(blogPosts)
         .values(post)
@@ -218,6 +234,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateBlogPost(id: number, post: Partial<InsertBlogPost>): Promise<BlogPost | undefined> {
+    console.log(`Updating blog post ${id} with data:`, post);
     const [updatedPost] = await db
       .update(blogPosts)
       .set(post)
@@ -227,6 +244,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteBlogPost(id: number): Promise<boolean> {
+    console.log(`Deleting blog post with ID: ${id}`);
     const [deletedPost] = await db
       .delete(blogPosts)
       .where(eq(blogPosts.id, id))
@@ -238,6 +256,7 @@ export class DatabaseStorage implements IStorage {
   // Page content methods
   async getPageContent(pageName: string): Promise<PageContent | undefined> {
     try {
+      console.log(`Fetching page content for ${pageName}`);
       const [page] = await db
         .select()
         .from(pages)
@@ -255,6 +274,7 @@ export class DatabaseStorage implements IStorage {
 
   async updatePageContent(pageName: string, content: PageContent): Promise<PageContent> {
     try {
+      console.log(`Updating page content for ${pageName} with data:`, content);
       const [page] = await db
         .select()
         .from(pages)
