@@ -43,7 +43,7 @@ export class DatabaseStorage implements IStorage {
   // Menu item methods with optimized querying and error handling
   async getAllMenuItems(): Promise<MenuItem[]> {
     try {
-      return await db.select().from(menuItems).orderBy(menuItems.category);
+      return await db.select().from(menuItems);
     } catch (error) {
       console.error("Error fetching menu items:", error);
       throw new Error("Failed to fetch menu items");
