@@ -5,6 +5,9 @@ import {
   MapPin,
   Phone,
   Mail,
+  ShoppingBag,
+  Instagram as InstagramIcon,
+  Truck
 } from "lucide-react";
 
 export default function Contact() {
@@ -65,34 +68,34 @@ export default function Contact() {
                 <div className="mt-8">
                   <h3 className="font-semibold mb-4">Follow Us</h3>
                   <div className="flex gap-4">
-                    <Button variant="outline" asChild>
+                    <Button variant="outline" size="icon" asChild>
                       <a 
                         href="https://shopee.co.id/dapurdekaka" 
                         target="_blank"
                         rel="noopener noreferrer"
                         className="hover:text-primary"
                       >
-                        Shopee
+                        <ShoppingBag className="h-5 w-5" />
                       </a>
                     </Button>
-                    <Button variant="outline" asChild>
+                    <Button variant="outline" size="icon" asChild>
                       <a 
                         href="https://instagram.com/dapurdekaka" 
                         target="_blank"
                         rel="noopener noreferrer"
                         className="hover:text-primary"
                       >
-                        Instagram
+                        <InstagramIcon className="h-5 w-5" />
                       </a>
                     </Button>
-                    <Button variant="outline" asChild>
+                    <Button variant="outline" size="icon" asChild>
                       <a 
                         href="https://mart.grab.com/id/id/merchant/6-C62BTTXXSB33TE" 
                         target="_blank"
                         rel="noopener noreferrer"
                         className="hover:text-primary"
                       >
-                        Grab
+                        <Truck className="h-5 w-5" />
                       </a>
                     </Button>
                   </div>
