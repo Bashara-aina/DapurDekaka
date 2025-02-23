@@ -52,19 +52,36 @@ menuRouter.get("/sauces", async (_req, res) => {
 // Create menu item (protected)
 menuRouter.post("/items", requireAuth, upload.single('image'), async (req, res) => {
   try {
-    // Add detailed logging
-    console.log('Received form data:', {
+    // Detailed request logging
+    console.log('Creating menu item - Request details:', {
       body: req.body,
-      file: req.file,
-      headers: req.headers['content-type']
+      file: req.file ? {
+        fieldname: req.file.fieldname,
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size
+      } : null,
+      contentType: req.headers['content-type']
     });
 
+    // Validate required fields
     if (!req.body.name || !req.body.description) {
-      return res.status(400).json({ message: "Name and description are required" });
+      console.log('Validation failed - Missing required fields:', {
+        name: Boolean(req.body.name),
+        description: Boolean(req.body.description)
+      });
+      return res.status(400).json({ 
+        message: "Name and description are required",
+        fields: {
+          name: Boolean(req.body.name),
+          description: Boolean(req.body.description)
+        }
+      });
     }
 
     if (!req.file) {
-      return res.status(400).json({ message: "Image is required" });
+      console.log('Validation failed - Missing image file');
+      return res.status(400).json({ message: "Image file is required" });
     }
 
     const data = {
@@ -77,13 +94,21 @@ menuRouter.post("/items", requireAuth, upload.single('image'), async (req, res) 
 
     const validation = insertMenuItemSchema.safeParse(data);
     if (!validation.success) {
+      const errorMessage = fromZodError(validation.error).message;
+      console.log('Schema validation failed:', {
+        error: errorMessage,
+        details: validation.error.errors
+      });
       return res.status(400).json({ 
-        message: fromZodError(validation.error).message,
+        message: errorMessage,
         details: validation.error.errors
       });
     }
 
+    console.log('Creating menu item with validated data:', validation.data);
     const menuItem = await storage.createMenuItem(validation.data);
+
+    console.log('Menu item created successfully:', menuItem);
     res.status(201).json(menuItem);
   } catch (error) {
     console.error("Failed to create menu item:", error);

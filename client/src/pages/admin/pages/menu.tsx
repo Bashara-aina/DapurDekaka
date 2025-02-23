@@ -10,8 +10,6 @@ import { Loader2, Plus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AdminNavbar from "@/components/layout/admin-navbar";
 import { queryKeys, apiRequest } from "@/lib/queryClient";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
 import { Textarea } from "@/components/ui/textarea";
 
 export default function AdminMenuPage() {
@@ -31,6 +29,7 @@ export default function AdminMenuPage() {
 
   const createMutation = useMutation({
     mutationFn: async (formData: FormData) => {
+      // Log form data before submission
       console.log('Submitting form data:', {
         name: formData.get('name'),
         description: formData.get('description'),
@@ -45,8 +44,10 @@ export default function AdminMenuPage() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || 'Failed to create item');
+        console.error('Server error response:', error);
+        throw new Error(error.message || 'Failed to create menu item');
       }
+
       return response.json();
     },
     onSuccess: () => {
@@ -54,7 +55,7 @@ export default function AdminMenuPage() {
       setIsEditing(false);
       toast({
         title: "Success",
-        description: "Item created successfully",
+        description: "Menu item created successfully",
       });
     },
     onError: (error: Error) => {
@@ -69,7 +70,23 @@ export default function AdminMenuPage() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+
+    // Validate form data before submission
+    const name = formData.get('name');
+    const description = formData.get('description');
+    const image = formData.get('image');
+
+    if (!name || !description || !image) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
     await createMutation.mutate(formData);
   };
 
@@ -96,7 +113,7 @@ export default function AdminMenuPage() {
         <Sheet open={isEditing} onOpenChange={setIsEditing}>
           <SheetContent className="sm:max-w-[425px]">
             <SheetHeader>
-              <SheetTitle>Add New Item</SheetTitle>
+              <SheetTitle>Add New Menu Item</SheetTitle>
             </SheetHeader>
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">
               <div className="space-y-2">
