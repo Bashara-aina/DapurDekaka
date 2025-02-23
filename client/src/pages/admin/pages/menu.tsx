@@ -24,10 +24,17 @@ export default function AdminMenuPage() {
     try {
       if (!editingItem) return;
       
-      await apiRequest(`/api/menu/items/${editingItem.id}`, {
+      const response = await apiRequest(`/api/menu/items/${editingItem.id}`, {
         method: 'PUT',
-        body: formData
+        body: formData,
+        headers: {
+          'Accept': 'application/json',
+        }
       });
+
+      if (!response.ok) {
+        throw new Error(response.statusText);
+      }
       
       await queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
       toast({ title: "Menu item updated successfully" });
@@ -36,6 +43,12 @@ export default function AdminMenuPage() {
       console.error('Edit error:', error);
       toast({ title: "Failed to update menu item", variant: "destructive" });
     }
+  };
+
+  const handleEditItemSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    await handleEditItem(formData);
   };
 
   const handleEditItemClick = (item: MenuItem) => {
@@ -342,10 +355,7 @@ export default function AdminMenuPage() {
           <DialogHeader>
             <DialogTitle>Edit Menu Item</DialogTitle>
           </DialogHeader>
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            handleEditItem(new FormData(e.currentTarget));
-          }}>
+          <form onSubmit={handleEditItemSubmit}>
             <div className="space-y-4">
               <Input
                 name="name"
