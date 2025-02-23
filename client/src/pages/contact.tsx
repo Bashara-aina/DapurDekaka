@@ -2,9 +2,6 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Facebook,
-  Instagram,
-  Twitter,
   MapPin,
   Phone,
   Mail,
@@ -68,19 +65,34 @@ export default function Contact() {
                 <div className="mt-8">
                   <h3 className="font-semibold mb-4">Follow Us</h3>
                   <div className="flex gap-4">
-                    <Button variant="outline" size="icon" asChild>
-                      <a href="#" className="hover:text-primary">
-                        <Facebook className="h-5 w-5" />
+                    <Button variant="outline" asChild>
+                      <a 
+                        href="https://shopee.co.id/dapurdekaka" 
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-primary"
+                      >
+                        Shopee
                       </a>
                     </Button>
-                    <Button variant="outline" size="icon" asChild>
-                      <a href="#" className="hover:text-primary">
-                        <Instagram className="h-5 w-5" />
+                    <Button variant="outline" asChild>
+                      <a 
+                        href="https://instagram.com/dapurdekaka" 
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-primary"
+                      >
+                        Instagram
                       </a>
                     </Button>
-                    <Button variant="outline" size="icon" asChild>
-                      <a href="#" className="hover:text-primary">
-                        <Twitter className="h-5 w-5" />
+                    <Button variant="outline" asChild>
+                      <a 
+                        href="https://mart.grab.com/id/id/merchant/6-C62BTTXXSB33TE" 
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-primary"
+                      >
+                        Grab
                       </a>
                     </Button>
                   </div>
