@@ -58,8 +58,14 @@ menuRouter.get("/sauces", async (_req, res) => {
 
 // Create menu item (protected)
 menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, res) => {
-  // Detailed field logging
-  console.log('=== Form Submission Debug ===');
+  console.log('\n=== Server Request Debug ===');
+  console.log('Headers:', {
+    'content-type': req.headers['content-type'],
+    'content-length': req.headers['content-length']
+  });
+  console.log('Body:', req.body);
+  console.log('File:', req.file);
+  console.log('Auth:', req.headers.authorization ? 'Present' : 'Missing');
   console.log('Content-Type:', req.headers['content-type']);
   console.log('Request body fields:', req.body);
   console.log('File details:', req.file);

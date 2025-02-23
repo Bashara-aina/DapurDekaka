@@ -70,10 +70,12 @@ export default function AdminMenuPage() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
+    console.log('=== Form Submission Debug Start ===');
+    console.log('Form element:', e.currentTarget);
+    console.log('Form enctype:', e.currentTarget.enctype);
     
-    // Debug log: Log form fields before submission
-    console.log('Form submission content-type:', e.currentTarget.enctype);
+    const formData = new FormData(e.currentTarget);
+    console.log('Form fields:');
     console.log('FormData fields:');
     for (const [key, value] of formData.entries()) {
       if (value instanceof File) {
