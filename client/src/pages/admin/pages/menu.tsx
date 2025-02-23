@@ -29,25 +29,15 @@ export default function AdminMenuPage() {
 
   const createMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      // Detailed logging
-      console.log('Form data being sent:', {
-        name: formData.get('name'),
-        description: formData.get('description'),
-        imageFile: formData.get('image')
-      });
-
-      const response = await fetch('/api/menu/items', {
-        method: 'POST',
+      console.log("Sending form data:", Object.fromEntries(formData.entries()));
+      const response = await fetch("/api/menu/items", {
+        method: "POST",
         body: formData,
-        credentials: 'include'
       });
-
       if (!response.ok) {
-        const error = await response.json();
-        console.error('Server error details:', error);
-        throw new Error(error.message || 'Failed to create menu item');
+        const error = await response.text();
+        throw new Error(`Failed to create menu item: ${error}`);
       }
-
       return response.json();
     },
     onSuccess: () => {
@@ -68,26 +58,10 @@ export default function AdminMenuPage() {
     },
   });
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-
-    // Validate form data before submission
-    const name = formData.get('name');
-    const description = formData.get('description');
-    const image = formData.get('image');
-
-    if (!name || !description || !image) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    await createMutation.mutate(formData);
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    createMutation.mutate(formData);
   };
 
   if (menuLoading || saucesLoading) {
@@ -146,35 +120,6 @@ export default function AdminMenuPage() {
               </div>
               <Button type="submit" className="w-full" disabled={createMutation.isPending}>
                 {createMutation.isPending ? 'Creating...' : 'Create'}
-              </Button>
-
-              <div className="space-y-2">
-                <label htmlFor="description" className="text-sm font-medium">Description</label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  placeholder="Enter item description"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="image" className="text-sm font-medium">Image</label>
-                <Input
-                  id="image"
-                  name="image"
-                  type="file"
-                  accept="image/*"
-                  required
-                />
-              </div>
-
-              <Button type="submit" className="w-full" disabled={createMutation.isPending}>
-                {createMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  'Create'
-                )}
               </Button>
             </form>
           </SheetContent>
