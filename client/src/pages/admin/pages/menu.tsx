@@ -11,30 +11,35 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AdminNavbar from "@/components/layout/admin-navbar";
 import { queryKeys, apiRequest } from "@/lib/queryClient";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function AdminMenuPage() {
   const [isEditing, setIsEditing] = useState(false);
+  const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+  const [editingSauce, setEditingSauce] = useState<Sauce | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const handleEditItem = async (item: MenuItem) => {
+  const handleEditItem = async (formData: FormData) => {
     try {
-      const formData = new FormData();
-      formData.append('name', item.name);
-      formData.append('description', item.description);
-      formData.append('imageUrl', item.imageUrl);
-
-      await apiRequest(`/api/menu/items/${item.id}`, {
+      if (!editingItem) return;
+      
+      await apiRequest(`/api/menu/items/${editingItem.id}`, {
         method: 'PUT',
         body: formData
       });
       
-      queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
       toast({ title: "Menu item updated successfully" });
+      setEditingItem(null);
     } catch (error) {
       console.error('Edit error:', error);
       toast({ title: "Failed to update menu item", variant: "destructive" });
     }
+  };
+
+  const handleEditItemClick = (item: MenuItem) => {
+    setEditingItem(item);
   };
 
   const handleDeleteItem = async (id: number) => {
@@ -48,24 +53,26 @@ export default function AdminMenuPage() {
     }
   };
 
-  const handleEditSauce = async (sauce: Sauce) => {
+  const handleEditSauce = async (formData: FormData) => {
     try {
-      const formData = new FormData();
-      formData.append('name', sauce.name);
-      formData.append('description', sauce.description);
-      formData.append('imageUrl', sauce.imageUrl);
-
-      await apiRequest(`/api/menu/sauces/${sauce.id}`, {
+      if (!editingSauce) return;
+      
+      await apiRequest(`/api/menu/sauces/${editingSauce.id}`, {
         method: 'PUT',
         body: formData
       });
       
-      queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
       toast({ title: "Sauce updated successfully" });
+      setEditingSauce(null);
     } catch (error) {
       console.error('Edit error:', error);
       toast({ title: "Failed to update sauce", variant: "destructive" });
     }
+  };
+
+  const handleEditSauceClick = (sauce: Sauce) => {
+    setEditingSauce(sauce);
   };
 
   const handleDeleteSauce = async (id: number) => {
@@ -290,7 +297,7 @@ export default function AdminMenuPage() {
                     <h3 className="font-semibold">{item.name}</h3>
                     <p className="text-sm text-gray-600">{item.description}</p>
                     <div className="flex gap-2 mt-4">
-                      <Button variant="outline" onClick={() => handleEditItem(item)}>
+                      <Button variant="outline" onClick={() => handleEditItemClick(item)}>
                         Edit
                       </Button>
                       <Button variant="destructive" onClick={() => handleDeleteItem(item.id)}>
@@ -316,7 +323,7 @@ export default function AdminMenuPage() {
                     <h3 className="font-semibold">{sauce.name}</h3>
                     <p className="text-sm text-gray-600">{sauce.description}</p>
                     <div className="flex gap-2 mt-4">
-                      <Button variant="outline" onClick={() => handleEditSauce(sauce)}>
+                      <Button variant="outline" onClick={() => handleEditSauceClick(sauce)}>
                         Edit
                       </Button>
                       <Button variant="destructive" onClick={() => handleDeleteSauce(sauce.id)}>
@@ -330,6 +337,77 @@ export default function AdminMenuPage() {
           </TabsContent>
         </Tabs>
       </div>
+    <Dialog open={!!editingItem} onOpenChange={() => setEditingItem(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Menu Item</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            handleEditItem(new FormData(e.currentTarget));
+          }}>
+            <div className="space-y-4">
+              <Input
+                name="name"
+                defaultValue={editingItem?.name}
+                placeholder="Item name"
+              />
+              <Textarea
+                name="description"
+                defaultValue={editingItem?.description}
+                placeholder="Description"
+              />
+              <Input
+                type="file"
+                name="imageFile"
+                accept="image/*"
+              />
+              <Input
+                type="hidden"
+                name="imageUrl"
+                defaultValue={editingItem?.imageUrl}
+              />
+              <Button type="submit">Save Changes</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingSauce} onOpenChange={() => setEditingSauce(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Sauce</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            handleEditSauce(new FormData(e.currentTarget));
+          }}>
+            <div className="space-y-4">
+              <Input
+                name="name"
+                defaultValue={editingSauce?.name}
+                placeholder="Sauce name"
+              />
+              <Textarea
+                name="description"
+                defaultValue={editingSauce?.description}
+                placeholder="Description"
+              />
+              <Input
+                type="file"
+                name="imageFile"
+                accept="image/*"
+              />
+              <Input
+                type="hidden"
+                name="imageUrl"
+                defaultValue={editingSauce?.imageUrl}
+              />
+              <Button type="submit">Save Changes</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
