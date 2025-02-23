@@ -21,8 +21,6 @@ type EditingItem = {
   description: string;
   imageUrl?: string;
   type: 'menu' | 'sauce';
-  price?: number;
-  category?: string;
 };
 
 export default function AdminMenuPage() {

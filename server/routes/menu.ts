@@ -63,9 +63,7 @@ menuRouter.post("/items", requireAuth, upload.single('image'), async (req, res) 
     const data = {
       name: req.body.name,
       description: req.body.description,
-      imageUrl: req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl,
-      price: req.body.price ? Number(req.body.price) : undefined,
-      category: req.body.category || undefined
+      imageUrl: req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl
     };
 
     const validation = insertMenuItemSchema.safeParse(data);

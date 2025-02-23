@@ -8,8 +8,7 @@ export const menuItems = pgTable("menu_items", {
   name: text("name").notNull(),
   description: text("description").notNull(),
   imageUrl: text("image_url").notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const sauces = pgTable("sauces", {
@@ -58,7 +57,6 @@ export const pages = pgTable('pages', {
 export const insertMenuItemSchema = createInsertSchema(menuItems).omit({
   id: true,
   createdAt: true,
-  updatedAt: true,
 });
 
 export const insertSauceSchema = createInsertSchema(sauces).omit({
