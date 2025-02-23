@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { OrderModal } from "@/components/OrderModal";
 
 const navItems = [
   { href: "/", labelKey: "nav.home" },
@@ -51,15 +52,11 @@ export default function Navbar() {
               </Link>
             ))}
             <div className="flex items-center gap-2">
-              <Button asChild>
-                <a
-                  href="https://wa.me/6282295986407"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+              <OrderModal trigger={
+                <Button>
                   {t('nav.orderNow')}
-                </a>
-              </Button>
+                </Button>
+              } />
             </div>
           </div>
 
@@ -82,16 +79,11 @@ export default function Navbar() {
                     </a>
                   </Link>
                 ))}
-                <Button asChild className="mt-4">
-                  <a
-                    href="https://wa.me/your-number"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => setIsOpen(false)}
-                  >
+                <OrderModal trigger={
+                  <Button className="mt-4" onClick={() => setIsOpen(false)}>
                     {t('nav.orderNow')}
-                  </a>
-                </Button>
+                  </Button>
+                } />
               </div>
             </SheetContent>
           </Sheet>

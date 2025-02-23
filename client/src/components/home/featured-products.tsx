@@ -6,12 +6,14 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { useQuery } from "@tanstack/react-query";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { OrderModal } from "@/components/OrderModal";
+import type { MenuItem } from "@shared/schema";
 
 export default function FeaturedProducts() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { t } = useLanguage();
 
-  const { data: menuItems, isLoading: menuLoading } = useQuery({
+  const { data: menuItems, isLoading: menuLoading } = useQuery<MenuItem[]>({
     queryKey: ['menu', 'items'],
     queryFn: async () => {
       const response = await fetch('/api/menu/items');
@@ -79,7 +81,7 @@ export default function FeaturedProducts() {
           className="flex gap-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-4"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
-          {menuItems?.slice(0, 11).map((item) => (
+          {menuItems?.slice(0, 11).map((item: MenuItem) => (
             <motion.div
               key={item.id}
               className="min-w-[280px] w-[280px] snap-start"
@@ -101,15 +103,11 @@ export default function FeaturedProducts() {
                   </p>
                 </CardContent>
                 <CardFooter className="p-4 pt-0">
-                  <Button size="sm" className="w-full" asChild>
-                    <a
-                      href={`https://wa.me/your-number?text=I would like to order ${item.name}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
+                  <OrderModal trigger={
+                    <Button size="sm" className="w-full">
                       {t('menu.orderButton')}
-                    </a>
-                  </Button>
+                    </Button>
+                  } />
                 </CardFooter>
               </Card>
             </motion.div>
