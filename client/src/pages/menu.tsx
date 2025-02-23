@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 import { queryKeys, apiRequest } from "@/lib/queryClient";
 import { MenuItem, Sauce } from "@shared/schema";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
-import AspectRatio from "@/components/ui/AspectRatio"; // Assuming this component exists
+import AspectRatio from "@/components/ui/aspect-ratio";
 
 export default function Menu() {
   const { t } = useLanguage();
@@ -48,7 +48,7 @@ export default function Menu() {
           >
             <Card className="h-full flex flex-col">
               <CardContent className="p-0 flex flex-col h-full">
-                <AspectRatio ratio={1} className="overflow-hidden rounded-lg"> {/* Use AspectRatio component */}
+                <AspectRatio ratio={1} className="overflow-hidden rounded-lg">
                   <img
                     src={item.imageUrl}
                     alt={item.name}
@@ -101,7 +101,7 @@ export default function Menu() {
               >
                 <Card className="h-full flex flex-col">
                   <CardContent className="p-0">
-                    <AspectRatio ratio={1} className="overflow-hidden rounded-lg"> {/* Use AspectRatio component */}
+                    <AspectRatio ratio={1} className="overflow-hidden rounded-lg">
                       <img
                         src={sauce.imageUrl}
                         alt={sauce.name}
