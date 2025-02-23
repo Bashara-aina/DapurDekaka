@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { MenuItem, Sauce, insertMenuItemSchema, insertSauceSchema } from "@shared/schema";
+import { MenuItem, Sauce, insertMenuItemSchema } from "@shared/schema";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Loader2, Plus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,7 +13,6 @@ import { queryKeys, apiRequest } from "@/lib/queryClient";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function AdminMenuPage() {
   const [isEditing, setIsEditing] = useState(false);
@@ -32,6 +31,12 @@ export default function AdminMenuPage() {
 
   const createMutation = useMutation({
     mutationFn: async (formData: FormData) => {
+      console.log('Submitting form data:', {
+        name: formData.get('name'),
+        description: formData.get('description'),
+        image: formData.get('image')
+      });
+
       const response = await fetch('/api/menu/items', {
         method: 'POST',
         body: formData,
@@ -53,6 +58,7 @@ export default function AdminMenuPage() {
       });
     },
     onError: (error: Error) => {
+      console.error('Mutation error:', error);
       toast({
         title: "Error",
         description: error.message,
@@ -64,10 +70,6 @@ export default function AdminMenuPage() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-
-    // Remove type field as it's not needed for menu items
-    formData.delete('type');
-
     await createMutation.mutate(formData);
   };
 
@@ -97,24 +99,36 @@ export default function AdminMenuPage() {
               <SheetTitle>Add New Item</SheetTitle>
             </SheetHeader>
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-              <Input
-                name="name"
-                placeholder="Name"
-                required
-              />
+              <div className="space-y-2">
+                <label htmlFor="name" className="text-sm font-medium">Name</label>
+                <Input
+                  id="name"
+                  name="name"
+                  placeholder="Enter item name"
+                  required
+                />
+              </div>
 
-              <Textarea
-                name="description"
-                placeholder="Description"
-                required
-              />
+              <div className="space-y-2">
+                <label htmlFor="description" className="text-sm font-medium">Description</label>
+                <Textarea
+                  id="description"
+                  name="description"
+                  placeholder="Enter item description"
+                  required
+                />
+              </div>
 
-              <Input
-                name="image"
-                type="file"
-                accept="image/*"
-                required
-              />
+              <div className="space-y-2">
+                <label htmlFor="image" className="text-sm font-medium">Image</label>
+                <Input
+                  id="image"
+                  name="image"
+                  type="file"
+                  accept="image/*"
+                  required
+                />
+              </div>
 
               <Button type="submit" className="w-full" disabled={createMutation.isPending}>
                 {createMutation.isPending ? (

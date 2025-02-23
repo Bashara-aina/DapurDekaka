@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { storage } from "../storage";
-import { requireAuth } from "../auth";
 import multer from "multer";
 import path from "path";
-import { insertMenuItemSchema, insertSauceSchema } from "@shared/schema";
+import { storage } from "../storage";
+import { insertMenuItemSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
+import { requireAuth } from "../auth";
 
 const upload = multer({ 
   storage: multer.diskStorage({
@@ -52,8 +52,12 @@ menuRouter.get("/sauces", async (_req, res) => {
 // Create menu item (protected)
 menuRouter.post("/items", requireAuth, upload.single('image'), async (req, res) => {
   try {
-    console.log('Received form data:', req.body);
-    console.log('Received file:', req.file);
+    // Add detailed logging
+    console.log('Received form data:', {
+      body: req.body,
+      file: req.file,
+      headers: req.headers['content-type']
+    });
 
     if (!req.body.name || !req.body.description) {
       return res.status(400).json({ message: "Name and description are required" });
@@ -69,16 +73,24 @@ menuRouter.post("/items", requireAuth, upload.single('image'), async (req, res) 
       imageUrl: `/uploads/${req.file.filename}`
     };
 
+    console.log('Attempting to validate data:', data);
+
     const validation = insertMenuItemSchema.safeParse(data);
     if (!validation.success) {
-      return res.status(400).json({ message: fromZodError(validation.error).message });
+      return res.status(400).json({ 
+        message: fromZodError(validation.error).message,
+        details: validation.error.errors
+      });
     }
 
     const menuItem = await storage.createMenuItem(validation.data);
     res.status(201).json(menuItem);
   } catch (error) {
     console.error("Failed to create menu item:", error);
-    res.status(500).json({ message: "Failed to create menu item" });
+    res.status(500).json({ 
+      message: "Failed to create menu item",
+      error: error instanceof Error ? error.message : "Unknown error"
+    });
   }
 });
 
