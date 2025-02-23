@@ -29,11 +29,11 @@ export default function AdminMenuPage() {
 
   const createMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      // Log form data before submission
-      console.log('Submitting form data:', {
+      // Detailed logging
+      console.log('Form data being sent:', {
         name: formData.get('name'),
         description: formData.get('description'),
-        image: formData.get('image')
+        imageFile: formData.get('image')
       });
 
       const response = await fetch('/api/menu/items', {
@@ -44,7 +44,7 @@ export default function AdminMenuPage() {
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('Server error response:', error);
+        console.error('Server error details:', error);
         throw new Error(error.message || 'Failed to create menu item');
       }
 

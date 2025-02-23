@@ -52,16 +52,20 @@ menuRouter.get("/sauces", async (_req, res) => {
 // Create menu item (protected)
 menuRouter.post("/items", requireAuth, upload.single('image'), async (req, res) => {
   try {
-    // Detailed request logging
+    // Enhanced request logging
     console.log('Creating menu item - Request details:', {
       body: req.body,
       file: req.file ? {
         fieldname: req.file.fieldname,
         originalname: req.file.originalname,
         mimetype: req.file.mimetype,
-        size: req.file.size
-      } : null,
-      contentType: req.headers['content-type']
+        size: req.file.size,
+        path: req.file.path
+      } : 'No file uploaded',
+      headers: {
+        'content-type': req.headers['content-type'],
+        'content-length': req.headers['content-length']
+      }
     });
 
     // Validate required fields
@@ -80,7 +84,7 @@ menuRouter.post("/items", requireAuth, upload.single('image'), async (req, res) 
     }
 
     if (!req.file) {
-      console.log('Validation failed - Missing image file');
+      console.log('Validation failed - No image file received');
       return res.status(400).json({ message: "Image file is required" });
     }
 
