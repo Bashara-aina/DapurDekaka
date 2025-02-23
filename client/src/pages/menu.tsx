@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 import { queryKeys, apiRequest } from "@/lib/queryClient";
 import { MenuItem, Sauce } from "@shared/schema";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
-import AspectRatio from "@/components/ui/aspect-ratio";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 export default function Menu() {
   const { t } = useLanguage();
