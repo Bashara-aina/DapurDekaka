@@ -125,7 +125,7 @@ export default function Contact() {
                   <h3 className="font-semibold mb-4">Quick Order</h3>
                   <Button className="w-full" size="lg" asChild>
                     <a
-                      href="https://wa.me/your-number"
+                      href="https://wa.me/6282295986407"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
