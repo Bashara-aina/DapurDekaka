@@ -141,7 +141,7 @@ menuRouter.put("/items/:id", requireAuth, upload.single('imageFile'), async (req
       imageUrl: req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl,
     };
 
-    const validation = insertMenuItemSchema.safeParse(data);
+    const validation = insertMenuItemSchema.partial().safeParse(data);
     if (!validation.success) {
       return res.status(400).json({ message: fromZodError(validation.error).message });
     }
