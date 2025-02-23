@@ -6,14 +6,17 @@ import { insertMenuItemSchema, insertSauceSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { requireAuth } from "../auth";
 
-// Enhance logging for file uploads
+// Enhanced multer configuration with detailed logging
 const upload = multer({ 
   storage: multer.diskStorage({
     destination: 'uploads/',
     filename: (_req, file, cb) => {
-      console.log('Processing file upload:', {
+      console.log('\n=== Multer File Processing ===');
+      console.log('Processing uploaded file:', {
+        fieldname: file.fieldname,
         originalname: file.originalname,
-        mimetype: file.mimetype
+        mimetype: file.mimetype,
+        encoding: file.encoding
       });
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
       cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
@@ -21,17 +24,19 @@ const upload = multer({
   }),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (_req, file, cb) => {
+    console.log('\n=== Multer File Validation ===');
     console.log('Validating file:', {
       fieldname: file.fieldname,
       originalname: file.originalname,
-      mimetype: file.mimetype
+      mimetype: file.mimetype,
+      encoding: file.encoding
     });
 
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only JPEG, PNG and WebP are allowed.'));
+      cb(new Error(`Invalid file type. Received ${file.mimetype}. Only JPEG, PNG and WebP are allowed.`));
     }
   }
 });
@@ -60,27 +65,35 @@ menuRouter.get("/sauces", async (_req, res) => {
   }
 });
 
-// Create menu item (protected)
+// Enhanced create menu item route with detailed request parsing logs
 menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, res) => {
-  console.log('\n=== Server Request Debug ===');
-  console.log('Headers:', {
+  console.log('\n=== Incoming Request Debug ===');
+  console.log('Request Headers:', {
     'content-type': req.headers['content-type'],
     'content-length': req.headers['content-length'],
     'authorization': req.headers.authorization ? 'Present' : 'Missing'
   });
 
-  console.log('Request Body:', req.body);
-  console.log('File Details:', req.file ? {
+  console.log('\n=== Parsed Form Fields ===');
+  console.log('Body Fields:', req.body);
+
+  console.log('\n=== Uploaded File Details ===');
+  console.log('File:', req.file ? {
     fieldname: req.file.fieldname,
     originalname: req.file.originalname,
+    encoding: req.file.encoding,
     mimetype: req.file.mimetype,
     size: req.file.size,
+    destination: req.file.destination,
+    filename: req.file.filename,
     path: req.file.path
   } : 'No file uploaded');
 
   try {
+    // Field validation with detailed logging
     if (!req.body.name || !req.body.description) {
-      console.log('Validation failed - Missing required fields:', {
+      console.log('\n=== Validation Failed ===');
+      console.log('Missing Required Fields:', {
         name: Boolean(req.body.name),
         description: Boolean(req.body.description)
       });
@@ -94,7 +107,8 @@ menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, r
     }
 
     if (!req.file) {
-      console.log('Validation failed - No image file received');
+      console.log('\n=== Validation Failed ===');
+      console.log('Missing Required File: imageFile');
       return res.status(400).json({ message: "Image file is required" });
     }
 
@@ -104,28 +118,29 @@ menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, r
       imageUrl: `/uploads/${req.file.filename}`
     };
 
-    console.log('Attempting to create menu item with data:', data);
+    console.log('\n=== Processing Data ===');
+    console.log('Prepared Data:', data);
 
+    // Schema validation
     const validation = insertMenuItemSchema.safeParse(data);
     if (!validation.success) {
-      const errorMessage = fromZodError(validation.error).message;
-      console.log('Schema validation failed:', {
-        error: errorMessage,
-        details: validation.error.errors
-      });
+      console.log('\n=== Schema Validation Failed ===');
+      console.log('Validation Errors:', validation.error.errors);
       return res.status(400).json({ 
-        message: errorMessage,
+        message: fromZodError(validation.error).message,
         details: validation.error.errors
       });
     }
 
-    console.log('Data validated successfully, creating menu item');
+    console.log('\n=== Creating Menu Item ===');
     const menuItem = await storage.createMenuItem(validation.data);
 
-    console.log('Menu item created successfully:', menuItem);
+    console.log('\n=== Success ===');
+    console.log('Created Menu Item:', menuItem);
     res.status(201).json(menuItem);
   } catch (error) {
-    console.error("Failed to create menu item:", error);
+    console.error('\n=== Error ===');
+    console.error('Failed to create menu item:', error);
     res.status(500).json({ 
       message: "Failed to create menu item",
       error: error instanceof Error ? error.message : "Unknown error"

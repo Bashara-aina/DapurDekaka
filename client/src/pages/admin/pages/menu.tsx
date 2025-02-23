@@ -29,23 +29,28 @@ export default function AdminMenuPage() {
 
   const createMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      console.log('\n=== Frontend Mutation Debug ===');
-      console.log('Request URL:', "/api/menu/items");
-      console.log('Request Method:', "POST");
+      console.log('\n=== Frontend Request Debug ===');
+      console.log('Content-Type:', 'multipart/form-data');
 
-      const formDataDebug: Record<string, any> = {};
-      for (const [key, value] of Array.from(formData.entries())) {
+      // Log each field separately for clarity
+      const fields = Array.from(formData.entries()).reduce((acc: Record<string, any>, [key, value]) => {
         if (value instanceof File) {
-          formDataDebug[key] = {
+          acc[key] = {
+            type: 'File',
             name: value.name,
-            type: value.type,
             size: value.size,
+            mimeType: value.type
           };
         } else {
-          formDataDebug[key] = value;
+          acc[key] = {
+            type: 'Field',
+            value: value
+          };
         }
-      }
-      console.log('FormData Contents:', formDataDebug);
+        return acc;
+      }, {});
+
+      console.log('Form Fields:', JSON.stringify(fields, null, 2));
 
       const response = await fetch("/api/menu/items", {
         method: "POST",
@@ -55,19 +60,21 @@ export default function AdminMenuPage() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Response Error:', {
+        console.error('Request Failed:', {
           status: response.status,
           statusText: response.statusText,
-          error: errorText
+          error: errorText,
+          contentType: response.headers.get('content-type')
         });
         throw new Error(`Failed to create menu item: ${errorText}`);
       }
 
-      console.log('Response Success:', await response.json());
-      return response.json();
+      const result = await response.json();
+      console.log('Request Succeeded:', result);
+      return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
+      queryClient.invalidateQueries({ queryKey: ["/api/menu"] });
       setIsEditing(false);
       toast({
         title: "Success",
@@ -190,9 +197,9 @@ export default function AdminMenuPage() {
                   }}
                 />
               </div>
-              <Button 
-                type="submit" 
-                className="w-full" 
+              <Button
+                type="submit"
+                className="w-full"
                 disabled={createMutation.isPending}
                 onClick={() => console.log('Submit button clicked')}
               >
