@@ -146,6 +146,18 @@ menuRouter.put("/items/:id", requireAuth, upload.single('imageFile'), async (req
       return res.status(400).json({ message: fromZodError(validation.error).message });
     }
 
+    // Parse the incoming data
+    const itemData = {
+      name: req.body.name,
+      description: req.body.description,
+      imageUrl: req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl
+    };
+
+    const validation = insertMenuItemSchema.partial().safeParse(itemData);
+    if (!validation.success) {
+      return res.status(400).json({ message: validation.error.message });
+    }
+
     const menuItem = await storage.updateMenuItem(id, validation.data);
     if (!menuItem) {
       return res.status(404).json({ message: "Menu item not found" });
