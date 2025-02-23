@@ -144,6 +144,9 @@ export default function AdminMenuPage() {
                   required
                 />
               </div>
+              <Button type="submit" className="w-full" disabled={createMutation.isPending}>
+                {createMutation.isPending ? 'Creating...' : 'Create'}
+              </Button>
 
               <div className="space-y-2">
                 <label htmlFor="description" className="text-sm font-medium">Description</label>
