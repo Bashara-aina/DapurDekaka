@@ -29,19 +29,23 @@ export default function AdminMenuPage() {
 
   const createMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const formDataObj: Record<string, any> = {};
+      console.log('\n=== Frontend Mutation Debug ===');
+      console.log('Request URL:', "/api/menu/items");
+      console.log('Request Method:', "POST");
+
+      const formDataDebug: Record<string, any> = {};
       for (const [key, value] of Array.from(formData.entries())) {
         if (value instanceof File) {
-          formDataObj[key] = {
+          formDataDebug[key] = {
             name: value.name,
             type: value.type,
-            size: value.size
+            size: value.size,
           };
         } else {
-          formDataObj[key] = value;
+          formDataDebug[key] = value;
         }
       }
-      console.log('Form data being sent:', formDataObj);
+      console.log('FormData Contents:', formDataDebug);
 
       const response = await fetch("/api/menu/items", {
         method: "POST",
@@ -50,9 +54,16 @@ export default function AdminMenuPage() {
       });
 
       if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Failed to create menu item: ${error}`);
+        const errorText = await response.text();
+        console.error('Response Error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        throw new Error(`Failed to create menu item: ${errorText}`);
       }
+
+      console.log('Response Success:', await response.json());
       return response.json();
     },
     onSuccess: () => {
@@ -64,7 +75,7 @@ export default function AdminMenuPage() {
       });
     },
     onError: (error: Error) => {
-      console.error('Mutation error:', error);
+      console.error('Mutation Error:', error);
       toast({
         title: "Error",
         description: error.message,
@@ -76,29 +87,32 @@ export default function AdminMenuPage() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    console.log('=== Form Structure Verification ===');
+    console.log('\n=== Form Submission Debug ===');
     const form = e.currentTarget;
+
     console.log('Form Properties:', {
       method: form.method,
       enctype: form.enctype,
-      action: form.action
+      action: form.action,
+      elements: Array.from(form.elements).map(el => ({
+        name: (el as HTMLInputElement).name,
+        type: (el as HTMLInputElement).type,
+        id: (el as HTMLInputElement).id
+      }))
     });
 
     const formData = new FormData(form);
-    console.log('=== Form Fields Verification ===');
+
+    console.log('Form Fields:');
     for (const [key, value] of formData.entries()) {
       if (value instanceof File) {
-        console.log('File Field:', {
-          fieldName: key,
-          fileName: value.name,
-          fileType: value.type,
-          fileSize: value.size
+        console.log(`Field: ${key} (File)`, {
+          name: value.name,
+          type: value.type,
+          size: value.size
         });
       } else {
-        console.log('Text Field:', {
-          fieldName: key,
-          value: value
-        });
+        console.log(`Field: ${key}`, value);
       }
     }
 
@@ -143,6 +157,7 @@ export default function AdminMenuPage() {
                   name="name"
                   placeholder="Enter item name"
                   required
+                  onChange={(e) => console.log('Name input changed:', e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -152,6 +167,7 @@ export default function AdminMenuPage() {
                   name="description"
                   placeholder="Enter item description"
                   required
+                  onChange={(e) => console.log('Description input changed:', e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -165,7 +181,7 @@ export default function AdminMenuPage() {
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                      console.log('Selected File:', {
+                      console.log('Image file selected:', {
                         name: file.name,
                         type: file.type,
                         size: file.size
@@ -174,7 +190,12 @@ export default function AdminMenuPage() {
                   }}
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={createMutation.isPending}>
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={createMutation.isPending}
+                onClick={() => console.log('Submit button clicked')}
+              >
                 {createMutation.isPending ? 'Creating...' : 'Create'}
               </Button>
             </form>

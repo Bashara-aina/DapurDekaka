@@ -11,13 +11,17 @@ const upload = multer({
   storage: multer.diskStorage({
     destination: 'uploads/',
     filename: (_req, file, cb) => {
+      console.log('Processing file upload:', {
+        originalname: file.originalname,
+        mimetype: file.mimetype
+      });
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
       cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
     }
   }),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (_req, file, cb) => {
-    console.log('Received file:', {
+    console.log('Validating file:', {
       fieldname: file.fieldname,
       originalname: file.originalname,
       mimetype: file.mimetype
@@ -61,35 +65,20 @@ menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, r
   console.log('\n=== Server Request Debug ===');
   console.log('Headers:', {
     'content-type': req.headers['content-type'],
-    'content-length': req.headers['content-length']
+    'content-length': req.headers['content-length'],
+    'authorization': req.headers.authorization ? 'Present' : 'Missing'
   });
-  console.log('Body:', req.body);
-  console.log('File:', req.file);
-  console.log('Auth:', req.headers.authorization ? 'Present' : 'Missing');
-  console.log('Content-Type:', req.headers['content-type']);
-  console.log('Request body fields:', req.body);
-  console.log('File details:', req.file);
-  console.log('Additional files:', req.files);
-  console.log('=== End Debug ===');
 
-  // Original request logging
-  console.log('Creating menu item - Complete request details:', {
-    body: req.body,
-    file: req.file ? {
-      fieldname: req.file.fieldname,
-      originalname: req.file.originalname,
-      mimetype: req.file.mimetype,
-      size: req.file.size,
-      path: req.file.path
-    } : 'No file uploaded',
-    headers: {
-      'content-type': req.headers['content-type'],
-      'content-length': req.headers['content-length']
-    }
-  });
+  console.log('Request Body:', req.body);
+  console.log('File Details:', req.file ? {
+    fieldname: req.file.fieldname,
+    originalname: req.file.originalname,
+    mimetype: req.file.mimetype,
+    size: req.file.size,
+    path: req.file.path
+  } : 'No file uploaded');
 
   try {
-    // Validate required fields with detailed logging
     if (!req.body.name || !req.body.description) {
       console.log('Validation failed - Missing required fields:', {
         name: Boolean(req.body.name),
@@ -97,7 +86,7 @@ menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, r
       });
       return res.status(400).json({ 
         message: "Name and description are required",
-        fields: {
+        receivedFields: {
           name: Boolean(req.body.name),
           description: Boolean(req.body.description)
         }
@@ -115,7 +104,7 @@ menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, r
       imageUrl: `/uploads/${req.file.filename}`
     };
 
-    console.log('Attempting to validate data:', data);
+    console.log('Attempting to create menu item with data:', data);
 
     const validation = insertMenuItemSchema.safeParse(data);
     if (!validation.success) {
@@ -130,7 +119,7 @@ menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, r
       });
     }
 
-    console.log('Creating menu item with validated data:', validation.data);
+    console.log('Data validated successfully, creating menu item');
     const menuItem = await storage.createMenuItem(validation.data);
 
     console.log('Menu item created successfully:', menuItem);

@@ -1,0 +1,32 @@
+Please execute and complete all of the following debugging steps without stopping or asking additional questions until you have finished every step and gathered all relevant data. Once all steps are complete, compile and present your findings in a detailed report.
+
+Front-End Form Inspection
+
+Provide the exact JSX/HTML for the <form> and <input> elements, including all attributes like encType, name, etc.
+Show the complete code for the fetch (or Axios) call, including the URL, method, headers, and credentials settings.
+Log all form fields (e.g., using formData.getAll('imageFile'), formData.get('name'), etc.) right before submission, and include the logged output.
+Network Request Verification
+
+Capture and display the network request payload from the browser’s DevTools (or equivalent) to confirm that only the expected fields are sent.
+Note the response status code and response body from the server.
+If the request fails, record the exact error message or status code.
+Server Route Debugging
+
+In the /items POST route, add logs immediately before the business logic to output req.body, req.file, and req.files.
+Show the complete console output from the server when processing a request.
+Confirm that the logged field names match the expected ones (name, description, and imageFile), and include the log output.
+Multer/File Upload Verification
+
+Provide the exact Multer configuration code (e.g., upload.single('imageFile')).
+Verify and log the permissions of the upload directory (e.g., uploads/).
+If Multer throws an error (like ‘Unexpected field’), identify which field name is causing the issue and include the corresponding error details.
+Database Insertion Verification
+
+Show the code snippet responsible for inserting a new menu item into the database, ensuring that the image_url field is set properly (e.g., from req.file.filename or similar).
+Confirm that the database schema aligns with the provided fields (name, description, imageUrl) and log any database errors with their exact messages.
+Final Report
+
+After executing all the steps above, compile all logs, outputs, and error messages into a final detailed report.
+Do not pause after any individual step; proceed sequentially through all steps until you have gathered complete evidence for each layer (front-end, network, server, file upload, and database).
+Provide your final conclusions on what is causing the ‘Unexpected field’ or ‘Failed to create menu item’ error and list any recommended fixes based on the compiled data.
+Please complete all these steps and then present your final report with all relevant details
