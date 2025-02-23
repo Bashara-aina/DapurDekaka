@@ -50,7 +50,7 @@ menuRouter.get("/sauces", async (_req, res) => {
 });
 
 // Create menu item (protected)
-menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, res) => {
+menuRouter.post("/items", requireAuth, upload.single('image'), async (req, res) => {
   console.log('Request body:', req.body);
   console.log('Uploaded file:', req.file);
   try {

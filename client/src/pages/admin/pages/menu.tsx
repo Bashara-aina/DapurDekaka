@@ -112,7 +112,7 @@ export default function AdminMenuPage() {
                 <label htmlFor="image" className="text-sm font-medium">Image</label>
                 <Input
                   id="image"
-                  name="imageFile"
+                  name="image"
                   type="file"
                   accept="image/*"
                   required
