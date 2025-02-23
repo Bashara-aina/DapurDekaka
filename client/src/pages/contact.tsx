@@ -5,10 +5,9 @@ import {
   MapPin,
   Phone,
   Mail,
-  ShoppingBag,
   Instagram as InstagramIcon,
-  Truck
 } from "lucide-react";
+import { Icon } from '@iconify/react';
 
 export default function Contact() {
   return (
@@ -75,7 +74,7 @@ export default function Contact() {
                         rel="noopener noreferrer"
                         className="hover:text-primary"
                       >
-                        <ShoppingBag className="h-5 w-5" />
+                        <Icon icon="simple-icons:shopee" className="h-5 w-5" />
                       </a>
                     </Button>
                     <Button variant="outline" size="icon" asChild>
@@ -95,7 +94,7 @@ export default function Contact() {
                         rel="noopener noreferrer"
                         className="hover:text-primary"
                       >
-                        <Truck className="h-5 w-5" />
+                        <Icon icon="simple-icons:grab" className="h-5 w-5" />
                       </a>
                     </Button>
                   </div>
