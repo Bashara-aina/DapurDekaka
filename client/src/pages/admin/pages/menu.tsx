@@ -29,7 +29,6 @@ export default function AdminMenuPage() {
 
   const createMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      // Debug log: Convert FormData to object for logging
       const formDataObj: Record<string, any> = {};
       for (const [key, value] of Array.from(formData.entries())) {
         if (value instanceof File) {
@@ -76,28 +75,32 @@ export default function AdminMenuPage() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log('=== Form Submission Debug Start ===');
+
+    console.log('=== Form Structure Verification ===');
     const form = e.currentTarget;
-    console.log('Form element:', form);
-    console.log('Form enctype:', form.enctype);
+    console.log('Form Properties:', {
+      method: form.method,
+      enctype: form.enctype,
+      action: form.action
+    });
 
     const formData = new FormData(form);
-
-    // Log form fields before mutation
-    const formFields: Record<string, any> = {};
-    Array.from(formData.entries()).forEach(([key, value]) => {
+    console.log('=== Form Fields Verification ===');
+    for (const [key, value] of formData.entries()) {
       if (value instanceof File) {
-        formFields[key] = {
-          name: value.name,
-          type: value.type,
-          size: value.size
-        };
+        console.log('File Field:', {
+          fieldName: key,
+          fileName: value.name,
+          fileType: value.type,
+          fileSize: value.size
+        });
       } else {
-        formFields[key] = value;
+        console.log('Text Field:', {
+          fieldName: key,
+          value: value
+        });
       }
-    });
-    console.log('Form fields:', formFields);
-    console.log('=== Form Submission Debug End ===');
+    }
 
     createMutation.mutate(formData);
   };
@@ -127,7 +130,12 @@ export default function AdminMenuPage() {
             <SheetHeader>
               <SheetTitle>Add New Menu Item</SheetTitle>
             </SheetHeader>
-            <form onSubmit={handleSubmit} className="space-y-4 mt-4" encType="multipart/form-data">
+            <form
+              onSubmit={handleSubmit}
+              className="space-y-4 mt-4"
+              encType="multipart/form-data"
+              method="POST"
+            >
               <div className="space-y-2">
                 <label htmlFor="name" className="text-sm font-medium">Name</label>
                 <Input
@@ -154,6 +162,16 @@ export default function AdminMenuPage() {
                   type="file"
                   accept="image/*"
                   required
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      console.log('Selected File:', {
+                        name: file.name,
+                        type: file.type,
+                        size: file.size
+                      });
+                    }
+                  }}
                 />
               </div>
               <Button type="submit" className="w-full" disabled={createMutation.isPending}>
