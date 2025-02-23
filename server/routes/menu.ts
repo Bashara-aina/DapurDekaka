@@ -56,12 +56,14 @@ menuRouter.post("/items", requireAuth, upload.single('image'), async (req, res) 
       return res.status(400).json({ message: "Name and description are required" });
     }
 
+    if (!req.file && !req.body.imageUrl) {
+      return res.status(400).json({ message: "Image is required" });
+    }
+
     const data = {
       name: req.body.name,
       description: req.body.description,
-      price: req.body.price ? Number(req.body.price) : undefined,
-      imageUrl: req.file ? `/uploads/${req.file.filename}` : (req.body.imageUrl || ''),
-      category: req.body.category || undefined
+      imageUrl: req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl
     };
 
     const validation = insertMenuItemSchema.safeParse(data);
