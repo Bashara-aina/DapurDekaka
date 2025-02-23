@@ -29,19 +29,25 @@ export default function AdminMenuPage() {
 
   const createMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      // Debug log: Log all form fields before sending
-      console.log('Form data being sent:');
-      for (const [key, value] of formData.entries()) {
+      // Debug log: Convert FormData to object for logging
+      const formDataObj: Record<string, any> = {};
+      for (const [key, value] of Array.from(formData.entries())) {
         if (value instanceof File) {
-          console.log(`${key}: File(${value.name}, ${value.type}, ${value.size} bytes)`);
+          formDataObj[key] = {
+            name: value.name,
+            type: value.type,
+            size: value.size
+          };
         } else {
-          console.log(`${key}: ${value}`);
+          formDataObj[key] = value;
         }
       }
+      console.log('Form data being sent:', formDataObj);
 
       const response = await fetch("/api/menu/items", {
         method: "POST",
         body: formData,
+        credentials: 'include'
       });
 
       if (!response.ok) {
@@ -71,29 +77,27 @@ export default function AdminMenuPage() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     console.log('=== Form Submission Debug Start ===');
-    console.log('Form element:', e.currentTarget);
-    console.log('Form enctype:', e.currentTarget.enctype);
-    
-    const formData = new FormData(e.currentTarget);
-    console.log('Form fields:');
-    console.log('FormData fields:');
-    for (const [key, value] of formData.entries()) {
-      if (value instanceof File) {
-        console.log(`${key}: File(${value.name}, ${value.type}, ${value.size} bytes)`);
-      } else {
-        console.log(`${key}: ${value}`);
-      }
-    }
+    const form = e.currentTarget;
+    console.log('Form element:', form);
+    console.log('Form enctype:', form.enctype);
 
-    // Debug log: Log form fields before mutation
-    console.log('FormData fields before submission:');
-    for (const [key, value] of formData.entries()) {
+    const formData = new FormData(form);
+
+    // Log form fields before mutation
+    const formFields: Record<string, any> = {};
+    Array.from(formData.entries()).forEach(([key, value]) => {
       if (value instanceof File) {
-        console.log(`${key}: File(${value.name}, ${value.type}, ${value.size} bytes)`);
+        formFields[key] = {
+          name: value.name,
+          type: value.type,
+          size: value.size
+        };
       } else {
-        console.log(`${key}: ${value}`);
+        formFields[key] = value;
       }
-    }
+    });
+    console.log('Form fields:', formFields);
+    console.log('=== Form Submission Debug End ===');
 
     createMutation.mutate(formData);
   };
@@ -123,7 +127,7 @@ export default function AdminMenuPage() {
             <SheetHeader>
               <SheetTitle>Add New Menu Item</SheetTitle>
             </SheetHeader>
-            <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+            <form onSubmit={handleSubmit} className="space-y-4 mt-4" encType="multipart/form-data">
               <div className="space-y-2">
                 <label htmlFor="name" className="text-sm font-medium">Name</label>
                 <Input
