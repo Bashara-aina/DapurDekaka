@@ -131,8 +131,8 @@ const startServer = async () => {
       res.status(status).json({ message });
     });
 
-    // Setup Vite middleware in development
-    if (process.env.NODE_ENV === 'development') {
+    // Always use Vite in development mode
+    if (process.env.NODE_ENV !== 'production') {
       console.log('[Middleware] Setting up Vite development middleware');
       await setupVite(app, server);
     } else {
