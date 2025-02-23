@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { MapPin, Phone, Mail, Instagram as InstagramIcon } from "lucide-react";
 import { Icon } from "@iconify/react";
+import { TranslateWrapper } from "@/components/TranslateWrapper";
 
 export default function Contact() {
   return (
@@ -14,10 +15,14 @@ export default function Contact() {
           transition={{ duration: 0.5 }}
           className="text-center mb-16"
         >
-          <h1 className="text-4xl font-bold text-gray-900 mb-6">Contact Us</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-6">
+            <TranslateWrapper translationKey="common.contact.title">Contact Us</TranslateWrapper>
+          </h1>
           <p className="text-lg text-gray-600">
-            Get in touch with us for any inquiries about our premium halal dim
-            sum. We'd love to hear from you!
+            <TranslateWrapper translationKey="common.contact.description">
+              Get in touch with us for any inquiries about our premium halal dim
+              sum. We'd love to hear from you!
+            </TranslateWrapper>
           </p>
         </motion.div>
 
