@@ -7,6 +7,65 @@ import { queryKeys, apiRequest } from "@/lib/queryClient";
 import { MenuItem, Sauce } from "@shared/schema";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { useState } from 'react';
+
+
+// Modal Component
+const OrderModal = ({ children }) => {
+  const [showModal, setShowModal] = useState(false);
+
+  const handleOpenModal = () => setShowModal(true);
+  const handleCloseModal = () => setShowModal(false);
+
+  return (
+    <>
+      <div onClick={handleOpenModal}>{children}</div>
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-96 relative">
+            <button
+              className="absolute top-2 right-2"
+              onClick={handleCloseModal}
+            >
+              &times;
+            </button>
+            <h2 className="text-xl font-bold mb-4">Order Options</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <a
+                href="https://shopee.co.id/dapurdekaka"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center p-2 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                {/* Shopee Logo Here */}
+                <img src="/shopee-logo.svg" alt="Shopee" className="h-8 w-auto"/>
+              </a>
+              <a
+                href="https://instagram.com/dapurdekaka"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center p-2 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                {/* Instagram Logo Here */}
+                <img src="/instagram-logo.svg" alt="Instagram" className="h-8 w-auto"/>
+              </a>
+              <a
+                href="https://mart.grab.com/id/id/merchant/6-C62BTTXXSB33TE"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center p-2 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                {/* Grab Logo Here */}
+                <img src="/grab-logo.svg" alt="Grab" className="h-8 w-auto"/>
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
 
 export default function Menu() {
   const { t } = useLanguage();
@@ -61,21 +120,9 @@ export default function Menu() {
                     {item.description}
                   </p>
                   <div className="mt-auto pt-2">
-                    <Button
-                      className="w-full"
-                      variant="default"
-                      size="sm"
-                      asChild
-                    >
-                      <a
-                        href={`https://wa.me/your-number?text=I would like to order ${item.name}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full"
-                      >
-                        Pesan
-                      </a>
-                    </Button>
+                    <OrderModal>
+                      <Button className="w-full" variant="default" size="sm">Pesan</Button>
+                    </OrderModal>
                   </div>
                 </div>
               </CardContent>
@@ -113,21 +160,9 @@ export default function Menu() {
                       <p className="text-sm text-gray-600 flex-grow">
                         {sauce.description}
                       </p>
-                      <Button
-                        className="w-full mt-2"
-                        variant="default"
-                        size="sm"
-                        asChild
-                      >
-                        <a
-                          href={`https://wa.me/your-number?text=I would like to order ${sauce.name}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-full"
-                        >
-                          Pesan
-                        </a>
-                      </Button>
+                      <OrderModal>
+                        <Button className="w-full mt-2" variant="default" size="sm">Pesan</Button>
+                      </OrderModal>
                     </div>
                   </CardContent>
                 </Card>
