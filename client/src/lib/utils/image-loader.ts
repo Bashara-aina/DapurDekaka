@@ -98,3 +98,62 @@ export function setupLazyLoadObserver(): void {
     observer.observe(img);
   });
 }
+/**
+ * Image loading utilities
+ */
+
+/**
+ * Preloads an image by creating a new Image object
+ * Returns a promise that resolves when the image is loaded
+ */
+export function preloadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+/**
+ * Determines appropriate image size based on viewport
+ */
+export function getResponsiveImageSize(
+  originalWidth: number,
+  originalHeight: number,
+  maxWidth: number = window.innerWidth
+): { width: number; height: number } {
+  if (originalWidth <= maxWidth) {
+    return { width: originalWidth, height: originalHeight };
+  }
+  
+  const ratio = originalHeight / originalWidth;
+  const width = Math.min(maxWidth, originalWidth);
+  const height = Math.round(width * ratio);
+  
+  return { width, height };
+}
+
+/**
+ * Returns a placeholder image for lazy loading
+ */
+export function getPlaceholderImage(): string {
+  return 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+}
+
+/**
+ * Progressive image loading strategy - loads low quality placeholder first
+ */
+export async function loadProgressiveImage(
+  src: string, 
+  onProgress?: (stage: 'placeholder' | 'full', img?: HTMLImageElement) => void
+): Promise<HTMLImageElement> {
+  // First load low quality placeholder (if available)
+  if (onProgress) onProgress('placeholder');
+  
+  // Then load full quality image
+  const fullImage = await preloadImage(src);
+  if (onProgress) onProgress('full', fullImage);
+  
+  return fullImage;
+}

@@ -157,3 +157,88 @@ export function ImageOptimizer({
     </div>
   );
 }
+import React, { useState, useEffect } from 'react';
+
+interface ImageOptimizerProps {
+  src: string;
+  alt: string;
+  width?: number;
+  height?: number;
+  className?: string;
+  priority?: boolean;
+}
+
+export function ImageOptimizer({
+  src,
+  alt,
+  width,
+  height,
+  className = '',
+  priority = false,
+}: ImageOptimizerProps) {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [isIntersecting, setIsIntersecting] = useState(priority);
+  const imgRef = React.useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    if (priority || !imgRef.current) return; // Skip if priority or no ref
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsIntersecting(true);
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      {
+        rootMargin: '200px 0px',
+        threshold: 0.01,
+      }
+    );
+
+    observer.observe(imgRef.current);
+
+    return () => {
+      if (imgRef.current) {
+        observer.unobserve(imgRef.current);
+      }
+    };
+  }, [priority]);
+
+  // Generate optimized image URL with width/height parameters if provided
+  const optimizedSrc = () => {
+    if (!src) return '';
+    
+    // For demonstration, this is a simple approach
+    // In a production app, you would integrate with an image optimization service
+    const url = new URL(src, window.location.origin);
+    
+    if (width) url.searchParams.append('w', width.toString());
+    if (height) url.searchParams.append('h', height.toString());
+    
+    return url.toString();
+  };
+
+  return (
+    <div className={`relative overflow-hidden ${className}`} style={{ aspectRatio: width && height ? width/height : 'auto' }}>
+      {!isLoaded && (
+        <div className="absolute inset-0 bg-gray-200 animate-pulse"></div>
+      )}
+      
+      <img
+        ref={imgRef}
+        src={isIntersecting ? optimizedSrc() : ''}
+        data-src={src}
+        alt={alt}
+        width={width}
+        height={height}
+        onLoad={() => setIsLoaded(true)}
+        className={`transition-opacity duration-500 ${isLoaded ? 'opacity-100' : 'opacity-0'} ${className}`}
+      />
+    </div>
+  );
+}
+
+export default ImageOptimizer;

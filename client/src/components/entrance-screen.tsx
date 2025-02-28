@@ -22,7 +22,6 @@ export default function EntranceSection() {
   const { data: pageData } = useQuery({
     queryKey: ["/api/pages/homepage"],
     queryFn: async () => {
-      // Add timestamp to prevent browser caching
       const timestamp = new Date().getTime();
       const response = await fetch(`/api/pages/homepage?t=${timestamp}`, {
         method: 'GET',
@@ -38,16 +37,15 @@ export default function EntranceSection() {
       console.log('Homepage data:', data);
       return data;
     },
-    refetchInterval: 500, // More frequent refetching
-    staleTime: 0, // Always consider data stale
-    cacheTime: 0, // Don't cache the data
+    refetchInterval: 500, 
+    staleTime: 0, 
+    cacheTime: 0, 
     refetchOnWindowFocus: true,
     refetchOnMount: true,
     refetchOnReconnect: true,
   });
 
   const assetImages = pageData?.carousel?.images || Array.from({ length: 33 }, (_, i) => `/asset/${i + 1}.jpg`);
-  // Try to get title and subtitle from multiple possible locations in the data structure
   const carouselTitle = pageData?.carousel?.title || 
                         pageData?.content?.carousel?.title || 
                         pageData?.content?.hero?.title || 
@@ -57,7 +55,7 @@ export default function EntranceSection() {
                           pageData?.content?.hero?.subtitle || 
                           "";
   const MINIMUM_IMAGES_TO_START = 3;
-  const BATCH_SIZE = 5; // Load images in batches for better performance
+  const BATCH_SIZE = 5; 
 
   useEffect(() => {
     let mounted = true;
@@ -65,21 +63,16 @@ export default function EntranceSection() {
     const loadedImageSet = new Set<string>();
     const imageCache = new Map<string, string>();
 
-    // Function to optimize image URL with size parameters
     const getOptimizedImageUrl = (url: string, width: number = 800) => {
-      // Don't modify already optimized URLs
       if (url.includes('?')) return url;
       return `${url}?w=${width}&q=75`;
     };
 
     const loadImage = async (imageUrl: string, priority: boolean = false) => {
-      // Skip if already loaded
       if (loadedImageSet.has(imageUrl)) return;
-      
+
       try {
-        // Use optimized URL for loading
         const optimizedUrl = getOptimizedImageUrl(imageUrl, priority ? 1200 : 800);
-        
         const img = new Image();
         await new Promise((resolve, reject) => {
           img.onload = resolve;
@@ -98,47 +91,42 @@ export default function EntranceSection() {
       }
     };
 
-    // Load images in batches to prevent overwhelming the browser
     const loadImageBatch = async (startIndex: number, endIndex: number, priority: boolean = false) => {
       if (isFetching || !mounted) return;
       isFetching = true;
-      
+
       const batch = assetImages.slice(startIndex, endIndex);
       await Promise.all(batch.map(img => loadImage(img, priority)));
-      
+
       isFetching = false;
-      
-      // Load next batch if we haven't loaded all images
+
       if (mounted && loadedImageSet.size < assetImages.length && endIndex < assetImages.length) {
         setTimeout(() => {
           loadImageBatch(endIndex, endIndex + BATCH_SIZE);
-        }, 300); // Small delay between batches
+        }, 300); 
       }
     };
 
     const initialLoad = async () => {
-      // Load initial images with high priority
       const initialImages = assetImages.slice(0, MINIMUM_IMAGES_TO_START);
       await Promise.all(initialImages.map(img => loadImage(img, true)));
 
       if (mounted) {
-        // Start loading the next batch of images after initial load
         loadImageBatch(MINIMUM_IMAGES_TO_START, MINIMUM_IMAGES_TO_START + BATCH_SIZE);
       }
     };
 
     initialLoad();
 
-    // Use Intersection Observer to lazy-load visible carousel items
     const setupIntersectionObserver = () => {
-      if (!shouldShowCarousel || typeof window === 'undefined') return;
-      
+      if (!shouldShowCarousel || typeof window === 'undefined') return () => {}; // Return an empty function if conditions aren't met
+
       const options = {
         root: null,
-        rootMargin: '200px', // Load images when they're 200px from viewport
+        rootMargin: '200px', 
         threshold: 0.1
       };
-      
+
       const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
@@ -151,22 +139,20 @@ export default function EntranceSection() {
           }
         });
       }, options);
-      
-      // Observe all carousel images with data-src
+
       document.querySelectorAll('.carousel-img[data-src]').forEach(img => {
         observer.observe(img);
       });
-      
+
       return () => observer.disconnect();
     };
-    
-    // Setup observer when carousel is shown
+
     useEffect(() => {
-      if (shouldShowCarousel) {
+      if (shouldShowCarousel && pageData?.carousel?.images) {
         const cleanup = setupIntersectionObserver();
         return cleanup;
       }
-    }, [shouldShowCarousel, loadedImages]);
+    }, [shouldShowCarousel, pageData]);
 
     return () => {
       mounted = false;
@@ -212,13 +198,10 @@ export default function EntranceSection() {
             >
               <CarouselContent className="-ml-1">
                 {loadedImages.map((imagePath, index) => {
-                  // Determine if this is a high priority image (first few)
                   const isPriority = index < 5;
-                  // Create optimized image URL
                   const optimizedSrc = `${imagePath}?w=${isPriority ? 1200 : 800}&q=${isPriority ? 85 : 75}`;
-                  // For images beyond the first few, use data-src for lazy loading
                   const useDataSrc = index >= 10;
-                  
+
                   return (
                     <CarouselItem key={index} className="pl-1 md:basis-1/3">
                       <div className="relative h-screen">
@@ -234,7 +217,6 @@ export default function EntranceSection() {
                           width="800"
                           height="600"
                           onLoad={(e) => {
-                            // Remove placeholder when image loads
                             const img = e.target as HTMLImageElement;
                             img.style.opacity = "1";
                             const placeholder = img.previousElementSibling;
