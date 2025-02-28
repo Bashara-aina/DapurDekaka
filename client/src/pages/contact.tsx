@@ -1,8 +1,10 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, Phone, Mail, InstagramIcon } from "lucide-react";
+import { MapPin, Phone, Mail } from "lucide-react";
 import { Icon } from "@iconify/react";
+import { SiInstagram, SiShopee } from "react-icons/si";
+import { FaShoppingBag } from "react-icons/fa";
 import { TranslateWrapper } from "@/components/TranslateWrapper";
 
 export default function Contact() {
@@ -74,8 +76,7 @@ export default function Contact() {
                         rel="noopener noreferrer"
                         className="hover:text-primary"
                       >
-                        {/* Placeholder for Shopee icon */}
-                        <span>Shopee</span>
+                        <SiShopee className="h-5 w-5 text-[#EE4D2D]" />
                       </a>
                     </Button>
                     <Button variant="outline" size="icon" asChild>
@@ -85,7 +86,7 @@ export default function Contact() {
                         rel="noopener noreferrer"
                         className="hover:text-primary"
                       >
-                        <InstagramIcon className="h-5 w-5" />
+                        <SiInstagram className="h-5 w-5 text-[#E4405F]" />
                       </a>
                     </Button>
                     <Button variant="outline" size="icon" asChild>
@@ -95,8 +96,7 @@ export default function Contact() {
                         rel="noopener noreferrer"
                         className="hover:text-primary"
                       >
-                        {/* Placeholder for Grab icon */}
-                        <span>Grab</span>
+                        <FaShoppingBag className="h-5 w-5 text-[#00B14F]" />
                       </a>
                     </Button>
                   </div>

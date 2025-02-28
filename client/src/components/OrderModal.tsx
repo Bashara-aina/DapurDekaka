@@ -4,6 +4,7 @@ import { SiInstagram } from "react-icons/si";
 import { X } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import type { MenuItem } from "@shared/schema";
+import { FaShoppingBag } from "react-icons/fa"; // Added import for FaShoppingBag
 
 interface OrderModalProps {
   trigger?: React.ReactNode;
@@ -32,7 +33,7 @@ export function OrderModal({ trigger }: OrderModalProps) {
             rel="noopener noreferrer"
             className="flex flex-col items-center justify-center p-4 rounded-lg hover:bg-accent transition-colors"
           > {/*Removed motion.a */}
-            <X className="w-12 h-12 text-[#EE4D2D]" /> {/* Replaced SiShopee with X for demonstration */}
+            <FaShoppingBag className="w-12 h-12 text-[#EE4D2D]" /> {/* Replaced X with FaShoppingBag */}
             <span className="mt-2 text-sm font-medium">Shopee</span>
           </a>
 
@@ -52,11 +53,7 @@ export function OrderModal({ trigger }: OrderModalProps) {
             rel="noopener noreferrer"
             className="flex flex-col items-center justify-center p-4 rounded-lg hover:bg-accent transition-colors"
           > {/*Removed motion.a */}
-            <img
-              src="/grab-logo.svg"
-              alt="Grab"
-              className="w-12 h-12"
-            />
+            <FaShoppingBag className="w-12 h-12 text-[#00B14F]" /> {/* Replaced img with FaShoppingBag */}
             <span className="mt-2 text-sm font-medium">Grab</span>
           </a>
         </div>
