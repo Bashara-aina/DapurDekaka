@@ -82,13 +82,8 @@ export default function EntranceSection() {
     };
 
     const initialLoad = async () => {
-      const initialImages = assetImages.slice(0, MINIMUM_IMAGES_TO_START);
-      await Promise.all(initialImages.map(loadImage));
-
-      if (mounted) {
-        const remainingImages = assetImages.slice(MINIMUM_IMAGES_TO_START);
-        remainingImages.forEach(loadImage);
-      }
+      // Load all images before showing the carousel
+      await Promise.all(assetImages.map(loadImage));
     };
 
     initialLoad();
