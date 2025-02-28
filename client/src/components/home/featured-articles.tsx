@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CalendarIcon, ArrowRight, Loader2 } from "lucide-react";
 import { Link } from "wouter";
-import { motion } from "framer-motion";
 
 function decodeHtmlEntities(text: string) {
   const textArea = document.createElement('textarea');

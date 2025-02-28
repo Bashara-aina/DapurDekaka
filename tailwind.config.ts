@@ -5,6 +5,12 @@ export default {
   content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
   theme: {
     extend: {
+      animation: {
+        'fadeIn': 'fadeIn 0.5s ease forwards',
+        'fadeInUp': 'fadeInUp 0.5s ease forwards',
+        'slideInLeft': 'slideInLeft 0.5s ease 0.2s forwards',
+        'slideInRight': 'slideInRight 0.5s ease 0.4s forwards',
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
