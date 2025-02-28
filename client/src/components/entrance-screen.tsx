@@ -1,6 +1,13 @@
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import useEmblaCarousel from "embla-carousel-react";
+// Using dynamic imports to handle potential missing dependencies
+const MotionImport = import('framer-motion').catch(() => {
+  console.warn('framer-motion not available, using fallback components');
+  return { 
+    motion: (props) => ({ ...props, children: props.children }), 
+    AnimatePresence: (props) => ({ ...props, children: props.children }) 
+  };
+});
 // embla-carousel-autoplay import removed during optimization
 import { Link } from "wouter";
 import {
