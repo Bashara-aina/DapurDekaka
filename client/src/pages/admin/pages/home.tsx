@@ -130,6 +130,11 @@ export default function HomePageEditor() {
         method: 'PUT',
         body: formData
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update homepage');
+      }
 
       if (!response.ok) throw new Error('Failed to update homepage');
       return response.json();

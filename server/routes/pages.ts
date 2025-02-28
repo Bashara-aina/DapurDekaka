@@ -167,11 +167,19 @@ pagesRouter.put("/homepage", upload.fields([
       }
     }
 
-    // Save the updated config to the database
-    await storage.savePageContent('homepage', {content: homepageConfig});
-
-    // Send back updated homepage
-    console.log('[PUT] Updated homepage configuration', homepageConfig);
+    try {
+      // Save the updated config to the database
+      await storage.savePageContent('homepage', {content: homepageConfig});
+      
+      // Send back updated homepage
+      console.log('[PUT] Updated homepage configuration', homepageConfig);
+      
+      // Add a successful response
+      res.json({ success: true, message: "Homepage updated successfully" });
+    } catch (error) {
+      console.error('[PUT] Error updating homepage configuration:', error);
+      res.status(500).json({ success: false, message: "Failed to update homepage" });
+    }
     res.json(homepageConfig);
   } catch (error) {
     console.error('[PUT] Error processing files:', error);
@@ -187,10 +195,16 @@ pagesRouter.put("/homepage/carousel/reorder", async (req, res) => {
     }
 
     homepageConfig.carousel.images = images;
-    await storage.savePageContent('homepage', {content: homepageConfig}); //Save to database after reorder
-    res.json({ message: "Image order updated successfully" });
+    try {
+      await storage.savePageContent('homepage', {content: homepageConfig}); //Save to database after reorder
+      res.json({ success: true, message: "Image order updated successfully" });
+    } catch (saveError) {
+      console.error("Error saving reordered images:", saveError);
+      res.status(500).json({ success: false, message: "Failed to save image order" });
+    }
   } catch (error) {
     console.error("Error reordering images:", error);
+    res.status(400).json({ success: false, message: "Failed to reorder images" });
     res.status(500).json({ message: "Failed to reorder images" });
   }
 });
