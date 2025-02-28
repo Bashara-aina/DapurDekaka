@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -130,7 +129,7 @@ export default function HomePageEditor() {
         method: 'PUT',
         body: formData
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to update homepage');
@@ -139,24 +138,12 @@ export default function HomePageEditor() {
       if (!response.ok) throw new Error('Failed to update homepage');
       return response.json();
     },
-    onSuccess: async () => {
-      // Invalidate all homepage-related queries with different possible keys
-      await queryClient.invalidateQueries({ queryKey: ["homepage"] });
-      await queryClient.invalidateQueries({ queryKey: ["/api/pages/homepage"] });
-      await queryClient.invalidateQueries({ queryKey: ["pages", "homepage"] });
-      
-      // Force immediate refetch of all homepage related queries
-      await queryClient.refetchQueries({ queryKey: ["homepage"], type: 'all' });
-      await queryClient.refetchQueries({ queryKey: ["/api/pages/homepage"], type: 'all' });
-      await queryClient.refetchQueries({ queryKey: ["pages", "homepage"], type: 'all' });
-      
+    onSuccess: () => {
+      // Invalidate the homepage query so it's refetched on next access
+      queryClient.invalidateQueries({ queryKey: ["pages", "homepage"] });
       toast({
         title: "Success",
-        description: "Homepage updated successfully"
-      });
-      setFiles({ logo: [], carouselImages: [] });
-      setContent({
-        carousel: { title: "", subtitle: "" }
+        description: "Homepage updated successfully",
       });
     },
     onError: (error) => {

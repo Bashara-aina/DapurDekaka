@@ -37,12 +37,11 @@ export default function FeaturedProducts() {
       if (!response.ok) throw new Error("Failed to fetch homepage data");
       return response.json();
     },
-    staleTime: 0,
-    cacheTime: 0, // Don't cache data at all
-    refetchOnWindowFocus: true,
+    staleTime: 300000, // Consider data fresh for 5 minutes
+    gcTime: 600000, // Keep unused data in cache for 10 minutes
+    refetchOnWindowFocus: true, // Refetch when user returns to the tab
     refetchOnMount: true,
     refetchOnReconnect: true,
-    refetchInterval: 5000, // Refetch every 5 seconds to ensure latest data
   });
 
   const scroll = (direction: "left" | "right") => {
