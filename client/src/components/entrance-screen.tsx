@@ -20,15 +20,12 @@ export default function EntranceSection() {
   const { t } = useLanguage();
 
   const { data: pageData } = useQuery({
-    queryKey: ["homepage", Date.now()], // Add timestamp to prevent stale data
+    queryKey: ["/api/pages/homepage"],
     queryFn: async () => {
-      // Add cache-busting parameter
-      const timestamp = new Date().getTime();
-      const response = await fetch(`/api/pages/homepage?t=${timestamp}`, {
+      const response = await fetch('/api/pages/homepage', {
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
         },
         cache: 'no-store'
       });
@@ -37,15 +34,13 @@ export default function EntranceSection() {
       console.log('Homepage data:', data);
       return data;
     },
-    refetchInterval: 5000, // Refetch every 5 seconds
-    staleTime: 1000, // Consider data stale after 1 second
-    refetchOnWindowFocus: true,
+    refetchInterval: 1000,
+    staleTime: 0,
   });
 
   const assetImages = pageData?.carousel?.images || Array.from({ length: 33 }, (_, i) => `/asset/${i + 1}.jpg`);
-  // Try both locations for carousel title/subtitle to ensure we get the data
-  const carouselTitle = pageData?.carousel?.title || pageData?.content?.carousel?.title || "";
-  const carouselSubtitle = pageData?.carousel?.subtitle || pageData?.content?.carousel?.subtitle || "";
+  const carouselTitle = pageData?.carousel?.title || "";
+  const carouselSubtitle = pageData?.carousel?.subtitle || "";
   const MINIMUM_IMAGES_TO_START = 3;
 
   useEffect(() => {
@@ -156,10 +151,6 @@ export default function EntranceSection() {
               <p className="text-xl md:text-2xl mb-8 max-w-2xl">
                 {carouselSubtitle || t('home.hero.subtitle')}
               </p>
-              {/* For debugging if needed */}
-              {/* <div className="hidden">
-                Title source: {JSON.stringify({carouselTitle, fromContent: pageData?.content?.carousel?.title})}
-              </div> */}
               <Button size="lg" className="text-lg px-8 py-6" asChild>
                 <Link href="/menu">{t('common.viewMenu')}</Link>
               </Button>

@@ -98,13 +98,6 @@ pagesRouter.put("/homepage", upload.fields([
         featuredProducts: homepageConfig.content.featuredProducts,
         latestArticles: homepageConfig.content.latestArticles
       };
-      
-      // Also update the top-level carousel structure to ensure it's synced
-      homepageConfig.carousel = {
-        ...homepageConfig.carousel,
-        title: content.carousel?.title || (homepageConfig.carousel?.title || ""),
-        subtitle: content.carousel?.subtitle || (homepageConfig.carousel?.subtitle || "")
-      };
     }
 
     if (files.logo && files.logo[0]) {
