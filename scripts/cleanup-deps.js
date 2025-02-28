@@ -80,14 +80,14 @@ if (depsToUninstall.length > 0) {
   console.log(`To remove these dependencies, run:\n`);
   console.log(`npm uninstall ${depsToUninstall.join(' ')}\n`);
   
-  // Optional: uncomment to automatically remove the dependencies
-  // try {
-  //   console.log('Removing dependencies...');
-  //   execSync(`npm uninstall ${depsToUninstall.join(' ')}`, { stdio: 'inherit' });
-  //   console.log('Dependencies successfully removed!');
-  // } catch (error) {
-  //   console.error('Error removing dependencies:', error.message);
-  // }
+  // Automatically remove the dependencies
+  try {
+    console.log('Removing dependencies...');
+    execSync(`npm uninstall ${depsToUninstall.join(' ')}`, { stdio: 'inherit' });
+    console.log('Dependencies successfully removed!');
+  } catch (error) {
+    console.error('Error removing dependencies:', error.message);
+  }
 } else {
   console.log('No unused dependencies found to remove.');
 }
