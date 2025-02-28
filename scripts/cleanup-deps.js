@@ -1,6 +1,4 @@
 
-#!/usr/bin/env node
-
 /**
  * This script analyzes and removes unused dependencies from the project
  * Run with: node scripts/cleanup-deps.js
