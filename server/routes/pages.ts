@@ -169,18 +169,18 @@ pagesRouter.put("/homepage", upload.fields([
 
     try {
       // Save the updated config to the database
-      await storage.savePageContent('homepage', {content: homepageConfig});
-      
+      await storage.updatePageContent('homepage', {content: homepageConfig});
+
       // Send back updated homepage
       console.log('[PUT] Updated homepage configuration', homepageConfig);
-      
+
       // Add a successful response
       res.json({ success: true, message: "Homepage updated successfully" });
     } catch (error) {
       console.error('[PUT] Error updating homepage configuration:', error);
       res.status(500).json({ success: false, message: "Failed to update homepage" });
     }
-    res.json(homepageConfig);
+    // res.json(homepageConfig); //Removed to fix ERR_HTTP_HEADERS_SENT
   } catch (error) {
     console.error('[PUT] Error processing files:', error);
     res.status(500).json({ message: "Internal server error" });
@@ -196,7 +196,7 @@ pagesRouter.put("/homepage/carousel/reorder", async (req, res) => {
 
     homepageConfig.carousel.images = images;
     try {
-      await storage.savePageContent('homepage', {content: homepageConfig}); //Save to database after reorder
+      await storage.updatePageContent('homepage', {content: homepageConfig}); //Save to database after reorder
       res.json({ success: true, message: "Image order updated successfully" });
     } catch (saveError) {
       console.error("Error saving reordered images:", saveError);
