@@ -107,6 +107,45 @@ export default function EntranceSection() {
 
   const shouldShowCarousel = loadedImages.length >= MINIMUM_IMAGES_TO_START;
 
+  useEffect(() => {
+    if (!shouldShowCarousel || !pageData?.carousel?.images) {
+      return;
+    }
+
+    // Use Intersection Observer API more efficiently
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const img = entry.target as HTMLImageElement;
+            const dataSrc = img.getAttribute('data-src');
+            if (dataSrc) {
+              img.src = dataSrc;
+              img.removeAttribute('data-src');
+              observer.unobserve(img);
+            }
+          }
+        });
+      },
+      { rootMargin: '200px', threshold: 0.01 }
+    );
+
+    // Observe images with a small delay to prevent blocking the main thread
+    let timeout: NodeJS.Timeout;
+    const observeImages = () => {
+      const lazyImages = document.querySelectorAll('img[data-src]');
+      lazyImages.forEach(img => observer.observe(img));
+    };
+
+    // Delay observation slightly to improve initial render performance
+    timeout = setTimeout(observeImages, 100);
+
+    return () => {
+      clearTimeout(timeout);
+      observer.disconnect();
+    };
+  }, [shouldShowCarousel, pageData]);
+
   return (
     <section className="relative h-screen overflow-hidden">
       {!shouldShowCarousel && (
