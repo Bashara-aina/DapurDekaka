@@ -79,12 +79,10 @@ export default function FeaturedArticles() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {posts.map((post, index) => (
-            <motion.div
+            <div
               key={post.id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
+              className="animate-fade-in-up"
+              style={{ animationDelay: `${index * 0.1}s` }}
             >
               <Link href={`/article/${post.id}`}>
                 <Card className="group cursor-pointer overflow-hidden hover:shadow-lg transition-all duration-300">

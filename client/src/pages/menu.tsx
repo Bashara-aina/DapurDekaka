@@ -40,12 +40,10 @@ export default function Menu() {
       {/* Menu Items - 4 columns */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {menuItems?.map((item: MenuItem) => (
-          <motion.div
+          <div
             key={item.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="flex flex-col h-full"
+            className="flex flex-col h-full animate-fade-in-up"
+            style={{ animationDelay: `${index * 0.1}s` }}
           >
             <Card className="h-full flex flex-col">
               <CardContent className="p-0 flex flex-col h-full">

@@ -204,10 +204,8 @@ export default function EntranceSection() {
 
           <div className="absolute inset-0 bg-black/50 z-10" />
           <div className="relative z-20 h-full flex flex-col items-center justify-center text-white text-center px-4">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
+            <div 
+              className="max-w-lg animate-fade-in-up"
             >
               <LogoDisplay className="mb-8" logoUrl={pageData?.logo} />
               <h1 className="text-4xl md:text-6xl font-bold mb-4 max-w-4xl">
@@ -219,7 +217,7 @@ export default function EntranceSection() {
               <Button size="lg" className="text-lg px-8 py-6" asChild>
                 <Link href="/menu">{t('common.viewMenu')}</Link>
               </Button>
-            </motion.div>
+            </div>
           </div>
         </div>
       )}
