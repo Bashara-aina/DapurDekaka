@@ -3,6 +3,35 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Performance optimizations -->
+    <link rel="dns-prefetch" href="/" />
+    <link rel="preconnect" href="/" />
+    
+    <!-- Preload critical assets -->
+    <link rel="preload" href="/asset/1.jpg" as="image" />
+    <link rel="preload" href="/asset/2.jpg" as="image" />
+    <link rel="preload" href="/asset/3.jpg" as="image" />
+    
+    <!-- Image loading optimization hints -->
+    <link rel="prefetch" href="/asset/4.jpg" />
+    <link rel="prefetch" href="/asset/5.jpg" />
+
+    <!-- Disable automatic image loading until JS is ready -->
+    <style>
+      img:not([src]) {
+        visibility: hidden;
+      }
+      .image-placeholder {
+        background-color: #f0f0f0;
+        animation: pulse 1.5s infinite ease-in-out;
+      }
+      @keyframes pulse {
+        0% { opacity: 0.6; }
+        50% { opacity: 1; }
+        100% { opacity: 0.6; }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

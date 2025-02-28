@@ -143,7 +143,11 @@ export default function EntranceSection() {
                         src={imagePath}
                         alt={`Slide ${index + 1}`}
                         className="w-full h-full object-cover"
-                        loading="eager"
+                        loading={index < 5 ? "eager" : "lazy"}
+                        fetchPriority={index < 5 ? "high" : "auto"}
+                        decoding="async"
+                        width="800"
+                        height="600"
                       />
                     </div>
                   </CarouselItem>
