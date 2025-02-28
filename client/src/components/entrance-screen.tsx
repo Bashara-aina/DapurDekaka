@@ -103,6 +103,9 @@ export default function EntranceSection() {
     stopOnMouseEnter: false,
     rootNode: (emblaRoot: any) => emblaRoot.parentElement,
   };
+  
+  // Duplicate images to ensure we have enough slides for looping
+  const displayImages = loadedImages.length > 0 ? [...loadedImages, ...loadedImages] : [];
 
   const shouldShowCarousel = loadedImages.length >= MINIMUM_IMAGES_TO_START;
 
@@ -125,7 +128,7 @@ export default function EntranceSection() {
           <div className="absolute inset-0">
             <Carousel
               opts={{
-                align: "start",
+                align: "center",
                 loop: true,
                 dragFree: true,
                 containScroll: false,
@@ -135,8 +138,8 @@ export default function EntranceSection() {
               className="h-full"
             >
               <CarouselContent className="-ml-1">
-                {loadedImages.map((imagePath, index) => (
-                  <CarouselItem key={index} className="pl-1 md:basis-1/3">
+                {displayImages.map((imagePath, index) => (
+                  <CarouselItem key={`slide-${index}`} className="pl-1 md:basis-1/3">
                     <div className="relative h-screen">
                       <img
                         src={imagePath}
