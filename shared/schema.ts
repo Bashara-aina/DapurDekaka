@@ -85,22 +85,52 @@ export const insertBlogPostSchema = createInsertSchema(blogPosts)
   });
 
 export const pageContentSchema = z.object({
-  content: z.object({
-    title: z.string(),
-    description: z.string(),
-    mainImage: z.string(),
-    mainDescription: z.string(),
-    sections: z.array(z.object({
-      title: z.string(),
-      description: z.string()
-    })),
-    features: z.array(z.object({
-      id: z.string(),
+  content: z.union([
+    // Regular page content schema (for about page, etc.)
+    z.object({
       title: z.string(),
       description: z.string(),
-      image: z.string()
-    }))
-  })
+      mainImage: z.string(),
+      mainDescription: z.string(),
+      sections: z.array(z.object({
+        title: z.string(),
+        description: z.string()
+      })),
+      features: z.array(z.object({
+        id: z.string(),
+        title: z.string(),
+        description: z.string(),
+        image: z.string()
+      }))
+    }),
+    // Homepage specific schema
+    z.object({
+      carousel: z.object({
+        images: z.array(z.string()).optional(),
+        title: z.string().optional(),
+        subtitle: z.string().optional()
+      }).optional(),
+      logo: z.string().optional(),
+      content: z.object({
+        hero: z.object({
+          title: z.string(),
+          subtitle: z.string()
+        }).optional(),
+        carousel: z.object({
+          title: z.string(),
+          subtitle: z.string()
+        }).optional(),
+        featuredProducts: z.object({
+          title: z.string(),
+          subtitle: z.string()
+        }).optional(),
+        latestArticles: z.object({
+          title: z.string(),
+          subtitle: z.string()
+        }).optional()
+      }).optional()
+    })
+  ])
 });
 
 // Export types

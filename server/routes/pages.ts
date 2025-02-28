@@ -101,7 +101,7 @@ pagesRouter.put("/homepage", upload.fields([
         featuredProducts: homepageConfig.content.featuredProducts,
         latestArticles: homepageConfig.content.latestArticles
       };
-      
+
       // Also update the direct carousel properties for backward compatibility
       if (homepageConfig.carousel) {
         homepageConfig.carousel.title = content.carousel?.title || homepageConfig.carousel.title;
@@ -167,14 +167,15 @@ pagesRouter.put("/homepage", upload.fields([
       }
     }
 
-    console.log('[PUT] Final homepage config:', homepageConfig);
-    res.json({
-      ...homepageConfig,
-      timestamp: Date.now()
-    });
+    // Save the updated config to database
+    await updateHomepageConfig(homepageConfig);
+
+    // Send back updated homepage
+    console.log('[PUT] Updated homepage configuration', homepageConfig);
+    res.json(homepageConfig);
   } catch (error) {
-    console.error("[PUT] Error updating homepage:", error);
-    res.status(500).json({ message: "Failed to update homepage" });
+    console.error('[PUT] Error processing files:', error);
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
@@ -191,6 +192,26 @@ pagesRouter.put("/homepage/carousel/reorder", async (req, res) => {
     console.error("Error reordering images:", error);
     res.status(500).json({ message: "Failed to reorder images" });
   }
+});
+
+// Placeholder for database interaction -  Needs implementation
+async function updateHomepageConfig(config) {
+  console.log("updateHomepageConfig called with:", config);
+  //Implement your database update logic here.  This is a placeholder.
+  //Example using a hypothetical database client:
+  // await dbClient.updateHomepage(config);
+
+}
+
+// Clear cache when server receives SIGTERM or other signals
+process.on('SIGTERM', () => {
+  console.log('Clearing homepage cache before shutdown');
+  homepageConfig = null; //This should ideally clear the cache more robustly depending on your caching mechanism.
+});
+
+process.on('SIGINT', () => {
+  console.log('Clearing homepage cache before shutdown');
+  homepageConfig = null; //This should ideally clear the cache more robustly depending on your caching mechanism.
 });
 
 export default pagesRouter;
