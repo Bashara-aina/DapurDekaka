@@ -90,6 +90,19 @@ export default function HomePageEditor() {
     }
   });
 
+  // Initialize content with values from pageData when available
+  useEffect(() => {
+    if (pageData?.content?.carousel) {
+      setContent(prev => ({
+        ...prev,
+        carousel: {
+          title: pageData.content.carousel.title || "",
+          subtitle: pageData.content.carousel.subtitle || ""
+        }
+      }));
+    }
+  }, [pageData]);
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
