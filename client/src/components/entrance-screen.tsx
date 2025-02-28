@@ -22,10 +22,13 @@ export default function EntranceSection() {
   const { data: pageData } = useQuery({
     queryKey: ["/api/pages/homepage"],
     queryFn: async () => {
-      const response = await fetch('/api/pages/homepage', {
+      // Add timestamp to prevent browser caching
+      const timestamp = new Date().getTime();
+      const response = await fetch(`/api/pages/homepage?t=${timestamp}`, {
         headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         },
         cache: 'no-store'
       });
@@ -36,11 +39,19 @@ export default function EntranceSection() {
     },
     refetchInterval: 1000,
     staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   const assetImages = pageData?.carousel?.images || Array.from({ length: 33 }, (_, i) => `/asset/${i + 1}.jpg`);
-  const carouselTitle = pageData?.carousel?.title || "";
-  const carouselSubtitle = pageData?.carousel?.subtitle || "";
+  // Try to get title and subtitle from multiple possible locations in the data structure
+  const carouselTitle = pageData?.carousel?.title || 
+                        pageData?.content?.carousel?.title || 
+                        pageData?.content?.hero?.title || 
+                        "";
+  const carouselSubtitle = pageData?.carousel?.subtitle || 
+                          pageData?.content?.carousel?.subtitle || 
+                          pageData?.content?.hero?.subtitle || 
+                          "";
   const MINIMUM_IMAGES_TO_START = 3;
 
   useEffect(() => {

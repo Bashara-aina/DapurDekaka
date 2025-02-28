@@ -292,7 +292,7 @@ export default function HomePageEditor() {
                         ...prev,
                         carousel: { ...prev.carousel, title: e.target.value }
                       }))}
-                      placeholder={pageData?.content?.carousel?.title || "Dapur Dekaka"}
+                      placeholder={(pageData?.content?.carousel?.title || pageData?.carousel?.title || "Dapur Dekaka")}
                     />
                   </div>
                   <div>
@@ -303,7 +303,7 @@ export default function HomePageEditor() {
                         ...prev,
                         carousel: { ...prev.carousel, subtitle: e.target.value }
                       }))}
-                      placeholder={pageData?.content?.carousel?.subtitle || "Nikmati Sensasi Dimsum Premium dengan Cita Rasa Autentik!"}
+                      placeholder={(pageData?.content?.carousel?.subtitle || pageData?.carousel?.subtitle || "Nikmati Sensasi Dimsum Premium dengan Cita Rasa Autentik!")}
                     />
                   </div>
                 </div>

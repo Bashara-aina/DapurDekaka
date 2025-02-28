@@ -85,6 +85,7 @@ pagesRouter.put("/homepage", upload.fields([
     }
 
     if (content) {
+      // Update both hero and carousel settings with the same values for consistency
       homepageConfig.content = {
         ...homepageConfig.content,
         hero: {
@@ -98,6 +99,12 @@ pagesRouter.put("/homepage", upload.fields([
         featuredProducts: homepageConfig.content.featuredProducts,
         latestArticles: homepageConfig.content.latestArticles
       };
+      
+      // Also update the direct carousel properties for backward compatibility
+      if (homepageConfig.carousel) {
+        homepageConfig.carousel.title = content.carousel?.title || homepageConfig.carousel.title;
+        homepageConfig.carousel.subtitle = content.carousel?.subtitle || homepageConfig.carousel.subtitle;
+      }
     }
 
     if (files.logo && files.logo[0]) {
