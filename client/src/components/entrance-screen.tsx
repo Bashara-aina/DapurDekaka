@@ -25,17 +25,17 @@ export default function EntranceSection() {
       // Add timestamp to prevent browser caching
       const timestamp = new Date().getTime();
       const response = await fetch(`/api/pages/homepage?t=${timestamp}`, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
         },
-        cache: 'no-store'
+        cache: "no-store",
       });
-      if (!response.ok) throw new Error('Failed to fetch homepage data');
+      if (!response.ok) throw new Error("Failed to fetch homepage data");
       const data = await response.json();
-      console.log('Homepage data:', data);
+      console.log("Homepage data:", data);
       return data;
     },
     refetchInterval: 500, // More frequent refetching
@@ -46,17 +46,21 @@ export default function EntranceSection() {
     refetchOnReconnect: true,
   });
 
-  const assetImages = pageData?.carousel?.images || Array.from({ length: 33 }, (_, i) => `/asset/${i + 1}.jpg`);
+  const assetImages =
+    pageData?.carousel?.images ||
+    Array.from({ length: 33 }, (_, i) => `/asset/${i + 1}.jpg`);
   // Try to get title and subtitle from multiple possible locations in the data structure
-  const carouselTitle = pageData?.carousel?.title || 
-                        pageData?.content?.carousel?.title || 
-                        pageData?.content?.hero?.title || 
-                        "";
-  const carouselSubtitle = pageData?.carousel?.subtitle || 
-                          pageData?.content?.carousel?.subtitle || 
-                          pageData?.content?.hero?.subtitle || 
-                          "";
-  const MINIMUM_IMAGES_TO_START = 3;
+  const carouselTitle =
+    pageData?.carousel?.title ||
+    pageData?.content?.carousel?.title ||
+    pageData?.content?.hero?.title ||
+    "";
+  const carouselSubtitle =
+    pageData?.carousel?.subtitle ||
+    pageData?.content?.carousel?.subtitle ||
+    pageData?.content?.hero?.subtitle ||
+    "";
+  const MINIMUM_IMAGES_TO_START = 4;
 
   useEffect(() => {
     let mounted = true;
@@ -160,13 +164,13 @@ export default function EntranceSection() {
             >
               <LogoDisplay className="mb-8" logoUrl={pageData?.logo} />
               <h1 className="text-4xl md:text-6xl font-bold mb-4 max-w-4xl">
-                {carouselTitle || t('home.hero.title')}
+                {carouselTitle || t("home.hero.title")}
               </h1>
               <p className="text-xl md:text-2xl mb-8 max-w-2xl">
-                {carouselSubtitle || t('home.hero.subtitle')}
+                {carouselSubtitle || t("home.hero.subtitle")}
               </p>
               <Button size="lg" className="text-lg px-8 py-6" asChild>
-                <Link href="/menu">{t('common.viewMenu')}</Link>
+                <Link href="/menu">{t("common.viewMenu")}</Link>
               </Button>
             </motion.div>
           </div>
