@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
@@ -14,224 +13,170 @@ import { LogoDisplay } from "./LogoDisplay";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryClient";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
-import { preloadImages } from "@/lib/utils/image-loader";
-
-// Placeholder image for failed loads
-const FALLBACK_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100%25' height='100%25' fill='%23f0f0f0'/%3E%3C/svg%3E";
 
 export default function EntranceSection() {
   const [loadedImages, setLoadedImages] = useState<string[]>([]);
   const [loadingProgress, setLoadingProgress] = useState(0);
-  const [shouldShowCarousel, setShouldShowCarousel] = useState(false);
-  const observerRef = useRef<IntersectionObserver | null>(null);
   const { t } = useLanguage();
 
-  // Carousel setup
-  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true }, [Autoplay()]);
-
-  // Get homepage data
-  const { data: pageData, isLoading } = useQuery({
-    queryKey: [queryKeys.pages.home],
+  const { data: pageData } = useQuery({
+    queryKey: ["/api/pages/homepage"],
     queryFn: async () => {
-      const response = await fetch('/api/pages/home');
-      if (!response.ok) {
-        throw new Error('Failed to fetch homepage data');
-      }
+      // Add timestamp to prevent browser caching
+      const timestamp = new Date().getTime();
+      const response = await fetch(`/api/pages/homepage?t=${timestamp}`, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        },
+        cache: 'no-store'
+      });
+      if (!response.ok) throw new Error('Failed to fetch homepage data');
       const data = await response.json();
       console.log('Homepage data:', data);
       return data;
     },
-    staleTime: 60000, // Cache for 1 minute to prevent excessive refetching
+    refetchInterval: 500, // More frequent refetching
+    staleTime: 0, // Always consider data stale
+    cacheTime: 0, // Don't cache the data
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    refetchOnReconnect: true,
   });
 
-  // Preload just the first few images immediately
+  const assetImages = pageData?.carousel?.images || Array.from({ length: 33 }, (_, i) => `/asset/${i + 1}.jpg`);
+  // Try to get title and subtitle from multiple possible locations in the data structure
+  const carouselTitle = pageData?.carousel?.title || 
+                        pageData?.content?.carousel?.title || 
+                        pageData?.content?.hero?.title || 
+                        "";
+  const carouselSubtitle = pageData?.carousel?.subtitle || 
+                          pageData?.content?.carousel?.subtitle || 
+                          pageData?.content?.hero?.subtitle || 
+                          "";
+  const MINIMUM_IMAGES_TO_START = 3;
+
   useEffect(() => {
-    if (pageData?.carousel?.images && pageData.carousel.images.length > 0) {
-      // Preload only the first 3 images initially to improve page load time
-      const imagesToPreload = pageData.carousel.images.slice(0, 3);
-      preloadImages(imagesToPreload, 2);
+    let mounted = true;
+    const loadedImageSet = new Set<string>();
 
-      // Show carousel after a short delay even if not all images are loaded
-      const timer = setTimeout(() => {
-        setShouldShowCarousel(true);
-      }, 1500);
-
-      return () => clearTimeout(timer);
-    }
-  }, [pageData]);
-
-  // Track loaded images
-  const handleImageLoad = (imageSrc: string) => {
-    setLoadedImages(prev => {
-      if (prev.includes(imageSrc)) return prev;
-      
-      const newLoadedImages = [...prev, imageSrc];
-      
-      if (pageData?.carousel?.images) {
-        // Calculate progress based on loaded vs total images
-        const progress = (newLoadedImages.length / pageData.carousel.images.length) * 100;
-        setLoadingProgress(Math.min(progress, 100));
-      }
-      
-      return newLoadedImages;
-    });
-  };
-
-  // Setup lazy loading with intersection observer
-  useEffect(() => {
-    if (shouldShowCarousel && document) {
-      const options = {
-        rootMargin: '200px', // Start loading before images are visible
-        threshold: 0.1
-      };
-
-      // Disconnect any existing observer
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-      }
-
-      // Create new observer
-      observerRef.current = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            const img = entry.target as HTMLImageElement;
-            const dataSrc = img.getAttribute('data-src');
-            
-            if (dataSrc) {
-              img.src = dataSrc;
-              img.classList.add('loaded');
-              img.removeAttribute('data-src');
-              observerRef.current?.unobserve(img);
-            }
-          }
+    const loadImage = async (imageUrl: string) => {
+      try {
+        const img = new Image();
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = imageUrl;
         });
-      }, options);
 
-      // Observe all lazy images
-      const lazyImages = document.querySelectorAll('img[data-src]');
-      lazyImages.forEach(img => observerRef.current?.observe(img));
-
-      // Cleanup function
-      return () => {
-        if (observerRef.current) {
-          observerRef.current.disconnect();
+        if (mounted) {
+          loadedImageSet.add(imageUrl);
+          setLoadedImages(Array.from(loadedImageSet));
+          setLoadingProgress((loadedImageSet.size / assetImages.length) * 100);
         }
-      };
-    }
-  }, [shouldShowCarousel, pageData]);
+      } catch (error) {
+        console.error(`Failed to load image: ${imageUrl}`, error);
+      }
+    };
 
-  // Handle image loading error
-  const handleImageError = (imageSrc: string, e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    console.error('Failed to load image:', imageSrc);
-    
-    // Set a fallback image
-    const img = e.target as HTMLImageElement;
-    if (img && img.src !== FALLBACK_IMAGE) {
-      img.src = FALLBACK_IMAGE;
-    }
-    
-    // Still count as "loaded" to avoid getting stuck
-    handleImageLoad(imageSrc);
+    const initialLoad = async () => {
+      const initialImages = assetImages.slice(0, MINIMUM_IMAGES_TO_START);
+      await Promise.all(initialImages.map(loadImage));
+
+      if (mounted) {
+        const remainingImages = assetImages.slice(MINIMUM_IMAGES_TO_START);
+        remainingImages.forEach(loadImage);
+      }
+    };
+
+    initialLoad();
+
+    return () => {
+      mounted = false;
+    };
+  }, [assetImages]);
+
+  const autoplayOptions = {
+    delay: 2000,
+    stopOnInteraction: false,
+    stopOnMouseEnter: false,
+    rootNode: (emblaRoot: any) => emblaRoot.parentElement,
   };
+
+  const shouldShowCarousel = loadedImages.length >= MINIMUM_IMAGES_TO_START;
 
   return (
-    <main className="relative h-screen overflow-hidden">
-      <AnimatePresence>
-        {!shouldShowCarousel && (
-          <motion.div
-            className="absolute inset-0 z-30 flex items-center justify-center bg-black"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <div className="text-center text-white">
-              <LogoDisplay size="large" />
-              <div className="mt-8 w-64 h-2 bg-gray-700 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-white rounded-full transition-all duration-300 ease-out"
-                  style={{ width: `${loadingProgress}%` }}
-                />
-              </div>
-              <p className="mt-2 text-sm">{Math.round(loadingProgress)}%</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Carousel */}
-      {pageData?.carousel?.images && (
-        <div className="embla overflow-hidden h-full" ref={emblaRef}>
-          <div className="embla__container h-full flex">
-            {pageData.carousel.images.map((image: string, index: number) => (
-              <motion.div
-                key={index}
-                className="embla__slide relative h-full w-full flex-[0_0_100%]"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: shouldShowCarousel ? 1 : 0 }}
-                transition={{ duration: 1 }}
-              >
-                {index < 5 ? (
-                  // Load first 5 images normally
-                  <img
-                    src={image}
-                    alt={`Carousel image ${index + 1}`}
-                    className="w-full h-full object-cover"
-                    onLoad={() => handleImageLoad(image)}
-                    onError={(e) => handleImageError(image, e)}
-                  />
-                ) : (
-                  // Lazy load remaining images
-                  <img
-                    data-src={image}
-                    src={FALLBACK_IMAGE}
-                    alt={`Carousel image ${index + 1}`}
-                    className="w-full h-full object-cover lazy-load"
-                    onLoad={() => handleImageLoad(image)}
-                    onError={(e) => handleImageError(image, e)}
-                  />
-                )}
-              </motion.div>
-            ))}
+    <section className="relative h-screen overflow-hidden">
+      {!shouldShowCarousel && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-white gap-4">
+          <div className="w-64 h-2 bg-gray-700 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-white transition-all duration-300 ease-out rounded-full"
+              style={{ width: `${loadingProgress}%` }}
+            />
           </div>
+          <p className="text-sm">Loading... {Math.round(loadingProgress)}%</p>
         </div>
       )}
 
-      {/* Overlay content */}
-      <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-4">
-        <LogoDisplay size="large" />
-        {pageData?.content?.carousel && (
-          <div className="mt-8 text-center text-white max-w-lg mx-auto">
-            <motion.h1
-              className="text-4xl font-bold"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.8 }}
+      {shouldShowCarousel && (
+        <div className="relative h-screen">
+          <div className="absolute inset-0">
+            <Carousel
+              opts={{
+                align: "start",
+                loop: true,
+                dragFree: true,
+                containScroll: false,
+                duration: 500,
+              }}
+              plugins={[Autoplay(autoplayOptions) as any]}
+              className="h-full"
             >
-              {pageData.content.carousel.title}
-            </motion.h1>
-            <motion.p
-              className="mt-4 text-lg"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.8 }}
-            >
-              {pageData.content.carousel.subtitle}
-            </motion.p>
+              <CarouselContent className="-ml-1">
+                {loadedImages.map((imagePath, index) => (
+                  <CarouselItem key={index} className="pl-1 md:basis-1/3">
+                    <div className="relative h-screen">
+                      <img
+                        src={imagePath}
+                        alt={`Slide ${index + 1}`}
+                        className="w-full h-full object-cover"
+                        loading={index < 5 ? "eager" : "lazy"}
+                        fetchPriority={index < 5 ? "high" : "auto"}
+                        decoding="async"
+                        width="800"
+                        height="600"
+                      />
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+            </Carousel>
+          </div>
+
+          <div className="absolute inset-0 bg-black/50 z-10" />
+          <div className="relative z-20 h-full flex flex-col items-center justify-center text-white text-center px-4">
             <motion.div
-              className="mt-8"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7, duration: 0.8 }}
+              transition={{ delay: 0.2 }}
             >
-              <Link href="/menu">
-                <Button variant="outline" size="lg" className="bg-white/20 hover:bg-white/30 backdrop-blur-sm">
-                  {t('common.menu')}
-                </Button>
-              </Link>
+              <LogoDisplay className="mb-8" logoUrl={pageData?.logo} />
+              <h1 className="text-4xl md:text-6xl font-bold mb-4 max-w-4xl">
+                {carouselTitle || t('home.hero.title')}
+              </h1>
+              <p className="text-xl md:text-2xl mb-8 max-w-2xl">
+                {carouselSubtitle || t('home.hero.subtitle')}
+              </p>
+              <Button size="lg" className="text-lg px-8 py-6" asChild>
+                <Link href="/menu">{t('common.viewMenu')}</Link>
+              </Button>
             </motion.div>
           </div>
-        )}
-      </div>
-    </main>
+        </div>
+      )}
+    </section>
   );
 }

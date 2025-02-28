@@ -8,20 +8,16 @@
     <link rel="dns-prefetch" href="/" />
     <link rel="preconnect" href="/" />
     
-    <!-- Preload only essential critical assets with size constraints -->
-    <link rel="preload" href="/asset/1.jpg?w=1200&q=75" as="image" fetchpriority="high" />
-    <link rel="preload" href="/asset/2.jpg?w=1200&q=75" as="image" fetchpriority="high" />
-    <link rel="preload" href="/asset/3.jpg?w=1200&q=75" as="image" fetchpriority="high" />
-    <link rel="preload" href="/logo/logo.png" as="image" fetchpriority="high" />
+    <!-- Preload critical assets -->
+    <link rel="preload" href="/asset/1.jpg" as="image" />
+    <link rel="preload" href="/asset/2.jpg" as="image" />
+    <link rel="preload" href="/asset/3.jpg" as="image" />
     
-    <!-- Use prefetch for non-critical assets -->
-    <link rel="prefetch" href="/asset/4.jpg?w=800&q=75" as="image" />
-    <link rel="prefetch" href="/asset/5.jpg?w=800&q=75" as="image" />
+    <!-- Image loading optimization hints -->
+    <link rel="prefetch" href="/asset/4.jpg" />
+    <link rel="prefetch" href="/asset/5.jpg" />
 
-    <!-- Cache control header hints -->
-    <meta http-equiv="Cache-Control" content="max-age=86400" />
-    
-    <!-- Optimize image loading with native lazy loading -->
+    <!-- Disable automatic image loading until JS is ready -->
     <style>
       img:not([src]) {
         visibility: hidden;
@@ -35,38 +31,7 @@
         50% { opacity: 1; }
         100% { opacity: 0.6; }
       }
-      
-      /* Fade in animation for lazy-loaded images */
-      img.lazy-load {
-        opacity: 0;
-        transition: opacity 0.3s ease-in;
-      }
-      img.lazy-load.loaded {
-        opacity: 1;
-      }
-      
-      /* Fade in transition for all images */
-      img {
-        transition: opacity 0.3s ease-in-out;
-      }
-      
-      /* Set default render sizes for common image types */
-      .carousel-img {
-        aspect-ratio: 16/9;
-        width: 100%;
-        height: auto;
-        background-color: #f5f5f5;
-      }
-      
-      /* Prevent layout shifts during image loading */
-      .img-container {
-        position: relative;
-        overflow: hidden;
-      }
     </style>
-    
-    <!-- Preload common JavaScript modules for better performance -->
-    <link rel="modulepreload" href="/src/lib/utils/image-loader.ts" />
   </head>
   <body>
     <div id="root"></div>
