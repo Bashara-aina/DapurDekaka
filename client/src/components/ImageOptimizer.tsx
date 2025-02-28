@@ -242,3 +242,113 @@ export function ImageOptimizer({
 }
 
 export default ImageOptimizer;
+import { useState, useEffect, useRef } from 'react';
+import { getOptimizedImageUrl, getResponsiveImageSize } from '@/lib/utils/image-loader';
+
+interface ImageOptimizerProps {
+  src: string;
+  alt: string;
+  width?: number;
+  height?: number;
+  className?: string;
+  quality?: number;
+  lazyLoad?: boolean;
+  onLoad?: () => void;
+  onError?: () => void;
+}
+
+export default function ImageOptimizer({
+  src,
+  alt,
+  width,
+  height,
+  className = '',
+  quality = 75,
+  lazyLoad = true,
+  onLoad,
+  onError
+}: ImageOptimizerProps) {
+  const [loaded, setLoaded] = useState(false);
+  const [imageSrc, setImageSrc] = useState<string>('');
+  const imageRef = useRef<HTMLImageElement>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  
+  // Generate responsive image URL
+  useEffect(() => {
+    // Use screen size-based width if not provided
+    const responsiveWidth = width || getResponsiveImageSize();
+    setImageSrc(getOptimizedImageUrl(src, responsiveWidth, quality));
+  }, [src, width, quality]);
+  
+  // Setup intersection observer for lazy loading
+  useEffect(() => {
+    if (!lazyLoad || !imageRef.current) return;
+    
+    const options = {
+      rootMargin: '200px',
+      threshold: 0.1
+    };
+    
+    const handleIntersection = (entries: IntersectionObserverEntry[]) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting && imageRef.current) {
+          // Set actual source
+          if (imageRef.current.src !== imageSrc) {
+            imageRef.current.src = imageSrc;
+          }
+          
+          // Cleanup
+          if (observerRef.current) {
+            observerRef.current.unobserve(entry.target);
+            observerRef.current.disconnect();
+          }
+        }
+      });
+    };
+    
+    observerRef.current = new IntersectionObserver(handleIntersection, options);
+    observerRef.current.observe(imageRef.current);
+    
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [lazyLoad, imageSrc]);
+  
+  const handleImageLoad = () => {
+    setLoaded(true);
+    if (onLoad) onLoad();
+  };
+  
+  const handleImageError = () => {
+    if (onError) onError();
+    // Use a placeholder image on error
+    if (imageRef.current) {
+      imageRef.current.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100%25' height='100%25' fill='%23f0f0f0'/%3E%3C/svg%3E";
+    }
+  };
+  
+  return (
+    <div className={`relative ${className}`} style={{ width, height }}>
+      {!loaded && (
+        <div 
+          className="absolute inset-0 bg-gray-200 animate-pulse" 
+          style={{ width, height }}
+        />
+      )}
+      
+      <img
+        ref={imageRef}
+        src={lazyLoad ? "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100%25' height='100%25' fill='%23f0f0f0'/%3E%3C/svg%3E" : imageSrc}
+        alt={alt}
+        width={width}
+        height={height}
+        className={`transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'} ${className}`}
+        loading={lazyLoad ? "lazy" : "eager"}
+        onLoad={handleImageLoad}
+        onError={handleImageError}
+      />
+    </div>
+  );
+}
