@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { SiInstagram } from "react-icons/si";
+import { X } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import type { MenuItem } from "@shared/schema";
 
