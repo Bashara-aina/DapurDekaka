@@ -1,8 +1,8 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, Phone, Mail, Instagram as InstagramIcon } from "lucide-react";
-// iconify import removed during optimization
+import { MapPin, Phone, Mail, InstagramIcon } from "lucide-react";
+import { Icon } from "@iconify/react";
 import { TranslateWrapper } from "@/components/TranslateWrapper";
 
 export default function Contact() {

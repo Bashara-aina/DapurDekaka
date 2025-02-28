@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { SiInstagram } from "react-icons/si";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import type { MenuItem } from "@shared/schema";
 
@@ -41,7 +41,7 @@ export function OrderModal({ trigger }: OrderModalProps) {
             rel="noopener noreferrer"
             className="flex flex-col items-center justify-center p-4 rounded-lg hover:bg-accent transition-colors"
           > {/*Removed motion.a */}
-            <X className="w-12 h-12 text-[#E4405F]" /> {/* Replaced SiInstagram with X for demonstration */}
+            <SiInstagram className="w-12 h-12 text-[#E4405F]" />
             <span className="mt-2 text-sm font-medium">Instagram</span>
           </a>
 
