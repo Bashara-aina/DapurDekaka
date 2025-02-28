@@ -167,8 +167,8 @@ pagesRouter.put("/homepage", upload.fields([
       }
     }
 
-    // Save the updated config to database
-    await updateHomepageConfig(homepageConfig);
+    // Save the updated config to the database
+    await storage.savePageContent('homepage', {content: homepageConfig});
 
     // Send back updated homepage
     console.log('[PUT] Updated homepage configuration', homepageConfig);
@@ -187,6 +187,7 @@ pagesRouter.put("/homepage/carousel/reorder", async (req, res) => {
     }
 
     homepageConfig.carousel.images = images;
+    await storage.savePageContent('homepage', {content: homepageConfig}); //Save to database after reorder
     res.json({ message: "Image order updated successfully" });
   } catch (error) {
     console.error("Error reordering images:", error);
@@ -194,14 +195,23 @@ pagesRouter.put("/homepage/carousel/reorder", async (req, res) => {
   }
 });
 
-// Placeholder for database interaction -  Needs implementation
-async function updateHomepageConfig(config) {
-  console.log("updateHomepageConfig called with:", config);
-  //Implement your database update logic here.  This is a placeholder.
-  //Example using a hypothetical database client:
-  // await dbClient.updateHomepage(config);
 
-}
+// Load homepage config from database on startup
+(async function loadHomepageConfig() {
+  try {
+    console.log("Loading homepage configuration from database...");
+    const storedConfig = await storage.getPageContent('homepage');
+    if (storedConfig && storedConfig.content) {
+      homepageConfig = storedConfig.content;
+      console.log("Homepage configuration loaded from database");
+    } else {
+      console.log("No stored homepage configuration found, using default");
+    }
+  } catch (error) {
+    console.error("Error loading homepage config from database:", error);
+    console.log("Using default homepage configuration");
+  }
+})();
 
 // Clear cache when server receives SIGTERM or other signals
 process.on('SIGTERM', () => {

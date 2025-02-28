@@ -38,8 +38,11 @@ export default function FeaturedProducts() {
       return response.json();
     },
     staleTime: 0,
-    cacheTime: 2000,
+    cacheTime: 0, // Don't cache data at all
     refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    refetchOnReconnect: true,
+    refetchInterval: 5000, // Refetch every 5 seconds to ensure latest data
   });
 
   const scroll = (direction: "left" | "right") => {
