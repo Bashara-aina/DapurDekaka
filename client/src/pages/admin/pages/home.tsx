@@ -98,7 +98,7 @@ export default function HomePageEditor() {
   );
 
   const { data: pageData, isLoading } = useQuery({
-    queryKey: queryKeys.homepage,
+    queryKey: ["homepage"],
     queryFn: async () => {
       const response = await fetch('/api/pages/homepage', {
         headers: {
@@ -136,11 +136,11 @@ export default function HomePageEditor() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: queryKeys.homepage,
+        queryKey: ["homepage"],
         refetchType: 'all'
       });
       await queryClient.refetchQueries({
-        queryKey: queryKeys.homepage,
+        queryKey: ["homepage"],
         type: 'all'
       });
       toast({
@@ -174,7 +174,7 @@ export default function HomePageEditor() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.homepage });
+      queryClient.invalidateQueries({ queryKey: ["homepage"] });
       toast({
         title: "Success",
         description: "Image order updated successfully"
@@ -198,7 +198,7 @@ export default function HomePageEditor() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.homepage });
+      queryClient.invalidateQueries({ queryKey: ["homepage"] });
       toast({
         title: "Success",
         description: "Image deleted successfully"

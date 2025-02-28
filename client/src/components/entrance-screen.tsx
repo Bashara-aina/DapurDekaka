@@ -39,6 +39,8 @@ export default function EntranceSection() {
   });
 
   const assetImages = pageData?.carousel?.images || Array.from({ length: 33 }, (_, i) => `/asset/${i + 1}.jpg`);
+  const carouselTitle = pageData?.carousel?.title || "";
+  const carouselSubtitle = pageData?.carousel?.subtitle || "";
   const MINIMUM_IMAGES_TO_START = 3;
 
   useEffect(() => {
@@ -144,10 +146,10 @@ export default function EntranceSection() {
             >
               <LogoDisplay className="mb-8" logoUrl={pageData?.logo} />
               <h1 className="text-4xl md:text-6xl font-bold mb-4 max-w-4xl">
-                {t('home.hero.title')}
+                {carouselTitle || t('home.hero.title')}
               </h1>
               <p className="text-xl md:text-2xl mb-8 max-w-2xl">
-                {t('home.hero.subtitle')}
+                {carouselSubtitle || t('home.hero.subtitle')}
               </p>
               <Button size="lg" className="text-lg px-8 py-6" asChild>
                 <Link href="/menu">{t('common.viewMenu')}</Link>
