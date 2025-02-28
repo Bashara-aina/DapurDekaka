@@ -34,6 +34,8 @@ type SortableImageProps = {
   onDelete: () => void;
 };
 
+import React, { useState, useEffect } from 'react';
+
 const SortableImage = ({ id, url, onDelete }: SortableImageProps) => {
   const {
     attributes,
@@ -123,6 +125,10 @@ export default function HomePageEditor() {
         carousel: {
           title: content.carousel.title || pageData?.content?.carousel?.title,
           subtitle: content.carousel.subtitle || pageData?.content?.carousel?.subtitle
+        },
+        hero: {
+          title: content.carousel.title || pageData?.content?.hero?.title,
+          subtitle: content.carousel.subtitle || pageData?.content?.hero?.subtitle
         }
       }));
 

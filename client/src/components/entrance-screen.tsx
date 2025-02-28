@@ -39,8 +39,8 @@ export default function EntranceSection() {
   });
 
   const assetImages = pageData?.carousel?.images || Array.from({ length: 33 }, (_, i) => `/asset/${i + 1}.jpg`);
-  const carouselTitle = pageData?.carousel?.title || "";
-  const carouselSubtitle = pageData?.carousel?.subtitle || "";
+  const carouselTitle = pageData?.content?.carousel?.title || pageData?.content?.hero?.title || "";
+  const carouselSubtitle = pageData?.content?.carousel?.subtitle || pageData?.content?.hero?.subtitle || "";
   const MINIMUM_IMAGES_TO_START = 3;
 
   useEffect(() => {

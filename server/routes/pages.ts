@@ -85,19 +85,41 @@ pagesRouter.put("/homepage", upload.fields([
     }
 
     if (content) {
+      // Make sure we have valid initial structure
+      if (!homepageConfig.content) {
+        homepageConfig.content = {
+          hero: { title: "", subtitle: "" },
+          carousel: { title: "", subtitle: "" },
+          featuredProducts: { title: "Featured Products", subtitle: "Discover our most loved dim sum selections" },
+          latestArticles: { title: "Latest Articles", subtitle: "Discover our latest news and updates" }
+        };
+      }
+      
+      // Update both hero and carousel with the same values for consistency
+      const carouselTitle = content.carousel?.title;
+      const carouselSubtitle = content.carousel?.subtitle;
+      
       homepageConfig.content = {
         ...homepageConfig.content,
         hero: {
-          title: content.carousel?.title || homepageConfig.content.hero.title,
-          subtitle: content.carousel?.subtitle || homepageConfig.content.hero.subtitle
+          title: carouselTitle || homepageConfig.content.hero?.title || "",
+          subtitle: carouselSubtitle || homepageConfig.content.hero?.subtitle || ""
         },
         carousel: {
-          title: content.carousel?.title || homepageConfig.content.carousel.title,
-          subtitle: content.carousel?.subtitle || homepageConfig.content.carousel.subtitle
+          title: carouselTitle || homepageConfig.content.carousel?.title || "",
+          subtitle: carouselSubtitle || homepageConfig.content.carousel?.subtitle || ""
         },
-        featuredProducts: homepageConfig.content.featuredProducts,
-        latestArticles: homepageConfig.content.latestArticles
+        featuredProducts: homepageConfig.content.featuredProducts || { 
+          title: "Featured Products", 
+          subtitle: "Discover our most loved dim sum selections" 
+        },
+        latestArticles: homepageConfig.content.latestArticles || { 
+          title: "Latest Articles", 
+          subtitle: "Discover our latest news and updates" 
+        }
       };
+      
+      console.log('[PUT] Updated content structure:', homepageConfig.content);
     }
 
     if (files.logo && files.logo[0]) {
