@@ -25,10 +25,21 @@ export default function FeaturedProducts() {
   const { data: pageData } = useQuery({
     queryKey: ["pages", "homepage"],
     queryFn: async () => {
-      const response = await fetch("/api/pages/homepage");
+      const timestamp = new Date().getTime();
+      const response = await fetch(`/api/pages/homepage?t=${timestamp}`, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        },
+        cache: 'no-store'
+      });
       if (!response.ok) throw new Error("Failed to fetch homepage data");
       return response.json();
     },
+    staleTime: 0,
+    cacheTime: 2000,
+    refetchOnWindowFocus: true,
   });
 
   const scroll = (direction: "left" | "right") => {

@@ -135,14 +135,16 @@ export default function HomePageEditor() {
       return response.json();
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["homepage"],
-        refetchType: 'all'
-      });
-      await queryClient.refetchQueries({
-        queryKey: ["homepage"],
-        type: 'all'
-      });
+      // Invalidate all homepage-related queries with different possible keys
+      await queryClient.invalidateQueries({ queryKey: ["homepage"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/pages/homepage"] });
+      await queryClient.invalidateQueries({ queryKey: ["pages", "homepage"] });
+      
+      // Force immediate refetch of all homepage related queries
+      await queryClient.refetchQueries({ queryKey: ["homepage"], type: 'all' });
+      await queryClient.refetchQueries({ queryKey: ["/api/pages/homepage"], type: 'all' });
+      await queryClient.refetchQueries({ queryKey: ["pages", "homepage"], type: 'all' });
+      
       toast({
         title: "Success",
         description: "Homepage updated successfully"

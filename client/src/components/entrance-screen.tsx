@@ -25,6 +25,7 @@ export default function EntranceSection() {
       // Add timestamp to prevent browser caching
       const timestamp = new Date().getTime();
       const response = await fetch(`/api/pages/homepage?t=${timestamp}`, {
+        method: 'GET',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
@@ -37,9 +38,12 @@ export default function EntranceSection() {
       console.log('Homepage data:', data);
       return data;
     },
-    refetchInterval: 1000,
-    staleTime: 0,
+    refetchInterval: 500, // More frequent refetching
+    staleTime: 0, // Always consider data stale
+    cacheTime: 0, // Don't cache the data
     refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    refetchOnReconnect: true,
   });
 
   const assetImages = pageData?.carousel?.images || Array.from({ length: 33 }, (_, i) => `/asset/${i + 1}.jpg`);
