@@ -21,9 +21,11 @@ function stripHtmlAndDecodeEntities(html: string) {
 
 export default function FeaturedArticles() {
   const { data: posts, isLoading: postsLoading } = useQuery<BlogPost[]>({
-    queryKey: ["/api/blog"],
+    queryKey: ["api", "blog"],
     queryFn: async () => {
-      const response = await fetch("/api/blog");
+      const response = await fetch("/api/blog", {
+        headers: { 'Cache-Control': 'max-age=300' }
+      });
       if (!response.ok) throw new Error("Failed to fetch posts");
       const posts = await response.json();
       return posts
@@ -31,15 +33,23 @@ export default function FeaturedArticles() {
         .sort((a: BlogPost, b: BlogPost) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, 2);
     },
+    staleTime: 300000, // Consider data fresh for 5 minutes
+    gcTime: 600000, // Keep unused data in cache for 10 minutes
+    refetchOnWindowFocus: false,
   });
 
   const { data: pageData, isLoading: pageLoading } = useQuery({
-    queryKey: ['/api/pages/homepage'],
+    queryKey: ["pages", "homepage"],
     queryFn: async () => {
-      const response = await fetch('/api/pages/homepage');
+      const response = await fetch('/api/pages/homepage', {
+        headers: { 'Cache-Control': 'max-age=300' }
+      });
       if (!response.ok) throw new Error('Failed to fetch homepage data');
       return response.json();
-    }
+    },
+    staleTime: 300000, // Consider data fresh for 5 minutes
+    gcTime: 600000, // Keep unused data in cache for 10 minutes
+    refetchOnWindowFocus: false,
   });
 
   if (postsLoading || pageLoading) {

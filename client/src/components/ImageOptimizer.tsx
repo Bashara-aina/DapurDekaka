@@ -11,7 +11,20 @@ interface ImageOptimizerProps {
   priority?: boolean;
 }
 
+// Limit cache size to prevent memory issues
+const MAX_CACHE_SIZE = 50;
 const imageCache = new Map<string, string>();
+
+/**
+ * Clear oldest cache entries when cache exceeds maximum size
+ */
+function trimCache() {
+  if (imageCache.size > MAX_CACHE_SIZE) {
+    // Remove oldest entries (first 10 entries)
+    const keysToDelete = Array.from(imageCache.keys()).slice(0, 10);
+    keysToDelete.forEach(key => imageCache.delete(key));
+  }
+}
 
 export function ImageOptimizer({
   src,
@@ -55,6 +68,7 @@ export function ImageOptimizer({
       if (isMounted) {
         // Cache the successful load
         imageCache.set(cacheKey, optimizedSrc);
+        trimCache(); // Manage cache size
         setIsLoaded(true);
         setImageSrc(optimizedSrc);
       }

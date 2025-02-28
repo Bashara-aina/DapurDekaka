@@ -20,30 +20,24 @@ export default function EntranceSection() {
   const { t } = useLanguage();
 
   const { data: pageData } = useQuery({
-    queryKey: ["/api/pages/homepage"],
+    queryKey: ["pages", "homepage"],
     queryFn: async () => {
-      // Add timestamp to prevent browser caching
-      const timestamp = new Date().getTime();
-      const response = await fetch(`/api/pages/homepage?t=${timestamp}`, {
+      const response = await fetch(`/api/pages/homepage`, {
         method: "GET",
         headers: {
-          "Cache-Control": "no-cache, no-store, must-revalidate",
-          Pragma: "no-cache",
-          Expires: "0",
+          "Cache-Control": "max-age=300",
         },
-        cache: "no-store",
       });
       if (!response.ok) throw new Error("Failed to fetch homepage data");
       const data = await response.json();
-      console.log("Homepage data:", data);
       return data;
     },
-    refetchInterval: 500, // More frequent refetching
-    staleTime: 0, // Always consider data stale
-    cacheTime: 0, // Don't cache the data
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
-    refetchOnReconnect: true,
+    refetchInterval: false, // Disable automatic refetching
+    staleTime: 300000, // Consider data fresh for 5 minutes
+    gcTime: 600000, // Keep unused data in cache for 10 minutes
+    refetchOnWindowFocus: false,
+    refetchOnMount: "if-stale",
+    refetchOnReconnect: "if-stale",
   });
 
   const assetImages =
