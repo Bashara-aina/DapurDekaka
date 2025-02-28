@@ -1,39 +1,16 @@
 import * as React from "react"
-// embla-carousel-react import removed during optimization
+import useEmblaCarousel, {
+  type UseEmblaCarouselType,
+} from "embla-carousel-react"
 import { ArrowLeft, ArrowRight } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
-// Add CSS animation styles
-const carouselAnimationStyles = `
-  @keyframes slideLeft {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-100%); }
-  }
-  
-  .carousel-animate {
-    animation: slideLeft 30s linear infinite;
-  }
-  
-  .carousel-container {
-    overflow: hidden;
-  }
-  
-  .carousel-container:hover .carousel-animate {
-    animation-play-state: paused;
-  }
-`;
-
-type CarouselApi = {
-  scrollPrev: () => void;
-  scrollNext: () => void;
-  canScrollPrev: () => boolean;
-  canScrollNext: () => boolean;
-};
-type UseCarouselParameters = [any, any]; //Simplified types after embla removal
-type CarouselOptions = UseCarouselParameters[0];
-type CarouselPlugin = UseCarouselParameters[1];
+type CarouselApi = UseEmblaCarouselType[1]
+type UseCarouselParameters = Parameters<typeof useEmblaCarousel>
+type CarouselOptions = UseCarouselParameters[0]
+type CarouselPlugin = UseCarouselParameters[1]
 
 type CarouselProps = {
   opts?: CarouselOptions
@@ -43,8 +20,8 @@ type CarouselProps = {
 }
 
 type CarouselContextProps = {
-  carouselRef: React.RefObject<HTMLDivElement>;
-  api: CarouselApi;
+  carouselRef: ReturnType<typeof useEmblaCarousel>[0]
+  api: ReturnType<typeof useEmblaCarousel>[1]
   scrollPrev: () => void
   scrollNext: () => void
   canScrollPrev: boolean
@@ -79,18 +56,13 @@ const Carousel = React.forwardRef<
     },
     ref
   ) => {
-    // Simple carousel reference replacement after embla removal
-    const carouselRef = React.useRef(null);
-    const api: CarouselApi = {
-      scrollPrev: () => {
-        console.log("Previous slide (embla removed)");
+    const [carouselRef, api] = useEmblaCarousel(
+      {
+        ...opts,
+        axis: orientation === "horizontal" ? "x" : "y",
       },
-      scrollNext: () => {
-        console.log("Next slide (embla removed)");
-      },
-      canScrollPrev: () => true,
-      canScrollNext: () => true,
-    };
+      plugins
+    )
     const [canScrollPrev, setCanScrollPrev] = React.useState(false)
     const [canScrollNext, setCanScrollNext] = React.useState(false)
 
@@ -138,11 +110,11 @@ const Carousel = React.forwardRef<
       }
 
       onSelect(api)
-      // api.on("reInit", onSelect)  //Removed embla events
-      // api.on("select", onSelect)  //Removed embla events
+      api.on("reInit", onSelect)
+      api.on("select", onSelect)
 
       return () => {
-        // api?.off("select", onSelect) //Removed embla events
+        api?.off("select", onSelect)
       }
     }, [api, onSelect])
 
@@ -160,12 +132,10 @@ const Carousel = React.forwardRef<
           canScrollNext,
         }}
       >
-        {/* Add style tag for animation */}
-        <style dangerouslySetInnerHTML={{ __html: carouselAnimationStyles }} />
         <div
           ref={ref}
           onKeyDownCapture={handleKeyDown}
-          className={cn("relative carousel-container", className)}
+          className={cn("relative", className)}
           role="region"
           aria-roledescription="carousel"
           {...props}
@@ -190,7 +160,7 @@ const CarouselContent = React.forwardRef<
         ref={ref}
         className={cn(
           "flex",
-          orientation === "horizontal" ? "-ml-4 carousel-animate" : "-mt-4 flex-col",
+          orientation === "horizontal" ? "-ml-4" : "-mt-4 flex-col",
           className
         )}
         {...props}

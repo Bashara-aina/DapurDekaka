@@ -1,14 +1,7 @@
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import useEmblaCarousel from "embla-carousel-react";
-// Using dynamic imports to handle potential missing dependencies
-const MotionImport = import('framer-motion').catch(() => {
-  console.warn('framer-motion not available, using fallback components');
-  return { 
-    motion: (props) => ({ ...props, children: props.children }), 
-    AnimatePresence: (props) => ({ ...props, children: props.children }) 
-  };
-});
-// embla-carousel-autoplay import removed during optimization
+import Autoplay from "embla-carousel-autoplay";
 import { Link } from "wouter";
 import {
   Carousel,
@@ -114,45 +107,6 @@ export default function EntranceSection() {
 
   const shouldShowCarousel = loadedImages.length >= MINIMUM_IMAGES_TO_START;
 
-  useEffect(() => {
-    if (!shouldShowCarousel || !pageData?.carousel?.images) {
-      return;
-    }
-
-    // Use Intersection Observer API more efficiently
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            const img = entry.target as HTMLImageElement;
-            const dataSrc = img.getAttribute('data-src');
-            if (dataSrc) {
-              img.src = dataSrc;
-              img.removeAttribute('data-src');
-              observer.unobserve(img);
-            }
-          }
-        });
-      },
-      { rootMargin: '200px', threshold: 0.01 }
-    );
-
-    // Observe images with a small delay to prevent blocking the main thread
-    let timeout: NodeJS.Timeout;
-    const observeImages = () => {
-      const lazyImages = document.querySelectorAll('img[data-src]');
-      lazyImages.forEach(img => observer.observe(img));
-    };
-
-    // Delay observation slightly to improve initial render performance
-    timeout = setTimeout(observeImages, 100);
-
-    return () => {
-      clearTimeout(timeout);
-      observer.disconnect();
-    };
-  }, [shouldShowCarousel, pageData]);
-
   return (
     <section className="relative h-screen overflow-hidden">
       {!shouldShowCarousel && (
@@ -178,7 +132,7 @@ export default function EntranceSection() {
                 containScroll: false,
                 duration: 500,
               }}
-              // Autoplay is now handled by CSS animation
+              plugins={[Autoplay(autoplayOptions) as any]}
               className="h-full"
             >
               <CarouselContent className="-ml-1">
@@ -204,8 +158,10 @@ export default function EntranceSection() {
 
           <div className="absolute inset-0 bg-black/50 z-10" />
           <div className="relative z-20 h-full flex flex-col items-center justify-center text-white text-center px-4">
-            <div 
-              className="max-w-lg animate-fade-in-up"
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
             >
               <LogoDisplay className="mb-8" logoUrl={pageData?.logo} />
               <h1 className="text-4xl md:text-6xl font-bold mb-4 max-w-4xl">
@@ -217,7 +173,7 @@ export default function EntranceSection() {
               <Button size="lg" className="text-lg px-8 py-6" asChild>
                 <Link href="/menu">{t('common.viewMenu')}</Link>
               </Button>
-            </div>
+            </motion.div>
           </div>
         </div>
       )}

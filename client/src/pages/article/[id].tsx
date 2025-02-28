@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { BlogPost } from "@shared/schema";
 import { useRoute } from "wouter";
 import { CalendarIcon } from "lucide-react";
-// import { motion } from "framer-motion"; // Removed framer-motion import
+import { motion } from "framer-motion";
 import { Helmet } from "react-helmet";
 
 export default function ArticleDetail() {
@@ -46,10 +46,10 @@ export default function ArticleDetail() {
 
   return (
     <div className="container mx-auto py-8 px-4">
-      <article
-        // initial={{ opacity: 0, y: 20 }} // Removed motion props
-        // animate={{ opacity: 1, y: 0 }} // Removed motion props
-        // transition={{ duration: 0.5 }} // Removed motion props
+      <motion.article
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
         className="prose prose-lg mx-auto"
       >
         <h1 className="text-4xl font-bold mb-4">{post.title}</h1>
@@ -68,7 +68,65 @@ export default function ArticleDetail() {
           className="blog-content"
           dangerouslySetInnerHTML={{ __html: post.content }}
         />
-      </article>
+      </motion.article>
     </div>
+  );
+
+  return (
+    <>
+      <Helmet>
+        <title>{post.title} - Dapur Dekaka</title>
+        <meta name="description" content={post.content.slice(0, 155)} />
+        <meta property="og:title" content={`${post.title} - Dapur Dekaka`} />
+        <meta property="og:description" content={post.content.slice(0, 155)} />
+        {post.imageUrl && <meta property="og:image" content={post.imageUrl} />}
+      </Helmet>
+
+      <div className="container mx-auto py-16 px-4">
+        <motion.article
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="max-w-3xl mx-auto"
+        >
+          {post.imageUrl && (
+            <div className="relative w-full h-[400px] mb-8 rounded-lg overflow-hidden">
+              <img
+                src={post.imageUrl}
+                alt={post.title}
+                className="w-full h-full object-cover"
+                loading="lazy"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/image/placeholder.jpg';
+                  target.onerror = null;
+                }}
+              />
+            </div>
+          )}
+
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">{post.title}</h1>
+
+          <div className="flex items-center text-sm text-gray-500 mb-8">
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {new Date(post.createdAt).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })}
+          </div>
+
+          <div className="prose prose-lg max-w-none">
+            {post.content.split('\n\n').map((paragraph, index) => (
+              paragraph.trim() && (
+                <p key={index} className="mb-6 text-gray-700 leading-relaxed">
+                  {paragraph}
+                </p>
+              )
+            ))}
+          </div>
+        </motion.article>
+      </div>
+    </>
   );
 }

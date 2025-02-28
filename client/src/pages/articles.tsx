@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CalendarIcon } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-// react-helmet import removed during optimization
+import { Helmet } from "react-helmet";
 
 export default function Articles() {
   const { data: posts, isLoading, error } = useQuery<BlogPost[]>({
@@ -33,16 +33,23 @@ export default function Articles() {
 
   return (
     <>
-      {/* Helmet removed */}
+      <Helmet>
+        <title>Blog & Articles - Dapur Dekaka</title>
+        <meta name="description" content="Discover delicious dim sum recipes, cooking tips, and food culture articles" />
+        <meta property="og:title" content="Blog & Articles - Dapur Dekaka" />
+        <meta property="og:description" content="Discover delicious dim sum recipes, cooking tips, and food culture articles" />
+      </Helmet>
+
       <div className="container mx-auto py-16 px-4">
         <h1 className="text-4xl font-bold text-gray-900 mb-8">Blog & Articles</h1>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {posts?.sort((a, b) => b.id - a.id).map((post) => (
-            <div
+            <motion.div
               key={post.id}
-              className="animate-fade-in-up"
-              style={{ animationDelay: `${index * 0.1}s` }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
             >
               <Link href={`/article/${post.id}`}>
                 <Card className="h-full hover:shadow-lg transition-shadow duration-300">

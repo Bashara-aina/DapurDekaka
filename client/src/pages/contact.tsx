@@ -1,16 +1,18 @@
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, Phone, Mail } from "lucide-react";
+import { MapPin, Phone, Mail, Instagram as InstagramIcon } from "lucide-react";
 import { Icon } from "@iconify/react";
-import { SiInstagram, SiShopee } from "react-icons/si";
-import { FaShoppingBag } from "react-icons/fa";
 import { TranslateWrapper } from "@/components/TranslateWrapper";
 
 export default function Contact() {
   return (
     <div className="container mx-auto px-4 py-20">
       <div className="max-w-4xl mx-auto">
-        <div
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
           className="text-center mb-16"
         >
           <h1 className="text-4xl font-bold text-gray-900 mb-6">
@@ -22,10 +24,13 @@ export default function Contact() {
               sum. We'd love to hear from you!
             </TranslateWrapper>
           </p>
-        </div>
+        </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-          <div
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
           >
             <Card>
               <CardContent className="p-6">
@@ -69,7 +74,7 @@ export default function Contact() {
                         rel="noopener noreferrer"
                         className="hover:text-primary"
                       >
-                        <SiShopee className="h-5 w-5 text-[#EE4D2D]" />
+                        <Icon icon="simple-icons:shopee" className="h-5 w-5" />
                       </a>
                     </Button>
                     <Button variant="outline" size="icon" asChild>
@@ -79,7 +84,7 @@ export default function Contact() {
                         rel="noopener noreferrer"
                         className="hover:text-primary"
                       >
-                        <SiInstagram className="h-5 w-5 text-[#E4405F]" />
+                        <InstagramIcon className="h-5 w-5" />
                       </a>
                     </Button>
                     <Button variant="outline" size="icon" asChild>
@@ -89,16 +94,22 @@ export default function Contact() {
                         rel="noopener noreferrer"
                         className="hover:text-primary"
                       >
-                        <FaShoppingBag className="h-5 w-5 text-[#00B14F]" />
+                        <Icon
+                          icon="simple-icons:grab"
+                          className="h-[50px] w-[50px]"
+                        />
                       </a>
                     </Button>
                   </div>
                 </div>
               </CardContent>
             </Card>
-          </div>
+          </motion.div>
 
-          <div
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
           >
             <Card>
               <CardContent className="p-6">
@@ -124,11 +135,14 @@ export default function Contact() {
                 </div>
               </CardContent>
             </Card>
-          </div>
+          </motion.div>
         </div>
 
         {/* Interactive Map Section */}
-        <div
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
           className="w-full"
         >
           <Card>
@@ -148,7 +162,7 @@ export default function Contact() {
               </div>
             </CardContent>
           </Card>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

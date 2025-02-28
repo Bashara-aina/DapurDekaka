@@ -1,105 +1,120 @@
-import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { OrderModal } from "@/components/OrderModal";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
-import Navbar from "@/components/layout/navbar";
-import { MenuItem } from "@shared/schema";
+import { queryKeys, apiRequest } from "@/lib/queryClient";
+import { MenuItem, Sauce } from "@shared/schema";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { OrderModal } from "@/components/OrderModal";
 
-export default function MenuPage() {
-  const { toast } = useToast();
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-
-  const { data: menuItems, isLoading } = useQuery<MenuItem[]>({
-    queryKey: ["menu", "items"],
-    queryFn: async () => {
-      try {
-        const response = await fetch("/api/menu/items");
-        if (!response.ok) {
-          throw new Error(`Error ${response.status}: ${response.statusText}`);
-        }
-        return response.json();
-      } catch (error) {
-        console.error("Failed to fetch menu items:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load menu items. Please try again later.",
-          variant: "destructive",
-        });
-        return [];
-      }
-    },
+export default function Menu() {
+  const { t } = useLanguage();
+  const { data: menuItems, isLoading: menuLoading } = useQuery({
+    queryKey: queryKeys.menu.items,
+    queryFn: () => apiRequest("/api/menu/items"),
   });
 
-  const categories = ["all"];
+  const { data: sauces, isLoading: saucesLoading } = useQuery({
+    queryKey: queryKeys.menu.sauces,
+    queryFn: () => apiRequest("/api/menu/sauces"),
+  });
 
-  if (isLoading) {
+  if (menuLoading || saucesLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <div className="container mx-auto py-8">
-          <div className="flex justify-center items-center h-[50vh]">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <div className="container mx-auto py-8">
-        <h1 className="text-3xl font-bold mb-6">Our Menu</h1>
+    <div className="container mx-auto px-4 py-16">
+      <div className="max-w-2xl mx-auto text-center mb-12">
+        <h1 className="text-4xl font-bold text-gray-900 mb-4">
+          {t("menu.title")}
+        </h1>
+      </div>
 
-        <div className="mb-6 flex gap-2 overflow-x-auto pb-2">
-          {categories.map((category) => (
-            <Button
-              key={category}
-              variant={selectedCategory === category ? "default" : "outline"}
-              onClick={() => setSelectedCategory(category)}
-              className="whitespace-nowrap"
-            >
-              {category === "all" ? "All Items" : category}
-            </Button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {menuItems?.map((item) => (
-            <div key={item.id} className="transition-all duration-300 hover:scale-[1.02]">
-              <Card className="h-full flex flex-col">
-                <AspectRatio ratio={1} className="overflow-hidden rounded-t-lg">
+      {/* Menu Items - 4 columns */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {menuItems?.map((item: MenuItem) => (
+          <motion.div
+            key={item.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="flex flex-col h-full"
+          >
+            <Card className="h-full flex flex-col">
+              <CardContent className="p-0 flex flex-col h-full">
+                <AspectRatio ratio={1} className="overflow-hidden rounded-lg">
                   <img
                     src={item.imageUrl}
                     alt={item.name}
                     className="object-cover w-full h-full"
                   />
                 </AspectRatio>
-                <CardContent className="flex-1 p-4 flex flex-col justify-between">
-                  <div>
-                    <h3 className="font-semibold text-lg mb-2">{item.name}</h3>
-                    <p className="text-sm text-gray-600 mb-4">
-                      {item.description}
-                    </p>
+                <div className="p-4 flex flex-col flex-grow gap-3">
+                  <h3 className="text-lg font-semibold">{item.name}</h3>
+                  <p className="text-sm text-gray-600">
+                    {item.description}
+                  </p>
+                  <div className="mt-auto pt-2">
+                    <OrderModal
+                      trigger={<Button className="w-full">Pesan</Button>}
+                      menuItem={item}
+                    />
                   </div>
-                  <OrderModal
-                    trigger={
-                      <Button size="sm" className="w-full">
-                        Pesan
-                      </Button>
-                    }
-                    menuItem={item}
-                  />
-                </CardContent>
-              </Card>
-            </div>
-          ))}
-        </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
       </div>
+
+      {/* Sauces - 3 columns */}
+      {sauces && sauces.length > 0 && (
+        <div className="mt-16">
+          <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">
+            {t("menu.sauces.title")}
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {sauces.map((sauce: Sauce) => (
+              <motion.div
+                key={sauce.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="flex flex-col h-full"
+              >
+                <Card className="h-full flex flex-col">
+                  <CardContent className="p-0">
+                    <AspectRatio ratio={1} className="overflow-hidden rounded-lg">
+                      <img
+                        src={sauce.imageUrl}
+                        alt={sauce.name}
+                        className="object-cover w-full h-full"
+                      />
+                    </AspectRatio>
+                    <div className="p-4 flex flex-col gap-2">
+                      <h3 className="text-lg font-semibold">{sauce.name}</h3>
+                      <p className="text-sm text-gray-600 flex-grow">
+                        {sauce.description}
+                      </p>
+                      <OrderModal
+                        trigger={<Button className="w-full">Pesan</Button>}
+                        menuItem={sauce}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

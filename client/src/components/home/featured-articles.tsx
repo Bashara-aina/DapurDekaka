@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CalendarIcon, ArrowRight, Loader2 } from "lucide-react";
 import { Link } from "wouter";
+import { motion } from "framer-motion";
 
 function decodeHtmlEntities(text: string) {
   const textArea = document.createElement('textarea');
@@ -79,10 +80,12 @@ export default function FeaturedArticles() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {posts.map((post, index) => (
-            <div
+            <motion.div
               key={post.id}
-              className="animate-fade-in-up"
-              style={{ animationDelay: `${index * 0.1}s` }}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
             >
               <Link href={`/article/${post.id}`}>
                 <Card className="group cursor-pointer overflow-hidden hover:shadow-lg transition-all duration-300">

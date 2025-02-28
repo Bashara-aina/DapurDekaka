@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -94,9 +95,11 @@ export default function FeaturedProducts() {
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {menuItems?.slice(0, 11).map((item: MenuItem) => (
-            <div
+            <motion.div
               key={item.id}
-              className="min-w-[280px] w-[280px] snap-start hover:scale-102 transition-transform duration-200"
+              className="min-w-[280px] w-[280px] snap-start"
+              whileHover={{ scale: 1.02 }}
+              transition={{ duration: 0.2 }}
             >
               <Card className="h-full flex flex-col">
                 <AspectRatio ratio={1} className="overflow-hidden rounded-t-lg">
@@ -123,7 +126,7 @@ export default function FeaturedProducts() {
                   />
                 </CardFooter>
               </Card>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>
