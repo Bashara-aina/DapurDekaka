@@ -132,8 +132,8 @@ const startServer = async () => {
   try {
     console.log('[Startup] Beginning server initialization...');
 
-    // Create required directories
-    await createRequiredDirectories();
+    // Create required directories (but don't wait for it to complete)
+    const dirPromise = createRequiredDirectories();
 
     // Find available port with improved logging
     console.log('[Port] Starting port availability check...');
@@ -160,19 +160,28 @@ const startServer = async () => {
       serveStatic(app);
     }
 
+    // Ensure directories are created before continuing
+    await dirPromise;
+
     // Start the server with improved error handling
     return new Promise((resolve, reject) => {
-      server.listen(port, "0.0.0.0", async () => {
+      server.listen(port, "0.0.0.0", () => {
         log(`[Server] Running on port ${port}`);
-        try {
-          console.log('[Database] Starting data initialization...');
-          await storage.getAllMenuItems();
-          console.log('[Database] Data initialization complete');
-          resolve(server);
-        } catch (error) {
-          console.error('[Database] Initialization error:', error);
-          reject(error);
-        }
+        
+        // Perform database initialization in the background
+        // Don't block server start on database operations
+        Promise.resolve().then(async () => {
+          try {
+            console.log('[Database] Starting data initialization...');
+            await storage.getAllMenuItems();
+            console.log('[Database] Data initialization complete');
+          } catch (error) {
+            console.error('[Database] Initialization error:', error);
+            // Don't reject the server promise - allow server to run even if DB has issues
+          }
+        });
+        
+        resolve(server);
       }).on('error', (error: any) => {
         console.error('[Server] Failed to start:', error);
         reject(error);

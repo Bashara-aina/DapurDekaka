@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 
 interface ImageOptimizerProps {
@@ -22,27 +21,42 @@ export function ImageOptimizer({
   const [imageSrc, setImageSrc] = useState('');
 
   useEffect(() => {
-    // Don't start loading until component is mounted
+    // Only load if src exists and component is mounted
+    if (!src) return;
+
+    let isMounted = true;
     const img = new Image();
+
     img.onload = () => {
-      setIsLoaded(true);
-      setImageSrc(src);
+      if (isMounted) {
+        setIsLoaded(true);
+        setImageSrc(src);
+      }
     };
+
     img.onerror = () => {
-      console.error(`Failed to load image: ${src}`);
-      // Optionally set a fallback image
+      if (isMounted) {
+        console.error(`Failed to load image: ${src}`);
+        // Set image loaded to true anyway to prevent blocking
+        setIsLoaded(true);
+      }
     };
-    
+
+    // Add priority & loading hints
+    if (priority) {
+      img.fetchPriority = 'high';
+    }
+
     // Create optimized URL with width parameter if applicable
     const optimizedSrc = width ? `${src}?w=${width}` : src;
     img.src = optimizedSrc;
-    
+
     return () => {
-      // Clean up by removing event listeners
+      isMounted = false;
       img.onload = null;
       img.onerror = null;
     };
-  }, [src, width]);
+  }, [src, width, priority]);
 
   return (
     <div className={`relative ${className}`} style={{ width, height }}>

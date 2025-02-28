@@ -107,54 +107,64 @@ export function registerRoutes(app: Express): Server {
   return httpServer;
 }
 
-export async function initializeMenuItems() {
-  try {
-    console.log("Starting menu items initialization...");
-    const existingItems = await storage.getAllMenuItems();
-    const existingSauces = await storage.getAllSauces();
+// Mark function as not awaited to improve server startup time
+export function initializeMenuItems() {
+  console.log("Starting menu items initialization...");
+  
+  // Move initialization to background process
+  Promise.resolve().then(async () => {
+    try {
+      // Check items and sauces in parallel
+      const [existingItems, existingSauces] = await Promise.all([
+        storage.getAllMenuItems(),
+        storage.getAllSauces()
+      ]);
 
-    if (existingItems.length === 0) {
-      console.log("No existing menu items found. Creating...");
-      for (const item of menuData) {
-        try {
-          await storage.createMenuItem({
-            name: item.name,
-            description: item.description,
-            price: item.price,
-            imageUrl: item.imageUrl,
-            category: item.category,
-          });
-          console.log(`Created menu item: ${item.name}`);
-        } catch (error) {
-          console.error(`Failed to create menu item ${item.name}:`, error);
+      // Create menu items if needed (in background)
+      if (existingItems.length === 0) {
+        console.log("No existing menu items found. Creating...");
+        
+        // Process items in batches for better performance
+        const batchSize = 5;
+        for (let i = 0; i < menuData.length; i += batchSize) {
+          const batch = menuData.slice(i, i + batchSize);
+          await Promise.all(batch.map(item => 
+            storage.createMenuItem({
+              name: item.name,
+              description: item.description,
+              price: item.price,
+              imageUrl: item.imageUrl,
+              category: item.category,
+            }).catch(error => 
+              console.error(`Failed to create menu item ${item.name}:`, error)
+            )
+          ));
         }
+        console.log("Initialized menu items successfully");
+      } else {
+        console.log(`Found ${existingItems.length} existing menu items. Skipping initialization.`);
       }
-      console.log("Initialized menu items successfully");
-    } else {
-      console.log(`Found ${existingItems.length} existing menu items. Skipping initialization.`);
-    }
 
-    if (existingSauces.length === 0) {
-      console.log("No existing sauces found. Creating...");
-      for (const sauce of saucesData) {
-        try {
-          await storage.createSauce({
+      // Create sauces if needed (in background)
+      if (existingSauces.length === 0) {
+        console.log("No existing sauces found. Creating...");
+        await Promise.all(saucesData.map(sauce => 
+          storage.createSauce({
             name: sauce.name,
             description: sauce.description,
             price: sauce.price,
             imageUrl: sauce.imageUrl,
             category: sauce.category,
-          });
-          console.log(`Created sauce: ${sauce.name}`);
-        } catch (error) {
-          console.error(`Failed to create sauce ${sauce.name}:`, error);
-        }
+          }).catch(error =>
+            console.error(`Failed to create sauce ${sauce.name}:`, error)
+          )
+        ));
+        console.log("Initialized sauces successfully");
+      } else {
+        console.log(`Found ${existingSauces.length} existing sauces. Skipping initialization.`);
       }
-      console.log("Initialized sauces successfully");
-    } else {
-      console.log(`Found ${existingSauces.length} existing sauces. Skipping initialization.`);
+    } catch (error) {
+      console.error("Failed to initialize menu items and sauces:", error);
     }
-  } catch (error) {
-    console.error("Failed to initialize menu items and sauces:", error);
-  }
+  });
 }
