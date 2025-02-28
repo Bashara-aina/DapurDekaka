@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Editor } from '@tinymce/tinymce-react';
+// tinymce Editor import removed during optimization
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { BlogPost } from "@shared/schema";

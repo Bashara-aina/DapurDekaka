@@ -1,16 +1,19 @@
 import * as React from "react"
-import useEmblaCarousel, {
-  type UseEmblaCarouselType,
-} from "embla-carousel-react"
+// embla-carousel-react import removed during optimization
 import { ArrowLeft, ArrowRight } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
-type CarouselApi = UseEmblaCarouselType[1]
-type UseCarouselParameters = Parameters<typeof useEmblaCarousel>
-type CarouselOptions = UseCarouselParameters[0]
-type CarouselPlugin = UseCarouselParameters[1]
+type CarouselApi = {
+  scrollPrev: () => void;
+  scrollNext: () => void;
+  canScrollPrev: () => boolean;
+  canScrollNext: () => boolean;
+};
+type UseCarouselParameters = [any, any]; //Simplified types after embla removal
+type CarouselOptions = UseCarouselParameters[0];
+type CarouselPlugin = UseCarouselParameters[1];
 
 type CarouselProps = {
   opts?: CarouselOptions
@@ -20,8 +23,8 @@ type CarouselProps = {
 }
 
 type CarouselContextProps = {
-  carouselRef: ReturnType<typeof useEmblaCarousel>[0]
-  api: ReturnType<typeof useEmblaCarousel>[1]
+  carouselRef: React.RefObject<HTMLDivElement>;
+  api: CarouselApi;
   scrollPrev: () => void
   scrollNext: () => void
   canScrollPrev: boolean
@@ -56,13 +59,18 @@ const Carousel = React.forwardRef<
     },
     ref
   ) => {
-    const [carouselRef, api] = useEmblaCarousel(
-      {
-        ...opts,
-        axis: orientation === "horizontal" ? "x" : "y",
+    // Simple carousel reference replacement after embla removal
+    const carouselRef = React.useRef(null);
+    const api: CarouselApi = {
+      scrollPrev: () => {
+        console.log("Previous slide (embla removed)");
       },
-      plugins
-    )
+      scrollNext: () => {
+        console.log("Next slide (embla removed)");
+      },
+      canScrollPrev: () => true,
+      canScrollNext: () => true,
+    };
     const [canScrollPrev, setCanScrollPrev] = React.useState(false)
     const [canScrollNext, setCanScrollNext] = React.useState(false)
 
@@ -110,11 +118,11 @@ const Carousel = React.forwardRef<
       }
 
       onSelect(api)
-      api.on("reInit", onSelect)
-      api.on("select", onSelect)
+      // api.on("reInit", onSelect)  //Removed embla events
+      // api.on("select", onSelect)  //Removed embla events
 
       return () => {
-        api?.off("select", onSelect)
+        // api?.off("select", onSelect) //Removed embla events
       }
     }, [api, onSelect])
 

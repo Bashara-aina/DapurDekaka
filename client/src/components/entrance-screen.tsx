@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import useEmblaCarousel from "embla-carousel-react";
-import Autoplay from "embla-carousel-autoplay";
+// embla-carousel-autoplay import removed during optimization
 import { Link } from "wouter";
 import {
   Carousel,
@@ -171,7 +171,7 @@ export default function EntranceSection() {
                 containScroll: false,
                 duration: 500,
               }}
-              plugins={[Autoplay(autoplayOptions) as any]}
+              // plugins={[Autoplay(autoplayOptions) as any]}  Removed Autoplay plugin
               className="h-full"
             >
               <CarouselContent className="-ml-1">

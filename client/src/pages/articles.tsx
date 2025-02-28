@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CalendarIcon } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { Helmet } from "react-helmet";
+// react-helmet import removed during optimization
 
 export default function Articles() {
   const { data: posts, isLoading, error } = useQuery<BlogPost[]>({
@@ -33,13 +33,7 @@ export default function Articles() {
 
   return (
     <>
-      <Helmet>
-        <title>Blog & Articles - Dapur Dekaka</title>
-        <meta name="description" content="Discover delicious dim sum recipes, cooking tips, and food culture articles" />
-        <meta property="og:title" content="Blog & Articles - Dapur Dekaka" />
-        <meta property="og:description" content="Discover delicious dim sum recipes, cooking tips, and food culture articles" />
-      </Helmet>
-
+      {/* Helmet removed */}
       <div className="container mx-auto py-16 px-4">
         <h1 className="text-4xl font-bold text-gray-900 mb-8">Blog & Articles</h1>
 

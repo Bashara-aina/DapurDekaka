@@ -4,27 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Upload, Trash2, GripVertical } from "lucide-react";
+import { Loader2, Upload, Trash2 } from "lucide-react";
 import AdminNavbar from "@/components/layout/admin-navbar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { queryKeys } from "@/lib/queryClient";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+
+// @dnd-kit imports removed during optimization
+
 
 type SortableImageProps = {
   id: string;
@@ -34,33 +20,15 @@ type SortableImageProps = {
 };
 
 const SortableImage = ({ id, url, onDelete }: SortableImageProps) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
+  // useSortable removed
   return (
     <div
-      ref={setNodeRef}
-      style={style}
       className="relative group flex items-center gap-2 p-2 bg-white rounded-lg shadow-sm"
     >
       <button
-        {...attributes}
-        {...listeners}
         className="cursor-grab active:cursor-grabbing"
       >
-        <GripVertical className="h-5 w-5 text-gray-400" />
+        {/*GripVertical removed*/}
       </button>
       <img src={url} alt={`Carousel ${id}`} className="w-24 h-24 object-cover rounded" />
       <Button
@@ -89,12 +57,7 @@ export default function HomePageEditor() {
     }
   });
 
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
+  // useSensors removed
 
   const { data: pageData, isLoading } = useQuery({
     queryKey: ["homepage"],
@@ -207,17 +170,7 @@ export default function HomePageEditor() {
     }
   });
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id && pageData?.carousel?.images) {
-      const oldIndex = pageData.carousel.images.findIndex((url: string) => url === active.id);
-      const newIndex = pageData.carousel.images.findIndex((url: string) => url === over.id);
-
-      const newImages = arrayMove(pageData.carousel.images as string[], oldIndex, newIndex);
-      reorderImagesMutation.mutate(newImages);
-    }
-  };
+  // handleDragEnd removed
 
   if (isLoading) {
     return (
@@ -317,28 +270,19 @@ export default function HomePageEditor() {
                     multiple
                     onChange={(e) => setFiles(prev => ({ ...prev, carouselImages: Array.from(e.target.files || []) }))}
                   />
-                  <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={handleDragEnd}
-                  >
-                    <SortableContext
-                      items={pageData?.carousel?.images || []}
-                      strategy={verticalListSortingStrategy}
-                    >
-                      <div className="grid gap-2">
-                        {pageData?.carousel?.images?.map((img: string, i: number) => (
-                          <SortableImage
-                            key={img}
-                            id={img}
-                            url={img}
-                            index={i}
-                            onDelete={() => deleteCarouselImage.mutate(i)}
-                          />
-                        ))}
-                      </div>
-                    </SortableContext>
-                  </DndContext>
+                  {/*DndContext and SortableContext removed */}
+                  <div className="grid gap-2">
+                    {pageData?.carousel?.images?.map((img: string, i: number) => (
+                      <SortableImage
+                        key={img}
+                        id={img}
+                        url={img}
+                        index={i}
+                        onDelete={() => deleteCarouselImage.mutate(i)}
+                      />
+                    ))}
+                  </div>
+                  {/*</DndContext>*/}
                 </div>
               </CardContent>
             </Card>

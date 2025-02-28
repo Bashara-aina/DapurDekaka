@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { MapPin, Phone, Mail, Instagram as InstagramIcon } from "lucide-react";
-import { Icon } from "@iconify/react";
+// iconify import removed during optimization
 import { TranslateWrapper } from "@/components/TranslateWrapper";
 
 export default function Contact() {
@@ -74,7 +74,8 @@ export default function Contact() {
                         rel="noopener noreferrer"
                         className="hover:text-primary"
                       >
-                        <Icon icon="simple-icons:shopee" className="h-5 w-5" />
+                        {/* Placeholder for Shopee icon */}
+                        <span>Shopee</span>
                       </a>
                     </Button>
                     <Button variant="outline" size="icon" asChild>
@@ -94,10 +95,8 @@ export default function Contact() {
                         rel="noopener noreferrer"
                         className="hover:text-primary"
                       >
-                        <Icon
-                          icon="simple-icons:grab"
-                          className="h-[50px] w-[50px]"
-                        />
+                        {/* Placeholder for Grab icon */}
+                        <span>Grab</span>
                       </a>
                     </Button>
                   </div>
