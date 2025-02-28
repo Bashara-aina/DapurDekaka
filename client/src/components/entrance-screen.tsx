@@ -171,7 +171,7 @@ export default function EntranceSection() {
                 containScroll: false,
                 duration: 500,
               }}
-              // plugins={[Autoplay(autoplayOptions) as any]}  Removed Autoplay plugin
+              // Autoplay is now handled by CSS animation
               className="h-full"
             >
               <CarouselContent className="-ml-1">

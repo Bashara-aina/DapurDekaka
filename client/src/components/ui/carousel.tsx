@@ -5,6 +5,26 @@ import { ArrowLeft, ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
+// Add CSS animation styles
+const carouselAnimationStyles = `
+  @keyframes slideLeft {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-100%); }
+  }
+  
+  .carousel-animate {
+    animation: slideLeft 30s linear infinite;
+  }
+  
+  .carousel-container {
+    overflow: hidden;
+  }
+  
+  .carousel-container:hover .carousel-animate {
+    animation-play-state: paused;
+  }
+`;
+
 type CarouselApi = {
   scrollPrev: () => void;
   scrollNext: () => void;
@@ -140,10 +160,12 @@ const Carousel = React.forwardRef<
           canScrollNext,
         }}
       >
+        {/* Add style tag for animation */}
+        <style dangerouslySetInnerHTML={{ __html: carouselAnimationStyles }} />
         <div
           ref={ref}
           onKeyDownCapture={handleKeyDown}
-          className={cn("relative", className)}
+          className={cn("relative carousel-container", className)}
           role="region"
           aria-roledescription="carousel"
           {...props}
@@ -168,7 +190,7 @@ const CarouselContent = React.forwardRef<
         ref={ref}
         className={cn(
           "flex",
-          orientation === "horizontal" ? "-ml-4" : "-mt-4 flex-col",
+          orientation === "horizontal" ? "-ml-4 carousel-animate" : "-mt-4 flex-col",
           className
         )}
         {...props}
