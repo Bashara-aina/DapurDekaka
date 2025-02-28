@@ -148,10 +148,38 @@ export default function EntranceSection() {
     };
 
     useEffect(() => {
-      if (shouldShowCarousel && pageData?.carousel?.images) {
-        const cleanup = setupIntersectionObserver();
-        return cleanup;
+      if (!shouldShowCarousel || !pageData?.carousel?.images) {
+        return;
       }
+
+      const options = {
+        rootMargin: '0px',
+        threshold: 0.1
+      };
+
+      const callback = (entries: IntersectionObserverEntry[]) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const img = entry.target as HTMLImageElement;
+            const dataSrc = img.getAttribute('data-src');
+            if (dataSrc) {
+              img.src = dataSrc;
+              img.removeAttribute('data-src');
+              observer.unobserve(img);
+            }
+          }
+        });
+      };
+
+      const observer = new IntersectionObserver(callback, options);
+
+      // Select all images with data-src attribute
+      const lazyImages = document.querySelectorAll('img[data-src]');
+      lazyImages.forEach(img => observer.observe(img));
+
+      return () => {
+        observer.disconnect();
+      };
     }, [shouldShowCarousel, pageData]);
 
     return () => {
