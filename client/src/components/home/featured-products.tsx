@@ -25,23 +25,20 @@ export default function FeaturedProducts() {
   const { data: pageData } = useQuery({
     queryKey: ["pages", "homepage"],
     queryFn: async () => {
-      const timestamp = new Date().getTime();
-      const response = await fetch(`/api/pages/homepage?t=${timestamp}`, {
+      const response = await fetch(`/api/pages/homepage`, {
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        },
-        cache: 'no-store'
+          'Cache-Control': 'max-age=300'
+        }
       });
       if (!response.ok) throw new Error("Failed to fetch homepage data");
       return response.json();
     },
     staleTime: 300000, // Consider data fresh for 5 minutes
     gcTime: 600000, // Keep unused data in cache for 10 minutes
-    refetchOnWindowFocus: true, // Refetch when user returns to the tab
-    refetchOnMount: true,
-    refetchOnReconnect: true,
+    refetchOnWindowFocus: false, // Don't refetch on every tab focus
+    refetchOnMount: "if-stale", // Only refetch if data is stale
+    refetchOnReconnect: "if-stale", // Only refetch if data is stale
+    refetchInterval: false, // Disable automatic refetching
   });
 
   const scroll = (direction: "left" | "right") => {

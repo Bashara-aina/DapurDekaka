@@ -6,16 +6,17 @@
     
     <!-- Performance optimizations -->
     <link rel="dns-prefetch" href="/" />
-    <link rel="preconnect" href="/" />
+    <link rel="preconnect" href="/" crossorigin />
     
-    <!-- Preload critical assets -->
-    <link rel="preload" href="/asset/1.jpg" as="image" />
-    <link rel="preload" href="/asset/2.jpg" as="image" />
-    <link rel="preload" href="/asset/3.jpg" as="image" />
+    <!-- Only preload the most critical assets -->
+    <link rel="preload" href="/logo/logo.png" as="image" fetchpriority="high" />
+    <link rel="preload" href="/asset/1.jpg" as="image" fetchpriority="high" />
     
-    <!-- Image loading optimization hints -->
-    <link rel="prefetch" href="/asset/4.jpg" />
-    <link rel="prefetch" href="/asset/5.jpg" />
+    <!-- Use priority hints -->
+    <meta name="prioritized-resources" content="['/logo/logo.png', '/asset/1.jpg']">
+    
+    <!-- Add resource hints -->
+    <link rel="modulepreload" href="/src/main.tsx" />
 
     <!-- Disable automatic image loading until JS is ready -->
     <style>

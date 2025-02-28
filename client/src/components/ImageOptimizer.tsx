@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 
+import { useState, useEffect } from "react";
+
 interface ImageOptimizerProps {
   src: string;
   alt: string;
@@ -8,6 +10,8 @@ interface ImageOptimizerProps {
   className?: string;
   priority?: boolean;
 }
+
+const imageCache = new Map<string, string>();
 
 export function ImageOptimizer({
   src,
@@ -19,36 +23,50 @@ export function ImageOptimizer({
 }: ImageOptimizerProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [imageSrc, setImageSrc] = useState('');
+  
+  // Create a cache key based on src and width
+  const cacheKey = width ? `${src}?w=${width}` : src;
 
   useEffect(() => {
-    // Only load if src exists and component is mounted
     if (!src) return;
+    
+    // Check if image is already in cache
+    if (imageCache.has(cacheKey)) {
+      setIsLoaded(true);
+      setImageSrc(imageCache.get(cacheKey) || '');
+      return;
+    }
 
     let isMounted = true;
     const img = new Image();
-
+    
+    // Create optimized URL with width parameter if applicable
+    const optimizedSrc = width ? `${src}?w=${width}` : src;
+    
+    // Set loading attribute based on priority
+    img.loading = priority ? 'eager' : 'lazy';
+    
+    // Set fetchPriority if supported
+    if (priority && 'fetchPriority' in HTMLImageElement.prototype) {
+      img.fetchPriority = 'high';
+    }
+    
     img.onload = () => {
       if (isMounted) {
+        // Cache the successful load
+        imageCache.set(cacheKey, optimizedSrc);
         setIsLoaded(true);
-        setImageSrc(src);
+        setImageSrc(optimizedSrc);
       }
     };
 
     img.onerror = () => {
       if (isMounted) {
         console.error(`Failed to load image: ${src}`);
-        // Set image loaded to true anyway to prevent blocking
         setIsLoaded(true);
       }
     };
 
-    // Add priority & loading hints
-    if (priority) {
-      img.fetchPriority = 'high';
-    }
-
-    // Create optimized URL with width parameter if applicable
-    const optimizedSrc = width ? `${src}?w=${width}` : src;
     img.src = optimizedSrc;
 
     return () => {
@@ -56,7 +74,7 @@ export function ImageOptimizer({
       img.onload = null;
       img.onerror = null;
     };
-  }, [src, width, priority]);
+  }, [src, width, priority, cacheKey]);
 
   return (
     <div className={`relative ${className}`} style={{ width, height }}>
