@@ -210,6 +210,30 @@ pagesRouter.put("/homepage/carousel/reorder", async (req, res) => {
 });
 
 
+pagesRouter.delete('/homepage/carousel/:index', async (req, res) => {
+  try {
+    const index = parseInt(req.params.index, 10);
+    if (isNaN(index) || index < 0) {
+      return res.status(400).json({ message: "Invalid image index" });
+    }
+
+    if (!homepageConfig.carousel || !homepageConfig.carousel.images || index >= homepageConfig.carousel.images.length) {
+      return res.status(404).json({ message: "Image not found" });
+    }
+
+    // Remove the image from the carousel
+    homepageConfig.carousel.images.splice(index, 1);
+
+    // Save the updated config to the database
+    await storage.updatePageContent('homepage', {content: homepageConfig});
+
+    res.json({ success: true, message: "Image deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting image:", error);
+    res.status(500).json({ message: "Failed to delete image" });
+  }
+});
+
 // Load homepage config from database on startup
 (async function loadHomepageConfig() {
   try {
