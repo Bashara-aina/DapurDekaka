@@ -4,14 +4,14 @@ import { motion } from "framer-motion";
 import { SiShopee, SiInstagram } from "react-icons/si";
 import { X } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
-import type { MenuItem, Sauce } from "@shared/schema";
+import type { MenuItem } from "@shared/schema";
 
 interface OrderModalProps {
   trigger?: React.ReactNode;
-  menuItem?: MenuItem | Sauce;  // Make menuItem optional and accept either MenuItem or Sauce
+  item?: MenuItem;  // Make item optional since navbar doesn't pass it
 }
 
-export function OrderModal({ trigger, menuItem }: OrderModalProps) {
+export function OrderModal({ trigger }: OrderModalProps) {
   const { t } = useLanguage();
 
   const container = {
@@ -34,7 +34,7 @@ export function OrderModal({ trigger, menuItem }: OrderModalProps) {
       <DialogTrigger asChild>
         {trigger || (
           <Button variant="default" size="lg">
-            {t('menu.orderNow')}
+            {t('common.orderNow')}
           </Button>
         )}
       </DialogTrigger>
@@ -45,12 +45,6 @@ export function OrderModal({ trigger, menuItem }: OrderModalProps) {
           animate="show"
           className="grid grid-cols-3 gap-4 p-2"
         >
-          {menuItem && (
-            <div className="col-span-3 mb-4">
-              <h3 className="text-lg font-semibold mb-2">{menuItem.name}</h3>
-              <p className="text-sm text-gray-600">{menuItem.description}</p>
-            </div>
-          )}
           <motion.a
             variants={item}
             href="https://shopee.co.id/dapurdekaka"

@@ -4,8 +4,16 @@ export const translations = {
   id: {
     menu: {
       title: "Menu Kami",
+      categories: {
+        special: "Spesial",
+        vegetarian: "Vegetarian",
+        seafood: "Hidangan Laut",
+        spicy: "Pedas",
+        classic: "Klasik"
+      },
       orderNow: "Pesan Sekarang",
       orderButton: "Pesan",
+      priceLabel: "Harga",
       details: {
         ingredients: "Bahan",
         preparation: "Cara Penyajian",
@@ -41,7 +49,9 @@ export const translations = {
     },
     common: {
       viewMenu: "Lihat Menu Kami",
+      price: "Rp {price}",
       description: "Deskripsi",
+      category: "Kategori",
       readMore: "Baca Selengkapnya",
       loadMore: "Muat Lebih Banyak",
       notFound: "Halaman Tidak Ditemukan",
@@ -114,8 +124,16 @@ export const translations = {
   en: {
     menu: {
       title: "Our Menu",
+      categories: {
+        special: "Special",
+        vegetarian: "Vegetarian",
+        seafood: "Seafood",
+        spicy: "Spicy",
+        classic: "Classic"
+      },
       orderNow: "Order Now",
       orderButton: "Order",
+      priceLabel: "Price",
       details: {
         ingredients: "Ingredients",
         preparation: "Preparation",
@@ -151,7 +169,9 @@ export const translations = {
     },
     common: {
       viewMenu: "View Our Menu",
+      price: "IDR {price}",
       description: "Description",
+      category: "Category",
       readMore: "Read More",
       loadMore: "Load More",
       notFound: "Page Not Found",

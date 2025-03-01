@@ -51,8 +51,8 @@ menuRouter.get("/items", async (_req, res) => {
 // Get all sauces
 menuRouter.get("/sauces", async (_req, res) => {
   try {
-    const allSauces = await storage.getAllSauces();
-    res.json(allSauces);
+    const sauces = await storage.getAllSauces();
+    res.json(sauces);
   } catch (error) {
     console.error("Failed to fetch sauces:", error);
     res.status(500).json({ message: "Failed to fetch sauces" });
@@ -109,54 +109,26 @@ menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, r
 });
 
 // Create sauce (protected)
-menuRouter.post("/sauces", requireAuth, upload.single("imageFile"), async (req, res) => {
+menuRouter.post("/sauces", requireAuth, upload.single('imageFile'), async (req, res) => {
   try {
-    console.log("Creating sauce with data:", req.body);
-    console.log("File received:", req.file);
-
-    const imageFile = req.file;
-    const { name, description } = req.body;
-
-    // Validate required fields
-    if (!name || !description) {
-      console.log("Missing required fields in request");
-      return res.status(400).json({ message: "Name and description are required" });
-    }
-
-    // Build sauce data object matching exactly what's in the schema
-    const sauceData = {
-      name,
-      description,
-      imageUrl: imageFile ? `/uploads/${imageFile.filename}` : "/sauce/Chilli Oil.jpg" // Default image if none provided
+    const data = {
+      name: req.body.name,
+      description: req.body.description,
+      imageUrl: req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl,
     };
 
-    console.log("Prepared sauce data:", sauceData);
-    
-    // Double check for required fields according to schema
-    if (!sauceData.name || !sauceData.description || !sauceData.imageUrl) {
-      console.log("Validation failed: Missing required fields after processing");
-      return res.status(400).json({ message: "Missing required fields" });
+    const validation = insertSauceSchema.safeParse(data);
+    if (!validation.success) {
+      return res.status(400).json({ 
+        message: fromZodError(validation.error).message
+      });
     }
 
-    // Create the sauce
-    console.log("Sending to storage:", sauceData);
-    const newSauce = await storage.createSauce(sauceData);
-    console.log("Successfully created sauce:", newSauce);
-    
-    res.status(201).json(newSauce);
+    const sauce = await storage.createSauce(validation.data);
+    res.status(201).json(sauce);
   } catch (error) {
-    console.error("Failed to create sauce - detailed error:", error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorStack = error instanceof Error ? error.stack : undefined;
-    
-    console.error("Error message:", errorMessage);
-    console.error("Error stack:", errorStack);
-    
-    res.status(500).json({ 
-      message: "Failed to create sauce", 
-      error: errorMessage,
-      stack: errorStack
-    });
+    console.error("Failed to create sauce:", error);
+    res.status(500).json({ message: "Failed to create sauce" });
   }
 });
 
