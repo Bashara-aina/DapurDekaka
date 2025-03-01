@@ -11,14 +11,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AdminNavbar from "@/components/layout/admin-navbar";
 import { queryKeys, apiRequest } from "@/lib/queryClient";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function AdminMenuPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [editingSauce, setEditingSauce] = useState<Sauce | null>(null);
-  const [addingSauce, setAddingSauce] = useState(false); // Added state for adding sauce modal
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -104,12 +102,12 @@ export default function AdminMenuPage() {
   const handleEditSauce = async (formData: FormData) => {
     try {
       if (!editingSauce) return;
-
+      
       await apiRequest(`/api/menu/sauces/${editingSauce.id}`, {
         method: 'PUT',
         body: formData
       });
-
+      
       await queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
       toast({ title: "Sauce updated successfully" });
       setEditingSauce(null);
@@ -149,38 +147,62 @@ export default function AdminMenuPage() {
       console.log('\n=== Frontend Request Debug ===');
       console.log('Content-Type:', 'multipart/form-data');
 
-      for (const [key, value] of formData.entries()) {
-        if (key === 'imageFile') {
-          console.log(`${key}: [File]`);
+      // Log each field separately for clarity
+      const fields = Array.from(formData.entries()).reduce((acc: Record<string, any>, [key, value]) => {
+        if (value instanceof File) {
+          acc[key] = {
+            type: 'File',
+            name: value.name,
+            size: value.size,
+            mimeType: value.type
+          };
         } else {
-          console.log(`${key}: ${value}`);
+          acc[key] = {
+            type: 'Field',
+            value: value
+          };
         }
-      }
+        return acc;
+      }, {});
 
-      // Check if we're creating a sauce or menu item
-      const itemType = formData.get('itemType');
-      console.log('Creating item type:', itemType);
+      console.log('Form Fields:', JSON.stringify(fields, null, 2));
 
-      const response = await fetch('/api/menu/items', {
-        method: 'POST',
+      const response = await fetch("/api/menu/items", {
+        method: "POST",
         body: formData,
+        credentials: 'include'
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || 'Failed to create item');
+        console.error('Request Failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText,
+          contentType: response.headers.get('content-type')
+        });
+        throw new Error(`Failed to create menu item: ${errorText}`);
       }
 
-      return response.json();
+      const result = await response.json();
+      console.log('Request Succeeded:', result);
+      return result;
     },
-    onSuccess: (data, variables) => {
-      // Check which item type was created to invalidate the correct query
-      const itemType = variables.get('itemType');
-      if (itemType === 'sauce') {
-        queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
-      } else {
-        queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
-      }
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/menu"] });
+      setIsEditing(false);
+      toast({
+        title: "Success",
+        description: "Menu item created successfully",
+      });
+    },
+    onError: (error: Error) => {
+      console.error('Mutation Error:', error);
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -219,36 +241,6 @@ export default function AdminMenuPage() {
     createMutation.mutate(formData);
   };
 
-  const handleCreateItem = async (formData: FormData) => {
-    try {
-      console.log("Form data keys:", Array.from(formData.keys()));
-      console.log("Item type:", formData.get("itemType"));
-
-      await createMutation.mutateAsync(formData);
-
-      // Check which type of item was created
-      const itemType = formData.get("itemType") as string;
-      if (itemType === "sauce") {
-        toast({ title: "Sauce created successfully" });
-        await queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
-      } else {
-        toast({ title: "Menu item created successfully" });
-        await queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
-      }
-
-      // Reset form and close dialog
-      setIsEditing(false);
-      setAddingSauce(false);
-    } catch (error) {
-      console.error("Error creating item:", error);
-      toast({ 
-        title: "Failed to create item", 
-        variant: "destructive" 
-      });
-    }
-  };
-
-
   if (menuLoading || saucesLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -266,10 +258,6 @@ export default function AdminMenuPage() {
           <Button onClick={() => setIsEditing(true)}>
             <Plus className="w-4 h-4 mr-2" />
             Add Item
-          </Button>
-          <Button onClick={() => setAddingSauce(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Sauce
           </Button>
         </div>
 
@@ -428,103 +416,41 @@ export default function AdminMenuPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Add Sauce Modal */}
-      <Dialog open={addingSauce} onOpenChange={(open) => !open && setAddingSauce(false)}>
+      <Dialog open={!!editingSauce} onOpenChange={() => setEditingSauce(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add New Sauce</DialogTitle>
-            <DialogDescription>
-              Fill in the sauce details below.
-            </DialogDescription>
+            <DialogTitle>Edit Sauce</DialogTitle>
           </DialogHeader>
-          <form encType="multipart/form-data" onSubmit={(e) => {
+          <form onSubmit={(e) => {
             e.preventDefault();
-            const formData = new FormData(e.currentTarget);
-            // Add metadata to identify this as a sauce creation
-            formData.append("itemType", "sauce");
-            handleCreateItem(formData);
-            setAddingSauce(false);
+            handleEditSauce(new FormData(e.currentTarget));
           }}>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="name">Name</Label>
-                <Input id="name" name="name" required />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea id="description" name="description" required />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="imageFile">Image</Label>
-                <Input id="imageFile" name="imageFile" type="file" accept="image/*" required />
-              </div>
+            <div className="space-y-4">
+              <Input
+                name="name"
+                defaultValue={editingSauce?.name}
+                placeholder="Sauce name"
+              />
+              <Textarea
+                name="description"
+                defaultValue={editingSauce?.description}
+                placeholder="Description"
+              />
+              <Input
+                type="file"
+                name="imageFile"
+                accept="image/*"
+              />
+              <Input
+                type="hidden"
+                name="imageUrl"
+                defaultValue={editingSauce?.imageUrl}
+              />
+              <Button type="submit">Save Changes</Button>
             </div>
-
-            <DialogFooter>
-              <Button type="submit">Add Sauce</Button>
-            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
-
-      {/* Edit Sauce Modal */}
-      {editingSauce && (
-        <Dialog open={!!editingSauce} onOpenChange={(open) => !open && setEditingSauce(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit Sauce</DialogTitle>
-              <DialogDescription>
-                Make changes to the sauce details below.
-              </DialogDescription>
-            </DialogHeader>
-            <form encType="multipart/form-data" onSubmit={(e) => {
-              e.preventDefault();
-              handleEditSauce(new FormData(e.currentTarget));
-            }}>
-              <input type="hidden" name="id" value={editingSauce.id} />
-
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="name">Name</Label>
-                  <Input 
-                    id="name" 
-                    name="name" 
-                    defaultValue={editingSauce.name} 
-                    required 
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea 
-                    id="description" 
-                    name="description" 
-                    defaultValue={editingSauce.description} 
-                    required 
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="imageFile">Image</Label>
-                  <Input 
-                    id="imageFile" 
-                    name="imageFile" 
-                    type="file" 
-                    accept="image/*"
-                  />
-                  <p className="text-sm text-gray-500">Current image: {editingSauce.imageUrl}</p>
-                </div>
-              </div>
-
-              <DialogFooter>
-                <Button type="submit">Save Changes</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      )}
     </>
   );
 }
