@@ -118,36 +118,34 @@ export function initializeMenuItems() {
     console.log("Menu items and sauces already initialized. Skipping...");
     return;
   }
-  
+
   console.log("Starting menu items initialization...");
-  
+
   // Move initialization to background process
   Promise.resolve().then(async () => {
     try {
       // Menu items initialization
       if (!menuItemsInitialized) {
         const existingItems = await storage.getAllMenuItems();
-        
+
         if (existingItems.length === 0) {
           console.log("No existing menu items found. Creating...");
-          
+
           // Use a more efficient batching mechanism
           const batchSize = 10;
           const batches = [];
-          
+
           for (let i = 0; i < menuData.length; i += batchSize) {
             batches.push(menuData.slice(i, i + batchSize));
           }
-          
+
           // Process batches sequentially to avoid DB connection issues
           for (const batch of batches) {
             await Promise.all(batch.map(item => 
               storage.createMenuItem({
                 name: item.name,
                 description: item.description,
-                price: item.price,
-                imageUrl: item.imageUrl,
-                category: item.category,
+                imageUrl: item.imageUrl
               }).catch(error => 
                 console.error(`Failed to create menu item ${item.name}:`, error)
               )
@@ -157,17 +155,17 @@ export function initializeMenuItems() {
         } else {
           console.log(`Found ${existingItems.length} existing menu items. Skipping.`);
         }
-        
+
         menuItemsInitialized = true;
       }
 
       // Sauces initialization
       if (!saucesInitialized) {
         const existingSauces = await storage.getAllSauces();
-        
+
         if (existingSauces.length === 0) {
           console.log("No existing sauces found. Creating...");
-          
+
           // Process sauces in smaller batches to reduce load
           const batchSize = 3;
           for (let i = 0; i < saucesData.length; i += batchSize) {
@@ -176,9 +174,7 @@ export function initializeMenuItems() {
               storage.createSauce({
                 name: sauce.name,
                 description: sauce.description,
-                price: sauce.price,
-                imageUrl: sauce.imageUrl,
-                category: sauce.category,
+                imageUrl: sauce.imageUrl
               }).catch(error =>
                 console.error(`Failed to create sauce ${sauce.name}:`, error)
               )
@@ -188,7 +184,7 @@ export function initializeMenuItems() {
         } else {
           console.log(`Found ${existingSauces.length} existing sauces. Skipping.`);
         }
-        
+
         saucesInitialized = true;
       }
     } catch (error) {
