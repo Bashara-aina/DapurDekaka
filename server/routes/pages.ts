@@ -58,12 +58,20 @@ const setNoCacheHeaders = (res: any) => {
 };
 
 pagesRouter.get("/homepage", async (req, res) => {
+  // Apply stronger no-cache headers
   setNoCacheHeaders(res);
-  console.log('[GET] Sending homepage data:', homepageConfig);
-  res.json({
+  
+  // Add logo version parameter to force client refresh
+  const configWithTimestamp = {
     ...homepageConfig,
-    timestamp: Date.now()
-  });
+    timestamp: Date.now(),
+    logo: homepageConfig.logo ? 
+      (homepageConfig.logo.includes('?') ? homepageConfig.logo : `${homepageConfig.logo}?t=${Date.now()}`) : 
+      homepageConfig.logo
+  };
+  
+  console.log('[GET] Sending homepage data:', configWithTimestamp);
+  res.json(configWithTimestamp);
 });
 
 pagesRouter.put("/homepage", upload.fields([
@@ -133,22 +141,45 @@ pagesRouter.put("/homepage", upload.fields([
       // Remove old logo if exists
       try {
         if (homepageConfig.logo) {
-          const oldLogoPath = path.join(process.cwd(), 'public', homepageConfig.logo.replace(/^\//, ''));
-          await fs.unlink(oldLogoPath);
-          console.log('[PUT] Removed old logo:', oldLogoPath);
+          // Extract the base path without query parameters
+          const logoPath = homepageConfig.logo.split('?')[0];
+          const oldLogoPath = path.join(process.cwd(), 'public', logoPath.replace(/^\//, ''));
+          console.log('[PUT] Attempting to remove old logo from:', oldLogoPath);
+          
+          if (await fs.access(oldLogoPath).then(() => true).catch(() => false)) {
+            await fs.unlink(oldLogoPath);
+            console.log('[PUT] Successfully removed old logo:', oldLogoPath);
+          } else {
+            console.log('[PUT] Old logo file not found at:', oldLogoPath);
+          }
         }
       } catch (error) {
         console.warn('[PUT] Could not delete old logo:', error);
       }
 
-      // Move new logo
-      await fs.rename(logo.path, newPath);
+      // Ensure logo directory exists
+      await fs.mkdir(logoDir, { recursive: true });
+
+      // Create a copy instead of moving (more reliable)
+      try {
+        const logoData = await fs.readFile(logo.path);
+        await fs.writeFile(newPath, logoData);
+        console.log('[PUT] Successfully wrote new logo to:', newPath);
+        
+        // Clean up temp file
+        await fs.unlink(logo.path).catch(err => 
+          console.warn('[PUT] Failed to clean up temp file:', err)
+        );
+      } catch (error) {
+        console.error('[PUT] Error copying logo file:', error);
+        return res.status(500).json({ message: "Failed to save logo file" });
+      }
       
       // Add timestamp to prevent caching issues
       homepageConfig.logo = `/logo/${logoFileName}?t=${Date.now()}`;
-      console.log('[PUT] Updated logo path:', homepageConfig.logo);
+      console.log('[PUT] Updated logo path in config:', homepageConfig.logo);
 
-      // Verify file exists after move
+      // Verify file exists after copy
       try {
         await fs.access(newPath);
         console.log('[PUT] Verified new logo exists at:', newPath);

@@ -14,17 +14,28 @@ export function LogoDisplay({ className, logoUrl }: LogoDisplayProps) {
   useEffect(() => {
     console.log("LogoDisplay: Logo URL changed to:", logoUrl);
     setImageError(false);
-    // Force browser to reload the image by adding/updating timestamp parameter
-    const url = logoUrl ? 
-      (logoUrl.includes('?') ? logoUrl : `${logoUrl}?t=${Date.now()}`) : 
-      `/logo/logo.png?t=${Date.now()}`;
+    
+    // Always strip any existing timestamp parameter
+    const baseUrl = logoUrl ? logoUrl.split('?')[0] : '/logo/logo.png';
+    
+    // Add a new timestamp for aggressive cache busting
+    const url = `${baseUrl}?t=${Date.now()}`;
+    console.log("LogoDisplay: Setting image src to:", url);
+    
     setCurrentSrc(url);
   }, [logoUrl]);
 
   const handleError = () => {
     console.error("LogoDisplay: Failed to load logo from:", currentSrc);
     setImageError(true);
+    
+    // Try fallback with cache busting
     setCurrentSrc(`/logo/logo.png?t=${Date.now()}`);
+    
+    // Log detailed error for debugging
+    fetch(currentSrc.split('?')[0], { method: 'HEAD' })
+      .then(res => console.log("LogoDisplay: Logo file exists check:", res.status))
+      .catch(err => console.error("LogoDisplay: Logo file check failed:", err));
   };
 
   console.log("LogoDisplay: Rendering with src:", currentSrc, "logoUrl:", logoUrl);
