@@ -112,39 +112,53 @@ menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, r
 menuRouter.post("/sauces", requireAuth, upload.single("imageFile"), async (req, res) => {
   try {
     console.log("Creating sauce with data:", req.body);
-    console.log("File:", req.file);
+    console.log("File received:", req.file);
 
     const imageFile = req.file;
     const { name, description } = req.body;
 
+    // Validate required fields
     if (!name || !description) {
+      console.log("Missing required fields in request");
       return res.status(400).json({ message: "Name and description are required" });
     }
 
-    // Create the sauce data with proper structure
+    // Build sauce data object
     const sauceData = {
       name,
       description,
+      // Include other required schema fields
+      price: 0,  // Default price
+      category: "sauce", // Default category
       imageUrl: imageFile ? `/uploads/${imageFile.filename}` : "/sauce/Chilli Oil.jpg", // Default image if none provided
     };
 
-    console.log("Sauce data to validate:", sauceData);
+    console.log("Prepared sauce data:", sauceData);
     
-    // Make sure the sauce data has all required fields from the schema
+    // Double check for required fields according to schema
     if (!sauceData.name || !sauceData.description || !sauceData.imageUrl) {
+      console.log("Validation failed: Missing required fields after processing");
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // Create the sauce directly
+    // Create the sauce
+    console.log("Sending to storage:", sauceData);
     const newSauce = await storage.createSauce(sauceData);
-    console.log("Created sauce:", newSauce);
+    console.log("Successfully created sauce:", newSauce);
+    
     res.status(201).json(newSauce);
   } catch (error) {
-    console.error("Failed to create sauce:", error);
+    console.error("Failed to create sauce - detailed error:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    console.error("Error message:", errorMessage);
+    console.error("Error stack:", errorStack);
+    
     res.status(500).json({ 
       message: "Failed to create sauce", 
-      error: String(error),
-      stack: error instanceof Error ? error.stack : undefined
+      error: errorMessage,
+      stack: errorStack
     });
   }
 });

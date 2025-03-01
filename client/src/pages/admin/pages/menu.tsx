@@ -422,7 +422,7 @@ export default function AdminMenuPage() {
           <TabsContent value="sauces">
             <div className="mb-8">
               <h2 className="text-2xl font-bold mb-4">Add Sauce</h2>
-              <form onSubmit={handleAddSauceSubmit} className="space-y-4 border rounded-lg p-4">
+              <form onSubmit={handleAddSauceSubmit} className="space-y-4 border rounded-lg p-4" encType="multipart/form-data">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block mb-2">Name</label>
@@ -430,7 +430,7 @@ export default function AdminMenuPage() {
                   </div>
                   <div>
                     <label className="block mb-2">Image</label>
-                    <Input name="imageFile" type="file" />
+                    <Input name="imageFile" type="file" accept="image/jpeg,image/png,image/webp" />
                   </div>
                 </div>
                 <div>
