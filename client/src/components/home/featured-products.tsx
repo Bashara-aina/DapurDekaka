@@ -25,25 +25,20 @@ export default function FeaturedProducts() {
   const { data: pageData } = useQuery({
     queryKey: ["pages", "homepage"],
     queryFn: async () => {
-      const timestamp = Date.now();
-      const response = await fetch(`/api/pages/homepage?_=${timestamp}`, {
+      const response = await fetch(`/api/pages/homepage`, {
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
+          'Cache-Control': 'max-age=300'
         }
       });
       if (!response.ok) throw new Error("Failed to fetch homepage data");
-      const data = await response.json();
-      console.log("Fetched homepage data with timestamp:", timestamp, data);
-      return data;
+      return response.json();
     },
-    staleTime: 0, // Always consider data stale
-    gcTime: 10000, // Keep unused data in cache for only 10 seconds
-    refetchOnWindowFocus: true, // Always refetch on tab focus
-    refetchOnMount: true, // Always refetch on component mount
-    refetchOnReconnect: true, // Always refetch on reconnect
-    refetchInterval: 30000, // Refetch every 30 seconds
+    staleTime: 300000, // Consider data fresh for 5 minutes
+    gcTime: 600000, // Keep unused data in cache for 10 minutes
+    refetchOnWindowFocus: false, // Don't refetch on every tab focus
+    refetchOnMount: "if-stale", // Only refetch if data is stale
+    refetchOnReconnect: "if-stale", // Only refetch if data is stale
+    refetchInterval: false, // Disable automatic refetching
   });
 
   const scroll = (direction: "left" | "right") => {
