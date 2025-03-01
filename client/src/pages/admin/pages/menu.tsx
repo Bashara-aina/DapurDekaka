@@ -102,12 +102,12 @@ export default function AdminMenuPage() {
   const handleEditSauce = async (formData: FormData) => {
     try {
       if (!editingSauce) return;
-      
+
       await apiRequest(`/api/menu/sauces/${editingSauce.id}`, {
         method: 'PUT',
         body: formData
       });
-      
+
       await queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
       toast({ title: "Sauce updated successfully" });
       setEditingSauce(null);
@@ -241,6 +241,69 @@ export default function AdminMenuPage() {
     createMutation.mutate(formData);
   };
 
+  const handleAddItemSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    try {
+      const formData = new FormData(e.currentTarget);
+      await apiRequest('/api/menu/items', {
+        method: 'POST',
+        body: formData
+      });
+
+      // Reset form
+      e.currentTarget.reset();
+
+      // Refetch menu items
+      await queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
+
+      toast({ title: "Menu item added successfully" });
+    } catch (error) {
+      console.error('Add error:', error);
+      toast({ title: "Failed to add menu item", variant: "destructive" });
+    }
+  };
+
+  const handleAddSauceSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    try {
+      const form = e.currentTarget;
+      const formData = new FormData(form);
+
+      // Log form data to debug
+      console.log("Form data being submitted:");
+      for (const pair of formData.entries()) {
+        console.log(pair[0], pair[1]);
+      }
+
+      const response = await apiRequest("/api/menu/sauces", {
+        method: "POST",
+        body: formData,
+        credentials: 'include' // Added credentials for authentication
+        // Don't set Content-Type header here - browser will set it with boundary for multipart/form-data
+      });
+
+      console.log("Sauce creation response:", response);
+      form.reset();
+      await queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
+      toast({ title: "Sauce added successfully" });
+    } catch (error) {
+      console.error('Add sauce error:', error);
+      // Show more detailed error message with response details if available
+      let errorMessage = "Unknown error";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        errorMessage = JSON.stringify(error);
+      }
+
+      toast({ 
+        title: "Failed to add sauce", 
+        description: errorMessage,
+        variant: "destructive" 
+      });
+    }
+  };
+
   if (menuLoading || saucesLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -357,6 +420,29 @@ export default function AdminMenuPage() {
           </TabsContent>
 
           <TabsContent value="sauces">
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold mb-4">Add Sauce</h2>
+              <form onSubmit={handleAddSauceSubmit} className="space-y-4 border rounded-lg p-4" encType="multipart/form-data">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block mb-2">Name</label>
+                    <Input name="name" placeholder="Sauce name" required />
+                  </div>
+                  <div>
+                    <label className="block mb-2">Image</label>
+                    <Input name="imageFile" type="file" accept="image/jpeg,image/png,image/webp" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block mb-2">Description</label>
+                  <Textarea name="description" placeholder="Sauce description" required />
+                </div>
+                <Button type="submit" className="w-full">
+                  Add Sauce
+                </Button>
+              </form>
+            </div>
+            <h2 className="text-2xl font-bold mb-4">Sauces</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {sauces?.map((sauce: Sauce) => (
                 <Card key={sauce.id}>

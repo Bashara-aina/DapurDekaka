@@ -75,56 +75,6 @@ const createRequiredDirectories = async () => {
   }
 };
 
-// Simple, more efficient port finder
-const findAvailablePort = async (startPort: number, maxAttempts: number = 3): Promise<number> => {
-  return new Promise((resolve, reject) => {
-    let currentPort = startPort;
-    let attempts = 0;
-
-    const tryPort = () => {
-      console.log(`[Port] Trying port ${currentPort}...`);
-      const tempServer = createServer();
-      
-      // Use a shorter timeout
-      const timeout = setTimeout(() => {
-        tempServer.close();
-        currentPort++;
-        attempts++;
-        if (attempts >= maxAttempts) {
-          // Just use a default port if we can't find one quickly
-          console.log(`[Port] Using default port ${startPort + 1000}`);
-          resolve(startPort + 1000);
-          return;
-        }
-        tryPort();
-      }, 500);
-
-      tempServer.once('error', () => {
-        clearTimeout(timeout);
-        currentPort++;
-        attempts++;
-        if (attempts >= maxAttempts) {
-          // Just use a default port if we can't find one quickly
-          console.log(`[Port] Using default port ${startPort + 1000}`);
-          resolve(startPort + 1000);
-          return;
-        }
-        tempServer.close(() => tryPort());
-      });
-
-      tempServer.once('listening', () => {
-        clearTimeout(timeout);
-        const finalPort = (tempServer.address() as any).port;
-        console.log(`[Port] Found available port: ${finalPort}`);
-        tempServer.close(() => resolve(finalPort));
-      });
-
-      tempServer.listen(currentPort, '0.0.0.0');
-    };
-
-    tryPort();
-  });
-};
 
 const startServer = async () => {
   try {
@@ -133,10 +83,9 @@ const startServer = async () => {
     // Create required directories (but don't wait for it to complete)
     const dirPromise = createRequiredDirectories();
 
-    // Find available port with improved logging
-    console.log('[Port] Starting port availability check...');
-    const port = await findAvailablePort(5000);
-    console.log(`[Port] Selected port ${port} for server`);
+    // Use a fixed port instead of finding an available one
+    const port = process.env.PORT ? Number(process.env.PORT) : 5000;
+    console.log(`[Port] Using port ${port} for server`);
 
     // Register routes before static files
     server = registerRoutes(app);
@@ -165,7 +114,7 @@ const startServer = async () => {
     return new Promise((resolve, reject) => {
       server.listen(port, "0.0.0.0", () => {
         log(`[Server] Running on port ${port}`);
-        
+
         // Perform database initialization in the background
         // Don't block server start on database operations
         Promise.resolve().then(async () => {
@@ -178,7 +127,7 @@ const startServer = async () => {
             // Don't reject the server promise - allow server to run even if DB has issues
           }
         });
-        
+
         resolve(server);
       }).on('error', (error: any) => {
         console.error('[Server] Failed to start:', error);
