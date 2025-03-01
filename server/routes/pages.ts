@@ -121,9 +121,8 @@ pagesRouter.put("/homepage", upload.fields([
       const logo = files.logo[0];
       console.log('[PUT] Processing logo file:', logo);
 
-      // Get the original file extension, defaulting to .png if none
-      const ext = path.extname(logo.originalname).toLowerCase() || '.png';
-      const logoFileName = `logo${ext}`;
+      // Use a fixed filename to avoid path issues
+      const logoFileName = 'logo.png';
       const logoDir = path.join(process.cwd(), 'public', 'logo');
       const newPath = path.join(logoDir, logoFileName);
 
@@ -131,60 +130,64 @@ pagesRouter.put("/homepage", upload.fields([
         originalName: logo.originalname,
         tempPath: logo.path,
         targetDir: logoDir,
-        targetPath: newPath,
-        extension: ext
+        targetPath: newPath
       });
 
-      // Ensure logo directory exists
-      await fs.mkdir(logoDir, { recursive: true });
-
-      // Remove old logo if exists
+      // Ensure directory exists with proper permissions
       try {
-        if (homepageConfig.logo) {
-          // Extract the base path without query parameters
-          const logoPath = homepageConfig.logo.split('?')[0];
-          const oldLogoPath = path.join(process.cwd(), 'public', logoPath.replace(/^\//, ''));
-          console.log('[PUT] Attempting to remove old logo from:', oldLogoPath);
-          
-          if (await fs.access(oldLogoPath).then(() => true).catch(() => false)) {
-            await fs.unlink(oldLogoPath);
-            console.log('[PUT] Successfully removed old logo:', oldLogoPath);
-          } else {
-            console.log('[PUT] Old logo file not found at:', oldLogoPath);
-          }
-        }
+        await fs.mkdir(logoDir, { recursive: true });
+        // Set directory permissions
+        const { exec } = require('child_process');
+        exec(`chmod -R 755 ${logoDir}`);
       } catch (error) {
-        console.warn('[PUT] Could not delete old logo:', error);
+        console.warn('[PUT] Error creating directory:', error);
       }
 
-      // Ensure logo directory exists
-      await fs.mkdir(logoDir, { recursive: true });
-
-      // Create a copy instead of moving (more reliable)
+      // Try multiple approaches to ensure the file is copied correctly
       try {
-        const logoData = await fs.readFile(logo.path);
-        await fs.writeFile(newPath, logoData);
-        console.log('[PUT] Successfully wrote new logo to:', newPath);
+        // Method 1: Use fs.copyFile for direct copying (most reliable)
+        await fs.copyFile(logo.path, newPath);
+        console.log('[PUT] Successfully copied logo using fs.copyFile to:', newPath);
+      } catch (copyError) {
+        console.error('[PUT] Error using copyFile:', copyError);
         
-        // Clean up temp file
-        await fs.unlink(logo.path).catch(err => 
-          console.warn('[PUT] Failed to clean up temp file:', err)
-        );
-      } catch (error) {
-        console.error('[PUT] Error copying logo file:', error);
-        return res.status(500).json({ message: "Failed to save logo file" });
+        try {
+          // Method 2: Read and write approach as fallback
+          const logoData = await fs.readFile(logo.path);
+          await fs.writeFile(newPath, logoData);
+          console.log('[PUT] Successfully wrote new logo using read/write to:', newPath);
+        } catch (writeError) {
+          console.error('[PUT] Error using read/write method:', writeError);
+          return res.status(500).json({ message: "Failed to save logo file" });
+        }
       }
       
-      // Add timestamp to prevent caching issues
-      homepageConfig.logo = `/logo/${logoFileName}?t=${Date.now()}`;
+      // Set proper file permissions
+      try {
+        const { exec } = require('child_process');
+        exec(`chmod 644 ${newPath}`);
+      } catch (error) {
+        console.warn('[PUT] Error setting file permissions:', error);
+      }
+      
+      // Clean up temp file
+      try {
+        await fs.unlink(logo.path);
+      } catch (unlinkError) {
+        console.warn('[PUT] Failed to clean up temp file:', unlinkError);
+      }
+      
+      // Set logo path with unique timestamp to bust cache
+      const uniqueTimestamp = Date.now();
+      homepageConfig.logo = `/logo/logo.png?v=${uniqueTimestamp}`;
       console.log('[PUT] Updated logo path in config:', homepageConfig.logo);
 
       // Verify file exists after copy
       try {
         await fs.access(newPath);
         console.log('[PUT] Verified new logo exists at:', newPath);
-      } catch (error) {
-        console.error('[PUT] Error: New logo file not found after move:', error);
+      } catch (accessError) {
+        console.error('[PUT] Error: New logo file not found after copy:', accessError);
         return res.status(500).json({ message: "Failed to save logo file" });
       }
     }
