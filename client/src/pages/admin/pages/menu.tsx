@@ -401,6 +401,29 @@ export default function AdminMenuPage() {
           </TabsContent>
 
           <TabsContent value="sauces">
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold mb-4">Add Sauce</h2>
+              <form onSubmit={handleAddSauceSubmit} className="space-y-4 border rounded-lg p-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block mb-2">Name</label>
+                    <Input name="name" placeholder="Sauce name" required />
+                  </div>
+                  <div>
+                    <label className="block mb-2">Image</label>
+                    <Input name="imageFile" type="file" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block mb-2">Description</label>
+                  <Textarea name="description" placeholder="Sauce description" required />
+                </div>
+                <Button type="submit" className="w-full">
+                  Add Sauce
+                </Button>
+              </form>
+            </div>
+            <h2 className="text-2xl font-bold mb-4">Sauces</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {sauces?.map((sauce: Sauce) => (
                 <Card key={sauce.id}>
