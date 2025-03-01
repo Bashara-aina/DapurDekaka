@@ -269,36 +269,33 @@ export default function AdminMenuPage() {
       const form = e.currentTarget;
       const formData = new FormData(form);
 
-      // Log form data to debug
-      console.log("Form data being submitted:");
-      for (const pair of formData.entries()) {
-        console.log(pair[0], pair[1]);
-      }
+      // Convert FormData entries to array for logging
+      const formEntries = Array.from(formData.entries()).reduce((acc: Record<string, any>, [key, value]) => {
+        acc[key] = value instanceof File ? `File: ${value.name}` : value;
+        return acc;
+      }, {});
+      console.log("Form data being submitted:", formEntries);
 
-      const response = await apiRequest("/api/menu/sauces", {
+      const response = await fetch("/api/menu/sauces", {
         method: "POST",
         body: formData,
-        credentials: 'include' // Added credentials for authentication
-        // Don't set Content-Type header here - browser will set it with boundary for multipart/form-data
+        credentials: 'include'
       });
 
-      console.log("Sauce creation response:", response);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create sauce');
+      }
+
+      console.log("Sauce creation response:", await response.json());
       form.reset();
       await queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
       toast({ title: "Sauce added successfully" });
     } catch (error) {
       console.error('Add sauce error:', error);
-      // Show more detailed error message with response details if available
-      let errorMessage = "Unknown error";
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'object' && error !== null) {
-        errorMessage = JSON.stringify(error);
-      }
-
       toast({ 
         title: "Failed to add sauce", 
-        description: errorMessage,
+        description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive" 
       });
     }
