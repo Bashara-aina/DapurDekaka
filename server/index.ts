@@ -16,7 +16,7 @@ const staticFileOptions = {
     res.set('Cache-Control', 'public, max-age=31536000');
     res.set('Access-Control-Allow-Origin', '*');
   },
-  fallthrough: true // Allow falling through to next middleware if file not found
+  fallthrough: true
 };
 
 // Ensure uploads directory exists
@@ -34,25 +34,11 @@ app.use('/logo', express.static(path.join(process.cwd(), 'logo'), staticFileOpti
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
 
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-      log(logLine);
+      log(`${req.method} ${path} ${res.statusCode} in ${duration}ms`);
     }
   });
 
@@ -61,76 +47,70 @@ app.use((req, res, next) => {
 
 let server: any = null;
 
-const createRequiredDirectories = async () => {
-  const dirs = ['uploads', 'image', 'logo'];
-  for (const dir of dirs) {
-    const dirPath = path.join(process.cwd(), dir);
-    try {
-      await fs.promises.mkdir(dirPath, { recursive: true });
-      console.log(`[Directory] Created/verified: ${dir}`);
-    } catch (error) {
-      console.error(`[Directory] Error creating ${dir}:`, error);
-      throw error;
+// Improved server shutdown
+const stopServer = () => {
+  return new Promise<void>((resolve) => {
+    if (server) {
+      console.log('[Server] Gracefully shutting down...');
+      server.close(() => {
+        console.log('[Server] Stopped');
+        resolve();
+      });
+    } else {
+      resolve();
     }
-  }
+  });
 };
-
 
 const startServer = async () => {
   try {
+    // Stop existing server if running
+    await stopServer();
+
     console.log('[Startup] Beginning server initialization...');
 
-    // Create required directories (but don't wait for it to complete)
-    const dirPromise = createRequiredDirectories();
+    // Create required directories
+    const dirs = ['uploads', 'image', 'logo'];
+    for (const dir of dirs) {
+      const dirPath = path.join(process.cwd(), dir);
+      await fs.promises.mkdir(dirPath, { recursive: true });
+    }
 
-    // Use a fixed port instead of finding an available one
-    const port = process.env.PORT ? Number(process.env.PORT) : 5000;
-    console.log(`[Port] Using port ${port} for server`);
+    // Use fixed port 5000
+    const port = 5000;
+    console.log(`[Port] Using port ${port}`);
 
-    // Register routes before static files
-    server = registerRoutes(app);
+    // Register routes and create server
+    server = createServer(app);
 
-    // Global error handler with improved logging
+    // Global error handler
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      console.error('[Error] Detailed server error:', err);
+      console.error('[Error] Server error:', err);
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
       res.status(status).json({ message });
     });
 
-    // Always use Vite in development mode
+    // Setup appropriate middleware based on environment
     if (process.env.NODE_ENV !== 'production') {
-      console.log('[Middleware] Setting up Vite development middleware');
+      console.log('[Middleware] Setting up Vite development server');
       await setupVite(app, server);
     } else {
       console.log('[Middleware] Setting up static file serving');
       serveStatic(app);
     }
 
-    // Ensure directories are created before continuing
-    await dirPromise;
-
-    // Start the server with improved error handling
+    // Start listening
     return new Promise((resolve, reject) => {
+      console.log('[Server] Attempting to listen on port 5000...');
+
       server.listen(port, "0.0.0.0", () => {
         log(`[Server] Running on port ${port}`);
-
-        // Perform database initialization in the background
-        // Don't block server start on database operations
-        Promise.resolve().then(async () => {
-          try {
-            console.log('[Database] Starting data initialization...');
-            await storage.getAllMenuItems();
-            console.log('[Database] Data initialization complete');
-          } catch (error) {
-            console.error('[Database] Initialization error:', error);
-            // Don't reject the server promise - allow server to run even if DB has issues
-          }
-        });
-
         resolve(server);
       }).on('error', (error: any) => {
-        console.error('[Server] Failed to start:', error);
+        if (error.code === 'EADDRINUSE') {
+          console.error(`[Error] Port ${port} is already in use. Please ensure no other instance is running.`);
+        }
         reject(error);
       });
     });
@@ -140,17 +120,12 @@ const startServer = async () => {
   }
 };
 
-const stopServer = () => {
-  if (server) {
-    server.close(() => {
-      console.log('[Server] Stopped gracefully');
-    });
-  }
-};
-
 // Handle graceful shutdown
 process.on('SIGTERM', stopServer);
 process.on('SIGINT', stopServer);
+
+// Export for testing
+export { startServer, stopServer };
 
 // Start the server
 console.log('[Process] Starting server process...');
