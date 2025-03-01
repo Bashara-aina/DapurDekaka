@@ -121,27 +121,31 @@ menuRouter.post("/sauces", requireAuth, upload.single("imageFile"), async (req, 
       return res.status(400).json({ message: "Name and description are required" });
     }
 
-    // Create the sauce data
+    // Create the sauce data with proper structure
     const sauceData = {
       name,
       description,
       imageUrl: imageFile ? `/uploads/${imageFile.filename}` : "/sauce/Chilli Oil.jpg", // Default image if none provided
     };
 
-    // Validate input
-    const validation = insertSauceSchema.safeParse(sauceData);
-
-    if (!validation.success) {
-      return res.status(400).json({ 
-        message: fromZodError(validation.error).message 
-      });
+    console.log("Sauce data to validate:", sauceData);
+    
+    // Make sure the sauce data has all required fields from the schema
+    if (!sauceData.name || !sauceData.description || !sauceData.imageUrl) {
+      return res.status(400).json({ message: "Missing required fields" });
     }
 
-    const sauce = await storage.createSauce(validation.data);
-    res.status(201).json(sauce);
+    // Create the sauce directly
+    const newSauce = await storage.createSauce(sauceData);
+    console.log("Created sauce:", newSauce);
+    res.status(201).json(newSauce);
   } catch (error) {
     console.error("Failed to create sauce:", error);
-    res.status(500).json({ message: "Failed to create sauce", error: String(error) });
+    res.status(500).json({ 
+      message: "Failed to create sauce", 
+      error: String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
   }
 });
 
