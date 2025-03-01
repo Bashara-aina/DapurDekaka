@@ -123,7 +123,8 @@ pagesRouter.put("/homepage", upload.fields([
 
       // Use a fixed filename to avoid path issues
       const logoFileName = 'logo.png';
-      const logoDir = path.join(process.cwd(), 'public', 'logo');
+      // Save directly to the 'logo' directory in the project root
+      const logoDir = path.join(process.cwd(), 'logo');
       const newPath = path.join(logoDir, logoFileName);
       
       console.log('[PUT] Logo file details:', {
@@ -133,25 +134,16 @@ pagesRouter.put("/homepage", upload.fields([
         size: logo.size
       });
 
-      console.log('[PUT] Logo processing details:', {
-        originalName: logo.originalname,
-        tempPath: logo.path,
-        targetDir: logoDir,
-        targetPath: newPath,
-        fileSize: fs.statSync(logo.path).size
-      });
-
       // Ensure directory exists with proper permissions
       try {
         await fs.mkdir(logoDir, { recursive: true });
-        // Set directory permissions
-        const { exec } = require('child_process');
-        exec(`chmod -R 755 ${logoDir}`);
+        console.log('[PUT] Logo directory created/verified:', logoDir);
       } catch (error) {
-        console.warn('[PUT] Error creating directory:', error);
+        console.error('[PUT] Error creating directory:', error);
+        return res.status(500).json({ message: `Failed to create logo directory: ${error.message}` });
       }
 
-      // Remove old logo if exists (be careful with path extraction)
+      // Remove old logo if exists
       try {
         const oldLogoPath = path.join(logoDir, logoFileName);
         if (await fs.stat(oldLogoPath).catch(() => false)) {
@@ -160,42 +152,35 @@ pagesRouter.put("/homepage", upload.fields([
         }
       } catch (error) {
         console.warn('[PUT] Could not delete old logo:', error);
+        // Continue anyway - we'll overwrite the file
       }
 
-      // Use a direct copy method with detailed error handling
+      // Use a simpler, more direct approach to copy the file
       try {
+        // Read the file content
         const fileContent = await fs.readFile(logo.path);
         console.log('[PUT] Read file content, size:', fileContent.length);
         
-        // Ensure directory exists
-        await fs.mkdir(logoDir, { recursive: true });
-        console.log('[PUT] Created directory:', logoDir);
-        
-        // Write file with explicit permissions
-        await fs.writeFile(newPath, fileContent, { mode: 0o644 });
+        // Write the file
+        await fs.writeFile(newPath, fileContent);
         console.log('[PUT] Successfully wrote logo file to:', newPath);
         
-        // Double-check file was written correctly
-        const writtenStats = await fs.stat(newPath);
-        console.log('[PUT] Verified file stats:', {
+        // Verify the file was written
+        const stats = await fs.stat(newPath);
+        console.log('[PUT] Verified logo file exists:', {
           path: newPath,
-          size: writtenStats.size,
-          mode: writtenStats.mode.toString(8)
+          size: stats.size
         });
-        
-        // Set file permissions explicitly
-        await fs.chmod(newPath, 0o644);
-        console.log('[PUT] Set file permissions to 644');
       } catch (error) {
         console.error('[PUT] Error in logo file processing:', error);
         return res.status(500).json({ message: `Failed to save logo file: ${error.message}` });
       }
 
-      // Generate a truly unique timestamp to force cache invalidation
+      // Generate a timestamp to force cache invalidation
       const timestamp = Date.now();
-      // Set the logo path - use the absolute path to ensure consistency
+      // Set the logo path with timestamp for cache busting
       homepageConfig.logo = `/logo/logo.png?t=${timestamp}`;
-      console.log('[PUT] Updated logo path:', homepageConfig.logo);
+      console.log('[PUT] Updated logo path in config:', homepageConfig.logo);
 
       // Clean up temp file
       try {
