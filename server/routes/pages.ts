@@ -132,16 +132,20 @@ pagesRouter.put("/homepage", upload.fields([
 
       // Remove old logo if exists
       try {
-        const oldLogoPath = path.join(process.cwd(), 'public', homepageConfig.logo.replace(/^\//, ''));
-        await fs.unlink(oldLogoPath);
-        console.log('[PUT] Removed old logo:', oldLogoPath);
+        if (homepageConfig.logo) {
+          const oldLogoPath = path.join(process.cwd(), 'public', homepageConfig.logo.replace(/^\//, ''));
+          await fs.unlink(oldLogoPath);
+          console.log('[PUT] Removed old logo:', oldLogoPath);
+        }
       } catch (error) {
         console.warn('[PUT] Could not delete old logo:', error);
       }
 
       // Move new logo
       await fs.rename(logo.path, newPath);
-      homepageConfig.logo = `/logo/${logoFileName}`;
+      
+      // Add timestamp to prevent caching issues
+      homepageConfig.logo = `/logo/${logoFileName}?t=${Date.now()}`;
       console.log('[PUT] Updated logo path:', homepageConfig.logo);
 
       // Verify file exists after move

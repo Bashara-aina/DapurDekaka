@@ -14,13 +14,17 @@ export function LogoDisplay({ className, logoUrl }: LogoDisplayProps) {
   useEffect(() => {
     console.log("LogoDisplay: Logo URL changed to:", logoUrl);
     setImageError(false);
-    setCurrentSrc(logoUrl || "/logo/logo.png");
+    // Force browser to reload the image by adding/updating timestamp parameter
+    const url = logoUrl ? 
+      (logoUrl.includes('?') ? logoUrl : `${logoUrl}?t=${Date.now()}`) : 
+      `/logo/logo.png?t=${Date.now()}`;
+    setCurrentSrc(url);
   }, [logoUrl]);
 
   const handleError = () => {
     console.error("LogoDisplay: Failed to load logo from:", currentSrc);
     setImageError(true);
-    setCurrentSrc("/logo/logo.png");
+    setCurrentSrc(`/logo/logo.png?t=${Date.now()}`);
   };
 
   console.log("LogoDisplay: Rendering with src:", currentSrc, "logoUrl:", logoUrl);
