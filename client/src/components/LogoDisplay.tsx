@@ -15,22 +15,42 @@ export function LogoDisplay({ className, logoUrl }: LogoDisplayProps) {
     console.log("LogoDisplay: Logo URL changed to:", logoUrl);
     setImageError(false);
     
-    // Always strip any existing timestamp parameter
+    // Generate a completely unique URL to force reload
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 10);
     const baseUrl = logoUrl ? logoUrl.split('?')[0] : '/logo/logo.png';
+    const url = `${baseUrl}?nocache=${timestamp}-${randomStr}`;
     
-    // Create a more unique timestamp with random component
-    const uniqueId = `t=${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
-    const url = `${baseUrl}?${uniqueId}`;
-    console.log("LogoDisplay: Setting image src with unique ID:", url);
+    console.log("LogoDisplay: Setting image src with unique cache buster:", url);
     
-    // Force browser to actually reload the image by:
-    // 1. Setting a dummy src first
-    setCurrentSrc('data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
+    // Force browser to completely reload the image
+    // First, set to empty string to clear any existing image
+    setCurrentSrc('');
     
-    // 2. Then setting the actual src after a brief delay
+    // Then force a browser repaint
+    document.body.offsetHeight;
+    
+    // Finally set the new source with cache busting
     setTimeout(() => {
       setCurrentSrc(url);
-    }, 50);
+      
+      // Fetch image headers to debug caching issues
+      fetch(url, { 
+        method: 'HEAD',
+        cache: 'no-store',
+        headers: { 'Pragma': 'no-cache' }
+      })
+        .then(res => {
+          console.log("LogoDisplay: Image HEAD response:", {
+            status: res.status,
+            statusText: res.statusText,
+            contentType: res.headers.get('content-type'),
+            contentLength: res.headers.get('content-length'),
+            cacheControl: res.headers.get('cache-control')
+          });
+        })
+        .catch(err => console.error("LogoDisplay: Error checking image:", err));
+    }, 100);
   }, [logoUrl]);
 
   const handleError = () => {
