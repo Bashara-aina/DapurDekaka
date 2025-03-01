@@ -125,12 +125,7 @@ menuRouter.post("/sauces", upload.single("imageFile"), requireAuth, async (req, 
   }
 });
 
-          description: Boolean(req.body.description)
-        }
-      });
-    }
-
-    const data = {
+          const data = {
       name: req.body.name,
       description: req.body.description,
       imageUrl: `/uploads/${req.file.filename}`
