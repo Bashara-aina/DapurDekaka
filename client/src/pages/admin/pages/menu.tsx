@@ -267,10 +267,18 @@ export default function AdminMenuPage() {
     e.preventDefault();
     try {
       const formData = new FormData(e.currentTarget);
-      await apiRequest('/api/menu/sauces', {
+      
+      // Log what we're sending for debugging
+      console.log('Submitting sauce with name:', formData.get('name'));
+      console.log('Submitting sauce with description:', formData.get('description'));
+      console.log('Submitting sauce with image file:', formData.get('imageFile'));
+      
+      const response = await apiRequest('/api/menu/sauces', {
         method: 'POST',
         body: formData
       });
+      
+      console.log('Sauce creation response:', response);
 
       // Reset form
       e.currentTarget.reset();
@@ -281,7 +289,13 @@ export default function AdminMenuPage() {
       toast({ title: "Sauce added successfully" });
     } catch (error) {
       console.error('Add sauce error:', error);
-      toast({ title: "Failed to add sauce", variant: "destructive" });
+      // Show more detailed error message
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      toast({ 
+        title: "Failed to add sauce", 
+        description: errorMessage,
+        variant: "destructive" 
+      });
     }
   };
 
