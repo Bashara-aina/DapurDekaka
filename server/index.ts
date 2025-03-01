@@ -106,10 +106,12 @@ const startServer = async () => {
 
       server.listen(port, "0.0.0.0", () => {
         log(`[Server] Running on port ${port}`);
+        console.log(`[Server] Access your application at http://localhost:${port}`);
         resolve(server);
       }).on('error', (error: any) => {
         if (error.code === 'EADDRINUSE') {
           console.error(`[Error] Port ${port} is already in use. Please ensure no other instance is running.`);
+          console.error('[Server] Try running "pkill -f \'node.*server/index\'" to kill existing instances.');
         }
         reject(error);
       });
