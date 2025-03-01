@@ -19,35 +19,26 @@ export default function EntranceSection() {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const { t } = useLanguage();
 
-  const { data: pageData, refetch } = useQuery({
+  const { data: pageData } = useQuery({
     queryKey: ["pages", "homepage"],
     queryFn: async () => {
-      // Add timestamp to bust cache
-      const timestamp = new Date().getTime();
-      const response = await fetch(`/api/pages/homepage?t=${timestamp}`, {
+      const response = await fetch(`/api/pages/homepage`, {
         method: "GET",
         headers: {
-          "Cache-Control": "no-cache, no-store",
-          "Pragma": "no-cache"
+          "Cache-Control": "max-age=300",
         },
       });
       if (!response.ok) throw new Error("Failed to fetch homepage data");
       const data = await response.json();
-      console.log("Fetched homepage data:", data);
       return data;
     },
-    refetchInterval: false,
-    staleTime: 60000, // Reduce stale time to 1 minute for more frequent updates
-    gcTime: 300000,
-    refetchOnWindowFocus: true, // Enable refetch on window focus
-    refetchOnMount: true, // Always refetch on mount
-    refetchOnReconnect: true, // Always refetch on reconnect
+    refetchInterval: false, // Disable automatic refetching
+    staleTime: 300000, // Consider data fresh for 5 minutes
+    gcTime: 600000, // Keep unused data in cache for 10 minutes
+    refetchOnWindowFocus: false,
+    refetchOnMount: "if-stale",
+    refetchOnReconnect: "if-stale",
   });
-  
-  // Force refetch when the component is mounted
-  useEffect(() => {
-    refetch();
-  }, []);
 
   const assetImages =
     pageData?.carousel?.images ||
