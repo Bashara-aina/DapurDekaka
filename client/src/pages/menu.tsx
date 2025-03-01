@@ -8,23 +8,57 @@ import { MenuItem, Sauce } from "@shared/schema";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { OrderModal } from "@/components/OrderModal";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Menu() {
   const { t } = useLanguage();
-  const { data: menuItems, isLoading: menuLoading } = useQuery({
+  const { toast } = useToast();
+
+  const { data: menuItems, isLoading: menuLoading, error: menuError } = useQuery({
     queryKey: queryKeys.menu.items,
     queryFn: () => apiRequest("/api/menu/items"),
+    retry: 2,
+    onError: (error) => {
+      console.error("Failed to fetch menu items:", error);
+      toast({
+        title: "Error loading menu items",
+        description: "Please try refreshing the page",
+        variant: "destructive",
+      });
+    },
   });
 
-  const { data: sauces, isLoading: saucesLoading } = useQuery({
+  const { data: sauces, isLoading: saucesLoading, error: saucesError } = useQuery({
     queryKey: queryKeys.menu.sauces,
     queryFn: () => apiRequest("/api/menu/sauces"),
+    retry: 2,
+    onError: (error) => {
+      console.error("Failed to fetch sauces:", error);
+      toast({
+        title: "Error loading sauces",
+        description: "Please try refreshing the page",
+        variant: "destructive",
+      });
+    },
   });
 
   if (menuLoading || saucesLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (menuError || saucesError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <h2 className="text-xl font-semibold text-red-600">
+          {t("errors.loading")}
+        </h2>
+        <Button onClick={() => window.location.reload()}>
+          {t("actions.retry")}
+        </Button>
       </div>
     );
   }
@@ -54,6 +88,11 @@ export default function Menu() {
                     src={item.imageUrl}
                     alt={item.name}
                     className="object-cover w-full h-full"
+                    onError={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      img.src = '/placeholder-image.jpg'; // Add a placeholder image
+                      console.error(`Failed to load image: ${item.imageUrl}`);
+                    }}
                   />
                 </AspectRatio>
                 <div className="p-4 flex flex-col flex-grow gap-3">
@@ -96,6 +135,11 @@ export default function Menu() {
                         src={sauce.imageUrl}
                         alt={sauce.name}
                         className="object-cover w-full h-full"
+                        onError={(e) => {
+                          const img = e.target as HTMLImageElement;
+                          img.src = '/placeholder-image.jpg'; // Add a placeholder image
+                          console.error(`Failed to load image: ${sauce.imageUrl}`);
+                        }}
                       />
                     </AspectRatio>
                     <div className="p-4 flex flex-col gap-2">

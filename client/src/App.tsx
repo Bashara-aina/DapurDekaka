@@ -3,6 +3,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import NotFound from "@/pages/not-found";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
@@ -24,116 +25,164 @@ import FooterEditor from "@/pages/admin/pages/footer";
 
 function Router() {
   return (
-    <div className="min-h-screen flex flex-col">
-      <HalalLogo />
-      <Switch>
-        <Route path="/">
-          <div className="min-h-screen flex flex-col">
-            <Navbar />
-            <main className="flex-1">
-              <Home />
-            </main>
-            <Footer />
-          </div>
-        </Route>
-        <Route path="/menu">
-          <div className="min-h-screen flex flex-col">
-            <Navbar />
-            <main className="flex-1">
-              <Menu />
-            </main>
-            <Footer />
-          </div>
-        </Route>
-        <Route path="/about">
-          <div className="min-h-screen flex flex-col">
-            <Navbar />
-            <main className="flex-1">
-              <About />
-            </main>
-            <Footer />
-          </div>
-        </Route>
-        <Route path="/articles">
-          <div className="min-h-screen flex flex-col">
-            <Navbar />
-            <main className="flex-1">
-              <Articles />
-            </main>
-            <Footer />
-          </div>
-        </Route>
-        <Route path="/article/:id">
-          <div className="min-h-screen flex flex-col">
-            <Navbar />
-            <main className="flex-1">
-              <ArticleDetail />
-            </main>
-            <Footer />
-          </div>
-        </Route>
-        <Route path="/contact">
-          <div className="min-h-screen flex flex-col">
-            <Navbar />
-            <main className="flex-1">
-              <Contact />
-            </main>
-            <Footer />
-          </div>
-        </Route>
-        <Route path="/auth">
-          <AuthPage />
-        </Route>
-        <Route path="/admin">
-          <AdminDashboard />
-        </Route>
-        <Route path="/admin/blog">
-          <AdminBlog />
-        </Route>
-        <Route path="/admin/pages">
-          <AdminPages />
-        </Route>
-        <Route path="/admin/pages/:pageId">
-          {(params) => {
-            switch (params.pageId) {
-              case 'menu':
-                return <AdminMenuPage />;
-              case 'home':
-                return <HomePageEditor />;
-              case 'about':
-                return <AboutPageEditor />;
-              case 'footer':
-                return <FooterEditor />;
-              default:
-                return <div className="container mx-auto p-6">
-                  <h1 className="text-3xl font-bold mb-6">Edit {params.pageId.charAt(0).toUpperCase() + params.pageId.slice(1)} Page</h1>
-                  <p>Page editor for {params.pageId} will be implemented here</p>
-                </div>;
-            }
-          }}
-        </Route>
-        <Route>
-          <div className="min-h-screen flex flex-col">
-            <Navbar />
-            <main className="flex-1">
-              <NotFound />
-            </main>
-            <Footer />
-          </div>
-        </Route>
-      </Switch>
-    </div>
+    <ErrorBoundary>
+      <div className="min-h-screen flex flex-col">
+        <HalalLogo />
+        <Switch>
+          <Route path="/">
+            <div className="min-h-screen flex flex-col">
+              <Navbar />
+              <main className="flex-1">
+                <ErrorBoundary>
+                  <Home />
+                </ErrorBoundary>
+              </main>
+              <Footer />
+            </div>
+          </Route>
+          <Route path="/menu">
+            <div className="min-h-screen flex flex-col">
+              <Navbar />
+              <main className="flex-1">
+                <ErrorBoundary>
+                  <Menu />
+                </ErrorBoundary>
+              </main>
+              <Footer />
+            </div>
+          </Route>
+          <Route path="/about">
+            <div className="min-h-screen flex flex-col">
+              <Navbar />
+              <main className="flex-1">
+                <ErrorBoundary>
+                  <About />
+                </ErrorBoundary>
+              </main>
+              <Footer />
+            </div>
+          </Route>
+          <Route path="/articles">
+            <div className="min-h-screen flex flex-col">
+              <Navbar />
+              <main className="flex-1">
+                <ErrorBoundary>
+                  <Articles />
+                </ErrorBoundary>
+              </main>
+              <Footer />
+            </div>
+          </Route>
+          <Route path="/article/:id">
+            <div className="min-h-screen flex flex-col">
+              <Navbar />
+              <main className="flex-1">
+                <ErrorBoundary>
+                  <ArticleDetail />
+                </ErrorBoundary>
+              </main>
+              <Footer />
+            </div>
+          </Route>
+          <Route path="/contact">
+            <div className="min-h-screen flex flex-col">
+              <Navbar />
+              <main className="flex-1">
+                <ErrorBoundary>
+                  <Contact />
+                </ErrorBoundary>
+              </main>
+              <Footer />
+            </div>
+          </Route>
+          <Route path="/auth">
+            <ErrorBoundary>
+              <AuthPage />
+            </ErrorBoundary>
+          </Route>
+          <Route path="/admin">
+            <ErrorBoundary>
+              <AdminDashboard />
+            </ErrorBoundary>
+          </Route>
+          <Route path="/admin/blog">
+            <ErrorBoundary>
+              <AdminBlog />
+            </ErrorBoundary>
+          </Route>
+          <Route path="/admin/pages">
+            <ErrorBoundary>
+              <AdminPages />
+            </ErrorBoundary>
+          </Route>
+          <Route path="/admin/pages/:pageId">
+            {(params) => {
+              switch (params.pageId) {
+                case 'menu':
+                  return (
+                    <ErrorBoundary>
+                      <AdminMenuPage />
+                    </ErrorBoundary>
+                  );
+                case 'home':
+                  return (
+                    <ErrorBoundary>
+                      <HomePageEditor />
+                    </ErrorBoundary>
+                  );
+                case 'about':
+                  return (
+                    <ErrorBoundary>
+                      <AboutPageEditor />
+                    </ErrorBoundary>
+                  );
+                case 'footer':
+                  return (
+                    <ErrorBoundary>
+                      <FooterEditor />
+                    </ErrorBoundary>
+                  );
+                default:
+                  return (
+                    <ErrorBoundary>
+                      <div className="container mx-auto p-6">
+                        <h1 className="text-3xl font-bold mb-6">
+                          Edit {params.pageId.charAt(0).toUpperCase() + params.pageId.slice(1)} Page
+                        </h1>
+                        <p>Page editor for {params.pageId} will be implemented here</p>
+                      </div>
+                    </ErrorBoundary>
+                  );
+              }
+            }}
+          </Route>
+          <Route>
+            <div className="min-h-screen flex flex-col">
+              <Navbar />
+              <main className="flex-1">
+                <ErrorBoundary>
+                  <NotFound />
+                </ErrorBoundary>
+              </main>
+              <Footer />
+            </div>
+          </Route>
+        </Switch>
+      </div>
+    </ErrorBoundary>
   );
 }
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <LanguageProvider>
-        <Router />
-        <Toaster />
-      </LanguageProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <LanguageProvider>
+          <Router />
+          <Toaster />
+        </LanguageProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
