@@ -58,12 +58,20 @@ const setNoCacheHeaders = (res: any) => {
 };
 
 pagesRouter.get("/homepage", async (req, res) => {
+  // Apply stronger no-cache headers
   setNoCacheHeaders(res);
-  console.log('[GET] Sending homepage data:', homepageConfig);
-  res.json({
+
+  // Add logo version parameter to force client refresh
+  const configWithTimestamp = {
     ...homepageConfig,
-    timestamp: Date.now()
-  });
+    timestamp: Date.now(),
+    logo: homepageConfig.logo ? 
+      (homepageConfig.logo.includes('?') ? homepageConfig.logo : `${homepageConfig.logo}?t=${Date.now()}`) : 
+      homepageConfig.logo
+  };
+
+  console.log('[GET] Sending homepage data:', configWithTimestamp);
+  res.json(configWithTimestamp);
 });
 
 pagesRouter.put("/homepage", upload.fields([
@@ -113,45 +121,88 @@ pagesRouter.put("/homepage", upload.fields([
       const logo = files.logo[0];
       console.log('[PUT] Processing logo file:', logo);
 
-      // Get the original file extension, defaulting to .png if none
-      const ext = path.extname(logo.originalname).toLowerCase() || '.png';
-      const logoFileName = `logo${ext}`;
-      const logoDir = path.join(process.cwd(), 'public', 'logo');
+      // Use a fixed filename to avoid path issues
+      const logoFileName = 'logo.png';
+      // Save directly to the 'logo' directory in the project root
+      const logoDir = path.join(process.cwd(), 'logo');
       const newPath = path.join(logoDir, logoFileName);
-
-      console.log('[PUT] Logo processing details:', {
-        originalName: logo.originalname,
+      
+      console.log('[PUT] Logo file details:', {
+        originalFilename: logo.originalname,
         tempPath: logo.path,
-        targetDir: logoDir,
-        targetPath: newPath,
-        extension: ext
+        destination: newPath,
+        size: logo.size
       });
 
-      // Ensure logo directory exists
-      await fs.mkdir(logoDir, { recursive: true });
+      // Ensure directory exists with proper permissions
+      try {
+        await fs.mkdir(logoDir, { recursive: true });
+        console.log('[PUT] Logo directory created/verified:', logoDir);
+      } catch (error) {
+        console.error('[PUT] Error creating directory:', error);
+        return res.status(500).json({ message: `Failed to create logo directory: ${error.message}` });
+      }
 
       // Remove old logo if exists
       try {
-        const oldLogoPath = path.join(process.cwd(), 'public', homepageConfig.logo.replace(/^\//, ''));
-        await fs.unlink(oldLogoPath);
-        console.log('[PUT] Removed old logo:', oldLogoPath);
+        const oldLogoPath = path.join(logoDir, logoFileName);
+        if (await fs.stat(oldLogoPath).catch(() => false)) {
+          await fs.unlink(oldLogoPath);
+          console.log('[PUT] Removed old logo:', oldLogoPath);
+        }
       } catch (error) {
         console.warn('[PUT] Could not delete old logo:', error);
+        // Continue anyway - we'll overwrite the file
       }
 
-      // Move new logo
-      await fs.rename(logo.path, newPath);
-      homepageConfig.logo = `/logo/${logoFileName}`;
-      console.log('[PUT] Updated logo path:', homepageConfig.logo);
-
-      // Verify file exists after move
+      // Use a simpler, more direct approach to copy the file
       try {
-        await fs.access(newPath);
-        console.log('[PUT] Verified new logo exists at:', newPath);
+        // Read the file content
+        const fileContent = await fs.readFile(logo.path);
+        console.log('[PUT] Read file content, size:', fileContent.length);
+        
+        // Write the file
+        await fs.writeFile(newPath, fileContent);
+        console.log('[PUT] Successfully wrote logo file to:', newPath);
+        
+        // Verify the file was written
+        const stats = await fs.stat(newPath);
+        console.log('[PUT] Verified logo file exists:', {
+          path: newPath,
+          size: stats.size
+        });
       } catch (error) {
-        console.error('[PUT] Error: New logo file not found after move:', error);
-        return res.status(500).json({ message: "Failed to save logo file" });
+        console.error('[PUT] Error in logo file processing:', error);
+        return res.status(500).json({ message: `Failed to save logo file: ${error.message}` });
       }
+
+      // Generate a timestamp to force cache invalidation
+      const timestamp = Date.now();
+      // Set the logo path with timestamp for cache busting
+      homepageConfig.logo = `/logo/logo.png?t=${timestamp}`;
+      console.log('[PUT] Updated logo path in config:', homepageConfig.logo);
+
+      // Clean up temp file
+      try {
+        await fs.unlink(logo.path);
+      } catch (error) {
+        console.warn('[PUT] Failed to clean up temp file:', error);
+      }
+
+      // Verify file exists and log its details
+      try {
+        const stats = await fs.stat(newPath);
+        console.log('[PUT] Verified logo file:', {
+          exists: true,
+          size: stats.size,
+          path: newPath,
+          permissions: stats.mode.toString(8)
+        });
+      } catch (error) {
+        console.error('[PUT] Logo file verification failed:', error);
+        return res.status(500).json({ message: "Logo saved but verification failed" });
+      }
+
     }
 
     if (files.carouselImages) {
