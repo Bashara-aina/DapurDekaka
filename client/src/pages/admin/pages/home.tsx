@@ -88,6 +88,7 @@ export default function HomePageEditor() {
       subtitle: ""
     }
   });
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -139,13 +140,21 @@ export default function HomePageEditor() {
       return response.json();
     },
     onSuccess: () => {
-      // Invalidate the homepage query so it's refetched on next access
-      queryClient.invalidateQueries({ queryKey: ["pages", "homepage"] });
-      toast({
-        title: "Success",
-        description: "Homepage updated successfully",
-      });
-    },
+        // Invalidate both general and specific queries to ensure refresh
+        queryClient.invalidateQueries({ queryKey: ['pages'] });
+        queryClient.invalidateQueries({ queryKey: ['pages', 'homepage'] });
+
+        // Clear the preview and files state
+        setLogoPreview(null);
+        setFiles({ logo: [], carouselImages: [] });
+
+        toast({
+          title: "Success",
+          description: "Homepage settings updated successfully",
+        });
+
+        console.log("Homepage update successful, cache invalidated");
+      },
     onError: (error) => {
       toast({
         title: "Error",
@@ -219,6 +228,21 @@ export default function HomePageEditor() {
     }
   };
 
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFiles(prev => ({ ...prev, logo: [file] }));
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setLogoPreview(null);
+    }
+  };
+
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -265,8 +289,18 @@ export default function HomePageEditor() {
                   <Input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => setFiles(prev => ({ ...prev, logo: Array.from(e.target.files || []) }))}
+                    onChange={handleLogoChange}
                   />
+                  {logoPreview && (
+                    <div className="mt-4">
+                      <p className="text-sm font-medium mb-2">Logo Preview:</p>
+                      <img
+                        src={logoPreview}
+                        alt="Logo Preview"
+                        className="max-h-[100px] object-contain rounded-lg border p-2"
+                      />
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
