@@ -31,6 +31,7 @@ localPort = 6000
 externalPort = 6000
 
 [workflows]
+runButton = "Start application"
 
 [[workflows.workflow]]
 name = "Project"
@@ -53,5 +54,5 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run dev"
+args = "pkill -f 'server/index.ts' || true && npm run dev"
 waitForPort = 5000
