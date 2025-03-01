@@ -109,21 +109,30 @@ menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, r
 });
 
 // Create sauce (protected)
-menuRouter.post("/sauces", requireAuth, upload.single('imageFile'), async (req, res) => {
+menuRouter.post("/sauces", requireAuth, upload.single("imageFile"), async (req, res) => {
   try {
-    const data = {
+    // Get file path or URL
+    let imageUrl = req.file?.path || "";
+
+    // Ensure image URL starts with a forward slash for proper serving
+    if (imageUrl && !imageUrl.startsWith('/')) {
+      imageUrl = '/' + imageUrl;
+    }
+
+    // Validate data
+    const validation = insertSauceSchema.safeParse({
       name: req.body.name,
       description: req.body.description,
-      imageUrl: req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl,
-    };
+      imageUrl: imageUrl
+    });
 
-    const validation = insertSauceSchema.safeParse(data);
     if (!validation.success) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: fromZodError(validation.error).message
       });
     }
 
+    console.log("Creating sauce with data:", validation.data);
     const sauce = await storage.createSauce(validation.data);
     res.status(201).json(sauce);
   } catch (error) {

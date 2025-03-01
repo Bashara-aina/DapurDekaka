@@ -11,12 +11,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AdminNavbar from "@/components/layout/admin-navbar";
 import { queryKeys, apiRequest } from "@/lib/queryClient";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 export default function AdminMenuPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [editingSauce, setEditingSauce] = useState<Sauce | null>(null);
+  const [addingSauce, setAddingSauce] = useState(false); // Added state for adding sauce modal
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -102,12 +104,12 @@ export default function AdminMenuPage() {
   const handleEditSauce = async (formData: FormData) => {
     try {
       if (!editingSauce) return;
-      
+
       await apiRequest(`/api/menu/sauces/${editingSauce.id}`, {
         method: 'PUT',
         body: formData
       });
-      
+
       await queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
       toast({ title: "Sauce updated successfully" });
       setEditingSauce(null);
@@ -241,6 +243,43 @@ export default function AdminMenuPage() {
     createMutation.mutate(formData);
   };
 
+  const handleCreateItem = async (formData: FormData) => {
+    try {
+      const itemType = formData.get("itemType");
+
+      if (itemType === "sauce") {
+        // Handle sauce creation
+        await apiRequest("/api/menu/sauces", {
+          method: 'POST',
+          body: formData
+        });
+
+        await queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
+        toast({ title: "Sauce created successfully" });
+      } else {
+        // Handle menu item creation
+        await apiRequest("/api/menu/items", {
+          method: 'POST',
+          body: formData
+        });
+
+        await queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
+        toast({ title: "Menu item created successfully" });
+      }
+
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Create error:', error);
+      toast({ 
+        title: formData.get("itemType") === "sauce" 
+          ? "Failed to create sauce" 
+          : "Failed to create menu item", 
+        variant: "destructive" 
+      });
+    }
+  };
+
+
   if (menuLoading || saucesLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -258,6 +297,10 @@ export default function AdminMenuPage() {
           <Button onClick={() => setIsEditing(true)}>
             <Plus className="w-4 h-4 mr-2" />
             Add Item
+          </Button>
+          <Button onClick={() => setAddingSauce(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Sauce
           </Button>
         </div>
 
@@ -416,41 +459,103 @@ export default function AdminMenuPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!editingSauce} onOpenChange={() => setEditingSauce(null)}>
+      {/* Add Sauce Modal */}
+      <Dialog open={addingSauce} onOpenChange={(open) => !open && setAddingSauce(false)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Sauce</DialogTitle>
+            <DialogTitle>Add New Sauce</DialogTitle>
+            <DialogDescription>
+              Fill in the sauce details below.
+            </DialogDescription>
           </DialogHeader>
-          <form onSubmit={(e) => {
+          <form encType="multipart/form-data" onSubmit={(e) => {
             e.preventDefault();
-            handleEditSauce(new FormData(e.currentTarget));
+            const formData = new FormData(e.currentTarget);
+            // Add metadata to identify this as a sauce creation
+            formData.append("itemType", "sauce");
+            handleCreateItem(formData);
+            setAddingSauce(false);
           }}>
-            <div className="space-y-4">
-              <Input
-                name="name"
-                defaultValue={editingSauce?.name}
-                placeholder="Sauce name"
-              />
-              <Textarea
-                name="description"
-                defaultValue={editingSauce?.description}
-                placeholder="Description"
-              />
-              <Input
-                type="file"
-                name="imageFile"
-                accept="image/*"
-              />
-              <Input
-                type="hidden"
-                name="imageUrl"
-                defaultValue={editingSauce?.imageUrl}
-              />
-              <Button type="submit">Save Changes</Button>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">Name</Label>
+                <Input id="name" name="name" required />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea id="description" name="description" required />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="imageFile">Image</Label>
+                <Input id="imageFile" name="imageFile" type="file" accept="image/*" required />
+              </div>
             </div>
+
+            <DialogFooter>
+              <Button type="submit">Add Sauce</Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Sauce Modal */}
+      {editingSauce && (
+        <Dialog open={!!editingSauce} onOpenChange={(open) => !open && setEditingSauce(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Sauce</DialogTitle>
+              <DialogDescription>
+                Make changes to the sauce details below.
+              </DialogDescription>
+            </DialogHeader>
+            <form encType="multipart/form-data" onSubmit={(e) => {
+              e.preventDefault();
+              handleEditSauce(new FormData(e.currentTarget));
+            }}>
+              <input type="hidden" name="id" value={editingSauce.id} />
+
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="name">Name</Label>
+                  <Input 
+                    id="name" 
+                    name="name" 
+                    defaultValue={editingSauce.name} 
+                    required 
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea 
+                    id="description" 
+                    name="description" 
+                    defaultValue={editingSauce.description} 
+                    required 
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="imageFile">Image</Label>
+                  <Input 
+                    id="imageFile" 
+                    name="imageFile" 
+                    type="file" 
+                    accept="image/*"
+                  />
+                  <p className="text-sm text-gray-500">Current image: {editingSauce.imageUrl}</p>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button type="submit">Save Changes</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }
