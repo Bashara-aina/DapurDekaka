@@ -149,62 +149,38 @@ export default function AdminMenuPage() {
       console.log('\n=== Frontend Request Debug ===');
       console.log('Content-Type:', 'multipart/form-data');
 
-      // Log each field separately for clarity
-      const fields = Array.from(formData.entries()).reduce((acc: Record<string, any>, [key, value]) => {
-        if (value instanceof File) {
-          acc[key] = {
-            type: 'File',
-            name: value.name,
-            size: value.size,
-            mimeType: value.type
-          };
+      for (const [key, value] of formData.entries()) {
+        if (key === 'imageFile') {
+          console.log(`${key}: [File]`);
         } else {
-          acc[key] = {
-            type: 'Field',
-            value: value
-          };
+          console.log(`${key}: ${value}`);
         }
-        return acc;
-      }, {});
+      }
 
-      console.log('Form Fields:', JSON.stringify(fields, null, 2));
+      // Check if we're creating a sauce or menu item
+      const itemType = formData.get('itemType');
+      console.log('Creating item type:', itemType);
 
-      const response = await fetch("/api/menu/items", {
-        method: "POST",
+      const response = await fetch('/api/menu/items', {
+        method: 'POST',
         body: formData,
-        credentials: 'include'
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Request Failed:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorText,
-          contentType: response.headers.get('content-type')
-        });
-        throw new Error(`Failed to create menu item: ${errorText}`);
+        throw new Error(errorText || 'Failed to create item');
       }
 
-      const result = await response.json();
-      console.log('Request Succeeded:', result);
-      return result;
+      return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/menu"] });
-      setIsEditing(false);
-      toast({
-        title: "Success",
-        description: "Menu item created successfully",
-      });
-    },
-    onError: (error: Error) => {
-      console.error('Mutation Error:', error);
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+    onSuccess: (data, variables) => {
+      // Check which item type was created to invalidate the correct query
+      const itemType = variables.get('itemType');
+      if (itemType === 'sauce') {
+        queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
+      } else {
+        queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
+      }
     },
   });
 
@@ -245,35 +221,28 @@ export default function AdminMenuPage() {
 
   const handleCreateItem = async (formData: FormData) => {
     try {
-      const itemType = formData.get("itemType");
+      console.log("Form data keys:", Array.from(formData.keys()));
+      console.log("Item type:", formData.get("itemType"));
 
+      await createMutation.mutateAsync(formData);
+
+      // Check which type of item was created
+      const itemType = formData.get("itemType") as string;
       if (itemType === "sauce") {
-        // Handle sauce creation
-        await apiRequest("/api/menu/sauces", {
-          method: 'POST',
-          body: formData
-        });
-
-        await queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
         toast({ title: "Sauce created successfully" });
+        await queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
       } else {
-        // Handle menu item creation
-        await apiRequest("/api/menu/items", {
-          method: 'POST',
-          body: formData
-        });
-
-        await queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
         toast({ title: "Menu item created successfully" });
+        await queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
       }
 
+      // Reset form and close dialog
       setIsEditing(false);
+      setAddingSauce(false);
     } catch (error) {
-      console.error('Create error:', error);
+      console.error("Error creating item:", error);
       toast({ 
-        title: formData.get("itemType") === "sauce" 
-          ? "Failed to create sauce" 
-          : "Failed to create menu item", 
+        title: "Failed to create item", 
         variant: "destructive" 
       });
     }
