@@ -266,31 +266,36 @@ export default function AdminMenuPage() {
   const handleAddSauceSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      const formData = new FormData(e.currentTarget);
-      
-      // Log what we're sending for debugging
-      console.log('Submitting sauce with name:', formData.get('name'));
-      console.log('Submitting sauce with description:', formData.get('description'));
-      console.log('Submitting sauce with image file:', formData.get('imageFile'));
-      
-      const response = await apiRequest('/api/menu/sauces', {
-        method: 'POST',
-        body: formData
+      const form = e.currentTarget;
+      const formData = new FormData(form);
+
+      // Log form data to debug
+      console.log("Form data being submitted:");
+      for (const pair of formData.entries()) {
+        console.log(pair[0], pair[1]);
+      }
+
+      const response = await apiRequest("/api/menu/sauces", {
+        method: "POST",
+        body: formData,
+        credentials: 'include' // Added credentials for authentication
+        // Don't set Content-Type header here - browser will set it with boundary for multipart/form-data
       });
-      
-      console.log('Sauce creation response:', response);
 
-      // Reset form
-      e.currentTarget.reset();
-
-      // Refetch sauces
+      console.log("Sauce creation response:", response);
+      form.reset();
       await queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
-
       toast({ title: "Sauce added successfully" });
     } catch (error) {
       console.error('Add sauce error:', error);
-      // Show more detailed error message
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      // Show more detailed error message with response details if available
+      let errorMessage = "Unknown error";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        errorMessage = JSON.stringify(error);
+      }
+
       toast({ 
         title: "Failed to add sauce", 
         description: errorMessage,
