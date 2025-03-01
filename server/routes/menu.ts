@@ -77,6 +77,33 @@ menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, r
         message: "Name and description are required",
         receivedFields: {
           name: Boolean(req.body.name),
+          description: Boolean(req.body.description)
+        }
+      });
+    }
+
+    const data = {
+      name: req.body.name,
+      description: req.body.description,
+      imageUrl: `/uploads/${req.file.filename}`
+    };
+
+    console.log('Data to be inserted:', data);
+
+    const validation = insertMenuItemSchema.safeParse(data);
+    if (!validation.success) {
+      return res.status(400).json({ 
+        message: fromZodError(validation.error).message
+      });
+    }
+    
+    const menuItem = await storage.createMenuItem(validation.data);
+    res.status(201).json(menuItem);
+  } catch (error) {
+    console.error("Failed to create menu item:", error);
+    res.status(500).json({ message: "Failed to create menu item" });
+  }
+});
 
 // Upload image for sauce items
 menuRouter.post("/sauces/upload", upload.single("imageFile"), requireAuth, async (req, res) => {
