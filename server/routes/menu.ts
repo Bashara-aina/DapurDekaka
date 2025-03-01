@@ -51,8 +51,8 @@ menuRouter.get("/items", async (_req, res) => {
 // Get all sauces
 menuRouter.get("/sauces", async (_req, res) => {
   try {
-    const sauces = await storage.getAllSauces();
-    res.json(sauces);
+    const allSauces = await storage.getAllSauces();
+    res.json(allSauces);
   } catch (error) {
     console.error("Failed to fetch sauces:", error);
     res.status(500).json({ message: "Failed to fetch sauces" });
@@ -109,23 +109,30 @@ menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, r
 });
 
 // Create sauce (protected)
-menuRouter.post("/sauces", requireAuth, upload.single('imageFile'), async (req, res) => {
+menuRouter.post("/sauces", requireAuth, upload.single("imageFile"), async (req, res) => {
   try {
-    const data = {
-      name: req.body.name,
-      description: req.body.description,
-      imageUrl: req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl,
-    };
+    let imageUrl = req.body.imageUrl;
 
-    const validation = insertSauceSchema.safeParse(data);
-    if (!validation.success) {
-      return res.status(400).json({ 
-        message: fromZodError(validation.error).message
-      });
+    if (req.file) {
+      imageUrl = `/uploads/${req.file.filename}`;
     }
 
-    const sauce = await storage.createSauce(validation.data);
-    res.status(201).json(sauce);
+    if (!imageUrl) {
+      return res.status(400).json({ message: "Image is required" });
+    }
+
+    const validation = insertSauceSchema.safeParse({
+      name: req.body.name,
+      description: req.body.description,
+      imageUrl: imageUrl,
+    });
+
+    if (!validation.success) {
+      return res.status(400).json({ message: fromZodError(validation.error).message });
+    }
+
+    const newSauce = await storage.createSauce(validation.data);
+    res.status(201).json(newSauce);
   } catch (error) {
     console.error("Failed to create sauce:", error);
     res.status(500).json({ message: "Failed to create sauce" });

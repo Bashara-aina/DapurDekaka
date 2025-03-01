@@ -102,12 +102,12 @@ export default function AdminMenuPage() {
   const handleEditSauce = async (formData: FormData) => {
     try {
       if (!editingSauce) return;
-      
+
       await apiRequest(`/api/menu/sauces/${editingSauce.id}`, {
         method: 'PUT',
         body: formData
       });
-      
+
       await queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
       toast({ title: "Sauce updated successfully" });
       setEditingSauce(null);
@@ -239,6 +239,50 @@ export default function AdminMenuPage() {
     }
 
     createMutation.mutate(formData);
+  };
+
+  const handleAddItemSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    try {
+      const formData = new FormData(e.currentTarget);
+      await apiRequest('/api/menu/items', {
+        method: 'POST',
+        body: formData
+      });
+
+      // Reset form
+      e.currentTarget.reset();
+
+      // Refetch menu items
+      await queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
+
+      toast({ title: "Menu item added successfully" });
+    } catch (error) {
+      console.error('Add error:', error);
+      toast({ title: "Failed to add menu item", variant: "destructive" });
+    }
+  };
+
+  const handleAddSauceSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    try {
+      const formData = new FormData(e.currentTarget);
+      await apiRequest('/api/menu/sauces', {
+        method: 'POST',
+        body: formData
+      });
+
+      // Reset form
+      e.currentTarget.reset();
+
+      // Refetch sauces
+      await queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
+
+      toast({ title: "Sauce added successfully" });
+    } catch (error) {
+      console.error('Add sauce error:', error);
+      toast({ title: "Failed to add sauce", variant: "destructive" });
+    }
   };
 
   if (menuLoading || saucesLoading) {
