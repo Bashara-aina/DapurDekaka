@@ -123,14 +123,11 @@ menuRouter.post("/sauces", requireAuth, upload.single("imageFile"), async (req, 
       return res.status(400).json({ message: "Name and description are required" });
     }
 
-    // Build sauce data object
+    // Build sauce data object matching exactly what's in the schema
     const sauceData = {
       name,
       description,
-      // Include other required schema fields
-      price: 0,  // Default price
-      category: "sauce", // Default category
-      imageUrl: imageFile ? `/uploads/${imageFile.filename}` : "/sauce/Chilli Oil.jpg", // Default image if none provided
+      imageUrl: imageFile ? `/uploads/${imageFile.filename}` : "/sauce/Chilli Oil.jpg" // Default image if none provided
     };
 
     console.log("Prepared sauce data:", sauceData);
