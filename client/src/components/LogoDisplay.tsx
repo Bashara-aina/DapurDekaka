@@ -23,34 +23,46 @@ export function LogoDisplay({ className, logoUrl }: LogoDisplayProps) {
     
     console.log("LogoDisplay: Setting image src with unique cache buster:", url);
     
-    // Force browser to completely reload the image
-    // First, set to empty string to clear any existing image
-    setCurrentSrc('');
-    
-    // Then force a browser repaint
-    document.body.offsetHeight;
-    
-    // Finally set the new source with cache busting
-    setTimeout(() => {
-      setCurrentSrc(url);
-      
-      // Fetch image headers to debug caching issues
-      fetch(url, { 
-        method: 'HEAD',
-        cache: 'no-store',
-        headers: { 'Pragma': 'no-cache' }
+    // Check if the file exists before trying to load it
+    fetch(baseUrl, { 
+      method: 'HEAD',
+      cache: 'no-store',
+      headers: { 'Pragma': 'no-cache' }
+    })
+      .then(res => {
+        console.log("LogoDisplay: Logo file check result:", {
+          status: res.status,
+          statusText: res.statusText,
+          headers: Object.fromEntries([...res.headers.entries()])
+        });
+        
+        if (res.ok) {
+          // File exists, proceed with loading it
+          // Force browser to completely reload the image
+          setCurrentSrc('');
+          
+          // Then force a browser repaint
+          document.body.offsetHeight;
+          
+          // Finally set the new source with cache busting
+          setTimeout(() => {
+            setCurrentSrc(url);
+            
+            // Log full image URL for debugging
+            console.log("LogoDisplay: Set final image URL:", url);
+          }, 100);
+        } else {
+          // File doesn't exist or other error
+          console.error("LogoDisplay: Logo file not accessible:", baseUrl);
+          setImageError(true);
+          setCurrentSrc(`/logo/logo.png?fallback=${timestamp}`);
+        }
       })
-        .then(res => {
-          console.log("LogoDisplay: Image HEAD response:", {
-            status: res.status,
-            statusText: res.statusText,
-            contentType: res.headers.get('content-type'),
-            contentLength: res.headers.get('content-length'),
-            cacheControl: res.headers.get('cache-control')
-          });
-        })
-        .catch(err => console.error("LogoDisplay: Error checking image:", err));
-    }, 100);
+      .catch(err => {
+        console.error("LogoDisplay: Error checking logo file:", err);
+        setImageError(true);
+        setCurrentSrc(`/logo/logo.png?fallback=${timestamp}`);
+      });
   }, [logoUrl]);
 
   const handleError = () => {

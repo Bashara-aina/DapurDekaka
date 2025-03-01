@@ -125,6 +125,13 @@ pagesRouter.put("/homepage", upload.fields([
       const logoFileName = 'logo.png';
       const logoDir = path.join(process.cwd(), 'public', 'logo');
       const newPath = path.join(logoDir, logoFileName);
+      
+      console.log('[PUT] Logo file details:', {
+        originalFilename: logo.originalname,
+        tempPath: logo.path,
+        destination: newPath,
+        size: logo.size
+      });
 
       console.log('[PUT] Logo processing details:', {
         originalName: logo.originalname,
@@ -155,14 +162,33 @@ pagesRouter.put("/homepage", upload.fields([
         console.warn('[PUT] Could not delete old logo:', error);
       }
 
-      // Use a direct copy method
+      // Use a direct copy method with detailed error handling
       try {
         const fileContent = await fs.readFile(logo.path);
-        await fs.writeFile(newPath, fileContent);
-        console.log('[PUT] Successfully copied logo file, size:', fileContent.length);
+        console.log('[PUT] Read file content, size:', fileContent.length);
+        
+        // Ensure directory exists
+        await fs.mkdir(logoDir, { recursive: true });
+        console.log('[PUT] Created directory:', logoDir);
+        
+        // Write file with explicit permissions
+        await fs.writeFile(newPath, fileContent, { mode: 0o644 });
+        console.log('[PUT] Successfully wrote logo file to:', newPath);
+        
+        // Double-check file was written correctly
+        const writtenStats = await fs.stat(newPath);
+        console.log('[PUT] Verified file stats:', {
+          path: newPath,
+          size: writtenStats.size,
+          mode: writtenStats.mode.toString(8)
+        });
+        
+        // Set file permissions explicitly
+        await fs.chmod(newPath, 0o644);
+        console.log('[PUT] Set file permissions to 644');
       } catch (error) {
-        console.error('[PUT] Error copying logo file:', error);
-        return res.status(500).json({ message: "Failed to save logo file" });
+        console.error('[PUT] Error in logo file processing:', error);
+        return res.status(500).json({ message: `Failed to save logo file: ${error.message}` });
       }
 
       // Generate a truly unique timestamp to force cache invalidation
