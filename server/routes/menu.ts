@@ -77,6 +77,54 @@ menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, r
         message: "Name and description are required",
         receivedFields: {
           name: Boolean(req.body.name),
+
+// Upload image for sauce items
+menuRouter.post("/sauces/upload", upload.single("imageFile"), requireAuth, async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file provided" });
+    }
+    
+    const imageUrl = `/uploads/${req.file.filename}`;
+    res.json({ imageUrl });
+  } catch (error) {
+    console.error("Failed to upload sauce image:", error);
+    res.status(500).json({ message: "Failed to upload sauce image" });
+  }
+});
+
+// Create a new sauce (protected)
+menuRouter.post("/sauces", upload.single("imageFile"), requireAuth, async (req, res) => {
+  try {
+    console.log("Creating sauce with request:", {
+      body: req.body,
+      file: req.file
+    });
+    
+    if (!req.file) {
+      return res.status(400).json({ message: "Image file is required" });
+    }
+    
+    const imageUrl = `/uploads/${req.file.filename}`;
+    
+    const validation = insertSauceSchema.safeParse({
+      name: req.body.name,
+      description: req.body.description,
+      imageUrl
+    });
+    
+    if (!validation.success) {
+      return res.status(400).json({ message: fromZodError(validation.error).message });
+    }
+    
+    const sauce = await storage.createSauce(validation.data);
+    res.status(201).json(sauce);
+  } catch (error) {
+    console.error("Failed to create sauce:", error);
+    res.status(500).json({ message: "Failed to create sauce" });
+  }
+});
+
           description: Boolean(req.body.description)
         }
       });

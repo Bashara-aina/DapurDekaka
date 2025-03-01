@@ -17,6 +17,7 @@ export default function AdminMenuPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [editingSauce, setEditingSauce] = useState<Sauce | null>(null);
+  const [isAddingSauce, setIsAddingSauce] = useState(false); // New state for adding sauces
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -102,12 +103,12 @@ export default function AdminMenuPage() {
   const handleEditSauce = async (formData: FormData) => {
     try {
       if (!editingSauce) return;
-      
+
       await apiRequest(`/api/menu/sauces/${editingSauce.id}`, {
         method: 'PUT',
         body: formData
       });
-      
+
       await queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
       toast({ title: "Sauce updated successfully" });
       setEditingSauce(null);
@@ -142,31 +143,8 @@ export default function AdminMenuPage() {
     queryFn: () => apiRequest("/api/menu/sauces")
   });
 
-  const createMutation = useMutation({
+  const createMenuItemMutation = useMutation({ // Mutation for creating menu items
     mutationFn: async (formData: FormData) => {
-      console.log('\n=== Frontend Request Debug ===');
-      console.log('Content-Type:', 'multipart/form-data');
-
-      // Log each field separately for clarity
-      const fields = Array.from(formData.entries()).reduce((acc: Record<string, any>, [key, value]) => {
-        if (value instanceof File) {
-          acc[key] = {
-            type: 'File',
-            name: value.name,
-            size: value.size,
-            mimeType: value.type
-          };
-        } else {
-          acc[key] = {
-            type: 'Field',
-            value: value
-          };
-        }
-        return acc;
-      }, {});
-
-      console.log('Form Fields:', JSON.stringify(fields, null, 2));
-
       const response = await fetch("/api/menu/items", {
         method: "POST",
         body: formData,
@@ -175,21 +153,13 @@ export default function AdminMenuPage() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Request Failed:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorText,
-          contentType: response.headers.get('content-type')
-        });
         throw new Error(`Failed to create menu item: ${errorText}`);
       }
 
-      const result = await response.json();
-      console.log('Request Succeeded:', result);
-      return result;
+      return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/menu"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
       setIsEditing(false);
       toast({
         title: "Success",
@@ -197,7 +167,6 @@ export default function AdminMenuPage() {
       });
     },
     onError: (error: Error) => {
-      console.error('Mutation Error:', error);
       toast({
         title: "Error",
         description: error.message,
@@ -206,40 +175,48 @@ export default function AdminMenuPage() {
     },
   });
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const createSauceMutation = useMutation({ // Mutation for creating sauces
+    mutationFn: async (formData: FormData) => {
+      const response = await fetch("/api/menu/sauces", {
+        method: "POST",
+        body: formData,
+        credentials: 'include'
+      });
 
-    console.log('\n=== Form Submission Debug ===');
-    const form = e.currentTarget;
-
-    console.log('Form Properties:', {
-      method: form.method,
-      enctype: form.enctype,
-      action: form.action,
-      elements: Array.from(form.elements).map(el => ({
-        name: (el as HTMLInputElement).name,
-        type: (el as HTMLInputElement).type,
-        id: (el as HTMLInputElement).id
-      }))
-    });
-
-    const formData = new FormData(form);
-
-    console.log('Form Fields:');
-    for (const [key, value] of formData.entries()) {
-      if (value instanceof File) {
-        console.log(`Field: ${key} (File)`, {
-          name: value.name,
-          type: value.type,
-          size: value.size
-        });
-      } else {
-        console.log(`Field: ${key}`, value);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to create sauce: ${errorText}`);
       }
-    }
 
-    createMutation.mutate(formData);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
+      setIsAddingSauce(false);
+      toast({
+        title: "Success",
+        description: "Sauce created successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleMenuItemSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    createMenuItemMutation.mutate(new FormData(e.currentTarget));
   };
+
+  const handleSauceSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    createSauceMutation.mutate(new FormData(e.currentTarget));
+  };
+
 
   if (menuLoading || saucesLoading) {
     return (
@@ -253,82 +230,153 @@ export default function AdminMenuPage() {
     <>
       <AdminNavbar />
       <div className="container mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Menu Management</h1>
-          <Button onClick={() => setIsEditing(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Item
-          </Button>
-        </div>
-
-        <Sheet open={isEditing} onOpenChange={setIsEditing}>
-          <SheetContent className="sm:max-w-[425px]">
-            <SheetHeader>
-              <SheetTitle>Add New Menu Item</SheetTitle>
-            </SheetHeader>
-            <form
-              onSubmit={handleSubmit}
-              className="space-y-4 mt-4"
-              encType="multipart/form-data"
-              method="POST"
-            >
-              <div className="space-y-2">
-                <label htmlFor="name" className="text-sm font-medium">Name</label>
-                <Input
-                  id="name"
-                  name="name"
-                  placeholder="Enter item name"
-                  required
-                  onChange={(e) => console.log('Name input changed:', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="description" className="text-sm font-medium">Description</label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  placeholder="Enter item description"
-                  required
-                  onChange={(e) => console.log('Description input changed:', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="imageFile" className="text-sm font-medium">Image</label>
-                <Input
-                  id="imageFile"
-                  name="imageFile"
-                  type="file"
-                  accept="image/*"
-                  required
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      console.log('Image file selected:', {
-                        name: file.name,
-                        type: file.type,
-                        size: file.size
-                      });
-                    }
-                  }}
-                />
-              </div>
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={createMutation.isPending}
-                onClick={() => console.log('Submit button clicked')}
-              >
-                {createMutation.isPending ? 'Creating...' : 'Create'}
-              </Button>
-            </form>
-          </SheetContent>
-        </Sheet>
-
         <Tabs defaultValue="menu" className="space-y-4">
           <TabsList>
             <TabsTrigger value="menu">Menu Items</TabsTrigger>
             <TabsTrigger value="sauces">Sauces</TabsTrigger>
           </TabsList>
+
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-3xl font-bold">Menu Management</h1>
+            {/* Show the appropriate Add button based on the current tab */}
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => {
+                  setIsEditing(true);
+                  setIsAddingSauce(false);
+                }}
+                className="menu-tab-button"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Menu Item
+              </Button>
+              <Button 
+                onClick={() => {
+                  setIsAddingSauce(true);
+                  setIsEditing(false);
+                }}
+                className="sauce-tab-button"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Sauce
+              </Button>
+            </div>
+          </div>
+
+          {/* Sheet for adding menu items */}
+          <Sheet open={isEditing} onOpenChange={setIsEditing}>
+            <SheetContent className="sm:max-w-[425px]">
+              <SheetHeader>
+                <SheetTitle>Add New Menu Item</SheetTitle>
+              </SheetHeader>
+              <form
+                onSubmit={handleMenuItemSubmit}
+                className="space-y-4 mt-4"
+                encType="multipart/form-data"
+                method="POST"
+              >
+                <div className="space-y-2">
+                  <label htmlFor="name" className="text-sm font-medium">Name</label>
+                  <Input
+                    id="name"
+                    name="name"
+                    placeholder="Enter item name"
+                    required
+                    onChange={(e) => console.log('Name input changed:', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="description" className="text-sm font-medium">Description</label>
+                  <Textarea
+                    id="description"
+                    name="description"
+                    placeholder="Enter item description"
+                    required
+                    onChange={(e) => console.log('Description input changed:', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="imageFile" className="text-sm font-medium">Image</label>
+                  <Input
+                    id="imageFile"
+                    name="imageFile"
+                    type="file"
+                    accept="image/*"
+                    required
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        console.log('Image file selected:', {
+                          name: file.name,
+                          type: file.type,
+                          size: file.size
+                        });
+                      }
+                    }}
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={createMenuItemMutation.isPending}
+                  onClick={() => console.log('Submit button clicked')}
+                >
+                  {createMenuItemMutation.isPending ? 'Creating...' : 'Create Menu Item'}
+                </Button>
+              </form>
+            </SheetContent>
+          </Sheet>
+
+          {/* Sheet for adding sauces */}
+          <Sheet open={isAddingSauce} onOpenChange={setIsAddingSauce}>
+            <SheetContent className="sm:max-w-[425px]">
+              <SheetHeader>
+                <SheetTitle>Add New Sauce</SheetTitle>
+              </SheetHeader>
+              <form
+                onSubmit={handleSauceSubmit}
+                className="space-y-4 mt-4"
+                encType="multipart/form-data"
+                method="POST"
+              >
+                <div className="space-y-2">
+                  <label htmlFor="sauce-name" className="text-sm font-medium">Name</label>
+                  <Input
+                    id="sauce-name"
+                    name="name"
+                    placeholder="Enter sauce name"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="sauce-description" className="text-sm font-medium">Description</label>
+                  <Textarea
+                    id="sauce-description"
+                    name="description"
+                    placeholder="Enter sauce description"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="sauce-imageFile" className="text-sm font-medium">Image</label>
+                  <Input
+                    id="sauce-imageFile"
+                    name="imageFile"
+                    type="file"
+                    accept="image/*"
+                    required
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={createSauceMutation.isPending}
+                >
+                  {createSauceMutation.isPending ? 'Creating...' : 'Create Sauce'}
+                </Button>
+              </form>
+            </SheetContent>
+          </Sheet>
 
           <TabsContent value="menu">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
