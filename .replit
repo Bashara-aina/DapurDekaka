@@ -26,6 +26,10 @@ externalPort = 3001
 localPort = 5002
 externalPort = 3002
 
+[[ports]]
+localPort = 6000
+externalPort = 6000
+
 [workflows]
 
 [[workflows.workflow]]
