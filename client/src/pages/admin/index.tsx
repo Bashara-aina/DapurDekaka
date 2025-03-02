@@ -10,9 +10,14 @@ export default function AdminDashboard() {
     queryKey: ['/api/auth-check'],
     queryFn: async () => {
       const response = await fetch('/api/auth-check', {
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
       });
       if (!response.ok) {
+        console.error('Auth check failed:', await response.text());
         throw new Error('Unauthorized');
       }
       return true;

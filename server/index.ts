@@ -5,8 +5,23 @@ import path from "path";
 import fs from 'fs';
 import { storage } from "./storage";
 import { createServer } from 'http';
+import cors from 'cors';
 
 const app = express();
+
+// Configure CORS for cross-domain cookie support
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow any origin that includes .replit.app or localhost
+    const allowedOrigins = [/\.replit\.app$/, /^https?:\/\/localhost/];
+    const allowed = !origin || allowedOrigins.some(pattern => pattern.test(origin));
+    callback(null, allowed ? origin : false);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
