@@ -22,11 +22,13 @@ export default function AuthPage() {
           headers: {
             "Content-Type": "application/json",
           },
+          credentials: "include", // Important for sessions to work across domains
           body: JSON.stringify({ username, password }),
         });
 
         if (!response.ok) {
-          throw new Error("Invalid credentials");
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || "Invalid credentials");
         }
 
         toast({
@@ -40,6 +42,7 @@ export default function AuthPage() {
           headers: {
             "Content-Type": "application/json",
           },
+          credentials: "include", // Important for sessions to work across domains
           body: JSON.stringify({ username, email, password }),
         });
 

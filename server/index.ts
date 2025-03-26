@@ -30,20 +30,7 @@ app.use(cors({
   exposedHeaders: ['Set-Cookie']
 }));
 
-// Configure session middleware with secure settings
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-secret-key',
-  resave: false,
-  saveUninitialized: false,
-  proxy: true,
-  cookie: {
-    secure: true,
-    sameSite: 'none',
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    domain: process.env.NODE_ENV === 'production' ? '.replit.app' : undefined
-  }
-}));
-
+// Session middleware is configured in routes.ts to prevent duplication
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -120,9 +107,12 @@ const startServer = async () => {
     // Create required directories (but don't wait for it to complete)
     const dirPromise = createRequiredDirectories();
 
-    // Use a fixed port instead of finding an available one
-    const port = process.env.PORT ? Number(process.env.PORT) : 5000;
-    console.log(`[Port] Using port ${port} for server`);
+    // Try to use the provided port, but fall back to 0 (dynamic port) if it's busy
+    const initialPort = process.env.PORT ? Number(process.env.PORT) : 5000;
+    const fallbackPort = 0; // This will let the OS assign an available port
+    let port = initialPort;
+    
+    console.log(`[Port] Attempting to use port ${initialPort} for server`);
 
     // Register routes before static files
     server = registerRoutes(app);
@@ -147,29 +137,42 @@ const startServer = async () => {
     // Ensure directories are created before continuing
     await dirPromise;
 
-    // Start the server with improved error handling
+    // Start the server with improved error handling and fallback port
     return new Promise((resolve, reject) => {
-      server.listen(port, "0.0.0.0", () => {
-        log(`[Server] Running on port ${port}`);
-
-        // Perform database initialization in the background
-        // Don't block server start on database operations
-        Promise.resolve().then(async () => {
-          try {
-            console.log('[Database] Starting data initialization...');
-            await storage.getAllMenuItems();
-            console.log('[Database] Data initialization complete');
-          } catch (error) {
-            console.error('[Database] Initialization error:', error);
-            // Don't reject the server promise - allow server to run even if DB has issues
+      const startServerOnPort = (currentPort: number) => {
+        server.listen(currentPort, "0.0.0.0", () => {
+          // Get the actual port that was assigned (useful if we're using port 0)
+          const usedPort = (server.address() as any).port;
+          log(`[Server] Running on port ${usedPort}`);
+          
+          // Perform database initialization in the background
+          // Don't block server start on database operations
+          Promise.resolve().then(async () => {
+            try {
+              console.log('[Database] Starting data initialization...');
+              await storage.getAllMenuItems();
+              console.log('[Database] Data initialization complete');
+            } catch (error) {
+              console.error('[Database] Initialization error:', error);
+              // Don't reject the server promise - allow server to run even if DB has issues
+            }
+          });
+  
+          resolve(server);
+        }).on('error', (error: any) => {
+          if (error.code === 'EADDRINUSE' && currentPort === initialPort) {
+            // If the initial port is in use, try with the fallback port
+            console.log(`[Port] Port ${initialPort} is in use, trying with dynamic port assignment...`);
+            startServerOnPort(fallbackPort);
+          } else {
+            console.error('[Server] Failed to start:', error);
+            reject(error);
           }
         });
-
-        resolve(server);
-      }).on('error', (error: any) => {
-        console.error('[Server] Failed to start:', error);
-        reject(error);
-      });
+      };
+      
+      // Start with the initial port
+      startServerOnPort(port);
     });
   } catch (error) {
     console.error('[Startup] Failed:', error);

@@ -37,6 +37,7 @@ export const apiRequest = async (
 ) => {
   const response = await fetch(endpoint, {
     ...options,
+    credentials: 'include', // Always include credentials for sessions to work
     headers: {
       ...options.headers,
       'Content-Type': 'application/json',
@@ -44,7 +45,8 @@ export const apiRequest = async (
   });
 
   if (!response.ok) {
-    throw new Error(`API request failed: ${response.statusText}`);
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `API request failed: ${response.statusText}`);
   }
 
   return response.json();

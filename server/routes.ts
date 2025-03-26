@@ -23,19 +23,20 @@ export function registerRoutes(app: Express): Server {
   // Initialize menu items when the server starts
   initializeMenuItems();
 
-  // Session middleware with secure settings
+  // Session middleware with improved domain handling for multiple domains
   app.use(
     session({
       secret: process.env.SESSION_SECRET || "your-secret-key",
       resave: false,
-      saveUninitialized: false,
+      saveUninitialized: false, 
       proxy: true,
       cookie: {
         secure: process.env.NODE_ENV === "production",
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
         sameSite: process.env.NODE_ENV === "production" ? 'none' : 'lax',
-        domain: process.env.NODE_ENV === "production" ? ".replit.app" : undefined,
+        // Don't set domain to allow it to work on any domain
+        domain: undefined,
       },
     })
   );

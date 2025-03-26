@@ -9,19 +9,13 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
     console.log(`Is FormData: ${hasFormData}`);
     
     if (hasFormData) {
-      const formData = options.body as FormData;
-      // Log form data contents for debugging
-      console.log("FormData contents:");
-      for (const pair of formData.entries()) {
-        const value = pair[1] instanceof File 
-          ? `File: ${(pair[1] as File).name}, size: ${(pair[1] as File).size}, type: ${(pair[1] as File).type}` 
-          : pair[1];
-        console.log(`- ${pair[0]}: ${value}`);
-      }
+      console.log("FormData payload detected (contents not enumerated for compatibility)");
     }
 
     const response = await fetch(endpoint, {
       ...options,
+      // Always include credentials for cross-domain cookie sessions
+      credentials: 'include',
       headers: {
         // Don't set Content-Type for FormData, browser will set it with boundary
         ...(hasFormData ? {} : { 'Content-Type': 'application/json' }),
