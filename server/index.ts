@@ -12,11 +12,11 @@ const app = express();
 // Configure CORS for cross-domain cookie support
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow any origin that includes .replit.app, localhost, or your custom domain
     const allowedOrigins = [
-      /\.replit\.app$/,
-      /^https?:\/\/localhost/,
-      'https://dimsumdapurdekaka.com'
+      'https://dapur-dekaka-basharaaina56.replit.app',
+      'https://dimsumdapurdekaka.com',
+      /\.kirk\.replit\.dev$/,
+      /^https?:\/\/localhost/
     ];
     const allowed = !origin || allowedOrigins.some(pattern => 
       typeof pattern === 'string' ? pattern === origin : pattern.test(origin)
@@ -25,19 +25,21 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  exposedHeaders: ['set-cookie']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+  exposedHeaders: ['Set-Cookie']
 }));
 
-// Configure session middleware
+// Configure session middleware with secure settings
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
   saveUninitialized: false,
+  proxy: true,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: true,
     sameSite: 'none',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    domain: process.env.NODE_ENV === 'production' ? '.replit.app' : undefined
   }
 }));
 
