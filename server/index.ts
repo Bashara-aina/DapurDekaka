@@ -12,14 +12,33 @@ const app = express();
 // Configure CORS for cross-domain cookie support
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow any origin that includes .replit.app or localhost
-    const allowedOrigins = [/\.replit\.app$/, /^https?:\/\/localhost/];
-    const allowed = !origin || allowedOrigins.some(pattern => pattern.test(origin));
+    // Allow any origin that includes .replit.app, localhost, or your custom domain
+    const allowedOrigins = [
+      /\.replit\.app$/,
+      /^https?:\/\/localhost/,
+      'https://dimsumdapurdekaka.com'
+    ];
+    const allowed = !origin || allowedOrigins.some(pattern => 
+      typeof pattern === 'string' ? pattern === origin : pattern.test(origin)
+    );
     callback(null, allowed ? origin : false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['set-cookie']
+}));
+
+// Configure session middleware
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'none',
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
 }));
 
 app.use(express.json());
