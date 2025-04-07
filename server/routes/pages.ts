@@ -111,7 +111,9 @@ pagesRouter.put("/homepage/customers", upload.fields([
       }
       
       // Remove testimonials if they exist (we're not using them anymore)
+      // @ts-ignore - Handle legacy data structure
       if (homepageConfig.content.customers.testimonials) {
+        // @ts-ignore - Handle legacy data structure
         delete homepageConfig.content.customers.testimonials;
       }
 
@@ -194,7 +196,9 @@ pagesRouter.put("/homepage/customers/logos/reorder", async (req, res) => {
     }
     
     // Remove testimonials if they exist (we're not using them anymore)
+    // @ts-ignore - Handle legacy data structure
     if (homepageConfig.content.customers.testimonials) {
+      // @ts-ignore - Handle legacy data structure
       delete homepageConfig.content.customers.testimonials;
     }
 
@@ -464,7 +468,9 @@ pagesRouter.delete('/homepage/carousel/:index', async (req, res) => {
       homepageConfig = storedConfig.content;
       
       // Clean up any testimonials data that might exist
+      // @ts-ignore - Handle legacy data structure
       if (homepageConfig.content?.customers?.testimonials) {
+        // @ts-ignore - Handle legacy data structure
         delete homepageConfig.content.customers.testimonials;
         console.log("Removed deprecated testimonials data");
       }

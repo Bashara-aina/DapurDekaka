@@ -122,13 +122,9 @@ export default function CustomersSection() {
                   style={{ minWidth: "150px" }}
                 >
                   <img 
-                    src={`${logo}?t=${Date.now()}`} 
+                    src={logo} 
                     alt={`Customer logo ${index + 1}`}
                     className="h-20 md:h-24 w-auto mx-auto object-contain hover:scale-110 transition-all duration-300"
-                    onError={(e) => {
-                      console.error(`Failed to load image: ${logo}`);
-                      e.currentTarget.src = '/logo/logo.png'; // Fallback image
-                    }}
                   />
                 </div>
               ))}
@@ -141,13 +137,9 @@ export default function CustomersSection() {
                   style={{ minWidth: "150px" }}
                 >
                   <img 
-                    src={`${logo}?t=${Date.now()}`} 
+                    src={logo} 
                     alt={`Customer logo ${index + 1}`}
                     className="h-20 md:h-24 w-auto mx-auto object-contain hover:scale-110 transition-all duration-300"
-                    onError={(e) => {
-                      console.error(`Failed to load image: ${logo}`);
-                      e.currentTarget.src = '/logo/logo.png'; // Fallback image
-                    }}
                   />
                 </div>
               ))}
