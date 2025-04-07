@@ -30,6 +30,9 @@ export default function CustomersSection() {
         if (!response.ok) throw new Error("Failed to fetch homepage data");
         const pageData = await response.json();
         
+        // Debug log to see what's being received
+        console.log("Customer logos from API:", pageData?.content?.customers?.logos);
+        
         // Extract customers section data
         if (pageData?.content?.customers) {
           setCustomersData({
@@ -42,6 +45,9 @@ export default function CustomersSection() {
               "/logo/halal.png"
             ]
           });
+          
+          // Debug log to see what's being set in state
+          console.log("Customer logos set in state:", pageData.content.customers.logos);
         } else {
           // Default data if not available
           setCustomersData({
@@ -64,6 +70,12 @@ export default function CustomersSection() {
     
     fetchData();
   }, []);
+
+  // Function to handle image load errors
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>, logo: string) => {
+    console.error(`Failed to load customer logo: ${logo}`);
+    e.currentTarget.src = '/logo/logo.png'; // Fallback image
+  };
 
   if (isLoading) {
     return (
@@ -125,6 +137,7 @@ export default function CustomersSection() {
                     src={logo} 
                     alt={`Customer logo ${index + 1}`}
                     className="h-20 md:h-24 w-auto mx-auto object-contain hover:scale-110 transition-all duration-300"
+                    onError={(e) => handleImageError(e, logo)}
                   />
                 </div>
               ))}
@@ -140,6 +153,7 @@ export default function CustomersSection() {
                     src={logo} 
                     alt={`Customer logo ${index + 1}`}
                     className="h-20 md:h-24 w-auto mx-auto object-contain hover:scale-110 transition-all duration-300"
+                    onError={(e) => handleImageError(e, logo)}
                   />
                 </div>
               ))}

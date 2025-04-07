@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Upload, Trash2, GripVertical } from "lucide-react";
+import { Loader2, Upload, Trash2, GripVertical, AlertTriangle } from "lucide-react";
 import AdminNavbar from "@/components/layout/admin-navbar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -49,6 +49,13 @@ const SortableLogo = ({ id, url, onDelete }: SortableLogoProps) => {
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const [hasError, setHasError] = useState(false);
+
+  const handleImageError = () => {
+    console.error(`Failed to load logo: ${url}`);
+    setHasError(true);
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -62,11 +69,19 @@ const SortableLogo = ({ id, url, onDelete }: SortableLogoProps) => {
       >
         <GripVertical className="h-5 w-5 text-gray-400" />
       </button>
-      <img 
-        src={url} 
-        alt={`Customer logo`} 
-        className="w-24 h-24 object-contain rounded"
-      />
+      {hasError ? (
+        <div className="w-24 h-24 flex items-center justify-center bg-gray-100 rounded text-amber-600">
+          <AlertTriangle className="h-8 w-8" />
+          <span className="text-xs ml-1">Image Error</span>
+        </div>
+      ) : (
+        <img 
+          src={url} 
+          alt={`Customer logo`} 
+          className="w-24 h-24 object-contain rounded"
+          onError={handleImageError}
+        />
+      )}
       <Button
         variant="destructive"
         size="icon"
@@ -107,7 +122,9 @@ export default function CustomersPageEditor() {
         cache: 'no-store'
       });
       if (!response.ok) throw new Error('Failed to fetch homepage data');
-      return response.json();
+      const data = await response.json();
+      console.log("Admin - Customer logos from API:", data?.content?.customers?.logos);
+      return data;
     }
   });
 
@@ -386,6 +403,10 @@ export default function CustomersPageEditor() {
                               src={logo} 
                               alt={`Customer logo ${index + 1}`}
                               className="h-16 max-w-full object-contain"
+                              onError={(e) => {
+                                console.error(`Failed to load preview logo: ${logo}`);
+                                e.currentTarget.src = '/logo/logo.png'; // Fallback to default logo
+                              }}
                             />
                           </div>
                         ))}

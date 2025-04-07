@@ -53,6 +53,8 @@ if (!fs.existsSync(uploadsDir)) {
 app.use('/uploads', express.static(uploadsDir, staticFileOptions));
 app.use('/image', express.static(path.join(process.cwd(), 'image'), staticFileOptions));
 app.use('/logo', express.static(path.join(process.cwd(), 'logo'), staticFileOptions));
+app.use('/logo/customers', express.static(path.join(process.cwd(), 'public', 'logo', 'customers'), staticFileOptions));
+app.use('/public', express.static(path.join(process.cwd(), 'public'), staticFileOptions));
 
 // Enhanced request logging middleware
 app.use((req, res, next) => {
@@ -86,7 +88,7 @@ app.use((req, res, next) => {
 let server: any = null;
 
 const createRequiredDirectories = async () => {
-  const dirs = ['uploads', 'image', 'logo'];
+  const dirs = ['uploads', 'image', 'logo', 'public', 'public/logo', 'public/logo/customers'];
   for (const dir of dirs) {
     const dirPath = path.join(process.cwd(), dir);
     try {
