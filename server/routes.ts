@@ -8,6 +8,7 @@ import { blogRouter } from "./routes/blog";
 import { pagesRouter } from "./routes/pages";
 import menuRouter from "./routes/menu";
 import aboutRouter from "./routes/about";
+import footerRouter from "./routes/footer";
 import bcrypt from "bcryptjs";
 import session from "express-session";
 import { requireAuth } from "./auth";
@@ -47,6 +48,7 @@ export function registerRoutes(app: Express): Server {
   app.use("/api/pages", pagesRouter);
   app.use(contactRouter);
   app.use(aboutRouter); // aboutRouter has full paths configured
+  app.use(footerRouter); // footerRouter has full paths configured
 
   // User routes
   app.post("/api/register", async (req, res) => {

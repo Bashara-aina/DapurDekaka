@@ -108,6 +108,24 @@ export const pageContentSchema = z.object({
         image: z.string()
       }))
     }),
+    // Footer content schema
+    z.object({
+      companyName: z.string(),
+      tagline: z.string(),
+      address: z.string(),
+      phone: z.string(),
+      email: z.string(),
+      socialLinks: z.array(
+        z.object({
+          id: z.string(),
+          platform: z.string(),
+          url: z.string(),
+          icon: z.string()
+        })
+      ),
+      copyright: z.string(),
+      logoUrl: z.string().optional()
+    }),
     // Homepage specific schema
     z.object({
       carousel: z.object({
