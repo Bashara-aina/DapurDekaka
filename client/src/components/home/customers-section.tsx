@@ -63,7 +63,7 @@ export default function CustomersSection() {
   }, [isAnimating]);
 
   return (
-    <section className="py-12 bg-gray-50">
+    <section className="py-12">
       <div className="container mx-auto px-4">
         <div className="text-center mb-10">
           <h2 className="text-3xl font-bold text-gray-900">{sectionTitle}</h2>
@@ -73,8 +73,7 @@ export default function CustomersSection() {
         <div className="relative overflow-hidden">
           <div 
             ref={scrollContainerRef}
-            className="flex items-center overflow-x-auto scrollbar-hide"
-            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            className="flex items-center overflow-x-hidden"
             onMouseEnter={() => setIsAnimating(false)}
             onMouseLeave={() => setIsAnimating(true)}
           >
@@ -87,7 +86,7 @@ export default function CustomersSection() {
                 <img 
                   src={logo} 
                   alt={`Customer logo ${index + 1}`}
-                  className="h-16 md:h-20 w-auto mx-auto object-contain filter grayscale hover:grayscale-0 transition-all duration-300"
+                  className="h-20 md:h-24 w-auto mx-auto object-contain hover:scale-110 transition-all duration-300"
                 />
               </div>
             ))}
