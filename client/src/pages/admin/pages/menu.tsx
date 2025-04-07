@@ -6,12 +6,22 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { MenuItem, Sauce } from "@shared/schema";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Loader2, Plus, MoveVertical } from "lucide-react";
+import { Loader2, Plus, MoveVertical, Edit, Trash } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AdminNavbar from "@/components/layout/admin-navbar";
 import { queryKeys, apiRequest } from "@/lib/queryClient";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   DndContext, 
   closestCenter, 
@@ -35,6 +45,8 @@ export default function AdminMenuPage() {
   const [editingSauce, setEditingSauce] = useState<Sauce | null>(null);
   const [localMenuItems, setLocalMenuItems] = useState<MenuItem[]>([]);
   const [localSauces, setLocalSauces] = useState<Sauce[]>([]);
+  const [deleteItemId, setDeleteItemId] = useState<number | null>(null);
+  const [deleteSauceId, setDeleteSauceId] = useState<number | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -116,13 +128,26 @@ export default function AdminMenuPage() {
     setEditingItem(item);
   };
 
+  const confirmDeleteItem = (id: number) => {
+    setDeleteItemId(id);
+  };
+
   const handleDeleteItem = async (id: number) => {
     try {
       await apiRequest(`/api/menu/items/${id}`, { method: 'DELETE' });
-      window.location.reload();
+      await queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
+      toast({ 
+        title: "Success", 
+        description: "Menu item deleted successfully" 
+      });
+      setDeleteItemId(null);
     } catch (error) {
       console.error('Delete error:', error);
-      window.location.reload();
+      toast({ 
+        title: "Error", 
+        description: "Failed to delete menu item",
+        variant: "destructive"
+      });
     }
   };
 
@@ -148,13 +173,26 @@ export default function AdminMenuPage() {
     setEditingSauce(sauce);
   };
 
+  const confirmDeleteSauce = (id: number) => {
+    setDeleteSauceId(id);
+  };
+  
   const handleDeleteSauce = async (id: number) => {
     try {
       await apiRequest(`/api/menu/sauces/${id}`, { method: 'DELETE' });
-      window.location.reload();
+      await queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
+      toast({ 
+        title: "Success", 
+        description: "Sauce deleted successfully" 
+      });
+      setDeleteSauceId(null);
     } catch (error) {
       console.error('Delete error:', error);
-      window.location.reload();
+      toast({ 
+        title: "Error", 
+        description: "Failed to delete sauce",
+        variant: "destructive"
+      });
     }
   };
 
@@ -571,10 +609,12 @@ export default function AdminMenuPage() {
                               <span className="text-xs">Drag to reorder</span>
                             </div>
                             <div className="flex gap-2">
-                              <Button variant="outline" size="sm" onClick={() => handleEditItemClick(item)}>
+                              <Button variant="outline" size="sm" onClick={() => handleEditItemClick(item)} className="flex items-center gap-1">
+                                <Edit className="h-3.5 w-3.5" />
                                 Edit
                               </Button>
-                              <Button variant="destructive" size="sm" onClick={() => handleDeleteItem(item.id)}>
+                              <Button variant="destructive" size="sm" onClick={() => confirmDeleteItem(item.id)} className="flex items-center gap-1">
+                                <Trash className="h-3.5 w-3.5" />
                                 Delete
                               </Button>
                             </div>
@@ -652,10 +692,12 @@ export default function AdminMenuPage() {
                               <span className="text-xs">Drag to reorder</span>
                             </div>
                             <div className="flex gap-2">
-                              <Button variant="outline" size="sm" onClick={() => handleEditSauceClick(sauce)}>
+                              <Button variant="outline" size="sm" onClick={() => handleEditSauceClick(sauce)} className="flex items-center gap-1">
+                                <Edit className="h-3.5 w-3.5" />
                                 Edit
                               </Button>
-                              <Button variant="destructive" size="sm" onClick={() => handleDeleteSauce(sauce.id)}>
+                              <Button variant="destructive" size="sm" onClick={() => confirmDeleteSauce(sauce.id)} className="flex items-center gap-1">
+                                <Trash className="h-3.5 w-3.5" />
                                 Delete
                               </Button>
                             </div>
@@ -748,6 +790,42 @@ export default function AdminMenuPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Menu Item Confirmation */}
+      <AlertDialog open={deleteItemId !== null} onOpenChange={() => setDeleteItemId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this menu item.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteItemId && handleDeleteItem(deleteItemId)}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Sauce Confirmation */}
+      <AlertDialog open={deleteSauceId !== null} onOpenChange={() => setDeleteSauceId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this sauce.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteSauceId && handleDeleteSauce(deleteSauceId)}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
