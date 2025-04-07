@@ -283,43 +283,6 @@ export default function ContactPageEditor() {
                             </TooltipContent>
                           </Tooltip>
                         </div>
-
-                        <div className="space-y-4">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div>
-                                <Label>Main Image</Label>
-                                <div className="mt-2">
-                                  <div className="flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 h-[200px] cursor-pointer overflow-hidden relative">
-                                    {(mainImagePreview || form.watch("mainImage")) ? (
-                                      <img 
-                                        src={mainImagePreview || form.watch("mainImage")} 
-                                        alt="Contact page main image"
-                                        className="object-cover w-full h-full rounded"
-                                      />
-                                    ) : (
-                                      <div className="text-center">
-                                        <ImageIcon className="h-10 w-10 mx-auto text-gray-400" />
-                                        <p className="mt-2 text-sm text-gray-500">
-                                          Upload an image for the contact page
-                                        </p>
-                                      </div>
-                                    )}
-                                    <input
-                                      type="file"
-                                      accept="image/*"
-                                      onChange={handleMainImageChange}
-                                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>The main image displayed on the contact page.</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
                       </div>
                     </div>
                   </CardContent>

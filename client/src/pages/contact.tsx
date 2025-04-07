@@ -86,23 +86,6 @@ export default function Contact() {
           </p>
         </motion.div>
 
-        {pageContent?.mainImage && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="mb-12"
-          >
-            <div className="rounded-xl overflow-hidden h-[200px] md:h-[300px] w-full">
-              <img 
-                src={pageContent.mainImage} 
-                alt="Contact Us" 
-                className="w-full h-full object-cover object-center" 
-              />
-            </div>
-          </motion.div>
-        )}
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
