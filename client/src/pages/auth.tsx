@@ -126,7 +126,11 @@ export default function AuthPage() {
             />
           </div>
 
-          <Button type="submit" className="w-full">
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={!isLogin}
+          >
             {isLogin ? "Login" : "Create Account"}
           </Button>
 
