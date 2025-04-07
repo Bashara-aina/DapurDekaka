@@ -210,8 +210,8 @@ export default function ContactPageEditor() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <AdminNavbar />
       <TooltipProvider>
-        <div className="container py-10">
-          <div className="mb-10">
+        <div className="container py-10 max-w-4xl mx-auto">
+          <div className="mb-10 text-center">
             <h1 className="text-3xl font-bold">Contact Page Editor</h1>
             <p className="text-gray-500">
               Edit your contact page information, social media links, and more.
