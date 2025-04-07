@@ -10,24 +10,8 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Pencil, Trash2, Plus, Image as ImageIcon, Loader2, MoveVertical } from "lucide-react";
+import { Pencil, Trash2, Plus, Image as ImageIcon, Loader2, ChevronUp, ChevronDown } from "lucide-react";
 import { useLocation } from "wouter";
-import { 
-  DndContext, 
-  closestCenter, 
-  KeyboardSensor, 
-  PointerSensor, 
-  useSensor, 
-  useSensors,
-  DragEndEvent
-} from '@dnd-kit/core';
-import { 
-  SortableContext, 
-  sortableKeyboardCoordinates, 
-  verticalListSortingStrategy,
-  arrayMove
-} from '@dnd-kit/sortable';
-import { SortableItem } from "@/components/ui/SortableItem";
 
 import AdminNavbar from "@/components/layout/admin-navbar";
 
@@ -39,14 +23,6 @@ export default function AdminBlogPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
-  
-  // Define sensors for drag-and-drop functionality
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates
-    })
-  );
 
   // Auth check query
   const { data: isAuthenticated, isLoading: authLoading } = useQuery({
@@ -213,39 +189,53 @@ export default function AdminBlogPage() {
     }
   };
 
-  // Handle drag end for blog posts reordering
-  const handleBlogPostDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
+  // Handle moving post up or down
+  const handleMovePost = async (postId: number, direction: 'up' | 'down') => {
+    const currentIndex = localBlogPosts.findIndex(post => post.id === postId);
     
-    if (over && active.id !== over.id) {
-      // Find indices of the dragged item and the drop target
-      const oldIndex = localBlogPosts.findIndex(post => post.id === active.id);
-      const newIndex = localBlogPosts.findIndex(post => post.id === over.id);
+    if (currentIndex === -1) return;
+    
+    // Cannot move first post up or last post down
+    if (
+      (direction === 'up' && currentIndex === 0) ||
+      (direction === 'down' && currentIndex === localBlogPosts.length - 1)
+    ) {
+      return;
+    }
+    
+    // Calculate new index
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    
+    // Update local state for immediate UI feedback
+    const newPosts = [...localBlogPosts];
+    // Remove item from current position
+    const [movedPost] = newPosts.splice(currentIndex, 1);
+    // Insert item at new position
+    newPosts.splice(newIndex, 0, movedPost);
+    setLocalBlogPosts(newPosts);
+    
+    // Send reorder request to server
+    try {
+      const postIds = newPosts.map(post => post.id);
+      await reorderMutation.mutateAsync(postIds);
       
-      if (oldIndex !== -1 && newIndex !== -1) {
-        // Update local state for immediate UI feedback
-        const newPosts = arrayMove(localBlogPosts, oldIndex, newIndex);
-        setLocalBlogPosts(newPosts);
-        
-        // Send reorder request to server
-        try {
-          const postIds = newPosts.map(post => post.id);
-          await reorderMutation.mutateAsync(postIds);
-          
-          // Refresh data from server
-          queryClient.invalidateQueries({ queryKey: ["/api/blog"] });
-        } catch (error) {
-          console.error('Error reordering blog posts:', error);
-          toast({ 
-            title: "Failed to reorder blog posts", 
-            description: error instanceof Error ? error.message : "Unknown error",
-            variant: "destructive" 
-          });
-          
-          // Revert to original order if server update fails
-          setLocalBlogPosts(posts || []);
-        }
-      }
+      // Refresh data from server
+      queryClient.invalidateQueries({ queryKey: ["/api/blog"] });
+      
+      toast({ 
+        title: `Post moved ${direction}`,
+        variant: "default"
+      });
+    } catch (error) {
+      console.error(`Error moving post ${direction}:`, error);
+      toast({ 
+        title: `Failed to move post ${direction}`, 
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive" 
+      });
+      
+      // Revert to original order if server update fails
+      setLocalBlogPosts(posts || []);
     }
   };
 
@@ -427,69 +417,79 @@ export default function AdminBlogPage() {
 
       <ScrollArea className="h-[calc(100vh-200px)]">
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground mb-2">Drag posts to change their order.</p>
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleBlogPostDragEnd}
-          >
-            <SortableContext
-              items={localBlogPosts.map(post => post.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              {localBlogPosts.map((post) => (
-                <SortableItem key={post.id} id={post.id}>
-                  <Card className="p-6 border-2 border-dashed border-gray-200 hover:border-primary transition-colors mb-4">
-                    <div className="flex justify-between items-start gap-4">
-                      <div className="space-y-2 flex-1">
-                        <h2 className="text-xl font-semibold">{post.title}</h2>
-                        <p className="text-sm text-gray-500">
-                          {new Date(post.createdAt).toLocaleDateString()}
-                        </p>
-                        <div className="mt-2 text-gray-700 prose max-w-none" dangerouslySetInnerHTML={{ __html: post.content }} />
-                        {post.imageUrl && (
-                          <img
-                            src={post.imageUrl}
-                            alt={post.title}
-                            className="mt-2 max-h-40 rounded-md"
-                          />
-                        )}
-                      </div>
-                      <div className="flex flex-col gap-2 flex-shrink-0">
-                        <div className="flex items-center text-muted-foreground mb-2">
-                          <MoveVertical className="w-4 h-4 mr-1" />
-                          <span className="text-xs">Drag to reorder</span>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => {
-                              setEditingPost(post);
-                              setIsEditing(true);
-                            }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => {
-                              if (confirm('Are you sure you want to delete this post?')) {
-                                deleteMutation.mutate(post.id);
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                </SortableItem>
-              ))}
-            </SortableContext>
-          </DndContext>
+          <p className="text-sm text-muted-foreground mb-2">Use up and down buttons to change post order.</p>
+          {localBlogPosts.map((post, index) => (
+            <Card key={post.id} className="p-6 border border-gray-200 hover:border-primary transition-colors mb-4">
+              <div className="flex justify-between items-start gap-4">
+                <div className="space-y-2 flex-1">
+                  <h2 className="text-xl font-semibold">{post.title}</h2>
+                  <p className="text-sm text-gray-500">
+                    {new Date(post.createdAt).toLocaleDateString()}
+                  </p>
+                  <div className="mt-2 text-gray-700 prose max-w-none" dangerouslySetInnerHTML={{ __html: post.content }} />
+                  {post.imageUrl && (
+                    <img
+                      src={post.imageUrl}
+                      alt={post.title}
+                      className="mt-2 max-h-40 rounded-md"
+                    />
+                  )}
+                </div>
+                <div className="flex flex-col gap-2 flex-shrink-0">
+                  <div className="flex flex-col justify-center items-center space-y-1 mb-4">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleMovePost(post.id, 'up')}
+                      disabled={index === 0}
+                      title="Move post up"
+                      className={index === 0 ? "opacity-50 cursor-not-allowed" : ""}
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                    <span className="text-xs text-center text-muted-foreground">
+                      Order
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleMovePost(post.id, 'down')}
+                      disabled={index === localBlogPosts.length - 1}
+                      title="Move post down"
+                      className={index === localBlogPosts.length - 1 ? "opacity-50 cursor-not-allowed" : ""}
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        setEditingPost(post);
+                        setIsEditing(true);
+                      }}
+                      title="Edit post"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        if (confirm('Are you sure you want to delete this post?')) {
+                          deleteMutation.mutate(post.id);
+                        }
+                      }}
+                      title="Delete post"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
         </div>
       </ScrollArea>
     </div>
