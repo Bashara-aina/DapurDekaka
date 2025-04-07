@@ -97,7 +97,7 @@ export default function About() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center mb-20"
+          className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center mb-16 max-w-[75%] mx-auto"
         >
           <div className="h-full">
             <img
@@ -107,8 +107,8 @@ export default function About() {
             />
           </div>
           <div className="flex flex-col justify-center">
-            <div className="prose prose-xl">
-              <p className="text-3xl text-gray-600 leading-relaxed text-justify">
+            <div className="prose prose-lg">
+              <p className="text-2xl text-gray-600 leading-relaxed text-justify">
                 {content.mainDescription}
               </p>
             </div>
