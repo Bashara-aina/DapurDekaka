@@ -79,7 +79,7 @@ export default function About() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-20">
+    <div className="container mx-auto px-4 py-16">
       <div className="max-w-6xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -87,7 +87,7 @@ export default function About() {
           transition={{ duration: 0.5 }}
           className="text-center mb-16"
         >
-          <h1 className="text-6xl font-bold text-gray-900 mb-6">
+          <h1 className="text-5xl font-bold text-gray-900 mb-6">
             {content.title}
           </h1>
         </motion.div>
@@ -108,7 +108,7 @@ export default function About() {
           </div>
           <div className="flex flex-col justify-center">
             <div className="prose prose-xl">
-              <p className="text-3xl text-gray-600 leading-relaxed text-justify">
+              <p className="text-2xl text-gray-600 leading-relaxed text-justify">
                 {content.mainDescription}
               </p>
             </div>
@@ -125,7 +125,7 @@ export default function About() {
             className="mb-20"
           >
             <div className="prose prose-xl max-w-none">
-              <h2 className="text-4xl font-bold text-gray-900 mb-8 text-center">
+              <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">
                 {section.title}
               </h2>
               <div className="text-xl text-gray-600 text-center max-w-4xl mx-auto">
@@ -174,7 +174,7 @@ export default function About() {
           transition={{ duration: 0.5, delay: 0.8 }}
           className="text-center mt-16"
         >
-          <p className="text-2xl text-gray-600">
+          <p className="text-xl text-gray-600">
             Rasakan perbedaannya dengan dim sum kami yang autentik, beraroma, dan sehat hari ini!
           </p>
         </motion.div>
