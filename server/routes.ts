@@ -46,7 +46,7 @@ export function registerRoutes(app: Express): Server {
   app.use("/api/blog", blogRouter);
   app.use("/api/pages", pagesRouter);
   app.use(contactRouter);
-  app.use("/api/about", aboutRouter); // Added aboutRouter
+  app.use(aboutRouter); // aboutRouter has full paths configured
 
   // User routes
   app.post("/api/register", async (req, res) => {
