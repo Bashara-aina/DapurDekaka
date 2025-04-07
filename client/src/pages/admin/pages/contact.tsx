@@ -136,13 +136,13 @@ export default function ContactPageEditor() {
   const handleSubmit = async (values: ContactPageContent) => {
     try {
       let updatedValues = { ...values };
-      
+
       // Handle image uploads if needed
       if (mainImageFile) {
         const formData = new FormData();
         formData.append('mainImage', mainImageFile);
         formData.append('content', JSON.stringify(updatedValues));
-        
+
         await fetch('/api/pages/contact/upload', {
           method: 'POST',
           credentials: 'include',
@@ -155,18 +155,18 @@ export default function ContactPageEditor() {
           body: { content: updatedValues }
         });
       }
-      
+
       // Invalidate query to refresh data
       queryClient.invalidateQueries({ queryKey: ['/api/pages/contact'] });
-      
+
       toast({
         title: "Success!",
         description: "Contact page has been updated successfully.",
       });
-      
+
       // Reset file upload states
       setMainImageFile(null);
-      
+
       // Update preview data
       setPreviewData(updatedValues);
     } catch (error) {
@@ -243,7 +243,11 @@ export default function ContactPageEditor() {
                                     <FormItem>
                                       <FormLabel>Page Title</FormLabel>
                                       <FormControl>
-                                        <Input placeholder="Contact Us" {...field} />
+                                        <Input 
+                                          placeholder="Contact Us" 
+                                          className="bg-background" 
+                                          {...field} 
+                                        />
                                       </FormControl>
                                       <FormMessage />
                                     </FormItem>
@@ -399,7 +403,7 @@ export default function ContactPageEditor() {
                       />
 
                       <h3 className="text-lg font-semibold pt-2">Social Media Links</h3>
-                      
+
                       {form.watch("socialLinks")?.map((socialLink, index) => (
                         <div key={socialLink.id} className="grid gap-4 grid-cols-1 md:grid-cols-2">
                           <FormField
