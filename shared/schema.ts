@@ -130,6 +130,11 @@ export const pageContentSchema = z.object({
         latestArticles: z.object({
           title: z.string(),
           subtitle: z.string()
+        }).optional(),
+        customers: z.object({
+          title: z.string(),
+          subtitle: z.string(),
+          logos: z.array(z.string()).optional()
         }).optional()
       }).optional()
     })

@@ -1,7 +1,7 @@
 import EntranceSection from "@/components/entrance-screen";
-import HeroSection from "@/components/home/hero-section";
 import FeaturedProducts from "@/components/home/featured-products";
 import FeaturedArticles from "@/components/home/featured-articles";
+import CustomersSection from "@/components/home/customers-section";
 
 export default function Home() {
   return (
@@ -10,6 +10,7 @@ export default function Home() {
       <div className="relative z-10">
         <FeaturedProducts />
         <FeaturedArticles />
+        <CustomersSection />
       </div>
     </div>
   );
