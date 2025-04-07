@@ -1,12 +1,12 @@
 
 import multer from 'multer';
 import path from 'path';
+import * as fs from 'fs';
 
 export const upload = multer({
   storage: multer.diskStorage({
     destination: (_req, _file, cb) => {
       // Ensure uploads directory exists
-      const fs = require('fs');
       const dir = 'uploads/';
       if (!fs.existsSync(dir)){
         fs.mkdirSync(dir, { recursive: true });
