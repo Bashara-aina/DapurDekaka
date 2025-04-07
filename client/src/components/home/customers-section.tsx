@@ -1,12 +1,8 @@
-import { useEffect, useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
-import { cn } from "@/lib/utils";
 
 export default function CustomersSection() {
   const { t } = useLanguage();
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [isAnimating, setIsAnimating] = useState(true);
   
   const { data: pageData } = useQuery({
     queryKey: ["pages", "homepage"],
@@ -27,43 +23,22 @@ export default function CustomersSection() {
   const sectionTitle = pageData?.content?.customers?.title || "Our Customers";
   const sectionSubtitle = pageData?.content?.customers?.subtitle || "Trusted by businesses across Indonesia";
   
-  // Use actual logos if available, otherwise use the default logo
-  const customerLogos = pageData?.content?.customers?.logos || [pageData?.logo || "/logo/logo.png"];
+  // Use actual logos if available, otherwise create a demo set of 6 logos
+  const defaultLogo = pageData?.logo || "/logo/logo.png";
   
-  // If we only have one logo, duplicate it to create a proper carousel effect
-  const displayLogos = customerLogos.length <= 1 
-    ? [...customerLogos, ...customerLogos, ...customerLogos, ...customerLogos, ...customerLogos, ...customerLogos] 
-    : [...customerLogos, ...customerLogos]; // Double the logos to make continuous scrolling easier
-
-  // Set up automatic scrolling
-  useEffect(() => {
-    if (!scrollContainerRef.current || !isAnimating) return;
-    
-    const scrollContainer = scrollContainerRef.current;
-    let animationId: number;
-    
-    const scroll = () => {
-      if (!scrollContainer) return;
-      
-      // If we've scrolled to the halfway point, reset to the beginning
-      if (scrollContainer.scrollLeft >= scrollContainer.scrollWidth / 2) {
-        scrollContainer.scrollLeft = 0;
-      } else {
-        scrollContainer.scrollLeft += 1;
-      }
-      
-      animationId = requestAnimationFrame(scroll);
-    };
-    
-    animationId = requestAnimationFrame(scroll);
-    
-    return () => {
-      cancelAnimationFrame(animationId);
-    };
-  }, [isAnimating]);
+  // Create an array of 6 different logos for demo purposes
+  // In a real scenario, these would come from the API
+  const customerLogos = pageData?.content?.customers?.logos || [
+    defaultLogo,
+    "/logo/halal.png",
+    defaultLogo,
+    "/logo/halal.png",
+    defaultLogo,
+    "/logo/halal.png"
+  ];
 
   return (
-    <section className="py-12">
+    <section className="py-12 bg-gray-50">
       <div className="container mx-auto px-4">
         <div className="text-center mb-10">
           <h2 className="text-3xl font-bold text-gray-900">{sectionTitle}</h2>
@@ -71,25 +46,48 @@ export default function CustomersSection() {
         </div>
 
         <div className="relative overflow-hidden">
-          <div 
-            ref={scrollContainerRef}
-            className="flex items-center overflow-x-hidden"
-            onMouseEnter={() => setIsAnimating(false)}
-            onMouseLeave={() => setIsAnimating(true)}
-          >
-            {displayLogos.map((logo: string, index: number) => (
-              <div 
-                key={`${logo}-${index}`} 
-                className="flex-none mx-4 md:mx-8 p-2"
-                style={{ minWidth: "150px", maxWidth: "200px" }}
-              >
-                <img 
-                  src={logo} 
-                  alt={`Customer logo ${index + 1}`}
-                  className="h-20 md:h-24 w-auto mx-auto object-contain hover:scale-110 transition-all duration-300"
-                />
-              </div>
-            ))}
+          <style dangerouslySetInnerHTML={{ __html: `
+            @keyframes scroll {
+              0% { transform: translateX(0); }
+              100% { transform: translateX(-50%); }
+            }
+            .marquee {
+              animation: scroll 30s linear infinite;
+              white-space: nowrap;
+            }
+          `}} />
+
+          <div className="overflow-hidden">
+            <div className="marquee inline-flex">
+              {customerLogos.map((logo: string, index: number) => (
+                <div 
+                  key={`logo-1-${index}`} 
+                  className="flex-none mx-4 md:mx-8 p-2"
+                  style={{ minWidth: "150px" }}
+                >
+                  <img 
+                    src={logo} 
+                    alt={`Customer logo ${index + 1}`}
+                    className="h-20 md:h-24 w-auto mx-auto object-contain hover:scale-110 transition-all duration-300"
+                  />
+                </div>
+              ))}
+              
+              {/* Duplicate set for seamless looping */}
+              {customerLogos.map((logo: string, index: number) => (
+                <div 
+                  key={`logo-2-${index}`} 
+                  className="flex-none mx-4 md:mx-8 p-2"
+                  style={{ minWidth: "150px" }}
+                >
+                  <img 
+                    src={logo} 
+                    alt={`Customer logo ${index + 1}`}
+                    className="h-20 md:h-24 w-auto mx-auto object-contain hover:scale-110 transition-all duration-300"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
