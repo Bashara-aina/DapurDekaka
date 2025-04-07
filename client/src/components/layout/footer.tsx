@@ -1,6 +1,14 @@
 import { MapPin, Phone, Mail, Instagram, ShoppingBag } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useEffect, useState } from "react";
+
+interface SocialLink {
+  id: string;
+  platform: string;
+  url: string;
+  icon: string;
+}
 
 interface FooterContent {
   companyName: string;
@@ -8,22 +16,34 @@ interface FooterContent {
   address: string;
   phone: string;
   email: string;
-  socialLinks: {
-    id: string;
-    platform: string;
-    url: string;
-    icon: string;
-  }[];
+  socialLinks: SocialLink[];
   copyright: string;
   logoUrl?: string;
 }
 
 export default function Footer() {
-  const { data, isLoading } = useQuery<{ content: FooterContent }>({
-    queryKey: ["/api/pages/footer"],
-  });
+  const [footerData, setFooterData] = useState<FooterContent | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const footerData = data?.content;
+  // Fetch footer data directly to ensure it's always fresh
+  useEffect(() => {
+    async function fetchFooterData() {
+      try {
+        setIsLoading(true);
+        const response = await fetch("/api/pages/footer");
+        if (response.ok) {
+          const data = await response.json();
+          setFooterData(data.content);
+        }
+      } catch (error) {
+        console.error("Failed to fetch footer data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchFooterData();
+  }, []);
 
   const renderSocialIcon = (icon: string) => {
     switch (icon) {
@@ -74,43 +94,78 @@ export default function Footer() {
     );
   }
 
+  // Default content if footer data is not loaded
+  const defaultFooter = {
+    companyName: "Dapur Dekaka",
+    tagline: "Premium halal dim sum made with love and quality ingredients.",
+    address: "Jl. Sinom V No.7, Turangga, Kec. Lengkong, Kota Bandung, Jawa Barat 40264",
+    phone: "082295986407",
+    email: "contact@dapurdekaka.com",
+    socialLinks: [
+      {
+        id: "1",
+        platform: "Instagram",
+        url: "https://instagram.com/dapurdekaka",
+        icon: "Instagram"
+      },
+      {
+        id: "2",
+        platform: "Shopee",
+        url: "https://shopee.co.id/dapurdekaka",
+        icon: "Shopee"
+      },
+      {
+        id: "3",
+        platform: "WhatsApp",
+        url: "https://wa.me/6282295986407",
+        icon: "WhatsApp"
+      },
+      {
+        id: "4",
+        platform: "Grab",
+        url: "https://food.grab.com/id/en/restaurant/dapur-dekaka-dimsum-delivery/",
+        icon: "Grab"
+      }
+    ],
+    copyright: `© ${new Date().getFullYear()} Dapur Dekaka. All rights reserved.`
+  };
+
+  // Use fetched data or default if not available
+  const content = footerData || defaultFooter;
+
   return (
     <footer className="bg-gray-50 border-t">
       <div className="container mx-auto px-4 py-12">
         <div className="flex flex-col items-center justify-center text-center">
           <div className="space-y-2">
             <h3 className="text-xl font-bold text-primary">
-              {footerData?.companyName || "Dapur Dekaka"}
+              {content.companyName}
             </h3>
             <p className="text-gray-600">
-              {footerData?.tagline || 
-                "Premium halal dim sum made with love and quality ingredients."}
+              {content.tagline}
             </p>
           </div>
 
           <div className="mt-2 space-y-2">
             <div className="flex items-center justify-center gap-2 text-gray-600">
               <MapPin className="h-5 w-5 flex-shrink-0" />
-              <span>
-                {footerData?.address || 
-                  "Jl. Sinom V No.7, Turangga, Kec. Lengkong, Kota Bandung, Jawa Barat 40264"}
-              </span>
+              <span>{content.address}</span>
             </div>
             <div className="flex items-center justify-center gap-2 text-gray-600">
               <Phone className="h-5 w-5 flex-shrink-0" />
-              <span>{footerData?.phone || "082295986407"}</span>
+              <span>{content.phone}</span>
             </div>
-            {footerData?.email && (
+            {content.email && (
               <div className="flex items-center justify-center gap-2 text-gray-600">
                 <Mail className="h-5 w-5 flex-shrink-0" />
-                <span>{footerData.email}</span>
+                <span>{content.email}</span>
               </div>
             )}
           </div>
 
-          {footerData?.socialLinks && footerData.socialLinks.length > 0 && (
+          {content.socialLinks.length > 0 && (
             <div className="mt-6 flex justify-center space-x-4">
-              {footerData.socialLinks.map((social) => (
+              {content.socialLinks.map((social) => (
                 <a
                   key={social.id}
                   href={social.url}
@@ -125,10 +180,7 @@ export default function Footer() {
           )}
 
           <div className="mt-8 text-gray-600">
-            <p>
-              {footerData?.copyright || 
-                `© ${new Date().getFullYear()} Dapur Dekaka. All rights reserved.`}
-            </p>
+            <p>{content.copyright}</p>
           </div>
         </div>
       </div>
