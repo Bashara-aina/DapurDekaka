@@ -27,6 +27,18 @@ const defaultFooterContent = {
       platform: "Shopee",
       url: "https://shopee.co.id/dapurdekaka",
       icon: "Shopee"
+    },
+    {
+      id: "3",
+      platform: "WhatsApp",
+      url: "https://wa.me/6282295986407",
+      icon: "WhatsApp"
+    },
+    {
+      id: "4",
+      platform: "Grab",
+      url: "https://food.grab.com/id/en/restaurant/dapur-dekaka-dimsum-delivery/",
+      icon: "Grab"
     }
   ],
   copyright: `© ${new Date().getFullYear()} Dapur Dekaka. All rights reserved.`,
