@@ -2,11 +2,12 @@ import { pgTable, text, serial, integer, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Keep existing tables but remove price and category from menuItems
+// Update menu items and sauces tables to include price
 export const menuItems = pgTable("menu_items", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description").notNull(),
+  price: text("price").notNull().default("0"), // Adding price as text to support formatting
   imageUrl: text("image_url").notNull(),
   orderIndex: integer("order_index").default(0),
   createdAt: timestamp("created_at").defaultNow(),
@@ -16,6 +17,7 @@ export const sauces = pgTable("sauces", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description").notNull(),
+  price: text("price").notNull().default("0"), // Adding price as text to support formatting
   imageUrl: text("image_url").notNull(),
   orderIndex: integer("order_index").default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),

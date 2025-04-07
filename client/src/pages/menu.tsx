@@ -17,29 +17,13 @@ export default function Menu() {
   const { data: menuItems, isLoading: menuLoading, error: menuError } = useQuery({
     queryKey: queryKeys.menu.items,
     queryFn: () => apiRequest("/api/menu/items"),
-    retry: 2,
-    onError: (error) => {
-      console.error("Failed to fetch menu items:", error);
-      toast({
-        title: "Error loading menu items",
-        description: "Please try refreshing the page",
-        variant: "destructive",
-      });
-    },
+    retry: 2
   });
 
   const { data: sauces, isLoading: saucesLoading, error: saucesError } = useQuery({
     queryKey: queryKeys.menu.sauces,
     queryFn: () => apiRequest("/api/menu/sauces"),
-    retry: 2,
-    onError: (error) => {
-      console.error("Failed to fetch sauces:", error);
-      toast({
-        title: "Error loading sauces",
-        description: "Please try refreshing the page",
-        variant: "destructive",
-      });
-    },
+    retry: 2
   });
 
   if (menuLoading || saucesLoading) {
@@ -100,6 +84,9 @@ export default function Menu() {
                   <p className="text-sm text-gray-600">
                     {item.description}
                   </p>
+                  <p className="text-sm font-semibold text-green-600">
+                    {item.price}
+                  </p>
                   <div className="mt-auto pt-2">
                     <OrderModal
                       trigger={<Button className="w-full">Pesan</Button>}
@@ -146,6 +133,9 @@ export default function Menu() {
                       <h3 className="text-lg font-semibold">{sauce.name}</h3>
                       <p className="text-sm text-gray-600 flex-grow">
                         {sauce.description}
+                      </p>
+                      <p className="text-sm font-semibold text-green-600 mb-2">
+                        {sauce.price}
                       </p>
                       <OrderModal
                         trigger={<Button className="w-full">Pesan</Button>}

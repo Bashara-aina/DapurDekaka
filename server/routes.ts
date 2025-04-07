@@ -149,6 +149,7 @@ export function initializeMenuItems() {
               storage.createMenuItem({
                 name: item.name,
                 description: item.description,
+                price: item.price || "0",
                 imageUrl: item.imageUrl
               }).catch(error => 
                 console.error(`Failed to create menu item ${item.name}:`, error)
@@ -178,6 +179,7 @@ export function initializeMenuItems() {
               storage.createSauce({
                 name: sauce.name,
                 description: sauce.description,
+                price: sauce.price || "0",
                 imageUrl: sauce.imageUrl
               }).catch(error =>
                 console.error(`Failed to create sauce ${sauce.name}:`, error)

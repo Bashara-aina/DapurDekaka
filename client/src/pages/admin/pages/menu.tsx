@@ -74,6 +74,7 @@ export default function AdminMenuPage() {
       const updateData = {
         name: formData.get('name') as string,
         description: formData.get('description') as string,
+        price: formData.get('price') as string,
         imageUrl
       };
 
@@ -485,6 +486,16 @@ export default function AdminMenuPage() {
                 />
               </div>
               <div className="space-y-2">
+                <label htmlFor="price" className="text-sm font-medium">Price</label>
+                <Input
+                  id="price"
+                  name="price"
+                  placeholder="Enter price (e.g., Rp 25.000)"
+                  required
+                  onChange={(e) => console.log('Price input changed:', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
                 <label htmlFor="imageFile" className="text-sm font-medium">Image</label>
                 <Input
                   id="imageFile"
@@ -551,6 +562,7 @@ export default function AdminMenuPage() {
                           />
                           <h3 className="font-semibold">{item.name}</h3>
                           <p className="text-sm text-gray-600">{item.description}</p>
+                          <p className="text-sm font-medium text-green-600 mt-1">{item.price}</p>
                           <div className="flex items-center justify-between mt-4">
                             <div className="flex items-center text-muted-foreground">
                               <MoveVertical className="w-4 h-4 mr-1" />
@@ -592,6 +604,10 @@ export default function AdminMenuPage() {
                   <label className="block mb-2">Description</label>
                   <Textarea name="description" placeholder="Sauce description" required />
                 </div>
+                <div>
+                  <label className="block mb-2">Price</label>
+                  <Input name="price" placeholder="Enter price (e.g., Rp 15.000)" required />
+                </div>
                 <Button type="submit" className="w-full">
                   Add Sauce
                 </Button>
@@ -625,6 +641,7 @@ export default function AdminMenuPage() {
                           />
                           <h3 className="font-semibold">{sauce.name}</h3>
                           <p className="text-sm text-gray-600">{sauce.description}</p>
+                          <p className="text-sm font-medium text-green-600 mt-1">{sauce.price}</p>
                           <div className="flex items-center justify-between mt-4">
                             <div className="flex items-center text-muted-foreground">
                               <MoveVertical className="w-4 h-4 mr-1" />
@@ -667,6 +684,11 @@ export default function AdminMenuPage() {
                 placeholder="Description"
               />
               <Input
+                name="price"
+                defaultValue={editingItem?.price}
+                placeholder="Enter price (e.g., Rp 25.000)"
+              />
+              <Input
                 type="file"
                 name="imageFile"
                 accept="image/*"
@@ -701,6 +723,11 @@ export default function AdminMenuPage() {
                 name="description"
                 defaultValue={editingSauce?.description}
                 placeholder="Description"
+              />
+              <Input
+                name="price"
+                defaultValue={editingSauce?.price}
+                placeholder="Enter price (e.g., Rp 15.000)"
               />
               <Input
                 type="file"

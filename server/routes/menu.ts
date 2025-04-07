@@ -85,6 +85,7 @@ menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, r
     const data = {
       name: req.body.name,
       description: req.body.description,
+      price: req.body.price || "0",
       imageUrl: `/uploads/${req.file.filename}`
     };
 
@@ -134,6 +135,7 @@ menuRouter.post("/sauces", requireAuth, upload.single("imageFile"), async (req, 
     const data = {
       name: req.body.name,
       description: req.body.description,
+      price: req.body.price || "0",
       imageUrl: `/uploads/${req.file.filename}`
     };
 
@@ -175,6 +177,7 @@ menuRouter.put("/items/:id", requireAuth, upload.single('imageFile'), async (req
     const updateData = {
       name: req.body.name,
       description: req.body.description,
+      price: req.body.price,
       imageUrl: req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl,
     };
 
