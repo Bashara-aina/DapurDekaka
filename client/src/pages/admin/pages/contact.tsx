@@ -29,6 +29,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  TooltipProvider,
 } from "@/components/ui/tooltip";
 import { Icon } from "@iconify/react";
 
@@ -208,13 +209,14 @@ export default function ContactPageEditor() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <AdminNavbar />
-      <div className="container py-10">
-        <div className="mb-10">
-          <h1 className="text-3xl font-bold">Contact Page Editor</h1>
-          <p className="text-gray-500">
-            Edit your contact page information, social media links, and more.
-          </p>
-        </div>
+      <TooltipProvider>
+        <div className="container py-10">
+          <div className="mb-10">
+            <h1 className="text-3xl font-bold">Contact Page Editor</h1>
+            <p className="text-gray-500">
+              Edit your contact page information, social media links, and more.
+            </p>
+          </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="mb-6">
@@ -576,6 +578,7 @@ export default function ContactPageEditor() {
           </Form>
         </Tabs>
       </div>
+      </TooltipProvider>
     </div>
   );
 }
