@@ -98,21 +98,23 @@ export default function CustomersSection() {
         {/* Customer Logos with enhanced scrolling effect */}
         <div className="relative overflow-hidden">
           <style dangerouslySetInnerHTML={{ __html: `
-            @keyframes scroll {
+            @keyframes scrollX {
               0% { transform: translateX(0); }
               100% { transform: translateX(-50%); }
             }
-            .marquee {
-              animation: scroll 30s linear infinite;
-              white-space: nowrap;
+            .logo-marquee {
+              display: flex;
+              width: max-content;
+              animation: scrollX 25s linear infinite;
             }
-            .marquee:hover {
+            .logo-marquee:hover {
               animation-play-state: paused;
             }
           `}} />
 
-          <div className="overflow-hidden">
-            <div className="marquee inline-flex">
+          <div className="overflow-hidden w-full relative">
+            <div className="logo-marquee">
+              {/* First set of logos */}
               {content.logos.map((logo: string, index: number) => (
                 <div 
                   key={`logo-1-${index}`} 
@@ -120,9 +122,13 @@ export default function CustomersSection() {
                   style={{ minWidth: "150px" }}
                 >
                   <img 
-                    src={logo} 
+                    src={`${logo}?t=${Date.now()}`} 
                     alt={`Customer logo ${index + 1}`}
                     className="h-20 md:h-24 w-auto mx-auto object-contain hover:scale-110 transition-all duration-300"
+                    onError={(e) => {
+                      console.error(`Failed to load image: ${logo}`);
+                      e.currentTarget.src = '/logo/logo.png'; // Fallback image
+                    }}
                   />
                 </div>
               ))}
@@ -135,9 +141,13 @@ export default function CustomersSection() {
                   style={{ minWidth: "150px" }}
                 >
                   <img 
-                    src={logo} 
+                    src={`${logo}?t=${Date.now()}`} 
                     alt={`Customer logo ${index + 1}`}
                     className="h-20 md:h-24 w-auto mx-auto object-contain hover:scale-110 transition-all duration-300"
+                    onError={(e) => {
+                      console.error(`Failed to load image: ${logo}`);
+                      e.currentTarget.src = '/logo/logo.png'; // Fallback image
+                    }}
                   />
                 </div>
               ))}

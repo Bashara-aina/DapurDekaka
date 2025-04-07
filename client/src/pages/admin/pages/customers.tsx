@@ -62,7 +62,15 @@ const SortableLogo = ({ id, url, onDelete }: SortableLogoProps) => {
       >
         <GripVertical className="h-5 w-5 text-gray-400" />
       </button>
-      <img src={url} alt={`Customer logo`} className="w-24 h-24 object-cover rounded" />
+      <img 
+        src={`${url}?t=${Date.now()}`} 
+        alt={`Customer logo`} 
+        className="w-24 h-24 object-contain rounded"
+        onError={(e) => {
+          console.error(`Failed to load logo in admin: ${url}`);
+          e.currentTarget.src = '/logo/logo.png'; // Fallback image
+        }}
+      />
       <Button
         variant="destructive"
         size="icon"
@@ -379,9 +387,13 @@ export default function CustomersPageEditor() {
                         {customerLogos.map((logo: string, index: number) => (
                           <div key={index} className="bg-white p-4 rounded shadow-sm flex items-center justify-center h-24 w-36">
                             <img 
-                              src={logo} 
+                              src={`${logo}?t=${Date.now()}`} 
                               alt={`Customer logo ${index + 1}`}
                               className="h-16 max-w-full object-contain"
+                              onError={(e) => {
+                                console.error(`Failed to load logo in preview: ${logo}`);
+                                e.currentTarget.src = '/logo/logo.png'; // Fallback image
+                              }}
                             />
                           </div>
                         ))}
