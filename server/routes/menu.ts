@@ -258,4 +258,58 @@ menuRouter.delete("/sauces/:id", requireAuth, async (req, res) => {
   }
 });
 
+// Reorder menu items (protected)
+menuRouter.post("/items/reorder", requireAuth, async (req, res) => {
+  try {
+    const { itemIds } = req.body;
+    
+    if (!Array.isArray(itemIds) || itemIds.length === 0) {
+      return res.status(400).json({ message: "Invalid item IDs. Expected a non-empty array of menu item IDs." });
+    }
+    
+    // Validate that all IDs are numbers
+    const numericIds = itemIds.map(id => Number(id));
+    if (numericIds.some(id => isNaN(id))) {
+      return res.status(400).json({ message: "All item IDs must be numeric values." });
+    }
+    
+    // Perform the reordering
+    const updatedItems = await storage.reorderMenuItems(numericIds);
+    res.json(updatedItems);
+  } catch (error) {
+    console.error("Failed to reorder menu items:", error);
+    res.status(500).json({ 
+      message: "Failed to reorder menu items",
+      error: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// Reorder sauces (protected)
+menuRouter.post("/sauces/reorder", requireAuth, async (req, res) => {
+  try {
+    const { sauceIds } = req.body;
+    
+    if (!Array.isArray(sauceIds) || sauceIds.length === 0) {
+      return res.status(400).json({ message: "Invalid sauce IDs. Expected a non-empty array of sauce IDs." });
+    }
+    
+    // Validate that all IDs are numbers
+    const numericIds = sauceIds.map(id => Number(id));
+    if (numericIds.some(id => isNaN(id))) {
+      return res.status(400).json({ message: "All sauce IDs must be numeric values." });
+    }
+    
+    // Perform the reordering
+    const updatedSauces = await storage.reorderSauces(numericIds);
+    res.json(updatedSauces);
+  } catch (error) {
+    console.error("Failed to reorder sauces:", error);
+    res.status(500).json({ 
+      message: "Failed to reorder sauces",
+      error: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
 export default menuRouter;

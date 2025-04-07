@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,19 +6,45 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { MenuItem, Sauce } from "@shared/schema";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, MoveVertical } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AdminNavbar from "@/components/layout/admin-navbar";
 import { queryKeys, apiRequest } from "@/lib/queryClient";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { 
+  DndContext, 
+  closestCenter, 
+  KeyboardSensor, 
+  PointerSensor, 
+  useSensor, 
+  useSensors,
+  DragEndEvent
+} from '@dnd-kit/core';
+import { 
+  SortableContext, 
+  sortableKeyboardCoordinates, 
+  verticalListSortingStrategy,
+  arrayMove
+} from '@dnd-kit/sortable';
+import { SortableItem } from "@/components/ui/SortableItem";
 
 export default function AdminMenuPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [editingSauce, setEditingSauce] = useState<Sauce | null>(null);
+  const [localMenuItems, setLocalMenuItems] = useState<MenuItem[]>([]);
+  const [localSauces, setLocalSauces] = useState<Sauce[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Define sensors for drag-and-drop functionality
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates
+    })
+  );
 
   const handleEditItem = async (formData: FormData) => {
     try {
@@ -140,6 +166,113 @@ export default function AdminMenuPage() {
     queryKey: queryKeys.menu.sauces,
     queryFn: () => apiRequest("/api/menu/sauces")
   });
+  
+  // Update local state when data is fetched
+  useEffect(() => {
+    if (menuItems) {
+      setLocalMenuItems(menuItems);
+    }
+  }, [menuItems]);
+  
+  useEffect(() => {
+    if (sauces) {
+      setLocalSauces(sauces);
+    }
+  }, [sauces]);
+  
+  // Handle reordering of menu items
+  const handleMenuItemDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      // Find indices of the dragged item and the drop target
+      const oldIndex = localMenuItems.findIndex(item => item.id === active.id);
+      const newIndex = localMenuItems.findIndex(item => item.id === over.id);
+      
+      if (oldIndex !== -1 && newIndex !== -1) {
+        // Update local state for immediate UI feedback
+        const newItems = arrayMove(localMenuItems, oldIndex, newIndex);
+        setLocalMenuItems(newItems);
+        
+        // Send reorder request to server
+        try {
+          const itemIds = newItems.map(item => item.id);
+          await apiRequest('/api/menu/items/reorder', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ itemIds })
+          });
+          
+          toast({ 
+            title: "Menu items reordered successfully",
+            variant: "default"
+          });
+          
+          // Refresh data from server
+          queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
+        } catch (error) {
+          console.error('Error reordering menu items:', error);
+          toast({ 
+            title: "Failed to reorder menu items", 
+            description: error instanceof Error ? error.message : "Unknown error",
+            variant: "destructive" 
+          });
+          
+          // Revert to original order if server update fails
+          setLocalMenuItems(menuItems || []);
+        }
+      }
+    }
+  };
+  
+  // Handle reordering of sauces
+  const handleSauceDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      // Find indices of the dragged item and the drop target
+      const oldIndex = localSauces.findIndex(sauce => sauce.id === active.id);
+      const newIndex = localSauces.findIndex(sauce => sauce.id === over.id);
+      
+      if (oldIndex !== -1 && newIndex !== -1) {
+        // Update local state for immediate UI feedback
+        const newSauces = arrayMove(localSauces, oldIndex, newIndex);
+        setLocalSauces(newSauces);
+        
+        // Send reorder request to server
+        try {
+          const sauceIds = newSauces.map(sauce => sauce.id);
+          await apiRequest('/api/menu/sauces/reorder', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ sauceIds })
+          });
+          
+          toast({ 
+            title: "Sauces reordered successfully",
+            variant: "default"
+          });
+          
+          // Refresh data from server
+          queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
+        } catch (error) {
+          console.error('Error reordering sauces:', error);
+          toast({ 
+            title: "Failed to reorder sauces", 
+            description: error instanceof Error ? error.message : "Unknown error",
+            variant: "destructive" 
+          });
+          
+          // Revert to original order if server update fails
+          setLocalSauces(sauces || []);
+        }
+      }
+    }
+  };
 
   const createMutation = useMutation({
     mutationFn: async (formData: FormData) => {
@@ -390,29 +523,55 @@ export default function AdminMenuPage() {
           </TabsList>
 
           <TabsContent value="menu">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {menuItems?.map((item: MenuItem) => (
-                <Card key={item.id}>
-                  <CardContent className="p-4">
-                    <img
-                      src={item.imageUrl}
-                      alt={item.name}
-                      className="w-full h-48 object-cover rounded-md mb-4"
-                    />
-                    <h3 className="font-semibold">{item.name}</h3>
-                    <p className="text-sm text-gray-600">{item.description}</p>
-                    <div className="flex gap-2 mt-4">
-                      <Button variant="outline" onClick={() => handleEditItemClick(item)}>
-                        Edit
-                      </Button>
-                      <Button variant="destructive" onClick={() => handleDeleteItem(item.id)}>
-                        Delete
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold flex items-center">
+                <MoveVertical className="w-5 h-5 mr-2" />
+                Drag to reorder menu items
+              </h3>
+              <p className="text-sm text-gray-600">Items will appear in this order on the public menu</p>
             </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleMenuItemDragEnd}
+            >
+              <SortableContext
+                items={localMenuItems.map(item => item.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {localMenuItems.map((item: MenuItem) => (
+                    <SortableItem key={item.id} id={item.id}>
+                      <Card className="border-2 border-dashed border-gray-200 hover:border-primary transition-colors">
+                        <CardContent className="p-4">
+                          <img
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="w-full h-48 object-cover rounded-md mb-4"
+                          />
+                          <h3 className="font-semibold">{item.name}</h3>
+                          <p className="text-sm text-gray-600">{item.description}</p>
+                          <div className="flex items-center justify-between mt-4">
+                            <div className="flex items-center text-muted-foreground">
+                              <MoveVertical className="w-4 h-4 mr-1" />
+                              <span className="text-xs">Drag to reorder</span>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button variant="outline" size="sm" onClick={() => handleEditItemClick(item)}>
+                                Edit
+                              </Button>
+                              <Button variant="destructive" size="sm" onClick={() => handleDeleteItem(item.id)}>
+                                Delete
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </SortableItem>
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
           </TabsContent>
 
           <TabsContent value="sauces">
@@ -438,30 +597,55 @@ export default function AdminMenuPage() {
                 </Button>
               </form>
             </div>
-            <h2 className="text-2xl font-bold mb-4">Sauces</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {sauces?.map((sauce: Sauce) => (
-                <Card key={sauce.id}>
-                  <CardContent className="p-4">
-                    <img
-                      src={sauce.imageUrl}
-                      alt={sauce.name}
-                      className="w-full h-48 object-cover rounded-md mb-4"
-                    />
-                    <h3 className="font-semibold">{sauce.name}</h3>
-                    <p className="text-sm text-gray-600">{sauce.description}</p>
-                    <div className="flex gap-2 mt-4">
-                      <Button variant="outline" onClick={() => handleEditSauceClick(sauce)}>
-                        Edit
-                      </Button>
-                      <Button variant="destructive" onClick={() => handleDeleteSauce(sauce.id)}>
-                        Delete
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold flex items-center">
+                <MoveVertical className="w-5 h-5 mr-2" />
+                Drag to reorder sauces
+              </h3>
+              <p className="text-sm text-gray-600">Sauces will appear in this order on the public menu</p>
             </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleSauceDragEnd}
+            >
+              <SortableContext
+                items={localSauces.map(sauce => sauce.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {localSauces.map((sauce: Sauce) => (
+                    <SortableItem key={sauce.id} id={sauce.id}>
+                      <Card className="border-2 border-dashed border-gray-200 hover:border-primary transition-colors">
+                        <CardContent className="p-4">
+                          <img
+                            src={sauce.imageUrl}
+                            alt={sauce.name}
+                            className="w-full h-48 object-cover rounded-md mb-4"
+                          />
+                          <h3 className="font-semibold">{sauce.name}</h3>
+                          <p className="text-sm text-gray-600">{sauce.description}</p>
+                          <div className="flex items-center justify-between mt-4">
+                            <div className="flex items-center text-muted-foreground">
+                              <MoveVertical className="w-4 h-4 mr-1" />
+                              <span className="text-xs">Drag to reorder</span>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button variant="outline" size="sm" onClick={() => handleEditSauceClick(sauce)}>
+                                Edit
+                              </Button>
+                              <Button variant="destructive" size="sm" onClick={() => handleDeleteSauce(sauce.id)}>
+                                Delete
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </SortableItem>
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
           </TabsContent>
         </Tabs>
       </div>

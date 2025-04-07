@@ -51,6 +51,7 @@ export interface IStorage {
   createMenuItem(item: InsertMenuItem): Promise<MenuItem>;
   updateMenuItem(id: number, item: Partial<InsertMenuItem>): Promise<MenuItem | undefined>;
   deleteMenuItem(id: number): Promise<boolean>;
+  reorderMenuItems(itemIds: number[]): Promise<MenuItem[]>;
 
   // Sauce methods
   getAllSauces(): Promise<Sauce[]>;
@@ -58,6 +59,7 @@ export interface IStorage {
   createSauce(sauce: InsertSauce): Promise<Sauce>;
   updateSauce(id: number, sauce: Partial<InsertSauce>): Promise<Sauce | undefined>;
   deleteSauce(id: number): Promise<boolean>;
+  reorderSauces(sauceIds: number[]): Promise<Sauce[]>;
 
   // New page content methods
   getPageContent(pageName: string): Promise<PageContent | undefined>;
@@ -69,7 +71,7 @@ export class DatabaseStorage implements IStorage {
   async getAllMenuItems(): Promise<MenuItem[]> {
     try {
       console.log("Fetching all menu items");
-      return await db.select().from(menuItems);
+      return await db.select().from(menuItems).orderBy(menuItems.orderIndex);
     } catch (error) {
       console.error("Error fetching menu items:", error);
       throw new Error("Failed to fetch menu items");
@@ -101,9 +103,21 @@ export class DatabaseStorage implements IStorage {
         throw new Error("Name and description are required");
       }
 
+      // Get current max orderIndex
+      const allItems = await db.select().from(menuItems);
+      const maxOrderIndex = allItems.length > 0 
+        ? Math.max(...allItems.map(item => item.orderIndex || 0)) 
+        : -1;
+      
+      // Set the new item's orderIndex to maxOrderIndex + 1
+      const itemWithOrder = {
+        ...item,
+        orderIndex: maxOrderIndex + 1
+      };
+
       const [newItem] = await db
         .insert(menuItems)
-        .values(item)
+        .values(itemWithOrder)
         .returning();
 
       if (!newItem) {
@@ -150,12 +164,37 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Failed to delete menu item");
     }
   }
+  
+  async reorderMenuItems(itemIds: number[]): Promise<MenuItem[]> {
+    try {
+      console.log("Reordering menu items with IDs:", itemIds);
+      const updatedItems: MenuItem[] = [];
+      
+      // Update each item's orderIndex based on its position in the itemIds array
+      for (let i = 0; i < itemIds.length; i++) {
+        const [updatedItem] = await db
+          .update(menuItems)
+          .set({ orderIndex: i })
+          .where(eq(menuItems.id, itemIds[i]))
+          .returning();
+        
+        if (updatedItem) {
+          updatedItems.push(updatedItem);
+        }
+      }
+      
+      return updatedItems;
+    } catch (error) {
+      console.error("Error reordering menu items:", error);
+      throw new Error("Failed to reorder menu items");
+    }
+  }
 
   // Sauce methods with optimized querying and error handling
   async getAllSauces(): Promise<Sauce[]> {
     try {
       console.log("Fetching all sauces");
-      return await db.select().from(sauces).orderBy(sauces.name);
+      return await db.select().from(sauces).orderBy(sauces.orderIndex);
     } catch (error) {
       console.error("Error fetching sauces:", error);
       throw new Error("Failed to fetch sauces");
@@ -176,9 +215,22 @@ export class DatabaseStorage implements IStorage {
   async createSauce(sauce: InsertSauce): Promise<Sauce> {
     try {
       console.log("Creating sauce with data:", sauce);
+      
+      // Get current max orderIndex
+      const allSauces = await db.select().from(sauces);
+      const maxOrderIndex = allSauces.length > 0 
+        ? Math.max(...allSauces.map(sauce => sauce.orderIndex || 0)) 
+        : -1;
+      
+      // Set the new sauce's orderIndex to maxOrderIndex + 1
+      const sauceWithOrder = {
+        ...sauce,
+        orderIndex: maxOrderIndex + 1
+      };
+      
       const [newSauce] = await db
         .insert(sauces)
-        .values(sauce)
+        .values(sauceWithOrder)
         .returning();
       return newSauce;
     } catch (error) {
@@ -213,6 +265,31 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error(`Error deleting sauce ${id}:`, error);
       throw new Error("Failed to delete sauce");
+    }
+  }
+  
+  async reorderSauces(sauceIds: number[]): Promise<Sauce[]> {
+    try {
+      console.log("Reordering sauces with IDs:", sauceIds);
+      const updatedSauces: Sauce[] = [];
+      
+      // Update each sauce's orderIndex based on its position in the sauceIds array
+      for (let i = 0; i < sauceIds.length; i++) {
+        const [updatedSauce] = await db
+          .update(sauces)
+          .set({ orderIndex: i })
+          .where(eq(sauces.id, sauceIds[i]))
+          .returning();
+        
+        if (updatedSauce) {
+          updatedSauces.push(updatedSauce);
+        }
+      }
+      
+      return updatedSauces;
+    } catch (error) {
+      console.error("Error reordering sauces:", error);
+      throw new Error("Failed to reorder sauces");
     }
   }
 
