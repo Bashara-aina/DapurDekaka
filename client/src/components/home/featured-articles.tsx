@@ -30,7 +30,7 @@ export default function FeaturedArticles() {
       const posts = await response.json();
       return posts
         .filter((post: BlogPost) => post.published === 1)
-        .sort((a: BlogPost, b: BlogPost) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        // Use orderIndex for sorting instead of createdAt date
         .slice(0, 2);
     },
     staleTime: 300000, // Consider data fresh for 5 minutes

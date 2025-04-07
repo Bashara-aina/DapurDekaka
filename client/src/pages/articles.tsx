@@ -9,7 +9,7 @@ import { Helmet } from "react-helmet";
 
 export default function Articles() {
   const { data: posts, isLoading, error } = useQuery<BlogPost[]>({
-    queryKey: ["blog"],
+    queryKey: ["/api/blog"],
     queryFn: async () => {
       const response = await fetch("/api/blog");
       if (!response.ok) {
@@ -44,7 +44,8 @@ export default function Articles() {
         <h1 className="text-4xl font-bold text-gray-900 mb-8">Blog & Articles</h1>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {posts?.sort((a, b) => b.id - a.id).map((post) => (
+          {/* Display posts in the order they're returned from the server (sorted by orderIndex) */}
+          {posts?.filter(post => post.published === 1).map((post) => (
             <motion.div
               key={post.id}
               initial={{ opacity: 0, y: 20 }}
