@@ -10,8 +10,24 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Pencil, Trash2, Plus, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Pencil, Trash2, Plus, Image as ImageIcon, Loader2, MoveVertical } from "lucide-react";
 import { useLocation } from "wouter";
+import { 
+  DndContext, 
+  closestCenter, 
+  KeyboardSensor, 
+  PointerSensor, 
+  useSensor, 
+  useSensors,
+  DragEndEvent
+} from '@dnd-kit/core';
+import { 
+  SortableContext, 
+  sortableKeyboardCoordinates, 
+  verticalListSortingStrategy,
+  arrayMove
+} from '@dnd-kit/sortable';
+import { SortableItem } from "@/components/ui/SortableItem";
 
 import AdminNavbar from "@/components/layout/admin-navbar";
 
@@ -19,9 +35,18 @@ export default function AdminBlogPage() {
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [localBlogPosts, setLocalBlogPosts] = useState<BlogPost[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  
+  // Define sensors for drag-and-drop functionality
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates
+    })
+  );
 
   // Auth check query
   const { data: isAuthenticated, isLoading: authLoading } = useQuery({
@@ -37,10 +62,7 @@ export default function AdminBlogPage() {
     },
     retry: false,
     staleTime: 0, // Don't cache the auth check
-    cacheTime: 0,
-    onError: () => {
-      setLocation('/auth');
-    }
+    gcTime: 0     // Updated from cacheTime to gcTime for TanStack Query v5
   });
 
   // Force redirect if not authenticated
@@ -137,6 +159,48 @@ export default function AdminBlogPage() {
       });
     },
   });
+  
+  // Mutation for reordering blog posts
+  const reorderMutation = useMutation({
+    mutationFn: async (postIds: number[]) => {
+      const response = await fetch("/api/blog/reorder", {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ postIds }),
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to reorder blog posts");
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/blog"] });
+      toast({ 
+        title: "Blog posts reordered successfully",
+        variant: "default"
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Update localBlogPosts when posts data changes
+  useEffect(() => {
+    if (posts) {
+      setLocalBlogPosts(posts);
+    }
+  }, [posts]);
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -146,6 +210,42 @@ export default function AdminBlogPage() {
         setImagePreview(reader.result as string);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  // Handle drag end for blog posts reordering
+  const handleBlogPostDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      // Find indices of the dragged item and the drop target
+      const oldIndex = localBlogPosts.findIndex(post => post.id === active.id);
+      const newIndex = localBlogPosts.findIndex(post => post.id === over.id);
+      
+      if (oldIndex !== -1 && newIndex !== -1) {
+        // Update local state for immediate UI feedback
+        const newPosts = arrayMove(localBlogPosts, oldIndex, newIndex);
+        setLocalBlogPosts(newPosts);
+        
+        // Send reorder request to server
+        try {
+          const postIds = newPosts.map(post => post.id);
+          await reorderMutation.mutateAsync(postIds);
+          
+          // Refresh data from server
+          queryClient.invalidateQueries({ queryKey: ["/api/blog"] });
+        } catch (error) {
+          console.error('Error reordering blog posts:', error);
+          toast({ 
+            title: "Failed to reorder blog posts", 
+            description: error instanceof Error ? error.message : "Unknown error",
+            variant: "destructive" 
+          });
+          
+          // Revert to original order if server update fails
+          setLocalBlogPosts(posts || []);
+        }
+      }
     }
   };
 
@@ -236,7 +336,7 @@ export default function AdminBlogPage() {
             {(imagePreview || editingPost?.imageUrl) && (
               <div className="mt-4">
                 <img
-                  src={imagePreview || editingPost?.imageUrl}
+                  src={imagePreview || editingPost?.imageUrl || ''}
                   alt="Preview"
                   className="max-h-[400px] w-full object-cover rounded-lg"
                 />
@@ -327,49 +427,69 @@ export default function AdminBlogPage() {
 
       <ScrollArea className="h-[calc(100vh-200px)]">
         <div className="space-y-4">
-          {posts?.map((post) => (
-            <Card key={post.id} className="p-6">
-              <div className="flex justify-between items-start gap-4">
-                <div className="space-y-2 flex-1">
-                  <h2 className="text-xl font-semibold">{post.title}</h2>
-                  <p className="text-sm text-gray-500">
-                    {new Date(post.createdAt).toLocaleDateString()}
-                  </p>
-                  <div className="mt-2 text-gray-700 prose max-w-none" dangerouslySetInnerHTML={{ __html: post.content }} />
-                  {post.imageUrl && (
-                    <img
-                      src={post.imageUrl}
-                      alt={post.title}
-                      className="mt-2 max-h-40 rounded-md"
-                    />
-                  )}
-                </div>
-                <div className="flex gap-2 flex-shrink-0">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => {
-                      setEditingPost(post);
-                      setIsEditing(true);
-                    }}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => {
-                      if (confirm('Are you sure you want to delete this post?')) {
-                        deleteMutation.mutate(post.id);
-                      }
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ))}
+          <p className="text-sm text-muted-foreground mb-2">Drag posts to change their order.</p>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleBlogPostDragEnd}
+          >
+            <SortableContext
+              items={localBlogPosts.map(post => post.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {localBlogPosts.map((post) => (
+                <SortableItem key={post.id} id={post.id}>
+                  <Card className="p-6 border-2 border-dashed border-gray-200 hover:border-primary transition-colors mb-4">
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="space-y-2 flex-1">
+                        <h2 className="text-xl font-semibold">{post.title}</h2>
+                        <p className="text-sm text-gray-500">
+                          {new Date(post.createdAt).toLocaleDateString()}
+                        </p>
+                        <div className="mt-2 text-gray-700 prose max-w-none" dangerouslySetInnerHTML={{ __html: post.content }} />
+                        {post.imageUrl && (
+                          <img
+                            src={post.imageUrl}
+                            alt={post.title}
+                            className="mt-2 max-h-40 rounded-md"
+                          />
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-2 flex-shrink-0">
+                        <div className="flex items-center text-muted-foreground mb-2">
+                          <MoveVertical className="w-4 h-4 mr-1" />
+                          <span className="text-xs">Drag to reorder</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => {
+                              setEditingPost(post);
+                              setIsEditing(true);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => {
+                              if (confirm('Are you sure you want to delete this post?')) {
+                                deleteMutation.mutate(post.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                </SortableItem>
+              ))}
+            </SortableContext>
+          </DndContext>
         </div>
       </ScrollArea>
     </div>

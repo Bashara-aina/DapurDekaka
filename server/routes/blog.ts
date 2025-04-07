@@ -146,3 +146,24 @@ blogRouter.delete("/:id", requireAuth, async (req, res) => {
     res.status(500).json({ message: "Failed to delete blog post" });
   }
 });
+
+// Reorder blog posts
+blogRouter.post("/reorder", requireAuth, async (req, res) => {
+  try {
+    const { postIds } = req.body;
+    
+    if (!Array.isArray(postIds) || postIds.length === 0) {
+      return res.status(400).json({ message: "Invalid post IDs provided" });
+    }
+    
+    // Convert strings to numbers if needed
+    const numericPostIds = postIds.map(id => typeof id === 'string' ? parseInt(id) : id);
+    
+    // Reorder posts
+    const reorderedPosts = await storage.reorderBlogPosts(numericPostIds);
+    res.json(reorderedPosts);
+  } catch (error) {
+    console.error("Error reordering blog posts:", error);
+    res.status(500).json({ message: "Failed to reorder blog posts" });
+  }
+});

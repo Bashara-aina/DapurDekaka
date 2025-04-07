@@ -44,6 +44,7 @@ export interface IStorage {
   createBlogPost(post: InsertBlogPost & { authorId: number }): Promise<BlogPost>;
   updateBlogPost(id: number, post: Partial<InsertBlogPost>): Promise<BlogPost | undefined>;
   deleteBlogPost(id: number): Promise<boolean>;
+  reorderBlogPosts(postIds: number[]): Promise<BlogPost[]>;
 
   // Menu item methods
   getAllMenuItems(): Promise<MenuItem[]>;
@@ -330,7 +331,32 @@ export class DatabaseStorage implements IStorage {
   // Blog post methods
   async getAllBlogPosts(): Promise<BlogPost[]> {
     console.log("Fetching all blog posts");
-    return await db.select().from(blogPosts).orderBy(blogPosts.createdAt);
+    return await db.select().from(blogPosts).orderBy(blogPosts.orderIndex);
+  }
+  
+  async reorderBlogPosts(postIds: number[]): Promise<BlogPost[]> {
+    try {
+      console.log("Reordering blog posts with IDs:", postIds);
+      const updatedPosts: BlogPost[] = [];
+      
+      // Update each post's orderIndex based on its position in the postIds array
+      for (let i = 0; i < postIds.length; i++) {
+        const [updatedPost] = await db
+          .update(blogPosts)
+          .set({ orderIndex: i })
+          .where(eq(blogPosts.id, postIds[i]))
+          .returning();
+        
+        if (updatedPost) {
+          updatedPosts.push(updatedPost);
+        }
+      }
+      
+      return updatedPosts;
+    } catch (error) {
+      console.error("Error reordering blog posts:", error);
+      throw new Error("Failed to reorder blog posts");
+    }
   }
 
   async getBlogPost(id: number): Promise<BlogPost | undefined> {
@@ -345,9 +371,22 @@ export class DatabaseStorage implements IStorage {
   async createBlogPost(post: InsertBlogPost & { authorId: number }): Promise<BlogPost> {
     try {
       console.log("Creating blog post with data:", post);
+      
+      // Get current max orderIndex for blog posts
+      const allPosts = await db.select().from(blogPosts);
+      const maxOrderIndex = allPosts.length > 0 
+        ? Math.max(...allPosts.map(post => post.orderIndex || 0)) 
+        : -1;
+      
+      // Set the new post's orderIndex to maxOrderIndex + 1
+      const postWithOrder = {
+        ...post,
+        orderIndex: maxOrderIndex + 1
+      };
+      
       const [newPost] = await db
         .insert(blogPosts)
-        .values(post)
+        .values(postWithOrder)
         .returning();
       return newPost;
     } catch (error) {

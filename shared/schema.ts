@@ -41,6 +41,7 @@ export const blogPosts = pgTable("blog_posts", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   published: integer("published").default(0),
+  orderIndex: integer("order_index").default(0),
 });
 
 export const footer = pgTable('footer',{
