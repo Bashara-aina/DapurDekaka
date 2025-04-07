@@ -1,4 +1,3 @@
-
 import { cn } from "@/lib/utils";
 
 interface HalalLogoProps {
@@ -8,14 +7,10 @@ interface HalalLogoProps {
 export function HalalLogo({ className }: HalalLogoProps) {
   return (
     <div className={cn("fixed top-20 right-4 z-50", className)}>
-      <a 
-        href="https://drive.google.com/file/d/1QMGr9pSuoyV6DKY-NreuLtSM-vCMd80s/view?usp=sharing"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <img 
-          src="/logo/halal.png" 
-          alt="Halal Certification" 
+      <a target="_blank" rel="noopener noreferrer">
+        <img
+          src="/logo/halal.png"
+          alt="Halal Certification"
           className="w-[100px] h-[100px] object-contain"
         />
       </a>
