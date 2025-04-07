@@ -41,7 +41,7 @@ let homepageConfig = {...defaultHomepage};
 
 // Ensure directories exist
 async function ensureDirectories() {
-  const dirs = ['public/logo', 'public/asset', 'uploads'];
+  const dirs = ['public/logo', 'public/asset', 'uploads', 'public/logo/customers'];
   for (const dir of dirs) {
     try {
       await fs.access(dir);
@@ -467,11 +467,37 @@ pagesRouter.delete('/homepage/carousel/:index', async (req, res) => {
       if (homepageConfig.content?.customers?.testimonials) {
         delete homepageConfig.content.customers.testimonials;
         console.log("Removed deprecated testimonials data");
-        // Save the cleaned config back to database
-        await storage.updatePageContent('homepage', {content: homepageConfig});
       }
       
-      console.log("Homepage configuration loaded from database");
+      // Initialize customers section if it doesn't exist
+      if (!homepageConfig.content.customers) {
+        homepageConfig.content.customers = {
+          title: "Our Customers",
+          subtitle: "Trusted by businesses across Indonesia",
+          logos: []
+        };
+        console.log("Initialized customers section");
+      }
+      
+      // Ensure logos array exists
+      if (!homepageConfig.content.customers.logos) {
+        homepageConfig.content.customers.logos = [];
+      }
+      
+      // Add default logos if none exist
+      if (homepageConfig.content.customers.logos.length === 0) {
+        // Add default logos - halal.png and logo.png
+        homepageConfig.content.customers.logos = [
+          '/logo/halal.png',
+          '/logo/logo.png'
+        ];
+        console.log("Added default customer logos");
+      }
+      
+      // Save any changes back to the database
+      await storage.updatePageContent('homepage', {content: homepageConfig});
+      
+      console.log("Homepage configuration loaded and updated from database");
     } else {
       console.log("No stored homepage configuration found, using default");
     }
