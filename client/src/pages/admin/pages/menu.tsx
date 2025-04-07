@@ -37,7 +37,7 @@ import {
   verticalListSortingStrategy,
   arrayMove
 } from '@dnd-kit/sortable';
-import { SortableItem } from "@/components/ui/SortableItem";
+import { SortableItem, DragHandle } from "@/components/ui/SortableItem";
 
 export default function AdminMenuPage() {
   const [isEditing, setIsEditing] = useState(false);
@@ -604,10 +604,10 @@ export default function AdminMenuPage() {
                             {item.price && item.price.startsWith('RP') ? item.price : `RP ${item.price}`}
                           </p>
                           <div className="flex items-center justify-between mt-4">
-                            <div className="flex items-center text-muted-foreground">
+                            <DragHandle className="flex items-center p-2 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">
                               <MoveVertical className="w-4 h-4 mr-1" />
-                              <span className="text-xs">Drag to reorder</span>
-                            </div>
+                              <span className="text-xs">Drag here</span>
+                            </DragHandle>
                             <div className="flex gap-2">
                               <Button variant="outline" size="sm" onClick={() => handleEditItemClick(item)} className="flex items-center gap-1">
                                 <Edit className="h-3.5 w-3.5" />
@@ -687,10 +687,10 @@ export default function AdminMenuPage() {
                             {sauce.price && sauce.price.startsWith('RP') ? sauce.price : `RP ${sauce.price}`}
                           </p>
                           <div className="flex items-center justify-between mt-4">
-                            <div className="flex items-center text-muted-foreground">
+                            <DragHandle className="flex items-center p-2 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">
                               <MoveVertical className="w-4 h-4 mr-1" />
-                              <span className="text-xs">Drag to reorder</span>
-                            </div>
+                              <span className="text-xs">Drag here</span>
+                            </DragHandle>
                             <div className="flex gap-2">
                               <Button variant="outline" size="sm" onClick={() => handleEditSauceClick(sauce)} className="flex items-center gap-1">
                                 <Edit className="h-3.5 w-3.5" />
