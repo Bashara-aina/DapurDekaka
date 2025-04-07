@@ -16,10 +16,12 @@ export default function Contact() {
           className="text-center mb-16"
         >
           <h1 className="text-4xl font-bold text-gray-900 mb-6">
-            <TranslateWrapper translationKey="common.contact.title">Contact Us</TranslateWrapper>
+            <TranslateWrapper translationKey="common.contact.title">
+              Contact Us
+            </TranslateWrapper>
           </h1>
           <p className="text-lg text-gray-600">
-            <TranslateWrapper translationKey="common.contact.description">
+            <TranslateWrapper>
               Get in touch with us for any inquiries about our premium halal dim
               sum. We'd love to hear from you!
             </TranslateWrapper>
