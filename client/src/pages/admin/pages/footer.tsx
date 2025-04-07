@@ -1,15 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2, MapPin, Phone, Mail, Instagram, ShoppingBag } from "lucide-react";
 import AdminNavbar from "@/components/layout/admin-navbar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import Footer from "@/components/layout/footer";
 
 interface SocialLink {
   id: string;
@@ -37,10 +36,23 @@ export default function FooterEditor() {
   const [formData, setFormData] = useState<FooterContent>({
     companyName: "Dapur Dekaka",
     tagline: "Premium halal dim sum made with love and quality ingredients.",
-    address: "",
-    phone: "",
-    email: "",
-    socialLinks: [],
+    address: "Jl. Sinom V No.7, Turangga, Kec. Lengkong, Kota Bandung, Jawa Barat 40264",
+    phone: "082295986407",
+    email: "contact@dapurdekaka.com",
+    socialLinks: [
+      {
+        id: "1",
+        platform: "Instagram",
+        url: "https://instagram.com/dapurdekaka",
+        icon: "Instagram"
+      },
+      {
+        id: "2",
+        platform: "Shopee",
+        url: "https://shopee.co.id/dapurdekaka",
+        icon: "Shopee"
+      }
+    ],
     copyright: `© ${new Date().getFullYear()} Dapur Dekaka. All rights reserved.`,
     logoUrl: ""
   });
@@ -337,7 +349,64 @@ export default function FooterEditor() {
               </CardHeader>
               <CardContent className="p-0 overflow-hidden rounded-b-lg">
                 <div className="border-t">
-                  <Footer />
+                  {/* Local Footer Preview Component */}
+                  <footer className="bg-gray-50 border-t">
+                    <div className="container mx-auto px-4 py-12">
+                      <div className="flex flex-col items-center justify-center text-center">
+                        <div className="space-y-2">
+                          <h3 className="text-xl font-bold text-primary">
+                            {formData.companyName}
+                          </h3>
+                          <p className="text-gray-600">
+                            {formData.tagline}
+                          </p>
+                        </div>
+
+                        <div className="mt-2 space-y-2">
+                          <div className="flex items-center justify-center gap-2 text-gray-600">
+                            <MapPin className="h-5 w-5 flex-shrink-0" />
+                            <span>{formData.address}</span>
+                          </div>
+                          <div className="flex items-center justify-center gap-2 text-gray-600">
+                            <Phone className="h-5 w-5 flex-shrink-0" />
+                            <span>{formData.phone}</span>
+                          </div>
+                          {formData.email && (
+                            <div className="flex items-center justify-center gap-2 text-gray-600">
+                              <Mail className="h-5 w-5 flex-shrink-0" />
+                              <span>{formData.email}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {formData.socialLinks && formData.socialLinks.length > 0 && (
+                          <div className="mt-6 flex justify-center space-x-4">
+                            {formData.socialLinks.map((social) => (
+                              <a
+                                key={social.id}
+                                href={social.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-gray-600 hover:text-primary transition-colors"
+                              >
+                                {social.icon === "Instagram" ? (
+                                  <Instagram className="h-5 w-5" />
+                                ) : social.icon === "Shopee" ? (
+                                  <ShoppingBag className="h-5 w-5" />
+                                ) : (
+                                  <Instagram className="h-5 w-5" />
+                                )}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="mt-8 text-gray-600">
+                          <p>{formData.copyright}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </footer>
                 </div>
               </CardContent>
             </Card>
