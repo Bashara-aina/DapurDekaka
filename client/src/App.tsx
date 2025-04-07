@@ -21,6 +21,7 @@ import AdminMenuPage from "@/pages/admin/pages/menu";
 import AdminDashboard from "@/pages/admin/index";
 import HomePageEditor from "@/pages/admin/pages/home";
 import AboutPageEditor from "@/pages/admin/pages/about";
+import ContactPageEditor from "@/pages/admin/pages/contact";
 import FooterEditor from "@/pages/admin/pages/footer";
 
 function Router() {
@@ -134,6 +135,12 @@ function Router() {
                   return (
                     <ErrorBoundary>
                       <AboutPageEditor />
+                    </ErrorBoundary>
+                  );
+                case 'contact':
+                  return (
+                    <ErrorBoundary>
+                      <ContactPageEditor />
                     </ErrorBoundary>
                   );
                 case 'footer':
