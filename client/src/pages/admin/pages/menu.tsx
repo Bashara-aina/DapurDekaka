@@ -124,11 +124,10 @@ export default function AdminMenuPage() {
   const handleDeleteSauce = async (id: number) => {
     try {
       await apiRequest(`/api/menu/sauces/${id}`, { method: 'DELETE' });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
-      toast({ title: "Sauce deleted successfully" });
+      window.location.reload();
     } catch (error) {
       console.error('Delete error:', error);
-      toast({ title: "Failed to delete sauce", variant: "destructive" });
+      window.location.reload();
     }
   };
 
