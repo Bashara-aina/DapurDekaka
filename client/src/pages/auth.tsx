@@ -124,10 +124,9 @@ export default function AuthPage() {
               minLength={8}
             />
           </div>
-          <Button type="submit" className="w-full" disabled={!isLogin}>
+          <Button type="submit" className="w-full">
             {isLogin ? "Login" : "Create Account"}
-          </Button>{" "}
-          {/* Disable button for registration to prevent accidental submissions */}
+          </Button>
           <div className="text-center mt-4">
             <button
               type="button"

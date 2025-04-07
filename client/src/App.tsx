@@ -24,6 +24,7 @@ import AboutPageEditor from "@/pages/admin/pages/about";
 import ContactPageEditor from "@/pages/admin/pages/contact";
 import FooterEditor from "@/pages/admin/pages/footer";
 import CustomersPageEditor from "@/pages/admin/pages/customers";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 function Router() {
   return (
@@ -104,17 +105,23 @@ function Router() {
           </Route>
           <Route path="/admin">
             <ErrorBoundary>
-              <AdminDashboard />
+              <ProtectedRoute>
+                <AdminDashboard />
+              </ProtectedRoute>
             </ErrorBoundary>
           </Route>
           <Route path="/admin/blog">
             <ErrorBoundary>
-              <AdminBlog />
+              <ProtectedRoute>
+                <AdminBlog />
+              </ProtectedRoute>
             </ErrorBoundary>
           </Route>
           <Route path="/admin/pages">
             <ErrorBoundary>
-              <AdminPages />
+              <ProtectedRoute>
+                <AdminPages />
+              </ProtectedRoute>
             </ErrorBoundary>
           </Route>
           <Route path="/admin/pages/:pageId">
@@ -123,48 +130,62 @@ function Router() {
                 case 'menu':
                   return (
                     <ErrorBoundary>
-                      <AdminMenuPage />
+                      <ProtectedRoute>
+                        <AdminMenuPage />
+                      </ProtectedRoute>
                     </ErrorBoundary>
                   );
                 case 'home':
                   return (
                     <ErrorBoundary>
-                      <HomePageEditor />
+                      <ProtectedRoute>
+                        <HomePageEditor />
+                      </ProtectedRoute>
                     </ErrorBoundary>
                   );
                 case 'about':
                   return (
                     <ErrorBoundary>
-                      <AboutPageEditor />
+                      <ProtectedRoute>
+                        <AboutPageEditor />
+                      </ProtectedRoute>
                     </ErrorBoundary>
                   );
                 case 'contact':
                   return (
                     <ErrorBoundary>
-                      <ContactPageEditor />
+                      <ProtectedRoute>
+                        <ContactPageEditor />
+                      </ProtectedRoute>
                     </ErrorBoundary>
                   );
                 case 'footer':
                   return (
                     <ErrorBoundary>
-                      <FooterEditor />
+                      <ProtectedRoute>
+                        <FooterEditor />
+                      </ProtectedRoute>
                     </ErrorBoundary>
                   );
                 case 'customers':
                   return (
                     <ErrorBoundary>
-                      <CustomersPageEditor />
+                      <ProtectedRoute>
+                        <CustomersPageEditor />
+                      </ProtectedRoute>
                     </ErrorBoundary>
                   );
                 default:
                   return (
                     <ErrorBoundary>
-                      <div className="container mx-auto p-6">
-                        <h1 className="text-3xl font-bold mb-6">
-                          Edit {params.pageId.charAt(0).toUpperCase() + params.pageId.slice(1)} Page
-                        </h1>
-                        <p>Page editor for {params.pageId} will be implemented here</p>
-                      </div>
+                      <ProtectedRoute>
+                        <div className="container mx-auto p-6">
+                          <h1 className="text-3xl font-bold mb-6">
+                            Edit {params.pageId.charAt(0).toUpperCase() + params.pageId.slice(1)} Page
+                          </h1>
+                          <p>Page editor for {params.pageId} will be implemented here</p>
+                        </div>
+                      </ProtectedRoute>
                     </ErrorBoundary>
                   );
               }
