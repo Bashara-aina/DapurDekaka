@@ -63,7 +63,8 @@ export default function AuthPage() {
     } catch (error) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "An error occurred",
+        description:
+          error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",
       });
     }
@@ -96,7 +97,6 @@ export default function AuthPage() {
               required
             />
           </div>
-
           {!isLogin && (
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium">
@@ -111,7 +111,6 @@ export default function AuthPage() {
               />
             </div>
           )}
-
           <div className="space-y-2">
             <label htmlFor="password" className="text-sm font-medium">
               Password
@@ -125,15 +124,10 @@ export default function AuthPage() {
               minLength={8}
             />
           </div>
-
-          <Button 
-            type="submit" 
-            className="w-full" 
-            disabled={!isLogin}
-          >
+          <Button type="submit" className="w-full" disabled={!isLogin}>
             {isLogin ? "Login" : "Create Account"}
-          </Button>
-
+          </Button>{" "}
+          {/* Disable button for registration to prevent accidental submissions */}
           <div className="text-center mt-4">
             <button
               type="button"
