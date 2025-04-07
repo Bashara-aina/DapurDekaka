@@ -2,6 +2,8 @@
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import type { PageContent } from "@shared/schema";
+import { SEOHead } from "@/components/SEOHead";
+import { ImageOptimizer } from "@/components/ImageOptimizer";
 
 interface Feature {
   id: string;
@@ -34,6 +36,7 @@ export default function About() {
 
   const defaultContent: AboutContent = {
     title: "About Dapur Dekaka",
+    description: "Learn about our journey, values, and the premium quality ingredients we use at Dapur Dekaka",
     mainImage: "/asset/28.jpg",
     mainDescription: "Dapur Dekaka adalah produsen frozen food dimsum berbagai varian. Berlokasi di Bandung, kami telah mendistribusikan produk sampai ke Jakarta, Bekasi, Tangerang, dan Palembang. Produk kami dibuat dengan resep khas turun temurun yang sudah lebih dari 5 tahun, alur produksinya memperhatikan keamanan pangan, kebersihan terjamin, tidak pakai pengawet, tidak pakai pewarna buatan. Prioritas kami terhadap konsistensi kualitas menjadikan kami selalu dipercaya oleh restoran, kafe, reseller, dan para pengusaha sebagai mitra.",
     sections: [{
@@ -80,6 +83,13 @@ export default function About() {
 
   return (
     <div className="container mx-auto px-4 py-20">
+      <SEOHead 
+        title={`${content.title} | Dapur Dekaka`}
+        description={content.mainDescription.substring(0, 160)}
+        keywords="halal dim sum, about us, Dapur Dekaka history, premium handmade dim sum"
+        ogImage={content.mainImage}
+        ogType="website"
+      />
       <div className="max-w-6xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -100,10 +110,14 @@ export default function About() {
           className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center mb-16 max-w-[75%] mx-auto"
         >
           <div className="h-full">
-            <img
+            <ImageOptimizer
               src={content.mainImage}
               alt="About Us"
-              className="w-full h-full object-cover rounded-lg shadow-lg"
+              className="w-full h-full rounded-lg shadow-lg"
+              objectFit="cover"
+              priority={true}
+              width={600}
+              height={400}
             />
           </div>
           <div className="flex flex-col justify-center">
@@ -150,10 +164,13 @@ export default function About() {
               transition={{ duration: 0.5, delay: 0.5 + index * 0.1 }}
               className="bg-white rounded-lg shadow-lg overflow-hidden"
             >
-              <img
+              <ImageOptimizer
                 src={feature.image}
                 alt={feature.title}
-                className="w-full h-48 object-cover"
+                className="w-full h-48"
+                objectFit="cover"
+                width={300}
+                height={200}
               />
               <div className="p-6">
                 <h3 className="text-xl font-semibold mb-4">

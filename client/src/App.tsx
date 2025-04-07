@@ -4,6 +4,7 @@ import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { HelmetProvider } from "react-helmet-async";
 import NotFound from "@/pages/not-found";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
@@ -212,10 +213,12 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <LanguageProvider>
-          <Router />
-          <Toaster />
-        </LanguageProvider>
+        <HelmetProvider>
+          <LanguageProvider>
+            <Router />
+            <Toaster />
+          </LanguageProvider>
+        </HelmetProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );
