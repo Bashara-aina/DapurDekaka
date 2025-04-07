@@ -1,3 +1,4 @@
+
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
@@ -8,7 +9,7 @@ import type { MenuItem, Sauce } from "@shared/schema";
 
 interface OrderModalProps {
   trigger?: React.ReactNode;
-  menuItem?: MenuItem | Sauce;  // Make menuItem optional and accept either MenuItem or Sauce
+  menuItem?: MenuItem | Sauce;
 }
 
 export function OrderModal({ trigger, menuItem }: OrderModalProps) {
@@ -39,27 +40,27 @@ export function OrderModal({ trigger, menuItem }: OrderModalProps) {
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
+        {menuItem && (
+          <div className="mb-6 text-center">
+            <h3 className="text-xl font-semibold mb-2">{menuItem.name}</h3>
+            <p className="text-sm text-gray-600">{menuItem.description}</p>
+          </div>
+        )}
         <motion.div
           variants={container}
           initial="hidden"
           animate="show"
-          className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-2"
+          className="grid grid-cols-2 gap-4"
         >
-          {menuItem && (
-            <div className="col-span-3 mb-4">
-              <h3 className="text-lg font-semibold mb-2">{menuItem.name}</h3>
-              <p className="text-sm text-gray-600">{menuItem.description}</p>
-            </div>
-          )}
           <motion.a
             variants={item}
             href="https://shopee.co.id/dapurdekaka"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex flex-col items-center justify-center p-4 rounded-lg hover:bg-accent transition-colors"
+            className="flex flex-col items-center justify-center p-4 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
           >
-            <SiShopee className="w-12 h-12 text-[#EE4D2D]" />
-            <span className="mt-2 text-sm font-medium">Shopee</span>
+            <SiShopee className="w-10 h-10 text-[#EE4D2D] mb-2" />
+            <span className="text-sm font-medium">Shopee</span>
           </motion.a>
 
           <motion.a
@@ -67,10 +68,10 @@ export function OrderModal({ trigger, menuItem }: OrderModalProps) {
             href="https://instagram.com/dapurdekaka"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex flex-col items-center justify-center p-4 rounded-lg hover:bg-accent transition-colors"
+            className="flex flex-col items-center justify-center p-4 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
           >
-            <SiInstagram className="w-12 h-12 text-[#E4405F]" />
-            <span className="mt-2 text-sm font-medium">Instagram</span>
+            <SiInstagram className="w-10 h-10 text-[#E4405F] mb-2" />
+            <span className="text-sm font-medium">Instagram</span>
           </motion.a>
 
           <motion.a
@@ -78,14 +79,14 @@ export function OrderModal({ trigger, menuItem }: OrderModalProps) {
             href="https://mart.grab.com/id/id/merchant/6-C62BTTXXSB33TE"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex flex-col items-center justify-center p-4 rounded-lg hover:bg-accent transition-colors"
+            className="flex flex-col items-center justify-center p-4 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
           >
             <img
               src="/grab-logo.svg"
               alt="Grab"
-              className="w-12 h-12"
+              className="w-10 h-10 mb-2"
             />
-            <span className="mt-2 text-sm font-medium">Grab</span>
+            <span className="text-sm font-medium">Grab</span>
           </motion.a>
 
           <motion.a
@@ -93,10 +94,10 @@ export function OrderModal({ trigger, menuItem }: OrderModalProps) {
             href="https://wa.me/6282295986407"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex flex-col items-center justify-center p-4 rounded-lg hover:bg-accent transition-colors"
+            className="flex flex-col items-center justify-center p-4 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
           >
-            <SiWhatsapp className="w-12 h-12 text-[#25D366]" />
-            <span className="mt-2 text-sm font-medium">WhatsApp</span>
+            <SiWhatsapp className="w-10 h-10 text-[#25D366] mb-2" />
+            <span className="text-sm font-medium">WhatsApp</span>
           </motion.a>
         </motion.div>
       </DialogContent>
