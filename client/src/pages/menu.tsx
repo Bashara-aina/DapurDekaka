@@ -84,8 +84,8 @@ export default function Menu() {
                   <p className="text-sm text-gray-600">
                     {item.description}
                   </p>
-                  <p className="text-sm font-semibold text-green-600">
-                    {item.price}
+                  <p className="text-base font-semibold text-green-600">
+                    {item.price && item.price.startsWith('RP') ? item.price : `RP ${item.price}`}
                   </p>
                   <div className="mt-auto pt-2">
                     <OrderModal
@@ -134,8 +134,8 @@ export default function Menu() {
                       <p className="text-sm text-gray-600 flex-grow">
                         {sauce.description}
                       </p>
-                      <p className="text-sm font-semibold text-green-600 mb-2">
-                        {sauce.price}
+                      <p className="text-base font-semibold text-green-600 mb-2">
+                        {sauce.price && sauce.price.startsWith('RP') ? sauce.price : `RP ${sauce.price}`}
                       </p>
                       <OrderModal
                         trigger={<Button className="w-full">Pesan</Button>}

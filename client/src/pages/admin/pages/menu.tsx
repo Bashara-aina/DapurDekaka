@@ -562,7 +562,9 @@ export default function AdminMenuPage() {
                           />
                           <h3 className="font-semibold">{item.name}</h3>
                           <p className="text-sm text-gray-600">{item.description}</p>
-                          <p className="text-sm font-medium text-green-600 mt-1">{item.price}</p>
+                          <p className="text-base font-medium text-green-600 mt-1">
+                            {item.price && item.price.startsWith('RP') ? item.price : `RP ${item.price}`}
+                          </p>
                           <div className="flex items-center justify-between mt-4">
                             <div className="flex items-center text-muted-foreground">
                               <MoveVertical className="w-4 h-4 mr-1" />
@@ -641,7 +643,9 @@ export default function AdminMenuPage() {
                           />
                           <h3 className="font-semibold">{sauce.name}</h3>
                           <p className="text-sm text-gray-600">{sauce.description}</p>
-                          <p className="text-sm font-medium text-green-600 mt-1">{sauce.price}</p>
+                          <p className="text-base font-medium text-green-600 mt-1">
+                            {sauce.price && sauce.price.startsWith('RP') ? sauce.price : `RP ${sauce.price}`}
+                          </p>
                           <div className="flex items-center justify-between mt-4">
                             <div className="flex items-center text-muted-foreground">
                               <MoveVertical className="w-4 h-4 mr-1" />
