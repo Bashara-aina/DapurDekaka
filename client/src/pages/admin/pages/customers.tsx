@@ -1,81 +1,76 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Upload, Trash2, PlusCircle } from "lucide-react";
+import { Loader2, Upload, Trash2, GripVertical } from "lucide-react";
 import AdminNavbar from "@/components/layout/admin-navbar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
-// Testimonial interface
-interface Testimonial {
+type SortableLogoProps = {
   id: string;
-  name: string;
-  position: string;
-  company: string;
-  image: string;
-  content: string;
-}
-
-// Customer logo interface
-interface CustomerLogo {
   url: string;
-}
+  index: number;
+  onDelete: () => void;
+};
 
-// Customers section interface
-interface CustomersSection {
-  title: string;
-  subtitle: string;
-  logos: string[];
-  testimonials: Testimonial[];
-}
+const SortableLogo = ({ id, url, onDelete }: SortableLogoProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
 
-// Preview component for the Customers section
-const CustomersPreview = ({ data }: { data: CustomersSection }) => {
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
   return (
-    <div className="border rounded-lg p-6 bg-white">
-      <div className="text-center mb-10">
-        <h2 className="text-3xl font-bold text-gray-900">{data.title}</h2>
-        <p className="text-gray-600 mt-2">{data.subtitle}</p>
-      </div>
-
-      <div className="mb-10">
-        <h3 className="text-xl font-bold mb-4">Customer Logos</h3>
-        <div className="flex flex-wrap gap-4 justify-center">
-          {data.logos.map((logo, index) => (
-            <div key={index} className="w-24 h-24 flex items-center justify-center p-2 border rounded">
-              <img src={logo} alt={`Customer logo ${index + 1}`} className="max-w-full max-h-full object-contain" />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <h3 className="text-xl font-bold mb-4">Testimonials</h3>
-        <div className="grid md:grid-cols-2 gap-6">
-          {data.testimonials.map((testimonial) => (
-            <div key={testimonial.id} className="bg-gray-50 p-4 rounded-lg">
-              <div className="flex items-center gap-3 mb-3">
-                {testimonial.image && (
-                  <img 
-                    src={testimonial.image} 
-                    alt={testimonial.name}
-                    className="w-12 h-12 rounded-full object-cover"
-                  />
-                )}
-                <div>
-                  <h4 className="font-semibold">{testimonial.name}</h4>
-                  <p className="text-sm text-gray-600">{testimonial.position}, {testimonial.company}</p>
-                </div>
-              </div>
-              <p className="italic text-gray-700">"{testimonial.content}"</p>
-            </div>
-          ))}
-        </div>
-      </div>
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="relative group flex items-center gap-2 p-2 bg-white rounded-lg shadow-sm"
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing"
+      >
+        <GripVertical className="h-5 w-5 text-gray-400" />
+      </button>
+      <img src={url} alt={`Customer logo`} className="w-24 h-24 object-cover rounded" />
+      <Button
+        variant="destructive"
+        size="icon"
+        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={onDelete}
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
     </div>
   );
 };
@@ -83,30 +78,20 @@ const CustomersPreview = ({ data }: { data: CustomersSection }) => {
 export default function CustomersPageEditor() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [files, setFiles] = useState<File[]>([]);
   const [activeTab, setActiveTab] = useState("general");
-  const [files, setFiles] = useState<{ [key: string]: File[] }>({
-    logos: [],
-    testimonialImages: []
-  });
-
-  // Form state for customer section
-  const [customersData, setCustomersData] = useState<CustomersSection>({
+  const [content, setContent] = useState({
     title: "",
-    subtitle: "",
-    logos: [],
-    testimonials: []
+    subtitle: ""
   });
 
-  // Temporary state for new testimonial
-  const [newTestimonial, setNewTestimonial] = useState<Partial<Testimonial>>({
-    name: "",
-    position: "",
-    company: "",
-    content: ""
-  });
-  const [selectedTestimonialId, setSelectedTestimonialId] = useState<string | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
-  // Fetch homepage data
   const { data: pageData, isLoading } = useQuery({
     queryKey: ["homepage"],
     queryFn: async () => {
@@ -115,60 +100,63 @@ export default function CustomersPageEditor() {
           'Cache-Control': 'no-cache',
           'Pragma': 'no-cache'
         },
+        cache: 'no-store'
       });
       if (!response.ok) throw new Error('Failed to fetch homepage data');
       return response.json();
     }
   });
 
-  // Initialize form with data from API
+  // Initialize content from pageData
   useEffect(() => {
     if (pageData?.content?.customers) {
-      setCustomersData({
+      setContent({
         title: pageData.content.customers.title || "Our Customers",
-        subtitle: pageData.content.customers.subtitle || "Trusted by businesses across Indonesia",
-        logos: pageData.content.customers.logos || [],
-        testimonials: pageData.content.customers.testimonials || []
+        subtitle: pageData.content.customers.subtitle || "Trusted by businesses across Indonesia"
       });
     }
   }, [pageData]);
 
-  // Update homepage data mutation
   const updateMutation = useMutation({
     mutationFn: async () => {
       const formData = new FormData();
-      
-      // Add logo files if any
-      files.logos?.forEach(file => {
+      files.forEach(file => {
         formData.append('customerLogos', file);
       });
       
-      // Add testimonial image files if any
-      files.testimonialImages?.forEach((file, index) => {
-        formData.append(`testimonialImage_${index}`, file);
-      });
-      
-      // Add the updated customers section data
+      // Add customer section content
       formData.append('content', JSON.stringify({
-        customers: customersData
+        customers: {
+          title: content.title,
+          subtitle: content.subtitle,
+          logos: pageData?.content?.customers?.logos || []
+        }
       }));
 
-      const response = await fetch('/api/pages/homepage', {
+      const response = await fetch('/api/pages/homepage/customers', {
         method: 'PUT',
         body: formData
       });
 
-      if (!response.ok) throw new Error('Failed to update customers section');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update customers section');
+      }
+
       return response.json();
     },
     onSuccess: () => {
+      // Invalidate both homepage queries for the main page and admin
+      queryClient.invalidateQueries({ queryKey: ["pages", "homepage"] });
       queryClient.invalidateQueries({ queryKey: ["homepage"] });
+      
       toast({
         title: "Success",
         description: "Customers section updated successfully",
       });
-      // Reset file selection
-      setFiles({ logos: [], testimonialImages: [] });
+      
+      // Reset the files state
+      setFiles([]);
     },
     onError: (error) => {
       toast({
@@ -179,103 +167,67 @@ export default function CustomersPageEditor() {
     }
   });
 
-  // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateMutation.mutate();
-  };
-
-  // Handle adding a new testimonial
-  const handleAddTestimonial = () => {
-    if (!newTestimonial.name || !newTestimonial.content) {
+  const reorderLogosMutation = useMutation({
+    mutationFn: async (logos: string[]) => {
+      const response = await fetch('/api/pages/homepage/customers/logos/reorder', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ logos }),
+      });
+      if (!response.ok) throw new Error('Failed to reorder logos');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["homepage"] });
       toast({
-        title: "Missing Information",
-        description: "Please provide at least a name and testimonial content.",
+        title: "Success",
+        description: "Logo order updated successfully"
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update logo order",
         variant: "destructive"
       });
-      return;
     }
+  });
 
-    const newId = Date.now().toString();
-    const testimonial: Testimonial = {
-      id: newId,
-      name: newTestimonial.name || "",
-      position: newTestimonial.position || "",
-      company: newTestimonial.company || "",
-      image: "/asset/1.jpg", // Default image
-      content: newTestimonial.content || ""
-    };
-
-    setCustomersData(prev => ({
-      ...prev,
-      testimonials: [...prev.testimonials, testimonial]
-    }));
-
-    // Reset the form
-    setNewTestimonial({
-      name: "",
-      position: "",
-      company: "",
-      content: ""
-    });
-  };
-
-  // Handle editing a testimonial
-  const handleEditTestimonial = (testimonial: Testimonial) => {
-    setSelectedTestimonialId(testimonial.id);
-    setNewTestimonial({
-      name: testimonial.name,
-      position: testimonial.position,
-      company: testimonial.company,
-      content: testimonial.content
-    });
-  };
-
-  // Handle updating an existing testimonial
-  const handleUpdateTestimonial = () => {
-    if (!selectedTestimonialId) return;
-
-    setCustomersData(prev => ({
-      ...prev,
-      testimonials: prev.testimonials.map(item => 
-        item.id === selectedTestimonialId 
-          ? { 
-              ...item, 
-              name: newTestimonial.name || item.name,
-              position: newTestimonial.position || item.position,
-              company: newTestimonial.company || item.company,
-              content: newTestimonial.content || item.content
-            } 
-          : item
-      )
-    }));
-
-    // Reset form and selection
-    setNewTestimonial({
-      name: "",
-      position: "",
-      company: "",
-      content: ""
-    });
-    setSelectedTestimonialId(null);
-  };
-
-  // Handle deleting a testimonial
-  const handleDeleteTestimonial = (id: string) => {
-    setCustomersData(prev => ({
-      ...prev,
-      testimonials: prev.testimonials.filter(item => item.id !== id)
-    }));
-
-    // If the deleted testimonial was selected, reset the form
-    if (selectedTestimonialId === id) {
-      setNewTestimonial({
-        name: "",
-        position: "",
-        company: "",
-        content: ""
+  const deleteLogoMutation = useMutation({
+    mutationFn: async (index: number) => {
+      const response = await fetch(`/api/pages/homepage/customers/logos/${index}`, {
+        method: 'DELETE'
       });
-      setSelectedTestimonialId(null);
+      if (!response.ok) throw new Error('Failed to delete logo');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["homepage"] });
+      toast({
+        title: "Success",
+        description: "Logo deleted successfully"
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete logo",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id && pageData?.content?.customers?.logos) {
+      const oldIndex = pageData.content.customers.logos.findIndex((url: string) => url === active.id);
+      const newIndex = pageData.content.customers.logos.findIndex((url: string) => url === over.id);
+
+      const newLogos = arrayMove(pageData.content.customers.logos as string[], oldIndex, newIndex);
+      reorderLogosMutation.mutate(newLogos);
     }
   };
 
@@ -287,73 +239,63 @@ export default function CustomersPageEditor() {
     );
   }
 
+  const customerLogos = pageData?.content?.customers?.logos || [];
+
   return (
     <>
       <AdminNavbar />
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">Customers Section Editor</h1>
-        
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6">
+      <div className="container mx-auto p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">Customers Section</h1>
+          <Button
+            onClick={() => updateMutation.mutate()}
+            disabled={updateMutation.isPending}
+          >
+            {updateMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Updating...
+              </>
+            ) : (
+              <>
+                <Upload className="mr-2 h-4 w-4" />
+                Save Changes
+              </>
+            )}
+          </Button>
+        </div>
+
+        <Tabs defaultValue="general" value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-4">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="logos">Customer Logos</TabsTrigger>
-            <TabsTrigger value="testimonials">Testimonials</TabsTrigger>
             <TabsTrigger value="preview">Preview</TabsTrigger>
           </TabsList>
 
           <TabsContent value="general">
             <Card>
               <CardHeader>
-                <CardTitle>General Settings</CardTitle>
-                <CardDescription>
-                  Edit the section title and subtitle
-                </CardDescription>
+                <CardTitle>General Information</CardTitle>
               </CardHeader>
               <CardContent>
-                <form className="space-y-4">
+                <div className="grid gap-4">
                   <div>
-                    <label className="block mb-2 text-sm font-medium">
-                      Section Title
-                    </label>
+                    <label className="text-sm font-medium">Section Title</label>
                     <Input
-                      value={customersData.title}
-                      onChange={(e) => setCustomersData(prev => ({
-                        ...prev,
-                        title: e.target.value
-                      }))}
+                      value={content.title}
+                      onChange={(e) => setContent(prev => ({ ...prev, title: e.target.value }))}
                       placeholder="Our Customers"
-                      className="w-full"
                     />
                   </div>
                   <div>
-                    <label className="block mb-2 text-sm font-medium">
-                      Section Subtitle
-                    </label>
+                    <label className="text-sm font-medium">Section Subtitle</label>
                     <Input
-                      value={customersData.subtitle}
-                      onChange={(e) => setCustomersData(prev => ({
-                        ...prev,
-                        subtitle: e.target.value
-                      }))}
+                      value={content.subtitle}
+                      onChange={(e) => setContent(prev => ({ ...prev, subtitle: e.target.value }))}
                       placeholder="Trusted by businesses across Indonesia"
-                      className="w-full"
                     />
                   </div>
-                  <Button
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={updateMutation.isPending}
-                  >
-                    {updateMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      "Save Changes"
-                    )}
-                  </Button>
-                </form>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -362,261 +304,54 @@ export default function CustomersPageEditor() {
             <Card>
               <CardHeader>
                 <CardTitle>Customer Logos</CardTitle>
-                <CardDescription>
-                  Add or remove customer logos that will be displayed in a scrolling section
-                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-6">
-                  <div>
-                    <label className="block mb-2 text-sm font-medium">
-                      Upload Logos (PNG or JPG recommended)
-                    </label>
+                <div className="grid gap-4">
+                  <div className="bg-muted/50 rounded p-4">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Upload company logos to be displayed in the scrolling customer logo section. For best results, use square or landscape-oriented images with transparent backgrounds.
+                    </p>
                     <Input
                       type="file"
                       accept="image/*"
                       multiple
-                      onChange={(e) => setFiles(prev => ({ 
-                        ...prev, 
-                        logos: Array.from(e.target.files || []) 
-                      }))}
-                      className="mb-4"
+                      onChange={(e) => setFiles(Array.from(e.target.files || []))}
                     />
-                    <p className="text-sm text-gray-500 mb-4">
-                      Uploaded logos will be added to the existing collection
-                    </p>
                   </div>
-
-                  <div>
-                    <h3 className="text-lg font-medium mb-3">Current Logos</h3>
-                    <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                      {customersData.logos.map((logo, index) => (
-                        <div key={index} className="relative border rounded p-2 bg-white">
-                          <img 
-                            src={logo} 
-                            alt={`Customer ${index + 1}`} 
-                            className="w-full h-24 object-contain"
-                          />
-                          <Button
-                            variant="destructive"
-                            size="icon"
-                            className="absolute -top-2 -right-2 h-6 w-6"
-                            onClick={() => {
-                              setCustomersData(prev => ({
-                                ...prev,
-                                logos: prev.logos.filter((_, i) => i !== index)
-                              }));
-                            }}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ))}
+                  
+                  {customerLogos.length === 0 ? (
+                    <div className="text-center py-8 border-dashed border-2 rounded-md">
+                      <p className="text-muted-foreground">No customer logos yet. Upload some logos to get started.</p>
                     </div>
-                  </div>
-
-                  <Button
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={updateMutation.isPending}
-                  >
-                    {updateMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      "Save Changes"
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="testimonials">
-            <Card>
-              <CardHeader>
-                <CardTitle>Customer Testimonials</CardTitle>
-                <CardDescription>
-                  Manage customer testimonials to showcase your business reputation
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="border rounded-lg p-4 bg-gray-50">
-                    <h3 className="text-lg font-medium mb-3">
-                      {selectedTestimonialId ? "Edit Testimonial" : "Add New Testimonial"}
-                    </h3>
-                    <div className="grid gap-4">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <label className="block mb-2 text-sm font-medium">
-                            Name
-                          </label>
-                          <Input
-                            value={newTestimonial.name || ""}
-                            onChange={(e) => setNewTestimonial(prev => ({
-                              ...prev,
-                              name: e.target.value
-                            }))}
-                            placeholder="Customer Name"
-                          />
-                        </div>
-                        <div>
-                          <label className="block mb-2 text-sm font-medium">
-                            Position
-                          </label>
-                          <Input
-                            value={newTestimonial.position || ""}
-                            onChange={(e) => setNewTestimonial(prev => ({
-                              ...prev,
-                              position: e.target.value
-                            }))}
-                            placeholder="Job Title"
-                          />
-                        </div>
-                        <div>
-                          <label className="block mb-2 text-sm font-medium">
-                            Company
-                          </label>
-                          <Input
-                            value={newTestimonial.company || ""}
-                            onChange={(e) => setNewTestimonial(prev => ({
-                              ...prev,
-                              company: e.target.value
-                            }))}
-                            placeholder="Company Name"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block mb-2 text-sm font-medium">
-                          Testimonial Content
-                        </label>
-                        <Textarea
-                          value={newTestimonial.content || ""}
-                          onChange={(e) => setNewTestimonial(prev => ({
-                            ...prev,
-                            content: e.target.value
-                          }))}
-                          placeholder="What the customer said about your product or service"
-                          rows={3}
-                        />
-                      </div>
-                      <div>
-                        <label className="block mb-2 text-sm font-medium">
-                          Profile Photo (optional)
-                        </label>
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            if (e.target.files && e.target.files[0]) {
-                              setFiles(prev => ({
-                                ...prev,
-                                testimonialImages: [e.target.files![0]]
-                              }));
-                            }
-                          }}
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        {selectedTestimonialId ? (
-                          <>
-                            <Button
-                              type="button"
-                              onClick={handleUpdateTestimonial}
-                            >
-                              Update Testimonial
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => {
-                                setSelectedTestimonialId(null);
-                                setNewTestimonial({
-                                  name: "",
-                                  position: "",
-                                  company: "",
-                                  content: ""
-                                });
-                              }}
-                            >
-                              Cancel
-                            </Button>
-                          </>
-                        ) : (
-                          <Button
-                            type="button"
-                            onClick={handleAddTestimonial}
-                          >
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Add Testimonial
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-lg font-medium mb-3">Current Testimonials</h3>
-                    <div className="grid md:grid-cols-2 gap-4">
-                      {customersData.testimonials.map((testimonial) => (
-                        <div key={testimonial.id} className="border rounded-lg p-4 bg-white">
-                          <div className="flex items-center gap-3 mb-3">
-                            {testimonial.image && (
-                              <img 
-                                src={testimonial.image} 
-                                alt={testimonial.name}
-                                className="w-10 h-10 rounded-full object-cover"
+                  ) : (
+                    <ScrollArea className="h-[400px] w-full pr-4">
+                      <p className="text-sm font-medium text-muted-foreground mb-2">
+                        Drag and drop to reorder logos. Click the trash icon to delete.
+                      </p>
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <SortableContext
+                          items={customerLogos}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <div className="grid gap-2">
+                            {customerLogos.map((logo: string, i: number) => (
+                              <SortableLogo
+                                key={logo}
+                                id={logo}
+                                url={logo}
+                                index={i}
+                                onDelete={() => deleteLogoMutation.mutate(i)}
                               />
-                            )}
-                            <div>
-                              <h4 className="font-semibold">{testimonial.name}</h4>
-                              <p className="text-sm text-gray-600">
-                                {testimonial.position}, {testimonial.company}
-                              </p>
-                            </div>
+                            ))}
                           </div>
-                          <p className="text-gray-700 mb-3">"{testimonial.content}"</p>
-                          <div className="flex gap-2 justify-end">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEditTestimonial(testimonial)}
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleDeleteTestimonial(testimonial.id)}
-                            >
-                              Delete
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <Button
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={updateMutation.isPending}
-                  >
-                    {updateMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      "Save All Changes"
-                    )}
-                  </Button>
+                        </SortableContext>
+                      </DndContext>
+                    </ScrollArea>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -626,12 +361,37 @@ export default function CustomersPageEditor() {
             <Card>
               <CardHeader>
                 <CardTitle>Preview</CardTitle>
-                <CardDescription>
-                  Preview how the customers section will appear on the website
-                </CardDescription>
               </CardHeader>
               <CardContent>
-                <CustomersPreview data={customersData} />
+                <div className="border rounded-lg p-6 bg-gray-50">
+                  <div className="text-center mb-8">
+                    <h2 className="text-2xl font-bold">{content.title || pageData?.content?.customers?.title || "Our Customers"}</h2>
+                    <p className="text-gray-600 mt-1">{content.subtitle || pageData?.content?.customers?.subtitle || "Trusted by businesses across Indonesia"}</p>
+                  </div>
+
+                  {customerLogos.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">No logos to display. Add logos in the "Customer Logos" tab.</p>
+                    </div>
+                  ) : (
+                    <div className="relative overflow-hidden py-4">
+                      <div className="flex flex-wrap justify-center gap-6">
+                        {customerLogos.map((logo: string, index: number) => (
+                          <div key={index} className="bg-white p-4 rounded shadow-sm flex items-center justify-center h-24 w-36">
+                            <img 
+                              src={logo} 
+                              alt={`Customer logo ${index + 1}`}
+                              className="h-16 max-w-full object-contain"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="text-center mt-6 text-sm text-muted-foreground">
+                        <p>On the homepage, logos will appear in a continuous scrolling animation.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

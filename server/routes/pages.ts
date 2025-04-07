@@ -32,25 +32,7 @@ const defaultHomepage = {
     customers: {
       title: "Our Customers",
       subtitle: "Trusted by businesses across Indonesia",
-      logos: ["/logo/logo.png", "/logo/halal.png", "/logo/logo.png", "/logo/halal.png", "/logo/logo.png", "/logo/halal.png"],
-      testimonials: [
-        {
-          id: "1",
-          name: "John Doe",
-          position: "Restaurant Owner",
-          company: "ABC Restaurant",
-          image: "/asset/1.jpg",
-          content: "Dimsum dari Dapur Dekaka selalu menjadi favorit pelanggan kami. Kualitasnya konsisten dan rasanya autentik."
-        },
-        {
-          id: "2",
-          name: "Jane Smith",
-          position: "Catering Manager",
-          company: "XYZ Catering",
-          image: "/asset/2.jpg",
-          content: "Kami telah bekerjasama dengan Dapur Dekaka untuk berbagai acara, dan kami selalu mendapatkan pujian dari klien kami."
-        }
-      ]
+      logos: ["/logo/logo.png", "/logo/halal.png", "/logo/logo.png", "/logo/halal.png"]
     }
   }
 };
@@ -97,9 +79,173 @@ pagesRouter.get("/homepage", async (req, res) => {
   res.json(configWithTimestamp);
 });
 
+// Add handler for customer logo uploads and processing
+pagesRouter.put("/homepage/customers", upload.fields([
+  { name: 'customerLogos', maxCount: 10 }
+]), async (req, res) => {
+  try {
+    await ensureDirectories();
+    setNoCacheHeaders(res);
+    console.log('[PUT] Received customer files:', req.files);
+
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    let content;
+
+    try {
+      content = req.body.content ? JSON.parse(req.body.content) : null;
+      console.log('[PUT] Received customers content update:', content);
+    } catch (parseError) {
+      console.error('[PUT] Error parsing customers content:', parseError);
+      return res.status(400).json({ message: "Invalid content format" });
+    }
+
+    // Update customers section content
+    if (content && content.customers) {
+      // Initialize customers section if it doesn't exist
+      if (!homepageConfig.content.customers) {
+        homepageConfig.content.customers = {
+          title: "Our Customers",
+          subtitle: "Trusted by businesses across Indonesia",
+          logos: []
+        };
+      }
+      
+      // Remove testimonials if they exist (we're not using them anymore)
+      if (homepageConfig.content.customers.testimonials) {
+        delete homepageConfig.content.customers.testimonials;
+      }
+
+      // Update the title and subtitle
+      homepageConfig.content.customers.title = content.customers.title || homepageConfig.content.customers.title;
+      homepageConfig.content.customers.subtitle = content.customers.subtitle || homepageConfig.content.customers.subtitle;
+      
+      // Ensure we have a logos array
+      if (!homepageConfig.content.customers.logos) {
+        homepageConfig.content.customers.logos = [];
+      }
+    }
+
+    // Process logo files if any were uploaded
+    if (files.customerLogos && files.customerLogos.length > 0) {
+      const customerLogosDir = path.join(process.cwd(), 'public', 'logo', 'customers');
+      
+      // Ensure directory exists
+      try {
+        await fs.mkdir(customerLogosDir, { recursive: true });
+        console.log('[PUT] Customer logos directory created/verified:', customerLogosDir);
+      } catch (error) {
+        console.error('[PUT] Error creating customer logos directory:', error);
+        return res.status(500).json({ message: `Failed to create customer logos directory: ${error.message}` });
+      }
+
+      // Process each logo file
+      const newLogos = await Promise.all(files.customerLogos.map(async (file, i) => {
+        const timestamp = Date.now();
+        const ext = path.extname(file.originalname) || '.png';
+        const filename = `customer-logo-${timestamp}-${i}${ext}`;
+        const newPath = path.join(customerLogosDir, filename);
+        
+        // Copy the file
+        await fs.copyFile(file.path, newPath);
+        
+        // Clean up temp file
+        await fs.unlink(file.path);
+        
+        return `/logo/customers/${filename}`;
+      }));
+
+      // Add new logos to the existing ones
+      homepageConfig.content.customers.logos = [
+        ...homepageConfig.content.customers.logos || [],
+        ...newLogos
+      ];
+    }
+
+    // Save the updated config to the database
+    await storage.updatePageContent('homepage', {content: homepageConfig});
+    
+    // Send success response
+    res.json({ 
+      success: true, 
+      message: "Customers section updated successfully",
+      data: homepageConfig.content.customers
+    });
+  } catch (error) {
+    console.error('[PUT] Error updating customers section:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Reorder customer logos
+pagesRouter.put("/homepage/customers/logos/reorder", async (req, res) => {
+  try {
+    const { logos } = req.body;
+    if (!Array.isArray(logos)) {
+      return res.status(400).json({ message: "Invalid logos array provided" });
+    }
+
+    // Make sure we have a customers section
+    if (!homepageConfig.content.customers) {
+      homepageConfig.content.customers = {
+        title: "Our Customers",
+        subtitle: "Trusted by businesses across Indonesia",
+        logos: []
+      };
+    }
+    
+    // Remove testimonials if they exist (we're not using them anymore)
+    if (homepageConfig.content.customers.testimonials) {
+      delete homepageConfig.content.customers.testimonials;
+    }
+
+    // Update the logos array
+    homepageConfig.content.customers.logos = logos;
+    
+    // Save to database
+    await storage.updatePageContent('homepage', {content: homepageConfig});
+    
+    res.json({ 
+      success: true, 
+      message: "Customer logos reordered successfully" 
+    });
+  } catch (error) {
+    console.error("Error reordering customer logos:", error);
+    res.status(500).json({ message: "Failed to reorder customer logos" });
+  }
+});
+
+// Delete a customer logo
+pagesRouter.delete('/homepage/customers/logos/:index', async (req, res) => {
+  try {
+    const index = parseInt(req.params.index, 10);
+    if (isNaN(index) || index < 0) {
+      return res.status(400).json({ message: "Invalid logo index" });
+    }
+
+    // Check if customers section and logos array exist
+    if (!homepageConfig.content.customers || 
+        !homepageConfig.content.customers.logos || 
+        index >= homepageConfig.content.customers.logos.length) {
+      return res.status(404).json({ message: "Customer logo not found" });
+    }
+
+    // Remove the logo from the array
+    homepageConfig.content.customers.logos.splice(index, 1);
+
+    // Save the updated config
+    await storage.updatePageContent('homepage', {content: homepageConfig});
+
+    res.json({ success: true, message: "Customer logo deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting customer logo:", error);
+    res.status(500).json({ message: "Failed to delete customer logo" });
+  }
+});
+
 pagesRouter.put("/homepage", upload.fields([
   { name: 'logo', maxCount: 1 },
-  { name: 'carouselImages', maxCount: 33 }
+  { name: 'carouselImages', maxCount: 33 },
+  { name: 'customerLogos', maxCount: 10 }
 ]), async (req, res) => {
   try {
     await ensureDirectories();
@@ -316,6 +462,15 @@ pagesRouter.delete('/homepage/carousel/:index', async (req, res) => {
     const storedConfig = await storage.getPageContent('homepage');
     if (storedConfig && storedConfig.content) {
       homepageConfig = storedConfig.content;
+      
+      // Clean up any testimonials data that might exist
+      if (homepageConfig.content?.customers?.testimonials) {
+        delete homepageConfig.content.customers.testimonials;
+        console.log("Removed deprecated testimonials data");
+        // Save the cleaned config back to database
+        await storage.updatePageContent('homepage', {content: homepageConfig});
+      }
+      
       console.log("Homepage configuration loaded from database");
     } else {
       console.log("No stored homepage configuration found, using default");
