@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { SiShopee, SiInstagram } from "react-icons/si";
+import { SiShopee, SiInstagram, SiWhatsapp } from "react-icons/si";
 import { X } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import type { MenuItem, Sauce } from "@shared/schema";
@@ -43,7 +43,7 @@ export function OrderModal({ trigger, menuItem }: OrderModalProps) {
           variants={container}
           initial="hidden"
           animate="show"
-          className="grid grid-cols-3 gap-4 p-2"
+          className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-2"
         >
           {menuItem && (
             <div className="col-span-3 mb-4">
@@ -86,6 +86,17 @@ export function OrderModal({ trigger, menuItem }: OrderModalProps) {
               className="w-12 h-12"
             />
             <span className="mt-2 text-sm font-medium">Grab</span>
+          </motion.a>
+
+          <motion.a
+            variants={item}
+            href="https://wa.me/6282295986407"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex flex-col items-center justify-center p-4 rounded-lg hover:bg-accent transition-colors"
+          >
+            <SiWhatsapp className="w-12 h-12 text-[#25D366]" />
+            <span className="mt-2 text-sm font-medium">WhatsApp</span>
           </motion.a>
         </motion.div>
       </DialogContent>
