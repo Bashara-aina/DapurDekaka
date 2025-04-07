@@ -28,6 +28,29 @@ const defaultHomepage = {
     latestArticles: {
       title: "Latest Articles",
       subtitle: "Discover our latest news and updates"
+    },
+    customers: {
+      title: "Our Customers",
+      subtitle: "Trusted by businesses across Indonesia",
+      logos: ["/logo/logo.png", "/logo/halal.png", "/logo/logo.png", "/logo/halal.png", "/logo/logo.png", "/logo/halal.png"],
+      testimonials: [
+        {
+          id: "1",
+          name: "John Doe",
+          position: "Restaurant Owner",
+          company: "ABC Restaurant",
+          image: "/asset/1.jpg",
+          content: "Dimsum dari Dapur Dekaka selalu menjadi favorit pelanggan kami. Kualitasnya konsisten dan rasanya autentik."
+        },
+        {
+          id: "2",
+          name: "Jane Smith",
+          position: "Catering Manager",
+          company: "XYZ Catering",
+          image: "/asset/2.jpg",
+          content: "Kami telah bekerjasama dengan Dapur Dekaka untuk berbagai acara, dan kami selalu mendapatkan pujian dari klien kami."
+        }
+      ]
     }
   }
 };
@@ -107,7 +130,8 @@ pagesRouter.put("/homepage", upload.fields([
           subtitle: content.carousel?.subtitle || homepageConfig.content.carousel.subtitle
         },
         featuredProducts: homepageConfig.content.featuredProducts,
-        latestArticles: homepageConfig.content.latestArticles
+        latestArticles: homepageConfig.content.latestArticles,
+        customers: content.customers || homepageConfig.content.customers
       };
 
       // Also update the direct carousel properties for backward compatibility

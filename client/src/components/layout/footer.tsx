@@ -1,4 +1,11 @@
-import { MapPin, Phone, Mail, Instagram, ShoppingBag } from "lucide-react";
+import {
+  MapPin,
+  Phone,
+  Mail,
+  Instagram,
+  ShoppingBag,
+  Bike,
+} from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect, useState } from "react";
@@ -58,11 +65,7 @@ export default function Footer() {
           </svg>
         );
       case "Grab":
-        return (
-          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M19.44 9.03L15.41 5H11v2h3.59l2.24 2.24C16.11 9.08 15.29 9 14.5 9c-2.48 0-4.5 2.02-4.5 4.5v.5h2v-.5c0-1.38 1.12-2.5 2.5-2.5 1.23 0 2.27.89 2.47 2.06L6.97 13v-2H5v6h6v-2H8.97l8.91.05c.59-.32 1.12-.78 1.56-1.32V19h2v-6C21.44 11.34 20.72 9.97 19.44 9.03zM7 17H6v-2h1V17zM17 17h-1v-2h1V17z" />
-          </svg>
-        );
+        return <Bike className="h-5 w-5" />;
       default:
         return <Instagram className="h-5 w-5" />;
     }
@@ -98,7 +101,8 @@ export default function Footer() {
   const defaultFooter = {
     companyName: "Dapur Dekaka",
     tagline: "Premium halal dim sum made with love and quality ingredients.",
-    address: "Jl. Sinom V No.7, Turangga, Kec. Lengkong, Kota Bandung, Jawa Barat 40264",
+    address:
+      "Jl. Sinom V No.7, Turangga, Kec. Lengkong, Kota Bandung, Jawa Barat 40264",
     phone: "082295986407",
     email: "contact@dapurdekaka.com",
     socialLinks: [
@@ -106,28 +110,28 @@ export default function Footer() {
         id: "1",
         platform: "Instagram",
         url: "https://instagram.com/dapurdekaka",
-        icon: "Instagram"
+        icon: "Instagram",
       },
       {
         id: "2",
         platform: "Shopee",
         url: "https://shopee.co.id/dapurdekaka",
-        icon: "Shopee"
+        icon: "Shopee",
       },
       {
         id: "3",
         platform: "WhatsApp",
         url: "https://wa.me/6282295986407",
-        icon: "WhatsApp"
+        icon: "WhatsApp",
       },
       {
         id: "4",
         platform: "Grab",
         url: "https://food.grab.com/id/en/restaurant/dapur-dekaka-dimsum-delivery/",
-        icon: "Grab"
-      }
+        icon: "Grab",
+      },
     ],
-    copyright: `© ${new Date().getFullYear()} Dapur Dekaka. All rights reserved.`
+    copyright: `© ${new Date().getFullYear()} Dapur Dekaka. All rights reserved.`,
   };
 
   // Use fetched data or default if not available
@@ -141,9 +145,7 @@ export default function Footer() {
             <h3 className="text-xl font-bold text-primary">
               {content.companyName}
             </h3>
-            <p className="text-gray-600">
-              {content.tagline}
-            </p>
+            <p className="text-gray-600">{content.tagline}</p>
           </div>
 
           <div className="mt-2 space-y-2">

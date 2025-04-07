@@ -23,6 +23,7 @@ import HomePageEditor from "@/pages/admin/pages/home";
 import AboutPageEditor from "@/pages/admin/pages/about";
 import ContactPageEditor from "@/pages/admin/pages/contact";
 import FooterEditor from "@/pages/admin/pages/footer";
+import CustomersPageEditor from "@/pages/admin/pages/customers";
 
 function Router() {
   return (
@@ -147,6 +148,12 @@ function Router() {
                   return (
                     <ErrorBoundary>
                       <FooterEditor />
+                    </ErrorBoundary>
+                  );
+                case 'customers':
+                  return (
+                    <ErrorBoundary>
+                      <CustomersPageEditor />
                     </ErrorBoundary>
                   );
                 default:

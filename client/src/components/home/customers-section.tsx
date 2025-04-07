@@ -1,51 +1,103 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { useState, useEffect } from "react";
+import { Loader2 } from "lucide-react";
+
+interface Testimonial {
+  id: string;
+  name: string;
+  position: string;
+  company: string;
+  image: string;
+  content: string;
+}
+
+interface CustomersData {
+  title: string;
+  subtitle: string;
+  logos: string[];
+  testimonials: Testimonial[];
+}
 
 export default function CustomersSection() {
   const { t } = useLanguage();
+  const [customersData, setCustomersData] = useState<CustomersData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
-  const { data: pageData } = useQuery({
-    queryKey: ["pages", "homepage"],
-    queryFn: async () => {
-      const response = await fetch(`/api/pages/homepage`, {
-        method: "GET",
-        headers: {
-          "Cache-Control": "max-age=300",
-        },
-      });
-      if (!response.ok) throw new Error("Failed to fetch homepage data");
-      const data = await response.json();
-      return data;
-    },
-  });
+  // Fetch data directly to ensure it's always fresh
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setIsLoading(true);
+        const response = await fetch(`/api/pages/homepage`, {
+          method: "GET",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+          },
+        });
+        
+        if (!response.ok) throw new Error("Failed to fetch homepage data");
+        const pageData = await response.json();
+        
+        // Extract customers section data
+        if (pageData?.content?.customers) {
+          setCustomersData(pageData.content.customers);
+        } else {
+          // Default data if not available
+          setCustomersData({
+            title: "Our Customers",
+            subtitle: "Trusted by businesses across Indonesia",
+            logos: [
+              "/logo/logo.png",
+              "/logo/halal.png",
+              "/logo/logo.png",
+              "/logo/halal.png",
+              "/logo/logo.png",
+              "/logo/halal.png"
+            ],
+            testimonials: []
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching customers data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    fetchData();
+  }, []);
 
-  // Extract section title and subtitle
-  const sectionTitle = pageData?.content?.customers?.title || "Our Customers";
-  const sectionSubtitle = pageData?.content?.customers?.subtitle || "Trusted by businesses across Indonesia";
-  
-  // Use actual logos if available, otherwise create a demo set of 6 logos
-  const defaultLogo = pageData?.logo || "/logo/logo.png";
-  
-  // Create an array of 6 different logos for demo purposes
-  // In a real scenario, these would come from the API
-  const customerLogos = pageData?.content?.customers?.logos || [
-    defaultLogo,
-    "/logo/halal.png",
-    defaultLogo,
-    "/logo/halal.png",
-    defaultLogo,
-    "/logo/halal.png"
-  ];
+  if (isLoading) {
+    return (
+      <section className="py-12">
+        <div className="container mx-auto px-4 text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+        </div>
+      </section>
+    );
+  }
+
+  // Ensure we have data
+  const content = customersData || {
+    title: "Our Customers",
+    subtitle: "Trusted by businesses across Indonesia",
+    logos: ["/logo/logo.png", "/logo/halal.png", "/logo/logo.png", "/logo/halal.png", "/logo/logo.png", "/logo/halal.png"],
+    testimonials: []
+  };
 
   return (
-    <section className="py-12">
+    <section className="py-12 bg-gray-50">
       <div className="container mx-auto px-4">
         <div className="text-center mb-10">
-          <h2 className="text-3xl font-bold text-gray-900">{sectionTitle}</h2>
-          <p className="text-gray-600 mt-2">{sectionSubtitle}</p>
+          <h2 className="text-3xl font-bold text-gray-900">{content.title}</h2>
+          <p className="text-gray-600 mt-2">{content.subtitle}</p>
         </div>
 
-        <div className="relative overflow-hidden">
+        {/* Customer Logos */}
+        <div className="relative overflow-hidden mb-16">
           <style dangerouslySetInnerHTML={{ __html: `
             @keyframes scroll {
               0% { transform: translateX(0); }
@@ -59,7 +111,7 @@ export default function CustomersSection() {
 
           <div className="overflow-hidden">
             <div className="marquee inline-flex">
-              {customerLogos.map((logo: string, index: number) => (
+              {content.logos.map((logo: string, index: number) => (
                 <div 
                   key={`logo-1-${index}`} 
                   className="flex-none mx-4 md:mx-8 p-2"
@@ -74,7 +126,7 @@ export default function CustomersSection() {
               ))}
               
               {/* Duplicate set for seamless looping */}
-              {customerLogos.map((logo: string, index: number) => (
+              {content.logos.map((logo: string, index: number) => (
                 <div 
                   key={`logo-2-${index}`} 
                   className="flex-none mx-4 md:mx-8 p-2"
@@ -90,6 +142,35 @@ export default function CustomersSection() {
             </div>
           </div>
         </div>
+
+        {/* Testimonials */}
+        {content.testimonials && content.testimonials.length > 0 && (
+          <div className="mt-16">
+            <h3 className="text-2xl font-bold text-center mb-8">What Our Customers Say</h3>
+            
+            <div className="grid md:grid-cols-2 gap-8">
+              {content.testimonials.map((testimonial) => (
+                <div key={testimonial.id} className="bg-white p-6 rounded-lg shadow-sm">
+                  <p className="text-gray-700 italic mb-4">"{testimonial.content}"</p>
+                  
+                  <div className="flex items-center">
+                    {testimonial.image && (
+                      <img 
+                        src={testimonial.image} 
+                        alt={testimonial.name}
+                        className="w-12 h-12 rounded-full object-cover mr-4"
+                      />
+                    )}
+                    <div>
+                      <h4 className="font-semibold">{testimonial.name}</h4>
+                      <p className="text-sm text-gray-600">{testimonial.position}, {testimonial.company}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

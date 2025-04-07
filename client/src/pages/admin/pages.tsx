@@ -80,6 +80,16 @@ export default function AdminPages() {
               </CardContent>
             </Card>
           </Link>
+          <Link href="/admin/pages/customers">
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle>Customers Section</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">Edit customer testimonials and partner logos</p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       </div>
     </>
