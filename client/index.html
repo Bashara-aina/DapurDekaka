@@ -4,26 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
-    <!-- Favicon -->
-    <link rel="icon" href="/logo/logo.png" type="image/png" />
+    <!-- Favicon - PNG for modern browsers, ICO for traditional browsers, ICNS for Safari macOS -->
+    <link rel="icon" href="/logo/favicon.ico" type="image/x-icon" />
+    <link rel="icon" href="/logo/favicon.icns" type="image/x-icns" />
+    <link rel="icon" href="/logo/logo.png" type="image/png" sizes="any" />
     <link rel="shortcut icon" href="/logo/logo.png" type="image/png" />
+    <!-- iOS touch icon -->
+    <link rel="apple-touch-icon" href="/logo/logo.png" />
     
     <!-- Performance optimizations -->
-    <link rel="dns-prefetch" href="/" />
-    <link rel="preconnect" href="/" crossorigin />
+    <!-- Preconnect to same origin for SPA API calls - the browser will use current origin -->
     
-    <!-- Only preload the most critical assets -->
-    <link rel="preload" href="/logo/logo.png" as="image" fetchpriority="high" />
-    <link rel="preload" href="/asset/1.jpg" as="image" fetchpriority="high" />
-    
-    <!-- Add preconnect for API calls -->
-    <link rel="preconnect" href="/api" />
-    
-    <!-- Use priority hints -->
-    <meta name="prioritized-resources" content="['/logo/logo.png', '/asset/1.jpg']">
-    
-    <!-- Add resource hints -->
-    <link rel="modulepreload" href="/src/main.tsx" />
+    <!-- Critical assets preloaded via Vite's modulepreload plugin during build -->
 
     <!-- Disable automatic image loading until JS is ready -->
     <style>

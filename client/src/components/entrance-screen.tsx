@@ -36,8 +36,8 @@ export default function EntranceSection() {
     staleTime: 300000, // Consider data fresh for 5 minutes
     gcTime: 600000, // Keep unused data in cache for 10 minutes
     refetchOnWindowFocus: false,
-    refetchOnMount: "if-stale",
-    refetchOnReconnect: "if-stale",
+    refetchOnMount: true,
+    refetchOnReconnect: true,
   });
 
   const assetImages =
@@ -95,7 +95,7 @@ export default function EntranceSection() {
     delay: 2000,
     stopOnInteraction: false,
     stopOnMouseEnter: false,
-    rootNode: (emblaRoot: any) => emblaRoot.parentElement,
+    rootNode: (emblaRoot: HTMLElement) => emblaRoot.parentElement as HTMLElement,
   };
   
   // Duplicate images to ensure we have enough slides for looping
@@ -128,7 +128,8 @@ export default function EntranceSection() {
                 containScroll: false,
                 duration: 500,
               }}
-              plugins={[Autoplay(autoplayOptions) as any]}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+plugins={[Autoplay(autoplayOptions) as any]}
               className="h-full"
             >
               <CarouselContent className="-ml-1">

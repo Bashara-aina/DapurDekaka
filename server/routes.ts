@@ -20,14 +20,33 @@ declare module "express-session" {
   }
 }
 
+/**
+ * Registers all API routes and middleware on the Express app.
+ * Initializes session handling, authentication, and all route modules.
+ * Must be called before starting the server.
+ *
+ * @param app - The Express application instance to attach routes to
+ * @returns The HTTP server instance
+ * @throws Error if SESSION_SECRET is missing in production
+ */
+/**
+ * Registers all API routes with the Express app and initializes session middleware.
+ * Also triggers menu items and sauces seeding on startup if tables are empty.
+ * @param app - Express application instance
+ * @returns HTTP server instance
+ */
 export function registerRoutes(app: Express): Server {
   // Initialize menu items when the server starts
   initializeMenuItems();
 
   // Session middleware with improved domain handling for multiple domains
+  const sessionSecret = process.env.SESSION_SECRET;
+  if (!sessionSecret) {
+    throw new Error("SESSION_SECRET environment variable is required");
+  }
   app.use(
     session({
-      secret: process.env.SESSION_SECRET || "your-secret-key",
+      secret: sessionSecret,
       resave: false,
       saveUninitialized: false, 
       proxy: true,
@@ -118,6 +137,18 @@ let menuItemsInitialized = false;
 let saucesInitialized = false;
 
 // Optimized initialization with memoization
+/**
+ * Initializes menu items and sauces from seed data if the database is empty.
+ * Runs asynchronously in the background after server start to avoid blocking.
+ * Uses memoization to prevent redundant initialization on subsequent calls.
+ *
+ * @returns void (runs asynchronously)
+ */
+/**
+ * Initializes menu items and sauces from seed data when database tables are empty.
+ * Uses memoization to avoid redundant initialization across hot reloads.
+ * Seed data is imported from @shared/menu-data.
+ */
 export function initializeMenuItems() {
   // Skip if already initialized to prevent redundant work
   if (menuItemsInitialized && saucesInitialized) {

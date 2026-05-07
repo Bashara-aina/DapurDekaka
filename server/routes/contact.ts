@@ -7,45 +7,54 @@ import cors from "cors";
 import { upload } from "../storage";
 import * as fs from 'fs/promises';
 import path from "path";
+import { logger } from "../utils/logger";
+import { z } from "zod";
+import { ok, created, error } from "../apiResponse";
 
 const router = express.Router();
+
+const contactSchema = z.object({
+  name: z.string().min(1).max(100),
+  email: z.string().email(),
+  message: z.string().min(1).max(2000),
+  phone: z.string().optional(),
+  subject: z.string().optional(),
+});
 
 // Ensure directories exist
 async function ensureDirectories() {
   const assetDir = path.join(process.cwd(), 'public', 'asset');
   const contactDir = path.join(process.cwd(), 'public', 'asset', 'contact');
-  
+
   try {
     await fs.mkdir(assetDir, { recursive: true });
     await fs.mkdir(contactDir, { recursive: true });
-    console.log("Contact directories created/verified successfully");
-  } catch (error) {
-    console.error("Error creating contact directories:", error);
-    throw error;
+  } catch (err) {
+    logger.error("Error creating contact directories", { error: err instanceof Error ? err.message : String(err) });
+    throw err;
   }
 }
 
 // Handle contact form submissions from users
 router.post("/api/contact", async (req, res) => {
   try {
-    const { name, email, phone, subject, message, timestamp } = req.body;
-
-    // Validate required fields
-    if (!name || !email || !phone || !subject || !message) {
-      return res.status(400).json({ error: "All fields are required" });
+    const validation = contactSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json(error("VALIDATION_FAILED", fromZodError(validation.error).message, 400));
     }
 
-    // Here you can add alternative contact form handling logic if needed
-    // For now just return success
-    res.status(200).json({ message: "Form submitted successfully" });
-  } catch (error) {
-    console.error("Error submitting form:", error);
-    res.status(500).json({ error: "Failed to submit form" });
+    const { name, email, message, phone } = validation.data;
+
+    logger.debug("Contact form submission", { name, email });
+    res.status(200).json(ok({ message: "Thank you for your message. We will get back to you soon." }));
+  } catch (err) {
+    logger.error("Error submitting contact form", { error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json(error("SERVER_ERROR", "Failed to submit form", 500));
   }
 });
 
 // Get contact page content
-router.get("/api/pages/contact", cors(), async (req, res) => {
+router.get("/api/pages/contact", cors(), async (_req, res) => {
   try {
     const pageContent = await storage.getPageContent("contact");
     const defaultContent = {
@@ -84,45 +93,10 @@ router.get("/api/pages/contact", cors(), async (req, res) => {
       }
     };
 
-    // Add a timestamp parameter to force image refresh
-    const timestamp = Date.now();
-    if (pageContent && pageContent.content) {
-      const contactContent = pageContent.content as {
-        title: string;
-        description: string;
-        mainImage: string;
-        contactInfo: {
-          address: string;
-          phone: string;
-          email: string;
-          openingHours: string;
-          mapEmbedUrl: string;
-        };
-        socialLinks: {
-          id: string;
-          label: string;
-          url: string;
-          icon: string;
-        }[];
-        quickOrderUrl: string;
-      };
-      
-      // Add timestamp to main image
-      if (contactContent.mainImage) {
-        const imageUrl = contactContent.mainImage;
-        contactContent.mainImage = imageUrl.includes('?') 
-          ? imageUrl
-          : `${imageUrl}?t=${timestamp}`;
-      }
-      
-      // Update the pageContent
-      pageContent.content = contactContent;
-    }
-
-    res.json(pageContent || defaultContent);
-  } catch (error) {
-    console.error("Error fetching contact page:", error);
-    res.status(500).json({ error: "Failed to fetch contact page content" });
+    res.status(200).json(ok(pageContent || defaultContent));
+  } catch (err) {
+    logger.error("Error fetching contact page", { error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json(error("FETCH_FAILED", "Failed to fetch contact page content", 500));
   }
 });
 
@@ -131,19 +105,14 @@ router.put("/api/pages/contact", requireAuth, async (req, res) => {
   try {
     const validation = pageContentSchema.safeParse(req.body);
     if (!validation.success) {
-      return res.status(400).json({
-        error: fromZodError(validation.error).message
-      });
+      return res.status(400).json(error("VALIDATION_FAILED", fromZodError(validation.error).message, 400));
     }
 
     const updatedContent = await storage.updatePageContent("contact", validation.data);
-    res.json(updatedContent);
-  } catch (error) {
-    console.error("Error updating contact page:", error);
-    res.status(500).json({
-      error: "Failed to update contact page content",
-      details: error instanceof Error ? error.message : "Unknown error"
-    });
+    res.status(200).json(ok(updatedContent));
+  } catch (err) {
+    logger.error("Error updating contact page", { error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json(error("UPDATE_FAILED", "Failed to update contact page content", 500));
   }
 });
 
@@ -153,23 +122,22 @@ router.post("/api/pages/contact/upload", requireAuth, upload.fields([
 ]), async (req, res) => {
   try {
     await ensureDirectories();
-    console.log('[POST] Contact page received files:', req.files);
-    
+    logger.debug('[POST] Contact page received files');
+
     let contentObj;
     try {
       contentObj = req.body.content ? JSON.parse(req.body.content) : null;
-      console.log('[POST] Contact page received content:', contentObj);
     } catch (parseError) {
-      console.error('[POST] Error parsing content:', parseError);
-      return res.status(400).json({ message: "Invalid content format" });
+      logger.error('[POST] Error parsing contact page content', { error: parseError instanceof Error ? parseError.message : String(parseError) });
+      return res.status(400).json(error("PARSE_ERROR", "Invalid content format", 400));
     }
-    
+
     if (!contentObj) {
-      return res.status(400).json({ message: "Missing content data" });
+      return res.status(400).json(error("VALIDATION_ERROR", "Missing content data", 400));
     }
-    
+
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-    
+
     // Process main image if provided
     if (files.mainImage && files.mainImage.length > 0) {
       try {
@@ -177,34 +145,25 @@ router.post("/api/pages/contact/upload", requireAuth, upload.fields([
         const ext = path.extname(mainImageFile.originalname);
         const mainImageFilename = `contact-main${ext}`;
         const newPath = path.join(process.cwd(), 'public', 'asset', 'contact', mainImageFilename);
-        
+
         // Move file from temp upload location to final destination
         await fs.rename(mainImageFile.path, newPath);
-        
+
         // Update the content object with new image path
         contentObj.mainImage = `/asset/contact/${mainImageFilename}`;
-        
-        console.log(`[POST] Moved contact main image to ${newPath}`);
-      } catch (error) {
-        console.error('[POST] Error processing main image:', error);
-        return res.status(500).json({ message: "Error processing main image" });
+      } catch (err) {
+        logger.error('[POST] Error processing main image', { error: err instanceof Error ? err.message : String(err) });
+        return res.status(500).json(error("UPLOAD_FAILED", "Error processing main image", 500));
       }
     }
-    
+
     // Save updated content to database
     const updatedContent = await storage.updatePageContent("contact", { content: contentObj });
-    
-    res.json({ 
-      success: true, 
-      message: "Contact page updated successfully with file uploads", 
-      content: updatedContent 
-    });
-  } catch (error) {
-    console.error('[POST] Error handling contact page file uploads:', error);
-    res.status(500).json({
-      error: "Failed to process file uploads",
-      details: error instanceof Error ? error.message : "Unknown error"
-    });
+
+    res.status(200).json(ok({ message: "Contact page updated successfully", content: updatedContent }));
+  } catch (err) {
+    logger.error('[POST] Error handling contact page file uploads', { error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json(error("SERVER_ERROR", "Failed to process file uploads", 500));
   }
 });
 

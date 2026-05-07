@@ -1,11 +1,12 @@
 import React, { createContext, useContext } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import type { DraggableSyntheticListeners } from '@dnd-kit/core';
 
 // Create a context to pass down listeners and attributes
 const DragHandleContext = createContext<{
-  listeners?: Record<string, any>;
-  attributes?: Record<string, any>;
+  listeners?: DraggableSyntheticListeners;
+  attributes?: React.HTMLAttributes<HTMLElement>;
 }>({});
 
 // Hook to access the drag handle context

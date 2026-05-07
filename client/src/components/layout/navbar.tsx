@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { Menu } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
@@ -17,9 +17,43 @@ const navItems = [
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const { language, setLanguage, t } = useLanguage();
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Focus trap and keyboard handling for mobile menu
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsOpen(false);
+        menuButtonRef.current?.focus();
+        return;
+      }
+
+      if (e.key === "Tab" && menuRef.current) {
+        const focusableElements = menuRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+        );
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey && document.activeElement === firstElement) {
+          e.preventDefault();
+          lastElement.focus();
+        } else if (!e.shiftKey && document.activeElement === lastElement) {
+          e.preventDefault();
+          firstElement.focus();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-sm border-b">
+    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-sm border-b" aria-label="Main navigation">
       <div className="container mx-auto px-4">
         <div className="h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -63,11 +97,22 @@ export default function Navbar() {
           {/* Mobile Menu */}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild className="md:hidden">
-              <Button variant="ghost" size="icon">
+              <Button
+                ref={menuButtonRef}
+                variant="ghost"
+                size="icon"
+                aria-expanded={isOpen}
+                aria-controls="mobile-menu"
+                aria-label="Open navigation menu"
+              >
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent>
+            <SheetContent
+              ref={menuRef}
+              id="mobile-menu"
+              aria-label="Navigation menu"
+            >
               <div className="flex flex-col gap-4 mt-8">
                 {navItems.map((item) => (
                   <Link key={item.href} href={item.href}>

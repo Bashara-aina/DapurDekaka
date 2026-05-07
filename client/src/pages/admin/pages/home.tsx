@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Upload, Trash2, GripVertical } from "lucide-react";
-import AdminNavbar from "@/components/layout/admin-navbar";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import AdminLayout from "@/components/layout/AdminLayout";
 import { queryKeys } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DndContext,
   closestCenter,
@@ -96,19 +97,26 @@ export default function HomePageEditor() {
     })
   );
 
-  const { data: pageData, isLoading } = useQuery({
-    queryKey: ["homepage"],
-    queryFn: async () => {
-      const response = await fetch('/api/pages/homepage', {
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        },
-        cache: 'no-store'
-      });
-      if (!response.ok) throw new Error('Failed to fetch homepage data');
-      return response.json();
-    }
+  interface HomepageData {
+  logo: string;
+  carousel: {
+    images: string[];
+    title: string;
+    subtitle: string;
+  };
+  content: {
+    hero: { title: string; subtitle: string };
+    carousel: { title: string; subtitle: string };
+    featuredProducts: { title: string; subtitle: string };
+    latestArticles: { title: string; subtitle: string };
+    customers: { title: string; subtitle: string; logos: string[] };
+  };
+  timestamp?: number;
+}
+
+const { data: pageData, isLoading } = useQuery<HomepageData>({
+    queryKey: queryKeys.pages.homepage,
+    queryFn: () => apiRequest<HomepageData>("/api/pages/homepage")
   });
 
   const updateMutation = useMutation({
@@ -125,28 +133,19 @@ export default function HomePageEditor() {
         }
       }));
 
-      const response = await fetch('/api/pages/homepage', {
+      return await apiRequest('/api/pages/homepage', {
         method: 'PUT',
-        body: formData
+        body: formData,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update homepage');
-      }
-
-      if (!response.ok) throw new Error('Failed to update homepage');
-      return response.json();
     },
     onSuccess: () => {
-      // Invalidate the homepage query so it's refetched on next access
-      queryClient.invalidateQueries({ queryKey: ["pages", "homepage"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.pages.homepage });
       toast({
         title: "Success",
         description: "Homepage updated successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
         description: error.message || "Failed to update homepage",
@@ -157,18 +156,13 @@ export default function HomePageEditor() {
 
   const reorderImagesMutation = useMutation({
     mutationFn: async (images: string[]) => {
-      const response = await fetch('/api/pages/homepage/carousel/reorder', {
+      return await apiRequest('/api/pages/homepage/carousel/reorder', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ images }),
       });
-      if (!response.ok) throw new Error('Failed to reorder images');
-      return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["homepage"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.pages.homepage });
       toast({
         title: "Success",
         description: "Image order updated successfully"
@@ -185,14 +179,12 @@ export default function HomePageEditor() {
 
   const deleteCarouselImage = useMutation({
     mutationFn: async (index: number) => {
-      const response = await fetch(`/api/pages/homepage/carousel/${index}`, {
+      return await apiRequest(`/api/pages/homepage/carousel/${index}`, {
         method: 'DELETE'
       });
-      if (!response.ok) throw new Error('Failed to delete image');
-      return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["homepage"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.pages.homepage });
       toast({
         title: "Success",
         description: "Image deleted successfully"
@@ -228,11 +220,9 @@ export default function HomePageEditor() {
   }
 
   return (
-    <>
-      <AdminNavbar />
-      <div className="container mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Edit Homepage</h1>
+    <AdminLayout>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Edit Homepage</h1>
           <Button
             onClick={() => updateMutation.mutate()}
             disabled={updateMutation.isPending}
@@ -344,7 +334,6 @@ export default function HomePageEditor() {
             </Card>
           </div>
         </ScrollArea>
-      </div>
-    </>
+    </AdminLayout>
   );
 }

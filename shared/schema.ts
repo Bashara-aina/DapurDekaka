@@ -30,9 +30,12 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   email: text("email").notNull().unique(),
+  role: text("role").notNull().default("customer"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+export type UserRole = "customer" | "admin";
 
 export const blogPosts = pgTable("blog_posts", {
   id: serial("id").primaryKey(),
@@ -44,6 +47,12 @@ export const blogPosts = pgTable("blog_posts", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   published: integer("published").default(0),
   orderIndex: integer("order_index").default(0),
+  excerpt: text("excerpt"),
+  authorName: text("author_name"),
+  slug: text("slug").unique(),
+  category: text("category"),
+  featured: integer("featured").default(0),
+  readTime: integer("read_time"),
 });
 
 export const footer = pgTable('footer',{
@@ -87,6 +96,11 @@ export const insertBlogPostSchema = createInsertSchema(blogPosts)
   .extend({
     published: z.number().optional().default(0),
     imageUrl: z.string().optional(),
+    excerpt: z.string().optional(),
+    authorName: z.string().optional(),
+    slug: z.string().optional(),
+    category: z.string().optional(),
+    featured: z.number().optional().default(0),
   });
 
 export const pageContentSchema = z.object({

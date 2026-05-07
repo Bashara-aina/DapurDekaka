@@ -2,11 +2,12 @@ import express from "express";
 import { storage } from "../storage";
 import { pageContentSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
-import { requireAuth } from "../auth";
+import { requireAuth, requireAdmin } from "../auth";
 import cors from "cors";
 import { upload } from "../storage";
 import fs from "fs/promises";
 import path from "path";
+import { ok, error } from "../apiResponse";
 
 const router = express.Router();
 
@@ -107,35 +108,30 @@ router.get("/api/pages/about", cors(), async (req, res) => {
       pageContent.content = aboutContent;
     }
 
-    res.json(pageContent || defaultContent);
-  } catch (error) {
-    console.error("Error fetching about page:", error);
-    res.status(500).json({ error: "Failed to fetch about page content" });
+    res.status(200).json(ok(pageContent || defaultContent));
+  } catch (err) {
+    console.error("Error fetching about page:", err);
+    res.status(500).json(error("FETCH_FAILED", "Failed to fetch about page content", 500));
   }
 });
 
-router.put("/api/pages/about", requireAuth, async (req, res) => {
+router.put("/api/pages/about", requireAuth, requireAdmin, async (req, res) => {
   try {
     const validation = pageContentSchema.safeParse(req.body);
     if (!validation.success) {
-      return res.status(400).json({
-        error: fromZodError(validation.error).message
-      });
+      return res.status(400).json(error("VALIDATION_FAILED", fromZodError(validation.error).message, 400));
     }
 
     const updatedContent = await storage.updatePageContent("about", validation.data);
-    res.json(updatedContent);
-  } catch (error) {
-    console.error("Error updating about page:", error);
-    res.status(500).json({
-      error: "Failed to update about page content",
-      details: error instanceof Error ? error.message : "Unknown error"
-    });
+    res.status(200).json(ok(updatedContent));
+  } catch (err) {
+    console.error("Error updating about page:", err);
+    res.status(500).json(error("UPDATE_FAILED", "Failed to update about page content", 500));
   }
 });
 
 // Handle file uploads for the about page
-router.post("/api/pages/about/upload", requireAuth, upload.fields([
+router.post("/api/pages/about/upload", requireAuth, requireAdmin, upload.fields([
   { name: 'mainImage', maxCount: 1 },
   { name: 'featureImage_premium', maxCount: 1 },
   { name: 'featureImage_handmade', maxCount: 1 },
@@ -152,11 +148,11 @@ router.post("/api/pages/about/upload", requireAuth, upload.fields([
       console.log('[POST] About page received content:', contentObj);
     } catch (parseError) {
       console.error('[POST] Error parsing content:', parseError);
-      return res.status(400).json({ message: "Invalid content format" });
+      return res.status(400).json(error("PARSE_ERROR", "Invalid content format", 400));
     }
     
     if (!contentObj) {
-      return res.status(400).json({ message: "Missing content data" });
+      return res.status(400).json(error("VALIDATION_FAILED", "Missing content data", 400));
     }
     
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
@@ -176,9 +172,9 @@ router.post("/api/pages/about/upload", requireAuth, upload.fields([
         contentObj.mainImage = `/asset/about/${mainImageFilename}`;
         
         console.log(`[POST] Moved main image to ${newPath}`);
-      } catch (error) {
-        console.error('[POST] Error processing main image:', error);
-        return res.status(500).json({ message: "Error processing main image" });
+      } catch (err) {
+        console.error('[POST] Error processing main image:', err);
+        return res.status(500).json(error("UPLOAD_FAILED", "Error processing main image", 500));
       }
     }
     
@@ -199,15 +195,15 @@ router.post("/api/pages/about/upload", requireAuth, upload.fields([
           await fs.rename(featureFile.path, newPath);
           
           // Update the feature image in content object
-          const featureIndex = contentObj.features.findIndex((feature: any) => feature.id === featureId);
+          const featureIndex = contentObj.features.findIndex((feature: { id: string }) => feature.id === featureId);
           if (featureIndex !== -1) {
             contentObj.features[featureIndex].image = `/asset/about/${featureFilename}`;
           }
           
           console.log(`[POST] Moved feature image (${featureId}) to ${newPath}`);
-        } catch (error) {
-          console.error(`[POST] Error processing feature image (${featureId}):`, error);
-          return res.status(500).json({ message: `Error processing feature image (${featureId})` });
+        } catch (err) {
+          console.error(`[POST] Error processing feature image (${featureId}):`, err);
+          return res.status(500).json(error("UPLOAD_FAILED", `Error processing feature image (${featureId})`, 500));
         }
       }
     }
@@ -215,17 +211,10 @@ router.post("/api/pages/about/upload", requireAuth, upload.fields([
     // Save updated content to database
     const updatedContent = await storage.updatePageContent("about", { content: contentObj });
     
-    res.json({ 
-      success: true, 
-      message: "About page updated successfully with file uploads", 
-      content: updatedContent 
-    });
-  } catch (error) {
-    console.error('[POST] Error handling about page file uploads:', error);
-    res.status(500).json({
-      error: "Failed to process file uploads",
-      details: error instanceof Error ? error.message : "Unknown error"
-    });
+    res.status(200).json(ok({ content: updatedContent }));
+  } catch (err) {
+    console.error('[POST] Error handling about page file uploads:', err);
+    res.status(500).json(error("UPLOAD_FAILED", "Failed to process file uploads", 500));
   }
 });
 

@@ -39,6 +39,8 @@ import {
 } from '@dnd-kit/sortable';
 import { SortableItem, DragHandle } from "@/components/ui/SortableItem";
 
+type FormFieldValue = string | File;
+
 export default function AdminMenuPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
@@ -50,7 +52,6 @@ export default function AdminMenuPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  // Define sensors for drag-and-drop functionality
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -62,7 +63,6 @@ export default function AdminMenuPage() {
     try {
       if (!editingItem) return;
 
-      // Handle image upload first if there's a new image
       const imageFile = formData.get('imageFile') as File;
       let imageUrl = editingItem.imageUrl;
 
@@ -82,7 +82,6 @@ export default function AdminMenuPage() {
         imageUrl = uploadResult.imageUrl;
       }
 
-      // Prepare update data
       const updateData = {
         name: formData.get('name') as string,
         description: formData.get('description') as string,
@@ -90,13 +89,11 @@ export default function AdminMenuPage() {
         imageUrl
       };
 
-      // Validate required fields
       if (!updateData.name || !updateData.description) {
         throw new Error('Name and description are required');
       }
 
-      // Send update request using apiRequest
-      const result = await apiRequest(`/api/menu/items/${editingItem.id}`, {
+      await apiRequest(`/api/menu/items/${editingItem.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -104,12 +101,10 @@ export default function AdminMenuPage() {
         body: JSON.stringify(updateData)
       });
 
-      // apiRequest already returns parsed JSON
       await queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
       toast({ title: "Menu item updated successfully" });
       setEditingItem(null);
     } catch (error) {
-      console.error('Edit error:', error);
       toast({ 
         title: "Failed to update menu item", 
         description: error instanceof Error ? error.message : "Unknown error",
@@ -141,8 +136,7 @@ export default function AdminMenuPage() {
         description: "Menu item deleted successfully" 
       });
       setDeleteItemId(null);
-    } catch (error) {
-      console.error('Delete error:', error);
+    } catch {
       toast({ 
         title: "Error", 
         description: "Failed to delete menu item",
@@ -163,8 +157,7 @@ export default function AdminMenuPage() {
       await queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
       toast({ title: "Sauce updated successfully" });
       setEditingSauce(null);
-    } catch (error) {
-      console.error('Edit error:', error);
+    } catch {
       toast({ title: "Failed to update sauce", variant: "destructive" });
     }
   };
@@ -186,8 +179,7 @@ export default function AdminMenuPage() {
         description: "Sauce deleted successfully" 
       });
       setDeleteSauceId(null);
-    } catch (error) {
-      console.error('Delete error:', error);
+    } catch {
       toast({ 
         title: "Error", 
         description: "Failed to delete sauce",
@@ -196,17 +188,16 @@ export default function AdminMenuPage() {
     }
   };
 
-  const { data: menuItems, isLoading: menuLoading } = useQuery({
+  const { data: menuItems, isLoading: menuLoading } = useQuery<MenuItem[]>({
     queryKey: queryKeys.menu.items,
-    queryFn: () => apiRequest("/api/menu/items")
+    queryFn: () => apiRequest<MenuItem[]>("/api/menu/items")
   });
 
-  const { data: sauces, isLoading: saucesLoading } = useQuery({
+  const { data: sauces, isLoading: saucesLoading } = useQuery<Sauce[]>({
     queryKey: queryKeys.menu.sauces,
-    queryFn: () => apiRequest("/api/menu/sauces")
+    queryFn: () => apiRequest<Sauce[]>("/api/menu/sauces")
   });
   
-  // Update local state when data is fetched
   useEffect(() => {
     if (menuItems) {
       setLocalMenuItems(menuItems);
@@ -219,21 +210,17 @@ export default function AdminMenuPage() {
     }
   }, [sauces]);
   
-  // Handle reordering of menu items
   const handleMenuItemDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     
     if (over && active.id !== over.id) {
-      // Find indices of the dragged item and the drop target
       const oldIndex = localMenuItems.findIndex(item => item.id === active.id);
       const newIndex = localMenuItems.findIndex(item => item.id === over.id);
       
       if (oldIndex !== -1 && newIndex !== -1) {
-        // Update local state for immediate UI feedback
         const newItems = arrayMove(localMenuItems, oldIndex, newIndex);
         setLocalMenuItems(newItems);
         
-        // Send reorder request to server
         try {
           const itemIds = newItems.map(item => item.id);
           await apiRequest('/api/menu/items/reorder', {
@@ -249,38 +236,31 @@ export default function AdminMenuPage() {
             variant: "default"
           });
           
-          // Refresh data from server
           queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
         } catch (error) {
-          console.error('Error reordering menu items:', error);
           toast({ 
             title: "Failed to reorder menu items", 
             description: error instanceof Error ? error.message : "Unknown error",
             variant: "destructive" 
           });
           
-          // Revert to original order if server update fails
           setLocalMenuItems(menuItems || []);
         }
       }
     }
   };
   
-  // Handle reordering of sauces
   const handleSauceDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     
     if (over && active.id !== over.id) {
-      // Find indices of the dragged item and the drop target
       const oldIndex = localSauces.findIndex(sauce => sauce.id === active.id);
       const newIndex = localSauces.findIndex(sauce => sauce.id === over.id);
       
       if (oldIndex !== -1 && newIndex !== -1) {
-        // Update local state for immediate UI feedback
         const newSauces = arrayMove(localSauces, oldIndex, newIndex);
         setLocalSauces(newSauces);
         
-        // Send reorder request to server
         try {
           const sauceIds = newSauces.map(sauce => sauce.id);
           await apiRequest('/api/menu/sauces/reorder', {
@@ -296,17 +276,14 @@ export default function AdminMenuPage() {
             variant: "default"
           });
           
-          // Refresh data from server
           queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
         } catch (error) {
-          console.error('Error reordering sauces:', error);
           toast({ 
             title: "Failed to reorder sauces", 
             description: error instanceof Error ? error.message : "Unknown error",
             variant: "destructive" 
           });
           
-          // Revert to original order if server update fails
           setLocalSauces(sauces || []);
         }
       }
@@ -315,29 +292,6 @@ export default function AdminMenuPage() {
 
   const createMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      console.log('\n=== Frontend Request Debug ===');
-      console.log('Content-Type:', 'multipart/form-data');
-
-      // Log each field separately for clarity
-      const fields = Array.from(formData.entries()).reduce((acc: Record<string, any>, [key, value]) => {
-        if (value instanceof File) {
-          acc[key] = {
-            type: 'File',
-            name: value.name,
-            size: value.size,
-            mimeType: value.type
-          };
-        } else {
-          acc[key] = {
-            type: 'Field',
-            value: value
-          };
-        }
-        return acc;
-      }, {});
-
-      console.log('Form Fields:', JSON.stringify(fields, null, 2));
-
       const response = await fetch("/api/menu/items", {
         method: "POST",
         body: formData,
@@ -346,18 +300,10 @@ export default function AdminMenuPage() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Request Failed:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorText,
-          contentType: response.headers.get('content-type')
-        });
         throw new Error(`Failed to create menu item: ${errorText}`);
       }
 
-      const result = await response.json();
-      console.log('Request Succeeded:', result);
-      return result;
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/menu"] });
@@ -368,7 +314,6 @@ export default function AdminMenuPage() {
       });
     },
     onError: (error: Error) => {
-      console.error('Mutation Error:', error);
       toast({
         title: "Error",
         description: error.message,
@@ -379,36 +324,7 @@ export default function AdminMenuPage() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
-    console.log('\n=== Form Submission Debug ===');
-    const form = e.currentTarget;
-
-    console.log('Form Properties:', {
-      method: form.method,
-      enctype: form.enctype,
-      action: form.action,
-      elements: Array.from(form.elements).map(el => ({
-        name: (el as HTMLInputElement).name,
-        type: (el as HTMLInputElement).type,
-        id: (el as HTMLInputElement).id
-      }))
-    });
-
-    const formData = new FormData(form);
-
-    console.log('Form Fields:');
-    for (const [key, value] of formData.entries()) {
-      if (value instanceof File) {
-        console.log(`Field: ${key} (File)`, {
-          name: value.name,
-          type: value.type,
-          size: value.size
-        });
-      } else {
-        console.log(`Field: ${key}`, value);
-      }
-    }
-
+    const formData = new FormData(e.currentTarget);
     createMutation.mutate(formData);
   };
 
@@ -421,15 +337,10 @@ export default function AdminMenuPage() {
         body: formData
       });
 
-      // Reset form
       e.currentTarget.reset();
-
-      // Refetch menu items
       await queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
-
       toast({ title: "Menu item added successfully" });
-    } catch (error) {
-      console.error('Add error:', error);
+    } catch {
       toast({ title: "Failed to add menu item", variant: "destructive" });
     }
   };
@@ -439,13 +350,6 @@ export default function AdminMenuPage() {
     try {
       const form = e.currentTarget;
       const formData = new FormData(form);
-
-      // Convert FormData entries to array for logging
-      const formEntries = Array.from(formData.entries()).reduce((acc: Record<string, any>, [key, value]) => {
-        acc[key] = value instanceof File ? `File: ${value.name}` : value;
-        return acc;
-      }, {});
-      console.log("Form data being submitted:", formEntries);
 
       const response = await fetch("/api/menu/sauces", {
         method: "POST",
@@ -458,12 +362,10 @@ export default function AdminMenuPage() {
         throw new Error(errorData.message || 'Failed to create sauce');
       }
 
-      console.log("Sauce creation response:", await response.json());
       form.reset();
       await queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
       toast({ title: "Sauce added successfully" });
     } catch (error) {
-      console.error('Add sauce error:', error);
       toast({ 
         title: "Failed to add sauce", 
         description: error instanceof Error ? error.message : "Unknown error",
@@ -510,7 +412,6 @@ export default function AdminMenuPage() {
                   name="name"
                   placeholder="Enter item name"
                   required
-                  onChange={(e) => console.log('Name input changed:', e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -520,7 +421,6 @@ export default function AdminMenuPage() {
                   name="description"
                   placeholder="Enter item description"
                   required
-                  onChange={(e) => console.log('Description input changed:', e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -530,7 +430,6 @@ export default function AdminMenuPage() {
                   name="price"
                   placeholder="Enter price (e.g., Rp 25.000)"
                   required
-                  onChange={(e) => console.log('Price input changed:', e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -541,23 +440,12 @@ export default function AdminMenuPage() {
                   type="file"
                   accept="image/*"
                   required
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      console.log('Image file selected:', {
-                        name: file.name,
-                        type: file.type,
-                        size: file.size
-                      });
-                    }
-                  }}
                 />
               </div>
               <Button
                 type="submit"
                 className="w-full"
                 disabled={createMutation.isPending}
-                onClick={() => console.log('Submit button clicked')}
               >
                 {createMutation.isPending ? 'Creating...' : 'Create'}
               </Button>
@@ -791,7 +679,6 @@ export default function AdminMenuPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Menu Item Confirmation */}
       <AlertDialog open={deleteItemId !== null} onOpenChange={() => setDeleteItemId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -809,7 +696,6 @@ export default function AdminMenuPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Delete Sauce Confirmation */}
       <AlertDialog open={deleteSauceId !== null} onOpenChange={() => setDeleteSauceId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

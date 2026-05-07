@@ -5,6 +5,7 @@ import path from "path";
 import fs from 'fs';
 import { storage } from "./storage";
 import { createServer } from 'http';
+import { AddressInfo } from "net";
 import cors from 'cors';
 import session from 'express-session';
 
@@ -60,7 +61,7 @@ app.use('/public', express.static(path.join(process.cwd(), 'public'), staticFile
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+  let capturedJsonResponse: Record<string, unknown> | undefined = undefined;
 
   const originalResJson = res.json;
   res.json = function (bodyJson, ...args) {
@@ -85,7 +86,7 @@ app.use((req, res, next) => {
   next();
 });
 
-let server: any = null;
+let server: ReturnType<typeof createServer> | null = null;
 
 const createRequiredDirectories = async () => {
   const dirs = ['uploads', 'image', 'logo', 'public', 'public/logo', 'public/logo/customers'];
@@ -102,6 +103,15 @@ const createRequiredDirectories = async () => {
 };
 
 
+/**
+ * Starts the Express server with Vite in development or static serving in production.
+ * Handles port fallback to dynamic port (0) if preferred port is in use.
+ * Runs database initialization asynchronously without blocking server startup.
+ * Sets up graceful shutdown handlers for SIGTERM and SIGINT.
+ *
+ * @returns Promise resolving to the HTTP server instance
+ * @throws Error if server fails to start or directory creation fails
+ */
 const startServer = async () => {
   try {
     console.log('[Startup] Beginning server initialization...');
@@ -120,11 +130,9 @@ const startServer = async () => {
     server = registerRoutes(app);
 
     // Global error handler with improved logging
-    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      console.error('[Error] Detailed server error:', err);
-      const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
-      res.status(status).json({ message });
+    app.use((_err: Error, _req: Request, res: Response, _next: NextFunction) => {
+      console.error('[Error] Unhandled server error');
+      res.status(500).json({ success: false, error: { code: "INTERNAL_ERROR", message: "An unexpected error occurred" } });
     });
 
     // Always use Vite in development mode
@@ -142,9 +150,12 @@ const startServer = async () => {
     // Start the server with improved error handling and fallback port
     return new Promise((resolve, reject) => {
       const startServerOnPort = (currentPort: number) => {
-        server.listen(currentPort, "0.0.0.0", () => {
+        const httpServer = server!;
+        httpServer.listen(currentPort, "0.0.0.0", () => {
           // Get the actual port that was assigned (useful if we're using port 0)
-          const usedPort = (server.address() as any).port;
+          const address = httpServer.address() as AddressInfo;
+          const usedPort = address?.port || currentPort;
+          log(`[Server] Running on port ${usedPort}`);
           log(`[Server] Running on port ${usedPort}`);
           
           // Perform database initialization in the background
@@ -161,7 +172,7 @@ const startServer = async () => {
           });
   
           resolve(server);
-        }).on('error', (error: any) => {
+        }).on('error', (error: Error & { code?: string }) => {
           if (error.code === 'EADDRINUSE' && currentPort === initialPort) {
             // If the initial port is in use, try with the fallback port
             console.log(`[Port] Port ${initialPort} is in use, trying with dynamic port assignment...`);
@@ -182,6 +193,10 @@ const startServer = async () => {
   }
 };
 
+/**
+ * Gracefully stops the HTTP server if running.
+ * Used for SIGTERM/SIGINT shutdown handlers to ensure clean exit.
+ */
 const stopServer = () => {
   if (server) {
     server.close(() => {

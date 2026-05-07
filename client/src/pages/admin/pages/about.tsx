@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,30 +6,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Upload, Info, ImageIcon } from "lucide-react";
+import AdminLayout from "@/components/layout/AdminLayout";
 import AdminNavbar from "@/components/layout/admin-navbar";
-import type { PageContent } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
-interface Feature {
-  id: string;
-  title: string;
-  description: string;
-  image: string;
-}
-
-interface AboutContent {
-  title: string;
-  description: string;
-  mainImage: string;
-  mainDescription: string;
-  sections: {
-    title: string;
-    description: string;
-  }[];
-  features: Feature[];
-}
+import { queryKeys, apiRequest } from "@/lib/queryClient";
+import { AboutContent } from "@/types/api";
 
 interface FileUpload {
   mainImage: File | null;
@@ -63,18 +46,18 @@ export default function AboutEditor() {
     ]
   });
 
-  const { data: pageData, isLoading } = useQuery({
-    queryKey: ["/api/pages/about"],
-    queryFn: async () => {
-      const response = await fetch("/api/pages/about");
-      if (!response.ok) throw new Error("Failed to fetch about content");
-      return response.json();
-    }
+  interface AboutPageData {
+  content: AboutContent;
+}
+
+const { data: pageData, isLoading } = useQuery<AboutPageData>({
+    queryKey: queryKeys.admin.pages.about,
+    queryFn: () => apiRequest<AboutPageData>("/api/pages/about")
   });
 
   useEffect(() => {
-    if (pageData) {
-      setContent(pageData.content as AboutContent);
+    if (pageData?.content) {
+      setContent(pageData.content);
     }
   }, [pageData]);
 
@@ -110,17 +93,13 @@ export default function AboutEditor() {
 
   const updateMutation = useMutation({
     mutationFn: async (formData: AboutContent) => {
-      const response = await fetch("/api/pages/about", {
+      return await apiRequest("/api/pages/about", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: formData }),
-        credentials: "include"
       });
-      if (!response.ok) throw new Error("Failed to update about page");
-      return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/pages/about"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.pages.about });
       toast({ title: "Success", description: "About page updated successfully" });
     },
     onError: (error: Error) => {
@@ -134,16 +113,13 @@ export default function AboutEditor() {
 
   const uploadMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const response = await fetch("/api/pages/about/upload", {
+      return await apiRequest("/api/pages/about/upload", {
         method: "POST",
         body: formData,
-        credentials: "include"
       });
-      if (!response.ok) throw new Error("Failed to upload files");
-      return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/pages/about"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.pages.about });
       toast({ title: "Success", description: "About page updated with file uploads" });
       
       // Reset file inputs after successful upload
@@ -154,8 +130,8 @@ export default function AboutEditor() {
       
       // Reset file input elements
       if (formRef.current) {
-        const fileInputs = formRef.current.querySelectorAll('input[type="file"]');
-        fileInputs.forEach((input) => {
+        const fileInputs = formRef.current?.querySelectorAll('input[type="file"]') as NodeListOf<HTMLInputElement>;
+        fileInputs?.forEach((input) => {
           if (input instanceof HTMLInputElement) {
             input.value = '';
           }
@@ -198,10 +174,8 @@ export default function AboutEditor() {
   }
 
   return (
-    <>
-      <AdminNavbar />
-      <div className="container mx-auto p-6">
-        <Card className="mb-6">
+    <AdminLayout>
+      <Card className="mb-6">
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
@@ -578,7 +552,6 @@ export default function AboutEditor() {
             </Button>
           </div>
         </form>
-      </div>
-    </>
+    </AdminLayout>
   );
 }

@@ -1,212 +1,194 @@
 import { Switch, Route } from "wouter";
+import { lazy, Suspense } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { HelmetProvider } from "react-helmet-async";
-import NotFound from "@/pages/not-found";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
-import Home from "@/pages/home";
-import Menu from "@/pages/menu";
-import About from "@/pages/about";
-import Articles from "@/pages/articles";
-import ArticleDetail from "@/pages/article/[id]";
-import Contact from "@/pages/contact";
 import { HalalLogo } from "@/components/HalalLogo";
-import AuthPage from "@/pages/auth";
-import AdminBlog from "@/pages/admin/blog";
-import AdminPages from "@/pages/admin/pages";
-import AdminMenuPage from "@/pages/admin/pages/menu";
-import AdminDashboard from "@/pages/admin/index";
-import HomePageEditor from "@/pages/admin/pages/home";
-import AboutPageEditor from "@/pages/admin/pages/about";
-import ContactPageEditor from "@/pages/admin/pages/contact";
-import FooterEditor from "@/pages/admin/pages/footer";
-import CustomersPageEditor from "@/pages/admin/pages/customers";
+import { SkipLink } from "@/components/ui/skip-link";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+
+// Lazy-loaded public pages
+const NotFound = lazy(() => import("@/pages/not-found"));
+const Home = lazy(() => import("@/pages/home"));
+const Menu = lazy(() => import("@/pages/menu"));
+const About = lazy(() => import("@/pages/about"));
+const Articles = lazy(() => import("@/pages/articles"));
+const ArticleDetail = lazy(() => import("@/pages/article/[id]"));
+const Contact = lazy(() => import("@/pages/contact"));
+const AuthPage = lazy(() => import("@/pages/auth"));
+
+// Lazy-loaded admin pages (TinyMCE is heavy ~500KB)
+const AdminBlog = lazy(() => import("@/pages/admin/blog"));
+const AdminPages = lazy(() => import("@/pages/admin/pages"));
+const AdminMenuPage = lazy(() => import("@/pages/admin/pages/menu"));
+const AdminDashboard = lazy(() => import("@/pages/admin/index"));
+const HomePageEditor = lazy(() => import("@/pages/admin/pages/home"));
+const AboutPageEditor = lazy(() => import("@/pages/admin/pages/about"));
+const ContactPageEditor = lazy(() => import("@/pages/admin/pages/contact"));
+const FooterEditor = lazy(() => import("@/pages/admin/pages/footer"));
+const CustomersPageEditor = lazy(() => import("@/pages/admin/pages/customers"));
+
+function PublicRoute({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
+      <main id="main-content" className="flex-1">{children}</main>
+      <Footer />
+    </div>
+  );
+}
 
 function Router() {
   return (
     <ErrorBoundary>
       <div className="min-h-screen flex flex-col">
         <HalalLogo />
+        <SkipLink />
         <Switch>
           <Route path="/">
-            <div className="min-h-screen flex flex-col">
-              <Navbar />
-              <main className="flex-1">
+            <PublicRoute>
+              <Suspense fallback={<LoadingSkeleton />}>
                 <ErrorBoundary>
                   <Home />
                 </ErrorBoundary>
-              </main>
-              <Footer />
-            </div>
+              </Suspense>
+            </PublicRoute>
           </Route>
           <Route path="/menu">
-            <div className="min-h-screen flex flex-col">
-              <Navbar />
-              <main className="flex-1">
+            <PublicRoute>
+              <Suspense fallback={<LoadingSkeleton />}>
                 <ErrorBoundary>
                   <Menu />
                 </ErrorBoundary>
-              </main>
-              <Footer />
-            </div>
+              </Suspense>
+            </PublicRoute>
           </Route>
           <Route path="/about">
-            <div className="min-h-screen flex flex-col">
-              <Navbar />
-              <main className="flex-1">
+            <PublicRoute>
+              <Suspense fallback={<LoadingSkeleton />}>
                 <ErrorBoundary>
                   <About />
                 </ErrorBoundary>
-              </main>
-              <Footer />
-            </div>
+              </Suspense>
+            </PublicRoute>
           </Route>
           <Route path="/articles">
-            <div className="min-h-screen flex flex-col">
-              <Navbar />
-              <main className="flex-1">
+            <PublicRoute>
+              <Suspense fallback={<LoadingSkeleton />}>
                 <ErrorBoundary>
                   <Articles />
                 </ErrorBoundary>
-              </main>
-              <Footer />
-            </div>
+              </Suspense>
+            </PublicRoute>
           </Route>
           <Route path="/article/:id">
-            <div className="min-h-screen flex flex-col">
-              <Navbar />
-              <main className="flex-1">
+            <PublicRoute>
+              <Suspense fallback={<LoadingSkeleton />}>
                 <ErrorBoundary>
                   <ArticleDetail />
                 </ErrorBoundary>
-              </main>
-              <Footer />
-            </div>
+              </Suspense>
+            </PublicRoute>
           </Route>
           <Route path="/contact">
-            <div className="min-h-screen flex flex-col">
-              <Navbar />
-              <main className="flex-1">
+            <PublicRoute>
+              <Suspense fallback={<LoadingSkeleton />}>
                 <ErrorBoundary>
                   <Contact />
                 </ErrorBoundary>
-              </main>
-              <Footer />
-            </div>
+              </Suspense>
+            </PublicRoute>
           </Route>
           <Route path="/auth">
-            <ErrorBoundary>
-              <AuthPage />
-            </ErrorBoundary>
+            <Suspense fallback={<LoadingSkeleton />}>
+              <ErrorBoundary>
+                <AuthPage />
+              </ErrorBoundary>
+            </Suspense>
           </Route>
           <Route path="/admin">
-            <ErrorBoundary>
-              <ProtectedRoute>
-                <AdminDashboard />
-              </ProtectedRoute>
-            </ErrorBoundary>
+            <Suspense fallback={<LoadingSkeleton />}>
+              <ErrorBoundary>
+                <ProtectedRoute>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              </ErrorBoundary>
+            </Suspense>
           </Route>
           <Route path="/admin/blog">
-            <ErrorBoundary>
-              <ProtectedRoute>
-                <AdminBlog />
-              </ProtectedRoute>
-            </ErrorBoundary>
+            <Suspense fallback={<LoadingSkeleton />}>
+              <ErrorBoundary>
+                <ProtectedRoute>
+                  <AdminBlog />
+                </ProtectedRoute>
+              </ErrorBoundary>
+            </Suspense>
           </Route>
           <Route path="/admin/pages">
-            <ErrorBoundary>
-              <ProtectedRoute>
-                <AdminPages />
-              </ProtectedRoute>
-            </ErrorBoundary>
+            <Suspense fallback={<LoadingSkeleton />}>
+              <ErrorBoundary>
+                <ProtectedRoute>
+                  <AdminPages />
+                </ProtectedRoute>
+              </ErrorBoundary>
+            </Suspense>
           </Route>
           <Route path="/admin/pages/:pageId">
-            {(params) => {
-              switch (params.pageId) {
-                case 'menu':
-                  return (
-                    <ErrorBoundary>
-                      <ProtectedRoute>
-                        <AdminMenuPage />
-                      </ProtectedRoute>
-                    </ErrorBoundary>
-                  );
-                case 'home':
-                  return (
-                    <ErrorBoundary>
-                      <ProtectedRoute>
-                        <HomePageEditor />
-                      </ProtectedRoute>
-                    </ErrorBoundary>
-                  );
-                case 'about':
-                  return (
-                    <ErrorBoundary>
-                      <ProtectedRoute>
-                        <AboutPageEditor />
-                      </ProtectedRoute>
-                    </ErrorBoundary>
-                  );
-                case 'contact':
-                  return (
-                    <ErrorBoundary>
-                      <ProtectedRoute>
-                        <ContactPageEditor />
-                      </ProtectedRoute>
-                    </ErrorBoundary>
-                  );
-                case 'footer':
-                  return (
-                    <ErrorBoundary>
-                      <ProtectedRoute>
-                        <FooterEditor />
-                      </ProtectedRoute>
-                    </ErrorBoundary>
-                  );
-                case 'customers':
-                  return (
-                    <ErrorBoundary>
-                      <ProtectedRoute>
-                        <CustomersPageEditor />
-                      </ProtectedRoute>
-                    </ErrorBoundary>
-                  );
-                default:
-                  return (
-                    <ErrorBoundary>
-                      <ProtectedRoute>
-                        <div className="container mx-auto p-6">
-                          <h1 className="text-3xl font-bold mb-6">
-                            Edit {params.pageId.charAt(0).toUpperCase() + params.pageId.slice(1)} Page
-                          </h1>
-                          <p>Page editor for {params.pageId} will be implemented here</p>
-                        </div>
-                      </ProtectedRoute>
-                    </ErrorBoundary>
-                  );
-              }
-            }}
+            {(params) => (
+              <Suspense fallback={<LoadingSkeleton />}>
+                <ErrorBoundary>
+                  <ProtectedRoute>
+                    <PageEditor pageId={params.pageId} />
+                  </ProtectedRoute>
+                </ErrorBoundary>
+              </Suspense>
+            )}
           </Route>
           <Route>
-            <div className="min-h-screen flex flex-col">
-              <Navbar />
-              <main className="flex-1">
+            <PublicRoute>
+              <Suspense fallback={<LoadingSkeleton />}>
                 <ErrorBoundary>
                   <NotFound />
                 </ErrorBoundary>
-              </main>
-              <Footer />
-            </div>
+              </Suspense>
+            </PublicRoute>
           </Route>
         </Switch>
       </div>
     </ErrorBoundary>
   );
+}
+
+function PageEditor({ pageId }: { pageId: string }) {
+  switch (pageId) {
+    case "menu":
+      return <AdminMenuPage />;
+    case "home":
+      return <HomePageEditor />;
+    case "about":
+      return <AboutPageEditor />;
+    case "contact":
+      return <ContactPageEditor />;
+    case "footer":
+      return <FooterEditor />;
+    case "customers":
+      return <CustomersPageEditor />;
+    default:
+      return (
+        <div className="container mx-auto p-6">
+          <h1 className="text-3xl font-bold mb-6">
+            Edit {pageId.charAt(0).toUpperCase() + pageId.slice(1)} Page
+          </h1>
+          <p>Page editor for {pageId} will be implemented here</p>
+        </div>
+      );
+  }
 }
 
 function App() {

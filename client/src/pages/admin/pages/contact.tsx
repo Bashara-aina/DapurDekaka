@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,9 +14,10 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { apiRequest } from "@/lib/queryClient";
-import { Loader2, Save, Image as ImageIcon, MapPin, Phone, Mail, Clock, Link2, Upload } from "lucide-react";
-import AdminNavbar from "@/components/layout/admin-navbar";
+import { apiRequest, queryKeys } from "@/lib/queryClient";
+import { Loader2, Save, Image as ImageIcon, MapPin, Phone, Mail, Clock, Link2 } from "lucide-react";
+import AdminLayout from "@/components/layout/AdminLayout";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import {
   Tabs,
@@ -32,60 +32,23 @@ import {
   TooltipProvider,
 } from "@/components/ui/tooltip";
 import { Icon } from "@iconify/react";
-
-type ContactPageContent = {
-  title: string;
-  description: string;
-  mainImage: string;
-  contactInfo: {
-    address: string;
-    phone: string;
-    email: string;
-    openingHours: string;
-    mapEmbedUrl: string;
-  };
-  socialLinks: {
-    id: string;
-    label: string;
-    url: string;
-    icon: string;
-  }[];
-  quickOrderUrl: string;
-};
+import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { ContactPageContent } from "@/types/api";
 
 export default function ContactPageEditor() {
-  const [, setLocation] = useLocation();
+  const { t } = useLanguage();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState("general");
   const [previewData, setPreviewData] = useState<ContactPageContent | null>(null);
   const [mainImageFile, setMainImageFile] = useState<File | null>(null);
   const [mainImagePreview, setMainImagePreview] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: isAuthenticated, isLoading: authLoading } = useQuery({
-    queryKey: ['/api/auth-check'],
-    queryFn: async () => {
-      const response = await fetch('/api/auth-check', {
-        credentials: 'include'
-      });
-      if (!response.ok) {
-        throw new Error('Unauthorized');
-      }
-      return true;
-    },
-    retry: false,
-    staleTime: 0,
-    gcTime: 0
-  });
-
   const { data: pageData, isLoading: pageLoading } = useQuery({
-    queryKey: ['/api/pages/contact'],
+    queryKey: queryKeys.admin.pages.contact,
     queryFn: async () => {
-      const response = await fetch('/api/pages/contact');
-      if (!response.ok) {
-        throw new Error('Failed to fetch contact page data');
-      }
-      const data = await response.json();
-      return data.content;
+      const res = await apiRequest<{ content: ContactPageContent }>("/api/pages/contact");
+      return res.content;
     },
     enabled: isAuthenticated === true
   });
@@ -152,7 +115,7 @@ export default function ContactPageEditor() {
         // Just update the content without image uploads
         await apiRequest('/api/pages/contact', {
           method: 'PUT',
-          body: { content: updatedValues }
+          body: JSON.stringify({ content: updatedValues })
         });
       }
 
@@ -188,12 +151,6 @@ export default function ContactPageEditor() {
     }
   };
 
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      setLocation('/auth');
-    }
-  }, [authLoading, isAuthenticated, setLocation]);
-
   if (authLoading || pageLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -207,12 +164,11 @@ export default function ContactPageEditor() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <AdminNavbar />
+    <AdminLayout>
       <TooltipProvider>
         <div className="container py-10 max-w-4xl mx-auto">
           <div className="mb-10 text-center">
-            <h1 className="text-3xl font-bold">Contact Page Editor</h1>
+            <h1 className="text-3xl font-bold">{t("admin.pages.contact")} Page Editor</h1>
             <p className="text-gray-500">
               Edit your contact page information, social media links, and more.
             </p>
@@ -546,6 +502,6 @@ export default function ContactPageEditor() {
         </Tabs>
       </div>
       </TooltipProvider>
-    </div>
+    </AdminLayout>
   );
 }

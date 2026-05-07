@@ -13,17 +13,13 @@ export default function Home() {
   const { data: pageData } = useQuery({
     queryKey: ["pages", "homepage"],
     queryFn: async () => {
-      try {
-        const response = await fetch(`/api/pages/homepage`);
-        if (!response.ok) return null;
-        return await response.json();
-      } catch (error) {
-        console.error("Error fetching homepage data:", error);
-        return null;
-      }
+      const response = await fetch(`/api/pages/homepage`);
+      if (!response.ok) throw new Error("Failed to fetch homepage data");
+      return response.json();
     },
-    staleTime: 300000, // Consider data fresh for 5 minutes
+    staleTime: 300000,
     refetchOnWindowFocus: false,
+    throwOnError: false,
   });
   
   // Extract title and description from page data if available

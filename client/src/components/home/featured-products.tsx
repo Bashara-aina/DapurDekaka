@@ -7,20 +7,25 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { useQuery } from "@tanstack/react-query";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { OrderModal } from "@/components/OrderModal";
+import { ImageOptimizer } from "@/components/ImageOptimizer";
 import type { MenuItem } from "@shared/schema";
 
 export default function FeaturedProducts() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { t } = useLanguage();
 
-  const { data: menuItems, isLoading: menuLoading } = useQuery<MenuItem[]>({
+  const { data: response, isLoading: menuLoading, isError: menuError } = useQuery({
     queryKey: ["menu", "items"],
     queryFn: async () => {
       const response = await fetch("/api/menu/items");
       if (!response.ok) throw new Error("Failed to fetch menu items");
-      return response.json();
+      const json = await response.json();
+      return json.data?.menuItems || json.data || [];
     },
+    staleTime: 60000,
   });
+
+  const menuItems = Array.isArray(response) ? response : response?.menuItems || [];
 
   const { data: pageData } = useQuery({
     queryKey: ["pages", "homepage"],
@@ -34,9 +39,7 @@ export default function FeaturedProducts() {
         }
       });
       if (!response.ok) throw new Error("Failed to fetch homepage data");
-      const data = await response.json();
-      console.log("Fetched homepage data with timestamp:", timestamp, data);
-      return data;
+      return response.json();
     },
     staleTime: 0, // Always consider data stale
     gcTime: 10000, // Keep unused data in cache for only 10 seconds
@@ -57,6 +60,32 @@ export default function FeaturedProducts() {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (menuError) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <Card className="max-w-md w-full p-6 text-center">
+          <p className="text-destructive mb-4">Failed to load menu items.</p>
+          <Button
+            variant="outline"
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!menuItems || menuItems.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <Card className="max-w-md w-full p-6 text-center">
+          <p className="text-muted-foreground">No items available.</p>
+        </Card>
       </div>
     );
   }
@@ -105,9 +134,12 @@ export default function FeaturedProducts() {
             >
               <Card className="h-full flex flex-col">
                 <AspectRatio ratio={1} className="overflow-hidden rounded-t-lg">
-                  <img
+                  <ImageOptimizer
                     src={item.imageUrl}
                     alt={item.name}
+                    width={280}
+                    height={280}
+                    sizes="280px"
                     className="object-cover w-full h-full"
                   />
                 </AspectRatio>

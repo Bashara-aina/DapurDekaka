@@ -14,15 +14,15 @@ export default function Menu() {
   const { t } = useLanguage();
   const { toast } = useToast();
 
-  const { data: menuItems, isLoading: menuLoading, error: menuError } = useQuery({
+  const { data: menuItems, isLoading: menuLoading, error: menuError } = useQuery<MenuItem[]>({
     queryKey: queryKeys.menu.items,
-    queryFn: () => apiRequest("/api/menu/items"),
+    queryFn: () => apiRequest<MenuItem[]>("/api/menu/items"),
     retry: 2
   });
 
-  const { data: sauces, isLoading: saucesLoading, error: saucesError } = useQuery({
+  const { data: sauces, isLoading: saucesLoading, error: saucesError } = useQuery<Sauce[]>({
     queryKey: queryKeys.menu.sauces,
-    queryFn: () => apiRequest("/api/menu/sauces"),
+    queryFn: () => apiRequest<Sauce[]>("/api/menu/sauces"),
     retry: 2
   });
 
@@ -74,8 +74,9 @@ export default function Menu() {
                     className="object-cover w-full h-full"
                     onError={(e) => {
                       const img = e.target as HTMLImageElement;
-                      img.src = '/placeholder-image.jpg'; // Add a placeholder image
-                      console.error(`Failed to load image: ${item.imageUrl}`);
+                      if (img.src !== 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7') {
+                        img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                      }
                     }}
                   />
                 </AspectRatio>
@@ -124,8 +125,9 @@ export default function Menu() {
                         className="object-cover w-full h-full"
                         onError={(e) => {
                           const img = e.target as HTMLImageElement;
-                          img.src = '/placeholder-image.jpg'; // Add a placeholder image
-                          console.error(`Failed to load image: ${sauce.imageUrl}`);
+                          if (img.src !== 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7') {
+                            img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                          }
                         }}
                       />
                     </AspectRatio>

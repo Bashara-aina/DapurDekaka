@@ -104,8 +104,8 @@ export function ImageOptimizer({
     
     // Set fetchPriority if supported by browser
     if ('fetchPriority' in HTMLImageElement.prototype) {
-      // Using type assertion to avoid TypeScript errors
-      (img as any).fetchPriority = priority ? 'high' : 'auto';
+      // Type assertion for fetchPriority property (supported in modern browsers)
+      (img as HTMLImageElement & { fetchPriority?: string }).fetchPriority = priority ? 'high' : 'auto';
     }
     
     img.onload = () => {

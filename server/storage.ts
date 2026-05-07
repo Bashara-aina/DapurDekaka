@@ -2,7 +2,18 @@
 import multer from 'multer';
 import path from 'path';
 import * as fs from 'fs';
+import { logger } from './utils/logger.js';
 
+/**
+ * Unified file size limit for all multer uploads across the application.
+ * Ensures consistent upload limits regardless of which route handles the request.
+ */
+export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit shared across all file uploads
+
+/**
+ * Multer middleware configured for disk storage with unique filename generation.
+ * Used by menu and blog routes for image uploads.
+ */
 export const upload = multer({
   storage: multer.diskStorage({
     destination: (_req, _file, cb) => {
@@ -19,7 +30,7 @@ export const upload = multer({
     }
   }),
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
+    fileSize: MAX_FILE_SIZE
   }
 });
 
@@ -29,7 +40,7 @@ import { blogPosts, type BlogPost, type InsertBlogPost } from "@shared/schema";
 import { sauces, type Sauce, type InsertSauce } from "@shared/schema";
 import { pages, type Page, type PageContent } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 export interface IStorage {
@@ -41,10 +52,12 @@ export interface IStorage {
   // Blog post methods
   getAllBlogPosts(): Promise<BlogPost[]>;
   getBlogPost(id: number): Promise<BlogPost | undefined>;
-  createBlogPost(post: InsertBlogPost & { authorId: number }): Promise<BlogPost>;
-  updateBlogPost(id: number, post: Partial<InsertBlogPost>): Promise<BlogPost | undefined>;
+  createBlogPost(post: InsertBlogPost & { authorId: number; slug?: string; readTime?: number }): Promise<BlogPost>;
+  updateBlogPost(id: number, post: Partial<InsertBlogPost & { slug?: string; readTime?: number }>): Promise<BlogPost | undefined>;
   deleteBlogPost(id: number): Promise<boolean>;
   reorderBlogPosts(postIds: number[]): Promise<BlogPost[]>;
+  getPublishedBlogPosts(opts: { page?: number; limit?: number; category?: string; featured?: boolean; author?: string }): Promise<{ posts: BlogPost[]; total: number; totalPages: number }>;
+  getRelatedBlogPosts(id: number, limit?: number): Promise<BlogPost[]>;
 
   // Menu item methods
   getAllMenuItems(): Promise<MenuItem[]>;
@@ -68,32 +81,35 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  // Menu item methods with optimized querying and error handling
+  /**
+   * Retrieves all menu items ordered by their position index.
+   * @throws Error if database query fails
+   */
   async getAllMenuItems(): Promise<MenuItem[]> {
     try {
-      console.log("Fetching all menu items");
+      logger.debug("Fetching all menu items");
       return await db.select().from(menuItems).orderBy(menuItems.orderIndex);
     } catch (error) {
-      console.error("Error fetching menu items:", error);
+      logger.error("Error fetching menu items", { error: error instanceof Error ? error.message : String(error) });
       throw new Error("Failed to fetch menu items");
     }
   }
 
   async getMenuItem(id: number): Promise<MenuItem | undefined> {
     try {
-      console.log(`Fetching menu item with ID: ${id}`);
+      logger.debug(`Fetching menu item with ID: ${id}`);
       const [item] = await db.select().from(menuItems).where(eq(menuItems.id, id));
       return item;
     } catch (error) {
-      console.error(`Error fetching menu item ${id}:`, error);
+      logger.error(`Error fetching menu item ${id}`, { error: error instanceof Error ? error.message : String(error) });
       throw new Error("Failed to fetch menu item");
     }
   }
 
   async createMenuItem(item: InsertMenuItem): Promise<MenuItem> {
     try {
-      console.log("Creating menu item with data:", item);
-      
+      logger.debug("Creating menu item", { name: item.name });
+
       // Validate image URL
       if (!item.imageUrl) {
         throw new Error("Image URL is required");
@@ -106,10 +122,10 @@ export class DatabaseStorage implements IStorage {
 
       // Get current max orderIndex
       const allItems = await db.select().from(menuItems);
-      const maxOrderIndex = allItems.length > 0 
-        ? Math.max(...allItems.map(item => item.orderIndex || 0)) 
+      const maxOrderIndex = allItems.length > 0
+        ? Math.max(...allItems.map(item => item.orderIndex || 0))
         : -1;
-      
+
       // Set the new item's orderIndex to maxOrderIndex + 1
       const itemWithOrder = {
         ...item,
@@ -125,13 +141,12 @@ export class DatabaseStorage implements IStorage {
         throw new Error("Database insert failed - no item returned");
       }
 
-      console.log("Successfully created menu item:", newItem);
+      logger.info("Successfully created menu item", { id: newItem.id, name: newItem.name });
       return newItem;
     } catch (error) {
-      console.error("Detailed error creating menu item:", {
+      logger.error("Error creating menu item", {
         error: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
-        item
+        stack: error instanceof Error ? error.stack : undefined
       });
       throw error;
     }
@@ -139,7 +154,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateMenuItem(id: number, item: Partial<InsertMenuItem>): Promise<MenuItem | undefined> {
     try {
-      console.log(`Updating menu item ${id} with data:`, item);
+      logger.debug(`Updating menu item ${id}`);
       const [updatedItem] = await db
         .update(menuItems)
         .set(item)
@@ -147,30 +162,34 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return updatedItem;
     } catch (error) {
-      console.error(`Error updating menu item ${id}:`, error);
+      logger.error(`Error updating menu item ${id}`, { error: error instanceof Error ? error.message : String(error) });
       throw new Error("Failed to update menu item");
     }
   }
 
   async deleteMenuItem(id: number): Promise<boolean> {
     try {
-      console.log(`Deleting menu item with ID: ${id}`);
+      logger.debug(`Deleting menu item with ID: ${id}`);
       const [deletedItem] = await db
         .delete(menuItems)
         .where(eq(menuItems.id, id))
         .returning();
       return !!deletedItem;
     } catch (error) {
-      console.error(`Error deleting menu item ${id}:`, error);
+      logger.error(`Error deleting menu item ${id}`, { error: error instanceof Error ? error.message : String(error) });
       throw new Error("Failed to delete menu item");
     }
   }
   
+  /**
+   * Updates the display order of menu items based on provided ID array.
+   * Each item's orderIndex is set to its position in the array.
+   */
   async reorderMenuItems(itemIds: number[]): Promise<MenuItem[]> {
     try {
-      console.log("Reordering menu items with IDs:", itemIds);
+      logger.debug("Reordering menu items", { count: itemIds.length });
       const updatedItems: MenuItem[] = [];
-      
+
       // Update each item's orderIndex based on its position in the itemIds array
       for (let i = 0; i < itemIds.length; i++) {
         const [updatedItem] = await db
@@ -178,71 +197,85 @@ export class DatabaseStorage implements IStorage {
           .set({ orderIndex: i })
           .where(eq(menuItems.id, itemIds[i]))
           .returning();
-        
+
         if (updatedItem) {
           updatedItems.push(updatedItem);
         }
       }
-      
+
       return updatedItems;
     } catch (error) {
-      console.error("Error reordering menu items:", error);
+      logger.error("Error reordering menu items", { error: error instanceof Error ? error.message : String(error) });
       throw new Error("Failed to reorder menu items");
     }
   }
 
-  // Sauce methods with optimized querying and error handling
+  /**
+   * Retrieves all sauces ordered by their position index.
+   * @throws Error if database query fails
+   */
   async getAllSauces(): Promise<Sauce[]> {
     try {
-      console.log("Fetching all sauces");
+      logger.debug("Fetching all sauces");
       return await db.select().from(sauces).orderBy(sauces.orderIndex);
     } catch (error) {
-      console.error("Error fetching sauces:", error);
+      logger.error("Error fetching sauces", { error: error instanceof Error ? error.message : String(error) });
       throw new Error("Failed to fetch sauces");
     }
   }
 
+  /**
+   * Retrieves a sauce by ID.
+   * @throws Error if database query fails
+   */
   async getSauce(id: number): Promise<Sauce | undefined> {
     try {
-      console.log(`Fetching sauce with ID: ${id}`);
+      logger.debug(`Fetching sauce with ID: ${id}`);
       const [sauce] = await db.select().from(sauces).where(eq(sauces.id, id));
       return sauce;
     } catch (error) {
-      console.error(`Error fetching sauce ${id}:`, error);
+      logger.error(`Error fetching sauce ${id}`, { error: error instanceof Error ? error.message : String(error) });
       throw new Error("Failed to fetch sauce");
     }
   }
 
+  /**
+   * Creates a new sauce with auto-generated orderIndex.
+   */
   async createSauce(sauce: InsertSauce): Promise<Sauce> {
     try {
-      console.log("Creating sauce with data:", sauce);
-      
+      logger.debug("Creating sauce", { name: sauce.name });
+
       // Get current max orderIndex
       const allSauces = await db.select().from(sauces);
-      const maxOrderIndex = allSauces.length > 0 
-        ? Math.max(...allSauces.map(sauce => sauce.orderIndex || 0)) 
+      const maxOrderIndex = allSauces.length > 0
+        ? Math.max(...allSauces.map(sauce => sauce.orderIndex || 0))
         : -1;
-      
+
       // Set the new sauce's orderIndex to maxOrderIndex + 1
       const sauceWithOrder = {
         ...sauce,
         orderIndex: maxOrderIndex + 1
       };
-      
+
       const [newSauce] = await db
         .insert(sauces)
         .values(sauceWithOrder)
         .returning();
+      logger.info("Successfully created sauce", { id: newSauce.id, name: newSauce.name });
       return newSauce;
     } catch (error) {
-      console.error("Error creating sauce:", error);
+      logger.error("Error creating sauce", { error: error instanceof Error ? error.message : String(error) });
       throw new Error("Failed to create sauce");
     }
   }
 
+  /**
+   * Updates an existing sauce by ID.
+   */
   async updateSauce(id: number, sauce: Partial<InsertSauce>): Promise<Sauce | undefined> {
     try {
-      console.log(`Updating sauce ${id} with data:`, sauce);
+      logger.debug(`Updating sauce ${id}`);
       const [updatedSauce] = await db
         .update(sauces)
         .set(sauce)
@@ -250,30 +283,37 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return updatedSauce;
     } catch (error) {
-      console.error(`Error updating sauce ${id}:`, error);
+      logger.error(`Error updating sauce ${id}`, { error: error instanceof Error ? error.message : String(error) });
       throw new Error("Failed to update sauce");
     }
   }
 
+  /**
+   * Deletes a sauce by ID.
+   * @returns true if sauce was deleted, false if not found
+   */
   async deleteSauce(id: number): Promise<boolean> {
     try {
-      console.log(`Deleting sauce with ID: ${id}`);
+      logger.debug(`Deleting sauce with ID: ${id}`);
       const [deletedSauce] = await db
         .delete(sauces)
         .where(eq(sauces.id, id))
         .returning();
       return !!deletedSauce;
     } catch (error) {
-      console.error(`Error deleting sauce ${id}:`, error);
+      logger.error(`Error deleting sauce ${id}`, { error: error instanceof Error ? error.message : String(error) });
       throw new Error("Failed to delete sauce");
     }
   }
-  
+
+  /**
+   * Updates the display order of sauces based on provided ID array.
+   */
   async reorderSauces(sauceIds: number[]): Promise<Sauce[]> {
     try {
-      console.log("Reordering sauces with IDs:", sauceIds);
+      logger.debug("Reordering sauces", { count: sauceIds.length });
       const updatedSauces: Sauce[] = [];
-      
+
       // Update each sauce's orderIndex based on its position in the sauceIds array
       for (let i = 0; i < sauceIds.length; i++) {
         const [updatedSauce] = await db
@@ -281,35 +321,44 @@ export class DatabaseStorage implements IStorage {
           .set({ orderIndex: i })
           .where(eq(sauces.id, sauceIds[i]))
           .returning();
-        
+
         if (updatedSauce) {
           updatedSauces.push(updatedSauce);
         }
       }
-      
+
       return updatedSauces;
     } catch (error) {
-      console.error("Error reordering sauces:", error);
+      logger.error("Error reordering sauces", { error: error instanceof Error ? error.message : String(error) });
       throw new Error("Failed to reorder sauces");
     }
   }
 
-  // Existing user methods
+  /**
+   * Retrieves a user by numeric ID.
+   */
   async getUser(id: number): Promise<User | undefined> {
-    console.log(`Fetching user with ID: ${id}`);
+    logger.debug(`Fetching user with ID: ${id}`);
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
 
+  /**
+   * Retrieves a user by username string for authentication.
+   */
   async getUserByUsername(username: string): Promise<User | undefined> {
-    console.log(`Fetching user with username: ${username}`);
+    logger.debug(`Fetching user with username: ${username}`);
     const [user] = await db.select().from(users).where(eq(users.username, username));
     return user;
   }
 
+  /**
+   * Creates a new user with hashed password.
+   * Salt is generated and password is hashed before storage.
+   */
   async createUser(userData: InsertUser & { password: string }): Promise<User> {
     try {
-      console.log("Creating user with data:", userData);
+      logger.debug("Creating user", { username: userData.username });
       const { password, ...rest } = userData;
       const salt = await bcrypt.genSalt(10);
       const passwordHash = await bcrypt.hash(password, salt);
@@ -321,24 +370,114 @@ export class DatabaseStorage implements IStorage {
           passwordHash,
         })
         .returning();
+      logger.info("Successfully created user", { id: newUser.id, username: newUser.username });
       return newUser;
     } catch (error) {
-      console.error("Error creating user:", error);
+      logger.error("Error creating user", { error: error instanceof Error ? error.message : String(error) });
       throw error;
     }
   }
 
-  // Blog post methods
+  /**
+   * Retrieves all blog posts ordered by their position index.
+   */
   async getAllBlogPosts(): Promise<BlogPost[]> {
-    console.log("Fetching all blog posts");
+    logger.debug("Fetching all blog posts");
     return await db.select().from(blogPosts).orderBy(blogPosts.orderIndex);
   }
-  
+
+  /**
+   * Retrieves published blog posts with pagination and filtering.
+   */
+  async getPublishedBlogPosts(opts: {
+    page?: number;
+    limit?: number;
+    category?: string;
+    featured?: boolean;
+    author?: string;
+  }): Promise<{ posts: BlogPost[]; total: number; totalPages: number }> {
+    try {
+      const page = Math.max(1, opts.page || 1);
+      const limit = Math.min(100, Math.max(1, opts.limit || 10));
+      const offset = (page - 1) * limit;
+
+      logger.debug("Fetching published blog posts", { page, limit, category: opts.category, featured: opts.featured, author: opts.author });
+
+      // Build dynamic filters
+      const conditions = [eq(blogPosts.published, 1)];
+
+      if (opts.category) {
+        conditions.push(eq(blogPosts.category, opts.category));
+      }
+      if (opts.featured !== undefined) {
+        conditions.push(eq(blogPosts.featured, opts.featured ? 1 : 0));
+      }
+      if (opts.author) {
+        conditions.push(eq(blogPosts.authorName, opts.author));
+      }
+
+      // Get total count
+      const allPosts = await db.select().from(blogPosts).where(and(...conditions));
+      const total = allPosts.length;
+      const totalPages = Math.ceil(total / limit);
+
+      // Get paginated results, featured posts first, then by orderIndex
+      const posts = await db
+        .select()
+        .from(blogPosts)
+        .where(and(...conditions))
+        .orderBy(blogPosts.featured, blogPosts.orderIndex)
+        .limit(limit)
+        .offset(offset);
+
+      return { posts, total, totalPages };
+    } catch (error) {
+      logger.error("Error fetching published blog posts", { error: error instanceof Error ? error.message : String(error) });
+      throw new Error("Failed to fetch published blog posts");
+    }
+  }
+
+  /**
+   * Retrieves related blog posts for a given post (same category, exclude current).
+   */
+  async getRelatedBlogPosts(id: number, limit: number = 3): Promise<BlogPost[]> {
+    try {
+      const currentPost = await this.getBlogPost(id);
+      if (!currentPost) return [];
+
+      logger.debug("Fetching related blog posts", { id, category: currentPost.category, limit });
+
+      const conditions = [
+        eq(blogPosts.published, 1),
+        ne(blogPosts.id, id)
+      ];
+
+      if (currentPost.category) {
+        conditions.push(eq(blogPosts.category, currentPost.category));
+      }
+
+      const related = await db
+        .select()
+        .from(blogPosts)
+        .where(and(...conditions))
+        .orderBy(blogPosts.orderIndex)
+        .limit(limit);
+
+      return related;
+    } catch (error) {
+      logger.error("Error fetching related blog posts", { error: error instanceof Error ? error.message : String(error) });
+      throw new Error("Failed to fetch related blog posts");
+    }
+  }
+
+  /**
+   * Updates the display order of blog posts based on provided ID array.
+   */
   async reorderBlogPosts(postIds: number[]): Promise<BlogPost[]> {
     try {
-      console.log("Reordering blog posts with IDs:", postIds);
+      logger.debug("Reordering blog posts", { count: postIds.length });
       const updatedPosts: BlogPost[] = [];
-      
+
       // Update each post's orderIndex based on its position in the postIds array
       for (let i = 0; i < postIds.length; i++) {
         const [updatedPost] = await db
@@ -346,21 +485,24 @@ export class DatabaseStorage implements IStorage {
           .set({ orderIndex: i })
           .where(eq(blogPosts.id, postIds[i]))
           .returning();
-        
+
         if (updatedPost) {
           updatedPosts.push(updatedPost);
         }
       }
-      
+
       return updatedPosts;
     } catch (error) {
-      console.error("Error reordering blog posts:", error);
+      logger.error("Error reordering blog posts", { error: error instanceof Error ? error.message : String(error) });
       throw new Error("Failed to reorder blog posts");
     }
   }
 
+  /**
+   * Retrieves a single blog post by ID.
+   */
   async getBlogPost(id: number): Promise<BlogPost | undefined> {
-    console.log(`Fetching blog post with ID: ${id}`);
+    logger.debug(`Fetching blog post with ID: ${id}`);
     const [post] = await db
       .select()
       .from(blogPosts)
@@ -368,35 +510,42 @@ export class DatabaseStorage implements IStorage {
     return post;
   }
 
-  async createBlogPost(post: InsertBlogPost & { authorId: number }): Promise<BlogPost> {
+  /**
+   * Creates a new blog post with auto-generated orderIndex.
+   */
+  async createBlogPost(post: InsertBlogPost & { authorId: number; slug?: string; readTime?: number }): Promise<BlogPost> {
     try {
-      console.log("Creating blog post with data:", post);
-      
+      logger.debug("Creating blog post", { title: post.title });
+
       // Get current max orderIndex for blog posts
       const allPosts = await db.select().from(blogPosts);
-      const maxOrderIndex = allPosts.length > 0 
-        ? Math.max(...allPosts.map(post => post.orderIndex || 0)) 
+      const maxOrderIndex = allPosts.length > 0
+        ? Math.max(...allPosts.map(post => post.orderIndex || 0))
         : -1;
-      
+
       // Set the new post's orderIndex to maxOrderIndex + 1
       const postWithOrder = {
         ...post,
         orderIndex: maxOrderIndex + 1
       };
-      
+
       const [newPost] = await db
         .insert(blogPosts)
         .values(postWithOrder)
         .returning();
+      logger.info("Successfully created blog post", { id: newPost.id, title: newPost.title });
       return newPost;
     } catch (error) {
-      console.error("Error creating blog post:", error);
+      logger.error("Error creating blog post", { error: error instanceof Error ? error.message : String(error) });
       throw error;
     }
   }
 
-  async updateBlogPost(id: number, post: Partial<InsertBlogPost>): Promise<BlogPost | undefined> {
-    console.log(`Updating blog post ${id} with data:`, post);
+  /**
+   * Updates an existing blog post by ID.
+   */
+  async updateBlogPost(id: number, post: Partial<InsertBlogPost & { slug?: string; readTime?: number }>): Promise<BlogPost | undefined> {
+    logger.debug(`Updating blog post ${id}`);
     const [updatedPost] = await db
       .update(blogPosts)
       .set(post)
@@ -405,8 +554,12 @@ export class DatabaseStorage implements IStorage {
     return updatedPost;
   }
 
+  /**
+   * Deletes a blog post by ID.
+   * @returns true if post was deleted, false if not found
+   */
   async deleteBlogPost(id: number): Promise<boolean> {
-    console.log(`Deleting blog post with ID: ${id}`);
+    logger.debug(`Deleting blog post with ID: ${id}`);
     const [deletedPost] = await db
       .delete(blogPosts)
       .where(eq(blogPosts.id, id))
@@ -416,9 +569,13 @@ export class DatabaseStorage implements IStorage {
 
 
   // Page content methods
+  /**
+   * Retrieves page content by pageName.
+   * @returns PageContent with parsed JSON content, or undefined if not found
+   */
   async getPageContent(pageName: string): Promise<PageContent | undefined> {
     try {
-      console.log(`Fetching page content for ${pageName}`);
+      logger.debug(`Fetching page content for ${pageName}`);
       const [page] = await db
         .select()
         .from(pages)
@@ -429,14 +586,18 @@ export class DatabaseStorage implements IStorage {
       }
       return undefined;
     } catch (error) {
-      console.error(`Error fetching page content for ${pageName}:`, error);
+      logger.error(`Error fetching page content for ${pageName}`, { error: error instanceof Error ? error.message : String(error) });
       throw new Error(`Failed to fetch page content for ${pageName}`);
     }
   }
 
+  /**
+   * Creates or updates page content by pageName.
+   * Content object is JSON-stringified before storage.
+   */
   async updatePageContent(pageName: string, content: PageContent): Promise<PageContent> {
     try {
-      console.log(`Updating page content for ${pageName} with data:`, content);
+      logger.debug(`Updating page content for ${pageName}`);
       const [page] = await db
         .select()
         .from(pages)
@@ -463,7 +624,7 @@ export class DatabaseStorage implements IStorage {
 
       return { content: JSON.parse(updatedPage.content) };
     } catch (error) {
-      console.error(`Error updating page content for ${pageName}:`, error);
+      logger.error(`Error updating page content for ${pageName}`, { error: error instanceof Error ? error.message : String(error) });
       throw new Error(`Failed to update page content for ${pageName}`);
     }
   }

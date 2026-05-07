@@ -11,12 +11,16 @@ type LanguageContextType = {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 function getBrowserLanguage(): Language {
-  const browserLang = navigator.language.split('-')[0];
-  return browserLang === 'id' ? 'id' : 'en';
+  return 'id';
 }
 
 // Cache translation results to avoid repeated lookups
 const translationCache = new Map<string, string>();
+
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+interface TranslationMap {
+  [key: string]: string | TranslationMap;
+}
 
 function getInitialLanguage(): Language {
   try {
@@ -24,7 +28,7 @@ function getInitialLanguage(): Language {
     return savedLanguage || getBrowserLanguage();
   } catch (e) {
     // Handle case where localStorage is not available
-    return 'en';
+    return 'id';
   }
 }
 
@@ -53,8 +57,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     }
 
     const keys = path.split('.');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let current: any = translations[language];
-    
+
     for (const key of keys) {
       if (current[key] === undefined) {
         // Cache missing translations too to avoid repeated warnings
@@ -63,7 +68,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       }
       current = current[key];
     }
-    
+
     // Cache the result for future use
     translationCache.set(cacheKey, current);
     return current;
@@ -94,7 +99,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 export function useLanguage() {
   const context = useContext(LanguageContext);
   if (context === undefined) {
-    throw new Error('useLanguage must be used within a LanguageProvider');
+    return {
+      language: 'en' as Language,
+      setLanguage: () => {},
+      t: (key: string) => key,
+    };
   }
   return context;
 }

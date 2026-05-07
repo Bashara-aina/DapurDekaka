@@ -5,7 +5,10 @@ import fs from "fs";
 import { storage } from "../storage";
 import { insertMenuItemSchema, insertSauceSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
-import { requireAuth } from "../auth";
+import { requireAuth, requireAdmin } from "../auth";
+import { ok, created, error } from "../apiResponse";
+import { logger } from "../utils/logger";
+import { MAX_FILE_SIZE } from "../storage";
 
 // Create uploads directory if it doesn't exist
 const uploadDir = path.join(process.cwd(), 'uploads');
@@ -24,7 +27,7 @@ const upload = multer({
       cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
     }
   }),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  limits: { fileSize: MAX_FILE_SIZE },
   fileFilter: (_req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (allowedTypes.includes(file.mimetype)) {
@@ -37,14 +40,14 @@ const upload = multer({
 
 export const menuRouter = Router();
 
-// Get all menu items 
+// Get all menu items
 menuRouter.get("/items", async (_req, res) => {
   try {
     const items = await storage.getAllMenuItems();
-    res.json(items);
-  } catch (error) {
-    console.error("Failed to fetch menu items:", error);
-    res.status(500).json({ message: "Failed to fetch menu items" });
+    res.status(200).json(ok(items));
+  } catch (err) {
+    logger.error("Failed to fetch menu items", { error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json(error("FETCH_FAILED", "Failed to fetch menu items", 500));
   }
 });
 
@@ -52,34 +55,24 @@ menuRouter.get("/items", async (_req, res) => {
 menuRouter.get("/sauces", async (_req, res) => {
   try {
     const allSauces = await storage.getAllSauces();
-    res.json(allSauces);
-  } catch (error) {
-    console.error("Failed to fetch sauces:", error);
-    res.status(500).json({ message: "Failed to fetch sauces" });
+    res.status(200).json(ok(allSauces));
+  } catch (err) {
+    logger.error("Failed to fetch sauces", { error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json(error("FETCH_FAILED", "Failed to fetch sauces", 500));
   }
 });
 
 // Enhanced create menu item route
-menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, res) => {
+menuRouter.post("/items", requireAuth, requireAdmin, upload.single('imageFile'), async (req, res) => {
   try {
-    console.log('Request Body:', req.body);
-    console.log('File:', req.file);
+    logger.debug("Creating menu item", { hasFile: !!req.file });
 
     if (!req.file) {
-      return res.status(400).json({ 
-        message: "Image file is required",
-        requestBody: req.body
-      });
+      return res.status(400).json(error("IMAGE_REQUIRED", "Image file is required", 400));
     }
 
     if (!req.body.name || !req.body.description) {
-      return res.status(400).json({
-        message: "Name and description are required",
-        receivedFields: {
-          name: Boolean(req.body.name),
-          description: Boolean(req.body.description)
-        }
-      });
+      return res.status(400).json(error("VALIDATION_FAILED", "Name and description are required", 400));
     }
 
     const data = {
@@ -89,47 +82,30 @@ menuRouter.post("/items", requireAuth, upload.single('imageFile'), async (req, r
       imageUrl: `/uploads/${req.file.filename}`
     };
 
-    console.log('Data to be inserted:', data);
-
     const validation = insertMenuItemSchema.safeParse(data);
     if (!validation.success) {
-      return res.status(400).json({ 
-        message: fromZodError(validation.error).message
-      });
+      return res.status(400).json(error("VALIDATION_FAILED", fromZodError(validation.error).message, 400));
     }
 
     const menuItem = await storage.createMenuItem(validation.data);
-    res.status(201).json(menuItem);
-  } catch (error) {
-    console.error('Error creating menu item:', error);
-    res.status(500).json({ 
-      message: "Failed to create menu item",
-      error: error instanceof Error ? error.message : "Unknown error"
-    });
+    res.status(201).json(created(menuItem));
+  } catch (err) {
+    logger.error("Error creating menu item", { error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json(error("CREATE_FAILED", "Failed to create menu item", 500));
   }
 });
 
 // Create sauce (protected)
-menuRouter.post("/sauces", requireAuth, upload.single("imageFile"), async (req, res) => {
+menuRouter.post("/sauces", requireAuth, requireAdmin, upload.single("imageFile"), async (req, res) => {
   try {
-    console.log('Request Body:', req.body);
-    console.log('File:', req.file);
+    logger.debug("Creating sauce", { hasFile: !!req.file });
 
     if (!req.file) {
-      return res.status(400).json({ 
-        message: "Image file is required",
-        requestBody: req.body
-      });
+      return res.status(400).json(error("IMAGE_REQUIRED", "Image file is required", 400));
     }
 
     if (!req.body.name || !req.body.description) {
-      return res.status(400).json({
-        message: "Name and description are required",
-        receivedFields: {
-          name: Boolean(req.body.name),
-          description: Boolean(req.body.description)
-        }
-      });
+      return res.status(400).json(error("VALIDATION_FAILED", "Name and description are required", 400));
     }
 
     const data = {
@@ -139,38 +115,31 @@ menuRouter.post("/sauces", requireAuth, upload.single("imageFile"), async (req, 
       imageUrl: `/uploads/${req.file.filename}`
     };
 
-    console.log('Data to be inserted:', data);
-
     const validation = insertSauceSchema.safeParse(data);
     if (!validation.success) {
-      return res.status(400).json({ 
-        message: fromZodError(validation.error).message
-      });
+      return res.status(400).json(error("VALIDATION_FAILED", fromZodError(validation.error).message, 400));
     }
 
     const newSauce = await storage.createSauce(validation.data);
-    res.status(201).json(newSauce);
-  } catch (error) {
-    console.error('Error creating sauce:', error);
-    res.status(500).json({ 
-      message: "Failed to create sauce",
-      error: error instanceof Error ? error.message : "Unknown error"
-    });
+    res.status(201).json(created(newSauce));
+  } catch (err) {
+    logger.error("Error creating sauce", { error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json(error("CREATE_FAILED", "Failed to create sauce", 500));
   }
 });
 
 // Update menu item (protected)
-menuRouter.put("/items/:id", requireAuth, upload.single('imageFile'), async (req, res) => {
+menuRouter.put("/items/:id", requireAuth, requireAdmin, upload.single('imageFile'), async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (isNaN(id)) {
-      return res.status(400).json({ message: "Invalid menu item ID" });
+      return res.status(400).json(error("INVALID_ID", "Invalid menu item ID", 400));
     }
 
     // Check if menu item exists
     const existingItem = await storage.getMenuItem(id);
     if (!existingItem) {
-      return res.status(404).json({ message: "Menu item not found" });
+      return res.status(404).json(error("NOT_FOUND", "Menu item not found", 404));
     }
 
     // Prepare update data
@@ -184,32 +153,30 @@ menuRouter.put("/items/:id", requireAuth, upload.single('imageFile'), async (req
     // Validate update data
     const validation = insertMenuItemSchema.partial().safeParse(updateData);
     if (!validation.success) {
-      return res.status(400).json({ 
-        message: "Invalid data", 
-        errors: fromZodError(validation.error).message 
-      });
+      return res.status(400).json(error("VALIDATION_FAILED", fromZodError(validation.error).message, 400));
     }
 
     // Update the menu item
     const menuItem = await storage.updateMenuItem(id, validation.data);
     if (!menuItem) {
-      return res.status(404).json({ message: "Menu item not found" });
+      return res.status(404).json(error("NOT_FOUND", "Menu item not found", 404));
     }
 
-    res.json(menuItem);
-  } catch (error) {
-    console.error("Failed to update menu item:", error);
-    res.status(500).json({ 
-      message: "Failed to update menu item",
-      error: error instanceof Error ? error.message : "Unknown error"
-    });
+    res.status(200).json(ok(menuItem));
+  } catch (err) {
+    logger.error("Failed to update menu item", { error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json(error("UPDATE_FAILED", "Failed to update menu item", 500));
   }
 });
 
 // Update sauce (protected)
-menuRouter.put("/sauces/:id", requireAuth, upload.single('imageFile'), async (req, res) => {
+menuRouter.put("/sauces/:id", requireAuth, requireAdmin, upload.single('imageFile'), async (req, res) => {
   try {
     const id = Number(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json(error("INVALID_ID", "Invalid sauce ID", 400));
+    }
+
     const data = {
       ...req.body,
       imageUrl: req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl,
@@ -217,101 +184,95 @@ menuRouter.put("/sauces/:id", requireAuth, upload.single('imageFile'), async (re
 
     const validation = insertSauceSchema.safeParse(data);
     if (!validation.success) {
-      return res.status(400).json({ message: fromZodError(validation.error).message });
+      return res.status(400).json(error("VALIDATION_FAILED", fromZodError(validation.error).message, 400));
     }
 
     const sauce = await storage.updateSauce(id, validation.data);
     if (!sauce) {
-      return res.status(404).json({ message: "Sauce not found" });
+      return res.status(404).json(error("NOT_FOUND", "Sauce not found", 404));
     }
-    res.json(sauce);
-  } catch (error) {
-    console.error("Failed to update sauce:", error);
-    res.status(500).json({ message: "Failed to update sauce" });
+    res.status(200).json(ok(sauce));
+  } catch (err) {
+    logger.error("Failed to update sauce", { error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json(error("UPDATE_FAILED", "Failed to update sauce", 500));
   }
 });
 
 // Delete menu item (protected)
-menuRouter.delete("/items/:id", requireAuth, async (req, res) => {
+menuRouter.delete("/items/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const id = Number(req.params.id);
     const success = await storage.deleteMenuItem(id);
     if (!success) {
-      return res.status(404).json({ message: "Menu item not found" });
+      return res.status(404).json(error("NOT_FOUND", "Menu item not found", 404));
     }
     res.status(204).send();
-  } catch (error) {
-    console.error("Failed to delete menu item:", error);
-    res.status(500).json({ message: "Failed to delete menu item" });
+  } catch (err) {
+    logger.error("Failed to delete menu item", { error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json(error("DELETE_FAILED", "Failed to delete menu item", 500));
   }
 });
 
 // Delete sauce (protected)
-menuRouter.delete("/sauces/:id", requireAuth, async (req, res) => {
+menuRouter.delete("/sauces/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const id = Number(req.params.id);
     const success = await storage.deleteSauce(id);
     if (!success) {
-      return res.status(404).json({ message: "Sauce not found" });
+      return res.status(404).json(error("NOT_FOUND", "Sauce not found", 404));
     }
     res.status(204).send();
-  } catch (error) {
-    console.error("Failed to delete sauce:", error);
-    res.status(500).json({ message: "Failed to delete sauce" });
+  } catch (err) {
+    logger.error("Failed to delete sauce", { error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json(error("DELETE_FAILED", "Failed to delete sauce", 500));
   }
 });
 
 // Reorder menu items (protected)
-menuRouter.post("/items/reorder", requireAuth, async (req, res) => {
+menuRouter.post("/items/reorder", requireAuth, requireAdmin, async (req, res) => {
   try {
     const { itemIds } = req.body;
-    
+
     if (!Array.isArray(itemIds) || itemIds.length === 0) {
-      return res.status(400).json({ message: "Invalid item IDs. Expected a non-empty array of menu item IDs." });
+      return res.status(400).json(error("VALIDATION_FAILED", "Invalid item IDs. Expected a non-empty array of menu item IDs.", 400));
     }
-    
+
     // Validate that all IDs are numbers
     const numericIds = itemIds.map(id => Number(id));
     if (numericIds.some(id => isNaN(id))) {
-      return res.status(400).json({ message: "All item IDs must be numeric values." });
+      return res.status(400).json(error("VALIDATION_FAILED", "All item IDs must be numeric values.", 400));
     }
-    
+
     // Perform the reordering
     const updatedItems = await storage.reorderMenuItems(numericIds);
-    res.json(updatedItems);
-  } catch (error) {
-    console.error("Failed to reorder menu items:", error);
-    res.status(500).json({ 
-      message: "Failed to reorder menu items",
-      error: error instanceof Error ? error.message : "Unknown error"
-    });
+    res.status(200).json(ok(updatedItems));
+  } catch (err) {
+    logger.error("Failed to reorder menu items", { error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json(error("REORDER_FAILED", "Failed to reorder menu items", 500));
   }
 });
 
 // Reorder sauces (protected)
-menuRouter.post("/sauces/reorder", requireAuth, async (req, res) => {
+menuRouter.post("/sauces/reorder", requireAuth, requireAdmin, async (req, res) => {
   try {
     const { sauceIds } = req.body;
-    
+
     if (!Array.isArray(sauceIds) || sauceIds.length === 0) {
-      return res.status(400).json({ message: "Invalid sauce IDs. Expected a non-empty array of sauce IDs." });
+      return res.status(400).json(error("VALIDATION_FAILED", "Invalid sauce IDs. Expected a non-empty array of sauce IDs.", 400));
     }
-    
+
     // Validate that all IDs are numbers
     const numericIds = sauceIds.map(id => Number(id));
     if (numericIds.some(id => isNaN(id))) {
-      return res.status(400).json({ message: "All sauce IDs must be numeric values." });
+      return res.status(400).json(error("VALIDATION_FAILED", "All sauce IDs must be numeric values.", 400));
     }
-    
+
     // Perform the reordering
     const updatedSauces = await storage.reorderSauces(numericIds);
-    res.json(updatedSauces);
-  } catch (error) {
-    console.error("Failed to reorder sauces:", error);
-    res.status(500).json({ 
-      message: "Failed to reorder sauces",
-      error: error instanceof Error ? error.message : "Unknown error"
-    });
+    res.status(200).json(ok(updatedSauces));
+  } catch (err) {
+    logger.error("Failed to reorder sauces", { error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json(error("REORDER_FAILED", "Failed to reorder sauces", 500));
   }
 });
 

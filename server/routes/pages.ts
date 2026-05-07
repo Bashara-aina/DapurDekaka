@@ -1,15 +1,86 @@
-import { Router } from "express";
+import { Router, Response } from "express";
 import multer from "multer";
 import { storage } from "../storage";
+import { requireAuth, requireAdmin } from "../auth";
 import path from "path";
 import fs from "fs/promises";
+import { z } from "zod";
+import { ok, created, error } from "../apiResponse";
+import { fromZodError } from "zod-validation-error";
+import { logger } from "../utils/logger";
 
 export const pagesRouter = Router();
-const upload = multer({ dest: "uploads/" });
 
-const defaultHomepage = {
+const upload = multer({
+  dest: "uploads/",
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (_req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`Invalid file type. Received ${file.mimetype}. Only JPEG, PNG, WebP and GIF are allowed.`));
+    }
+  }
+});
+
+const homepageContentSchema = z.object({
+  hero: z.object({
+    title: z.string(),
+    subtitle: z.string(),
+  }).optional(),
+  carousel: z.object({
+    title: z.string(),
+    subtitle: z.string(),
+  }).optional(),
+  featuredProducts: z.object({
+    title: z.string(),
+    subtitle: z.string(),
+  }).optional(),
+  latestArticles: z.object({
+    title: z.string(),
+    subtitle: z.string(),
+  }).optional(),
+  customers: z.object({
+    title: z.string(),
+    subtitle: z.string(),
+    logos: z.array(z.string()),
+    testimonials: z.array(z.object({
+      id: z.string(),
+      name: z.string(),
+      quote: z.string(),
+    })).optional().default([]),
+  }).optional(),
+});
+
+type HomepageCustomers = {
+  title: string;
+  subtitle: string;
+  logos: string[];
+  testimonials?: never;
+};
+
+type HomepageConfig = {
   carousel: {
-    images: Array.from({length: 33}, (_, i) => `/asset/${i + 1}.jpg`)
+    images: string[];
+    title: string;
+    subtitle: string;
+  };
+  logo: string;
+  content: {
+    hero: { title: string; subtitle: string };
+    carousel: { title: string; subtitle: string };
+    featuredProducts: { title: string; subtitle: string };
+    latestArticles: { title: string; subtitle: string };
+    customers: HomepageCustomers;
+  };
+};
+
+const defaultHomepageConfig: HomepageConfig = {
+  carousel: {
+    images: Array.from({length: 33}, (_, i) => `/asset/${i + 1}.jpg`),
+    title: "Dapur Dekaka",
+    subtitle: "Nikmati Sensasi Dimsum Premium dengan Cita Rasa Autentik!"
   },
   logo: "/logo/logo.png",
   content: {
@@ -37,7 +108,7 @@ const defaultHomepage = {
   }
 };
 
-let homepageConfig = {...defaultHomepage};
+let homepageConfig: HomepageConfig = { ...defaultHomepageConfig };
 
 // Ensure directories exist
 async function ensureDirectories() {
@@ -45,16 +116,14 @@ async function ensureDirectories() {
   for (const dir of dirs) {
     try {
       await fs.access(dir);
-      console.log(`[Directory Check] ${dir} exists`);
     } catch {
       await fs.mkdir(dir, { recursive: true });
-      console.log(`[Directory Check] Created ${dir}`);
     }
   }
 }
 
 // Add strict no-cache headers and debug logging
-const setNoCacheHeaders = (res: any) => {
+const setNoCacheHeaders = (res: Response) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   res.set('Pragma', 'no-cache');
   res.set('Expires', '0');
@@ -66,37 +135,77 @@ pagesRouter.get("/homepage", async (req, res) => {
   // Apply stronger no-cache headers
   setNoCacheHeaders(res);
 
+  // Fetch fresh from DB each time
+  let homepageData: HomepageConfig = { ...defaultHomepageConfig };
+  try {
+    const storedConfig = await storage.getPageContent('homepage');
+    if (storedConfig && storedConfig.content) {
+      homepageData = storedConfig.content as HomepageConfig;
+
+      // Initialize customers section if it doesn't exist
+      if (!homepageData.content.customers) {
+        homepageData.content.customers = {
+          title: "Our Customers",
+          subtitle: "Trusted by businesses across Indonesia",
+          logos: []
+        };
+      }
+
+      // Ensure logos array exists
+      if (!homepageData.content.customers.logos) {
+        homepageData.content.customers.logos = [];
+      }
+
+      // Add default logos if none exist
+      if (homepageData.content.customers.logos.length === 0) {
+        homepageData.content.customers.logos = [
+          '/logo/halal.png',
+          '/logo/logo.png'
+        ];
+      }
+    }
+  } catch (err) {
+    console.error("Error fetching homepage from DB:", err);
+    // Use default on error
+  }
+
   // Add logo version parameter to force client refresh
   const configWithTimestamp = {
-    ...homepageConfig,
+    ...homepageData,
     timestamp: Date.now(),
-    logo: homepageConfig.logo ? 
-      (homepageConfig.logo.includes('?') ? homepageConfig.logo : `${homepageConfig.logo}?t=${Date.now()}`) : 
-      homepageConfig.logo
+    logo: homepageData.logo ?
+      (homepageData.logo.includes('?') ? homepageData.logo : `${homepageData.logo}?t=${Date.now()}`) :
+      homepageData.logo
   };
 
-  console.log('[GET] Sending homepage data:', configWithTimestamp);
-  res.json(configWithTimestamp);
+  logger.debug('[GET] Sending homepage data');
+  res.status(200).json(ok(configWithTimestamp));
 });
 
 // Add handler for customer logo uploads and processing
-pagesRouter.put("/homepage/customers", upload.fields([
+pagesRouter.put("/homepage/customers", requireAuth, requireAdmin, upload.fields([
   { name: 'customerLogos', maxCount: 10 }
 ]), async (req, res) => {
   try {
     await ensureDirectories();
     setNoCacheHeaders(res);
-    console.log('[PUT] Received customer files:', req.files);
-
+    logger.debug('[PUT] Received customer files');
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     let content;
 
     try {
       content = req.body.content ? JSON.parse(req.body.content) : null;
-      console.log('[PUT] Received customers content update:', content);
     } catch (parseError) {
-      console.error('[PUT] Error parsing customers content:', parseError);
-      return res.status(400).json({ message: "Invalid content format" });
+      logger.error('[PUT] Error parsing customers content', { error: parseError instanceof Error ? parseError.message : String(parseError) });
+      return res.status(400).json(error("PARSE_ERROR", "Invalid content format", 400));
+    }
+
+    // Validate content if provided
+    if (content) {
+      const validation = homepageContentSchema.safeParse({ customers: content.customers });
+      if (!validation.success) {
+        return res.status(400).json(error("VALIDATION_FAILED", "Invalid customers content", 400));
+      }
     }
 
     // Update customers section content
@@ -106,21 +215,14 @@ pagesRouter.put("/homepage/customers", upload.fields([
         homepageConfig.content.customers = {
           title: "Our Customers",
           subtitle: "Trusted by businesses across Indonesia",
-          logos: []
+          logos: [] as string[],
         };
-      }
-      
-      // Remove testimonials if they exist (we're not using them anymore)
-      // @ts-ignore - Handle legacy data structure
-      if (homepageConfig.content.customers.testimonials) {
-        // @ts-ignore - Handle legacy data structure
-        delete homepageConfig.content.customers.testimonials;
       }
 
       // Update the title and subtitle
       homepageConfig.content.customers.title = content.customers.title || homepageConfig.content.customers.title;
       homepageConfig.content.customers.subtitle = content.customers.subtitle || homepageConfig.content.customers.subtitle;
-      
+
       // Ensure we have a logos array
       if (!homepageConfig.content.customers.logos) {
         homepageConfig.content.customers.logos = [];
@@ -130,14 +232,14 @@ pagesRouter.put("/homepage/customers", upload.fields([
     // Process logo files if any were uploaded
     if (files.customerLogos && files.customerLogos.length > 0) {
       const customerLogosDir = path.join(process.cwd(), 'public', 'logo', 'customers');
-      
+
       // Ensure directory exists
       try {
         await fs.mkdir(customerLogosDir, { recursive: true });
-        console.log('[PUT] Customer logos directory created/verified:', customerLogosDir);
-      } catch (error) {
-        console.error('[PUT] Error creating customer logos directory:', error);
-        return res.status(500).json({ message: `Failed to create customer logos directory: ${error.message}` });
+      } catch (err) {
+        logger.error('[PUT] Error creating customer logos directory', { error: err instanceof Error ? err.message : String(err) });
+        const message = err instanceof Error ? err.message : "Unknown error";
+        return res.status(500).json(error("DIRECTORY_ERROR", `Failed to create customer logos directory: ${message}`, 500));
       }
 
       // Process each logo file
@@ -146,44 +248,40 @@ pagesRouter.put("/homepage/customers", upload.fields([
         const ext = path.extname(file.originalname) || '.png';
         const filename = `customer-logo-${timestamp}-${i}${ext}`;
         const newPath = path.join(customerLogosDir, filename);
-        
+
         // Copy the file
         await fs.copyFile(file.path, newPath);
-        
+
         // Clean up temp file
         await fs.unlink(file.path);
-        
+
         return `/logo/customers/${filename}`;
       }));
 
       // Add new logos to the existing ones
       homepageConfig.content.customers.logos = [
-        ...homepageConfig.content.customers.logos || [],
+        ...homepageConfig.content.customers.logos,
         ...newLogos
       ];
     }
 
     // Save the updated config to the database
-    await storage.updatePageContent('homepage', {content: homepageConfig});
-    
+    await storage.updatePageContent('homepage', { content: homepageConfig });
+
     // Send success response
-    res.json({ 
-      success: true, 
-      message: "Customers section updated successfully",
-      data: homepageConfig.content.customers
-    });
-  } catch (error) {
-    console.error('[PUT] Error updating customers section:', error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(200).json(ok({ message: "Customers section updated successfully", data: homepageConfig.content.customers }));
+  } catch (err) {
+    logger.error('[PUT] Error updating customers section', { error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json(error("SERVER_ERROR", "Internal server error", 500));
   }
 });
 
 // Reorder customer logos
-pagesRouter.put("/homepage/customers/logos/reorder", async (req, res) => {
+pagesRouter.put("/homepage/customers/logos/reorder", requireAuth, requireAdmin, async (req, res) => {
   try {
     const { logos } = req.body;
     if (!Array.isArray(logos)) {
-      return res.status(400).json({ message: "Invalid logos array provided" });
+      return res.status(400).json(error("VALIDATION_ERROR", "Invalid logos array provided", 400));
     }
 
     // Make sure we have a customers section
@@ -194,59 +292,49 @@ pagesRouter.put("/homepage/customers/logos/reorder", async (req, res) => {
         logos: []
       };
     }
-    
-    // Remove testimonials if they exist (we're not using them anymore)
-    // @ts-ignore - Handle legacy data structure
-    if (homepageConfig.content.customers.testimonials) {
-      // @ts-ignore - Handle legacy data structure
-      delete homepageConfig.content.customers.testimonials;
-    }
 
     // Update the logos array
     homepageConfig.content.customers.logos = logos;
-    
+
     // Save to database
-    await storage.updatePageContent('homepage', {content: homepageConfig});
-    
-    res.json({ 
-      success: true, 
-      message: "Customer logos reordered successfully" 
-    });
-  } catch (error) {
-    console.error("Error reordering customer logos:", error);
-    res.status(500).json({ message: "Failed to reorder customer logos" });
+    await storage.updatePageContent('homepage', { content: homepageConfig });
+
+    res.status(200).json(ok({ message: "Customer logos reordered successfully" }));
+  } catch (err) {
+    logger.error("Error reordering customer logos", { error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json(error("REORDER_FAILED", "Failed to reorder customer logos", 500));
   }
 });
 
 // Delete a customer logo
-pagesRouter.delete('/homepage/customers/logos/:index', async (req, res) => {
+pagesRouter.delete('/homepage/customers/logos/:index', requireAuth, requireAdmin, async (req, res) => {
   try {
     const index = parseInt(req.params.index, 10);
     if (isNaN(index) || index < 0) {
-      return res.status(400).json({ message: "Invalid logo index" });
+      return res.status(400).json(error("INVALID_INDEX", "Invalid logo index", 400));
     }
 
     // Check if customers section and logos array exist
-    if (!homepageConfig.content.customers || 
-        !homepageConfig.content.customers.logos || 
+    if (!homepageConfig.content.customers ||
+        !homepageConfig.content.customers.logos ||
         index >= homepageConfig.content.customers.logos.length) {
-      return res.status(404).json({ message: "Customer logo not found" });
+      return res.status(404).json(error("NOT_FOUND", "Customer logo not found", 404));
     }
 
     // Remove the logo from the array
     homepageConfig.content.customers.logos.splice(index, 1);
 
     // Save the updated config
-    await storage.updatePageContent('homepage', {content: homepageConfig});
+    await storage.updatePageContent('homepage', { content: homepageConfig });
 
-    res.json({ success: true, message: "Customer logo deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting customer logo:", error);
-    res.status(500).json({ message: "Failed to delete customer logo" });
+    res.status(200).json(ok({ message: "Customer logo deleted successfully" }));
+  } catch (err) {
+    logger.error("Error deleting customer logo", { error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json(error("DELETE_FAILED", "Failed to delete customer logo", 500));
   }
 });
 
-pagesRouter.put("/homepage", upload.fields([
+pagesRouter.put("/homepage", requireAuth, requireAdmin, upload.fields([
   { name: 'logo', maxCount: 1 },
   { name: 'carouselImages', maxCount: 33 },
   { name: 'customerLogos', maxCount: 10 }
@@ -254,17 +342,23 @@ pagesRouter.put("/homepage", upload.fields([
   try {
     await ensureDirectories();
     setNoCacheHeaders(res);
-    console.log('[PUT] Received files:', req.files);
-
+    logger.debug('[PUT] Received files');
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     let content;
 
     try {
       content = req.body.content ? JSON.parse(req.body.content) : null;
-      console.log('[PUT] Received content update:', content);
     } catch (parseError) {
-      console.error('[PUT] Error parsing content:', parseError);
-      return res.status(400).json({ message: "Invalid content format" });
+      logger.error('[PUT] Error parsing content', { error: parseError instanceof Error ? parseError.message : String(parseError) });
+      return res.status(400).json(error("PARSE_ERROR", "Invalid content format", 400));
+    }
+
+    // Validate content if provided
+    if (content) {
+      const validation = homepageContentSchema.safeParse(content);
+      if (!validation.success) {
+        return res.status(400).json(error("VALIDATION_FAILED", fromZodError(validation.error).message, 400));
+      }
     }
 
     if (content) {
@@ -293,28 +387,21 @@ pagesRouter.put("/homepage", upload.fields([
 
     if (files.logo && files.logo[0]) {
       const logo = files.logo[0];
-      console.log('[PUT] Processing logo file:', logo);
+      logger.debug('[PUT] Processing logo file');
 
       // Use a fixed filename to avoid path issues
       const logoFileName = 'logo.png';
       // Save directly to the 'logo' directory in the project root
       const logoDir = path.join(process.cwd(), 'logo');
       const newPath = path.join(logoDir, logoFileName);
-      
-      console.log('[PUT] Logo file details:', {
-        originalFilename: logo.originalname,
-        tempPath: logo.path,
-        destination: newPath,
-        size: logo.size
-      });
 
       // Ensure directory exists with proper permissions
       try {
         await fs.mkdir(logoDir, { recursive: true });
-        console.log('[PUT] Logo directory created/verified:', logoDir);
-      } catch (error) {
-        console.error('[PUT] Error creating directory:', error);
-        return res.status(500).json({ message: `Failed to create logo directory: ${error.message}` });
+      } catch (err) {
+        logger.error('[PUT] Error creating logo directory', { error: err instanceof Error ? err.message : String(err) });
+        const message = err instanceof Error ? err.message : "Unknown error";
+        return res.status(500).json(error("DIRECTORY_ERROR", `Failed to create logo directory: ${message}`, 500));
       }
 
       // Remove old logo if exists
@@ -322,10 +409,8 @@ pagesRouter.put("/homepage", upload.fields([
         const oldLogoPath = path.join(logoDir, logoFileName);
         if (await fs.stat(oldLogoPath).catch(() => false)) {
           await fs.unlink(oldLogoPath);
-          console.log('[PUT] Removed old logo:', oldLogoPath);
         }
-      } catch (error) {
-        console.warn('[PUT] Could not delete old logo:', error);
+      } catch (err) {
         // Continue anyway - we'll overwrite the file
       }
 
@@ -333,50 +418,34 @@ pagesRouter.put("/homepage", upload.fields([
       try {
         // Read the file content
         const fileContent = await fs.readFile(logo.path);
-        console.log('[PUT] Read file content, size:', fileContent.length);
-        
+
         // Write the file
         await fs.writeFile(newPath, fileContent);
-        console.log('[PUT] Successfully wrote logo file to:', newPath);
-        
-        // Verify the file was written
-        const stats = await fs.stat(newPath);
-        console.log('[PUT] Verified logo file exists:', {
-          path: newPath,
-          size: stats.size
-        });
-      } catch (error) {
-        console.error('[PUT] Error in logo file processing:', error);
-        return res.status(500).json({ message: `Failed to save logo file: ${error.message}` });
+      } catch (err) {
+        logger.error('[PUT] Error in logo file processing', { error: err instanceof Error ? err.message : String(err) });
+        const message = err instanceof Error ? err.message : "Unknown error";
+        return res.status(500).json(error("WRITE_FAILED", `Failed to save logo file: ${message}`, 500));
       }
 
       // Generate a timestamp to force cache invalidation
       const timestamp = Date.now();
       // Set the logo path with timestamp for cache busting
       homepageConfig.logo = `/logo/logo.png?t=${timestamp}`;
-      console.log('[PUT] Updated logo path in config:', homepageConfig.logo);
 
       // Clean up temp file
       try {
         await fs.unlink(logo.path);
-      } catch (error) {
-        console.warn('[PUT] Failed to clean up temp file:', error);
+      } catch (err) {
+        // Ignore cleanup error
       }
 
-      // Verify file exists and log its details
+      // Verify file exists
       try {
-        const stats = await fs.stat(newPath);
-        console.log('[PUT] Verified logo file:', {
-          exists: true,
-          size: stats.size,
-          path: newPath,
-          permissions: stats.mode.toString(8)
-        });
-      } catch (error) {
-        console.error('[PUT] Logo file verification failed:', error);
-        return res.status(500).json({ message: "Logo saved but verification failed" });
+        await fs.stat(newPath);
+      } catch (err) {
+        logger.error('[PUT] Logo file verification failed', { error: err instanceof Error ? err.message : String(err) });
+        return res.status(500).json(error("VERIFICATION_FAILED", "Logo saved but verification failed", 500));
       }
-
     }
 
     if (files.carouselImages) {
@@ -394,134 +463,118 @@ pagesRouter.put("/homepage", upload.fields([
 
     try {
       // Save the updated config to the database
-      await storage.updatePageContent('homepage', {content: homepageConfig});
+      await storage.updatePageContent('homepage', { content: homepageConfig });
 
       // Send back updated homepage
-      console.log('[PUT] Updated homepage configuration', homepageConfig);
+      logger.info('[PUT] Updated homepage configuration');
 
       // Add a successful response
-      res.json({ success: true, message: "Homepage updated successfully" });
-    } catch (error) {
-      console.error('[PUT] Error updating homepage configuration:', error);
-      res.status(500).json({ success: false, message: "Failed to update homepage" });
+      res.status(200).json(ok({ message: "Homepage updated successfully" }));
+    } catch (err) {
+      logger.error('[PUT] Error updating homepage configuration', { error: err instanceof Error ? err.message : String(err) });
+      res.status(500).json(error("UPDATE_FAILED", "Failed to update homepage", 500));
     }
-    // res.json(homepageConfig); //Removed to fix ERR_HTTP_HEADERS_SENT
-  } catch (error) {
-    console.error('[PUT] Error processing files:', error);
-    res.status(500).json({ message: "Internal server error" });
+  } catch (err) {
+    logger.error('[PUT] Error processing homepage update', { error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json(error("SERVER_ERROR", "Internal server error", 500));
   }
 });
 
-pagesRouter.put("/homepage/carousel/reorder", async (req, res) => {
+pagesRouter.put("/homepage/carousel/reorder", requireAuth, requireAdmin, async (req, res) => {
   try {
     const { images } = req.body;
     if (!Array.isArray(images)) {
-      return res.status(400).json({ message: "Invalid image array provided" });
+      return res.status(400).json(error("VALIDATION_ERROR", "Invalid image array provided", 400));
     }
 
-    homepageConfig.carousel.images = images;
+    homepageConfig!.carousel.images = images;
     try {
-      await storage.updatePageContent('homepage', {content: homepageConfig}); //Save to database after reorder
-      res.json({ success: true, message: "Image order updated successfully" });
+      await storage.updatePageContent('homepage', {content: homepageConfig!}); // Save to database after reorder
+      res.status(200).json(ok({ message: "Image order updated successfully" }));
     } catch (saveError) {
-      console.error("Error saving reordered images:", saveError);
-      res.status(500).json({ success: false, message: "Failed to save image order" });
+      logger.error("Error saving reordered images", { error: saveError instanceof Error ? saveError.message : String(saveError) });
+      res.status(500).json(error("SAVE_FAILED", "Failed to save image order", 500));
     }
-  } catch (error) {
-    console.error("Error reordering images:", error);
-    res.status(400).json({ success: false, message: "Failed to reorder images" });
-    res.status(500).json({ message: "Failed to reorder images" });
+  } catch (err) {
+    logger.error("Error reordering images", { error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json(error("REORDER_FAILED", "Failed to reorder images", 500));
   }
 });
 
-
-pagesRouter.delete('/homepage/carousel/:index', async (req, res) => {
+pagesRouter.delete('/homepage/carousel/:index', requireAuth, requireAdmin, async (req, res) => {
   try {
     const index = parseInt(req.params.index, 10);
     if (isNaN(index) || index < 0) {
-      return res.status(400).json({ message: "Invalid image index" });
+      return res.status(400).json(error("INVALID_INDEX", "Invalid image index", 400));
     }
 
     if (!homepageConfig.carousel || !homepageConfig.carousel.images || index >= homepageConfig.carousel.images.length) {
-      return res.status(404).json({ message: "Image not found" });
+      return res.status(404).json(error("NOT_FOUND", "Image not found", 404));
     }
 
     // Remove the image from the carousel
     homepageConfig.carousel.images.splice(index, 1);
 
     // Save the updated config to the database
-    await storage.updatePageContent('homepage', {content: homepageConfig});
+    await storage.updatePageContent('homepage', { content: homepageConfig });
 
-    res.json({ success: true, message: "Image deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting image:", error);
-    res.status(500).json({ message: "Failed to delete image" });
+    res.status(200).json(ok({ message: "Image deleted successfully" }));
+  } catch (err) {
+    logger.error("Error deleting image", { error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json(error("DELETE_FAILED", "Failed to delete image", 500));
   }
 });
 
 // Load homepage config from database on startup
 (async function loadHomepageConfig() {
   try {
-    console.log("Loading homepage configuration from database...");
+    logger.info("Loading homepage configuration from database");
     const storedConfig = await storage.getPageContent('homepage');
     if (storedConfig && storedConfig.content) {
-      homepageConfig = storedConfig.content;
-      
-      // Clean up any testimonials data that might exist
-      // @ts-ignore - Handle legacy data structure
-      if (homepageConfig.content?.customers?.testimonials) {
-        // @ts-ignore - Handle legacy data structure
-        delete homepageConfig.content.customers.testimonials;
-        console.log("Removed deprecated testimonials data");
-      }
-      
+      homepageConfig = storedConfig.content as HomepageConfig;
+
       // Initialize customers section if it doesn't exist
       if (!homepageConfig.content.customers) {
         homepageConfig.content.customers = {
           title: "Our Customers",
           subtitle: "Trusted by businesses across Indonesia",
-          logos: []
+          logos: [] as string[],
         };
-        console.log("Initialized customers section");
       }
-      
+
       // Ensure logos array exists
       if (!homepageConfig.content.customers.logos) {
-        homepageConfig.content.customers.logos = [];
+        homepageConfig.content.customers.logos = [] as string[];
       }
-      
+
       // Add default logos if none exist
       if (homepageConfig.content.customers.logos.length === 0) {
-        // Add default logos - halal.png and logo.png
         homepageConfig.content.customers.logos = [
           '/logo/halal.png',
           '/logo/logo.png'
         ];
-        console.log("Added default customer logos");
       }
-      
+
       // Save any changes back to the database
-      await storage.updatePageContent('homepage', {content: homepageConfig});
-      
-      console.log("Homepage configuration loaded and updated from database");
+      await storage.updatePageContent('homepage', { content: homepageConfig });
+
+      logger.info("Homepage configuration loaded and updated from database");
     } else {
-      console.log("No stored homepage configuration found, using default");
+      logger.info("No stored homepage configuration found, using default");
     }
-  } catch (error) {
-    console.error("Error loading homepage config from database:", error);
-    console.log("Using default homepage configuration");
+  } catch (err) {
+    logger.error("Error loading homepage config from database", { error: err instanceof Error ? err.message : String(err) });
+    logger.info("Using default homepage configuration");
   }
 })();
 
-// Clear cache when server receives SIGTERM or other signals
+// Clear config when server receives SIGTERM or other signals
 process.on('SIGTERM', () => {
-  console.log('Clearing homepage cache before shutdown');
-  homepageConfig = null; //This should ideally clear the cache more robustly depending on your caching mechanism.
+  logger.info('Server shutting down, homepage config will be refreshed on restart');
 });
 
 process.on('SIGINT', () => {
-  console.log('Clearing homepage cache before shutdown');
-  homepageConfig = null; //This should ideally clear the cache more robustly depending on your caching mechanism.
+  logger.info('Server shutting down, homepage config will be refreshed on restart');
 });
 
 export default pagesRouter;

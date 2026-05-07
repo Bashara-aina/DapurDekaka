@@ -2,9 +2,21 @@ import { useQuery } from "@tanstack/react-query";
 import { BlogPost } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CalendarIcon, ArrowRight, Loader2 } from "lucide-react";
+import { CalendarIcon, ArrowRight, Loader2, Star, Clock, User } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
+
+interface BlogListResponse {
+  success: boolean;
+  data: BlogPost[];
+  meta?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
 
 function decodeHtmlEntities(text: string) {
   const textArea = document.createElement('textarea');
@@ -13,28 +25,44 @@ function decodeHtmlEntities(text: string) {
 }
 
 function stripHtmlAndDecodeEntities(html: string) {
-  // First remove HTML tags
   const strippedHtml = html.replace(/<[^>]+>/g, ' ');
-  // Then decode HTML entities
   return decodeHtmlEntities(strippedHtml);
 }
 
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 export default function FeaturedArticles() {
-  const { data: posts, isLoading: postsLoading } = useQuery<BlogPost[]>({
-    queryKey: ["api", "blog"],
+  const { t, language } = useLanguage();
+
+  // Fetch featured posts first, fall back to latest 2 if none
+  const { data: featuredResponse, isLoading: featuredLoading } = useQuery<BlogListResponse>({
+    queryKey: ["api", "blog", "featured"],
     queryFn: async () => {
-      const response = await fetch("/api/blog", {
+      const response = await fetch("/api/blog?featured=true&limit=2", {
         headers: { 'Cache-Control': 'max-age=300' }
       });
       if (!response.ok) throw new Error("Failed to fetch posts");
-      const posts = await response.json();
-      return posts
-        .filter((post: BlogPost) => post.published === 1)
-        // Use orderIndex for sorting instead of createdAt date
-        .slice(0, 2);
+      return response.json();
     },
-    staleTime: 300000, // Consider data fresh for 5 minutes
-    gcTime: 600000, // Keep unused data in cache for 10 minutes
+    staleTime: 300000,
+    gcTime: 600000,
+    refetchOnWindowFocus: false,
+  });
+
+  // Fallback to latest posts if no featured posts
+  const { data: latestResponse, isLoading: latestLoading } = useQuery<BlogListResponse>({
+    queryKey: ["api", "blog", "latest"],
+    queryFn: async () => {
+      const response = await fetch("/api/blog?limit=2", {
+        headers: { 'Cache-Control': 'max-age=300' }
+      });
+      if (!response.ok) throw new Error("Failed to fetch posts");
+      return response.json();
+    },
+    staleTime: 300000,
+    gcTime: 600000,
     refetchOnWindowFocus: false,
   });
 
@@ -47,12 +75,19 @@ export default function FeaturedArticles() {
       if (!response.ok) throw new Error('Failed to fetch homepage data');
       return response.json();
     },
-    staleTime: 300000, // Consider data fresh for 5 minutes
-    gcTime: 600000, // Keep unused data in cache for 10 minutes
+    staleTime: 300000,
+    gcTime: 600000,
     refetchOnWindowFocus: false,
   });
 
-  if (postsLoading || pageLoading) {
+  const isLoading = featuredLoading || latestLoading || pageLoading;
+
+  // Use featured posts if available, otherwise fall back to latest
+  const posts = featuredResponse?.data?.length
+    ? featuredResponse.data
+    : (latestResponse?.data || []).slice(0, 2);
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -107,24 +142,57 @@ export default function FeaturedArticles() {
                         className="object-cover w-full h-full transform group-hover:scale-105 transition-transform duration-300"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      {post.featured === 1 && (
+                        <div className="absolute top-3 right-3 bg-yellow-500 text-white px-2 py-1 rounded-full flex items-center gap-1 text-xs font-medium">
+                          <Star className="w-3 h-3 fill-white" />
+                          Featured
+                        </div>
+                      )}
                     </div>
                   )}
                   <CardHeader>
+                    <div className="flex items-center gap-2 mb-2">
+                      {post.category && (
+                        <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full capitalize">
+                          {post.category}
+                        </span>
+                      )}
+                      {post.featured === 1 && !post.imageUrl && (
+                        <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full flex items-center gap-1">
+                          <Star className="w-3 h-3 fill-yellow-500" />
+                          Featured
+                        </span>
+                      )}
+                    </div>
                     <CardTitle className="text-2xl group-hover:text-primary transition-colors duration-300">
                       {decodeHtmlEntities(post.title)}
                     </CardTitle>
-                    <div className="flex items-center text-sm text-gray-500">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {new Date(post.createdAt).toLocaleDateString('id-ID', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
+                    <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500">
+                      {post.authorName && (
+                        <div className="flex items-center">
+                          <User className="mr-1 h-4 w-4" />
+                          {post.authorName}
+                        </div>
+                      )}
+                      <div className="flex items-center">
+                        <CalendarIcon className="mr-1 h-4 w-4" />
+                        {new Date(post.createdAt).toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </div>
+                      {post.readTime && (
+                        <div className="flex items-center">
+                          <Clock className="mr-1 h-4 w-4" />
+                          {post.readTime} min
+                        </div>
+                      )}
                     </div>
                   </CardHeader>
                   <CardContent>
                     <p className="text-gray-600 line-clamp-2">
-                      {stripHtmlAndDecodeEntities(post.content)}
+                      {post.excerpt || stripHtmlAndDecodeEntities(post.content).slice(0, 150)}...
                     </p>
                   </CardContent>
                 </Card>

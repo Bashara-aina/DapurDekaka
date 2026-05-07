@@ -4,11 +4,20 @@ import themePlugin from "@replit/vite-plugin-shadcn-theme-json";
 import path, { dirname } from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { fileURLToPath } from "url";
+// import bundleVisualizer from "vite-bundle-visualizer";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 export default defineConfig({
-  plugins: [react(), runtimeErrorOverlay(), themePlugin()],
+  plugins: [
+    react(),
+    runtimeErrorOverlay(),
+    themePlugin(),
+    // bundleVisualizer({
+    //   filename: "./dist/bundle-report.html",
+    //   open: false,
+    // }),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "client", "src"),
@@ -19,5 +28,23 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ["react", "react-dom"],
+          query: ["@tanstack/react-query"],
+          ui: [
+            "class-variance-authority",
+            "clsx",
+            "tailwind-merge",
+            "tailwindcss-animate",
+          ],
+          motion: ["framer-motion"],
+          carousel: ["embla-carousel-react", "embla-carousel-autoplay"],
+          charts: ["recharts"],
+          richText: ["@tinymce/tinymce-react"],
+        },
+      },
+    },
   },
 });

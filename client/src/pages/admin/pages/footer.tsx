@@ -6,9 +6,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Trash2, MapPin, Phone, Mail, Instagram, ShoppingBag } from "lucide-react";
-import AdminNavbar from "@/components/layout/admin-navbar";
+import AdminLayout from "@/components/layout/AdminLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import { queryKeys } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 
 interface SocialLink {
   id: string;
@@ -58,28 +60,19 @@ export default function FooterEditor() {
   });
 
   const { data, isLoading } = useQuery<{ content: FooterContent }>({
-    queryKey: ["/api/pages/footer"],
+    queryKey: queryKeys.admin.pages.footer,
+    queryFn: () => apiRequest("/api/pages/footer")
   });
-
-  useEffect(() => {
-    if (data?.content) {
-      setFormData(data.content);
-    }
-  }, [data]);
 
   const updateMutation = useMutation({
     mutationFn: async (formData: FooterContent) => {
-      const response = await fetch("/api/pages/footer", {
+      return await apiRequest("/api/pages/footer", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
-        credentials: "include"
       });
-      if (!response.ok) throw new Error("Failed to update footer");
-      return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/pages/footer"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.pages.footer });
       toast({ title: "Success", description: "Footer updated successfully" });
     },
     onError: (error: Error) => {
@@ -140,6 +133,12 @@ export default function FooterEditor() {
     }));
   };
 
+  useEffect(() => {
+    if (data?.content) {
+      setFormData(data.content);
+    }
+  }, [data]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -149,10 +148,8 @@ export default function FooterEditor() {
   }
 
   return (
-    <>
-      <AdminNavbar />
-      <div className="container mx-auto p-6">
-        <h1 className="text-3xl font-bold mb-6">Edit Footer</h1>
+    <AdminLayout>
+      <h1 className="text-3xl font-bold mb-6">Edit Footer</h1>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="grid w-full grid-cols-3">
@@ -422,7 +419,6 @@ export default function FooterEditor() {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
-    </>
+    </AdminLayout>
   );
 }

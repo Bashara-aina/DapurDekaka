@@ -2,13 +2,16 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BlogPost } from "@shared/schema";
 import { useRoute, Link } from "wouter";
-import { CalendarIcon, ArrowLeft, Share2 } from "lucide-react";
+import { CalendarIcon, ArrowLeft, Share2, Clock, User, Tag, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { SEOHead } from "@/components/SEOHead";
 import { ImageOptimizer } from "@/components/ImageOptimizer";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export default function ArticleDetail() {
+  const { t, language } = useLanguage();
   const [, params] = useRoute<{ id: string }>("/article/:id");
   const id = params?.id ? parseInt(params.id) : undefined;
 
@@ -23,11 +26,26 @@ export default function ArticleDetail() {
         const error = await response.text();
         throw new Error(error || "Failed to fetch article");
       }
-      return response.json();
+      const result = await response.json();
+      return result.data || result;
     },
     enabled: !!id,
     retry: false,
-    staleTime: 300000, // Consider data fresh for 5 minutes
+    staleTime: 300000,
+    refetchOnWindowFocus: false
+  });
+
+  const { data: relatedPosts } = useQuery<BlogPost[]>({
+    queryKey: ["/api/blog", id, "related"],
+    queryFn: async () => {
+      if (!id) throw new Error("Invalid article ID");
+      const response = await fetch(`/api/blog/${id}/related?limit=3`);
+      if (!response.ok) return [];
+      const result = await response.json();
+      return result.data || [];
+    },
+    enabled: !!id,
+    staleTime: 300000,
     refetchOnWindowFocus: false
   });
 
@@ -42,15 +60,15 @@ export default function ArticleDetail() {
   };
 
   // Generate a clean description for meta tags
-  const getMetaDescription = (content: string): string => {
-    const stripped = stripHtml(content);
-    return stripped.length > 160 ? stripped.substring(0, 157) + '...' : stripped;
+  const getMetaDescription = (post: BlogPost): string => {
+    const excerpt = post.excerpt || stripHtml(post.content);
+    return excerpt.length > 160 ? excerpt.substring(0, 157) + '...' : excerpt;
   };
 
   // Loading state
   if (isLoading) return (
     <div className="flex justify-center items-center min-h-screen">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      <Loader2 className="h-12 w-12 animate-spin border-t-2 border-b-2 border-primary" />
     </div>
   );
 
@@ -63,7 +81,7 @@ export default function ArticleDetail() {
         <Link href="/articles" className="mt-6 inline-block">
           <Button className="flex items-center gap-2">
             <ArrowLeft className="h-4 w-4" />
-            Back to articles
+            {t("articles.backToList")}
           </Button>
         </Link>
       </div>
@@ -90,15 +108,15 @@ export default function ArticleDetail() {
       }
     },
     "author": {
-      "@type": "Organization",
-      "name": "Dapur Dekaka"
+      "@type": "Person",
+      "name": post.authorName || "Dapur Dekaka"
     },
-    "description": getMetaDescription(post.content),
+    "description": getMetaDescription(post),
     "image": post.imageUrl ? (typeof window !== 'undefined' ? `${window.location.origin}${post.imageUrl}` : '') : undefined
   };
 
   // Get clean meta description
-  const metaDescription = getMetaDescription(post.content);
+  const metaDescription = getMetaDescription(post);
 
   return (
     <>
@@ -118,12 +136,12 @@ export default function ArticleDetail() {
       </script>
 
       <div className="container mx-auto py-10 px-4">
-        {/* Back navigation */}
+        {/* Breadcrumb navigation */}
         <div className="max-w-3xl mx-auto mb-8">
           <Link href="/articles">
             <Button variant="ghost" className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
               <ArrowLeft className="h-4 w-4" />
-              Back to articles
+              {t("articles.backToList")}
             </Button>
           </Link>
         </div>
@@ -136,16 +154,47 @@ export default function ArticleDetail() {
         >
           {/* Article header */}
           <header className="mb-8">
+            {/* Category and featured badge */}
+            <div className="flex items-center gap-2 mb-4">
+              {post.category && (
+                <span className="inline-flex items-center gap-1 px-3 py-1 text-sm bg-primary/10 text-primary rounded-full capitalize">
+                  <Tag className="w-3 h-3" />
+                  {post.category}
+                </span>
+              )}
+              {post.featured === 1 && (
+                <span className="inline-flex items-center gap-1 px-3 py-1 text-sm bg-yellow-100 text-yellow-700 rounded-full">
+                  Featured
+                </span>
+              )}
+            </div>
+
             <h1 className="text-4xl font-bold text-gray-900 mb-4">{post.title}</h1>
-            <div className="flex items-center text-sm text-gray-500">
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              <time dateTime={new Date(post.createdAt).toISOString()}>
-                {new Date(post.createdAt).toLocaleDateString('id-ID', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </time>
+
+            {/* Meta info row */}
+            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+              {post.authorName && (
+                <div className="flex items-center gap-1">
+                  <User className="w-4 h-4" />
+                  <span>{post.authorName}</span>
+                </div>
+              )}
+              <div className="flex items-center">
+                <CalendarIcon className="mr-1 h-4 w-4" />
+                <time dateTime={new Date(post.createdAt).toISOString()}>
+                  {new Date(post.createdAt).toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </time>
+              </div>
+              {post.readTime && (
+                <div className="flex items-center">
+                  <Clock className="mr-1 h-4 w-4" />
+                  {post.readTime} min read
+                </div>
+              )}
             </div>
           </header>
 
@@ -167,7 +216,7 @@ export default function ArticleDetail() {
           )}
 
           {/* Article content */}
-          <div 
+          <div
             className="prose prose-lg max-w-none mx-auto article-content"
             dangerouslySetInnerHTML={{ __html: post.content }}
           />
@@ -201,12 +250,56 @@ export default function ArticleDetail() {
                   Share
                 </Button>
                 <Link href="/articles">
-                  <Button size="sm">More articles</Button>
+                  <Button size="sm">{t("articles.backToList")}</Button>
                 </Link>
               </div>
             </div>
           </footer>
         </motion.article>
+
+        {/* Related Articles section */}
+        {relatedPosts && relatedPosts.length > 0 && (
+          <section className="max-w-3xl mx-auto mt-16">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              {t("articles.relatedArticles")}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {relatedPosts.map((relatedPost) => (
+                <Link key={relatedPost.id} href={`/article/${relatedPost.id}`}>
+                  <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer">
+                    {relatedPost.imageUrl && (
+                      <div className="aspect-video relative overflow-hidden rounded-t-lg">
+                        <ImageOptimizer
+                          src={relatedPost.imageUrl}
+                          alt={relatedPost.title}
+                          width={200}
+                          height={112}
+                          className="w-full h-full"
+                          objectFit="cover"
+                        />
+                      </div>
+                    )}
+                    <CardHeader>
+                      <CardTitle className="text-sm line-clamp-2">
+                        {relatedPost.title}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-xs text-gray-500">
+                        {new Date(relatedPost.createdAt).toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                        {relatedPost.readTime && ` · ${relatedPost.readTime} min read`}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </>
   );

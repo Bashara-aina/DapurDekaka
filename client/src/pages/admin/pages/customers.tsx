@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Upload, Trash2, GripVertical, AlertTriangle } from "lucide-react";
-import AdminNavbar from "@/components/layout/admin-navbar";
+import AdminLayout from "@/components/layout/AdminLayout";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { queryKeys } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import {
   DndContext,
   closestCenter,
@@ -111,32 +113,27 @@ export default function CustomersPageEditor() {
     })
   );
 
-  const { data: pageData, isLoading } = useQuery({
-    queryKey: ["homepage"],
-    queryFn: async () => {
-      const response = await fetch('/api/pages/homepage', {
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        },
-        cache: 'no-store'
-      });
-      if (!response.ok) throw new Error('Failed to fetch homepage data');
-      const data = await response.json();
-      console.log("Admin - Customer logos from API:", data?.content?.customers?.logos);
-      return data;
-    }
-  });
+  interface HomepageData {
+  logo: string;
+  carousel: {
+    images: string[];
+    title: string;
+    subtitle: string;
+  };
+  content: {
+    hero: { title: string; subtitle: string };
+    carousel: { title: string; subtitle: string };
+    featuredProducts: { title: string; subtitle: string };
+    latestArticles: { title: string; subtitle: string };
+    customers: { title: string; subtitle: string; logos: string[] };
+  };
+  timestamp?: number;
+}
 
-  // Initialize content from pageData
-  useEffect(() => {
-    if (pageData?.content?.customers) {
-      setContent({
-        title: pageData.content.customers.title || "Our Customers",
-        subtitle: pageData.content.customers.subtitle || "Trusted by businesses across Indonesia"
-      });
-    }
-  }, [pageData]);
+const { data: pageData, isLoading } = useQuery<HomepageData>({
+    queryKey: queryKeys.pages.homepage,
+    queryFn: () => apiRequest<HomepageData>("/api/pages/homepage")
+  });
 
   const updateMutation = useMutation({
     mutationFn: async () => {
@@ -144,7 +141,7 @@ export default function CustomersPageEditor() {
       files.forEach(file => {
         formData.append('customerLogos', file);
       });
-      
+
       // Add customer section content
       formData.append('content', JSON.stringify({
         customers: {
@@ -154,32 +151,20 @@ export default function CustomersPageEditor() {
         }
       }));
 
-      const response = await fetch('/api/pages/homepage/customers', {
+      return await apiRequest('/api/pages/homepage/customers', {
         method: 'PUT',
-        body: formData
+        body: formData,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update customers section');
-      }
-
-      return response.json();
     },
     onSuccess: () => {
-      // Invalidate both homepage queries for the main page and admin
-      queryClient.invalidateQueries({ queryKey: ["pages", "homepage"] });
-      queryClient.invalidateQueries({ queryKey: ["homepage"] });
-      
+      queryClient.invalidateQueries({ queryKey: queryKeys.pages.homepage });
       toast({
         title: "Success",
         description: "Customers section updated successfully",
       });
-      
-      // Reset the files state
       setFiles([]);
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
         description: error.message || "Failed to update customers section",
@@ -190,18 +175,13 @@ export default function CustomersPageEditor() {
 
   const reorderLogosMutation = useMutation({
     mutationFn: async (logos: string[]) => {
-      const response = await fetch('/api/pages/homepage/customers/logos/reorder', {
+      return await apiRequest('/api/pages/homepage/customers/logos/reorder', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ logos }),
       });
-      if (!response.ok) throw new Error('Failed to reorder logos');
-      return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["homepage"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.pages.homepage });
       toast({
         title: "Success",
         description: "Logo order updated successfully"
@@ -218,14 +198,12 @@ export default function CustomersPageEditor() {
 
   const deleteLogoMutation = useMutation({
     mutationFn: async (index: number) => {
-      const response = await fetch(`/api/pages/homepage/customers/logos/${index}`, {
+      return await apiRequest(`/api/pages/homepage/customers/logos/${index}`, {
         method: 'DELETE'
       });
-      if (!response.ok) throw new Error('Failed to delete logo');
-      return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["homepage"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.pages.homepage });
       toast({
         title: "Success",
         description: "Logo deleted successfully"
@@ -263,11 +241,9 @@ export default function CustomersPageEditor() {
   const customerLogos = pageData?.content?.customers?.logos || [];
 
   return (
-    <>
-      <AdminNavbar />
-      <div className="container mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Customers Section</h1>
+    <AdminLayout>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Customers Section</h1>
           <Button
             onClick={() => updateMutation.mutate()}
             disabled={updateMutation.isPending}
@@ -421,7 +397,6 @@ export default function CustomersPageEditor() {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
-    </>
+    </AdminLayout>
   );
 }
