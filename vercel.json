@@ -6,6 +6,13 @@
   "regions": ["sin1"],
   "builds": [
     {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist/public"
+      }
+    },
+    {
       "src": "dist/index.js",
       "use": "@vercel/node",
       "config": {
@@ -38,10 +45,8 @@
       "src": "/public/(.*)",
       "dest": "/public/$1"
     },
-    {
-      "src": "/(.*)",
-      "dest": "dist/index.js"
-    }
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ],
   "headers": [
     {

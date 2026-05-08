@@ -127,8 +127,12 @@ export function resetPool() {
 }
 
 export function getDb(): ReturnType<typeof drizzle> | null {
+  fetch('http://127.0.0.1:7810/ingest/48e4779b-a190-4144-bebe-5f691c4717c5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e80b68'},body:JSON.stringify({sessionId:'e80b68',runId:'debug',location:'db.ts:getDb_enter',message:'getDb_enter',data:{hasDbConnection:!!dbConnection,hasPool:!!pool,DATABASE_URL_set:!!process.env.DATABASE_URL},timestamp:Date.now()})}).catch(()=>{});
   if (!dbConnection) {
-    return createDbConnection();
+    fetch('http://127.0.0.1:7810/ingest/48e4779b-a190-4144-bebe-5f691c4717c5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e80b68'},body:JSON.stringify({sessionId:'e80b68',runId:'debug',location:'db.ts:getDb_creating',message:'getDb_creating_fresh',data:{DATABASE_URL_prefix:process.env.DATABASE_URL ? process.env.DATABASE_URL.slice(0,30) : 'MISSING'},timestamp:Date.now()})}).catch(()=>{});
+    const fresh = createDbConnection();
+    fetch('http://127.0.0.1:7810/ingest/48e4779b-a190-4144-bebe-5f691c4717c5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e80b68'},body:JSON.stringify({sessionId:'e80b68',runId:'debug',location:'db.ts:getDb_fresh_result',message:'getDb_fresh_result',data:{fresh_null:fresh===null},timestamp:Date.now()})}).catch(()=>{});
+    return fresh;
   }
   return dbConnection;
 }

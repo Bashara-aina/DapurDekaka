@@ -1,1 +1,16 @@
-{"projectId":"prj_I7htHmHuYlZQ9IpprJweOZDWxP6Y","orgId":"team_lCY5e9cKQvChFAtqqUvQ6AfE","projectName":"dapur-dekaka"}
+{
+  "projectId": "prj_I7htHmHuYlZQ9IpprJweOZDWxP6Y",
+  "orgId": "team_lCY5e9cKQvChFAtqqUvQ6AfE",
+  "projectName": "dapur-dekaka",
+  "settings": {
+    "createdAt": 1778160432440,
+    "framework": null,
+    "devCommand": null,
+    "installCommand": null,
+    "buildCommand": null,
+    "outputDirectory": null,
+    "rootDirectory": null,
+    "directoryListing": false,
+    "nodeVersion": "24.x"
+  }
+}
