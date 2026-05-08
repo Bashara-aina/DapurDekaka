@@ -123,8 +123,8 @@ export default function ContactPageEditor() {
       queryClient.invalidateQueries({ queryKey: ['/api/pages/contact'] });
 
       toast({
-        title: "Success!",
-        description: "Contact page has been updated successfully.",
+        title: t('admin.common.success'),
+        description: t('admin.common.successMsg'),
       });
 
       // Reset file upload states
@@ -135,8 +135,8 @@ export default function ContactPageEditor() {
     } catch (error) {
       console.error('Error updating contact page:', error);
       toast({
-        title: "Error",
-        description: "Failed to update contact page. Please try again.",
+        title: t('admin.common.error'),
+        description: t('admin.common.errorMsg'),
         variant: "destructive",
       });
     }
@@ -166,19 +166,18 @@ export default function ContactPageEditor() {
   return (
     <AdminLayout>
       <TooltipProvider>
-        <div className="container py-10 max-w-4xl mx-auto">
-          <div className="mb-10 text-center">
-            <h1 className="text-3xl font-bold">{t("admin.pages.contact")} Page Editor</h1>
-            <p className="text-gray-500">
-              Edit your contact page information, social media links, and more.
-            </p>
-          </div>
+        <div className="mb-10 text-center">
+          <h1 className="text-3xl font-bold">{t('admin.contact.editTitle')}</h1>
+          <p className="text-gray-500">
+            Edit your contact page information, social media links, and more.
+          </p>
+        </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="mb-6">
-            <TabsTrigger value="general">General Information</TabsTrigger>
-            <TabsTrigger value="social">Social & Contact Info</TabsTrigger>
-            <TabsTrigger value="preview">Preview</TabsTrigger>
+            <TabsTrigger value="general">{t('admin.common.generalInfo')}</TabsTrigger>
+            <TabsTrigger value="social">{t('admin.contact.socialContact')}</TabsTrigger>
+            <TabsTrigger value="preview">{t('admin.common.preview')}</TabsTrigger>
           </TabsList>
 
           <Form {...form}>
@@ -403,7 +402,7 @@ export default function ContactPageEditor() {
               <TabsContent value="preview" className="space-y-6">
                 <Card>
                   <CardContent className="pt-6">
-                    <h3 className="text-xl font-semibold mb-4">Contact Page Preview</h3>
+                    <h3 className="text-xl font-semibold mb-4">{t('admin.contact.pagePreview')}</h3>
                     <div className="border rounded-lg p-6 bg-white dark:bg-gray-800">
                       {previewData ? (
                         <div className="space-y-6">
@@ -494,13 +493,12 @@ export default function ContactPageEditor() {
                 </Button>
                 <Button type="submit">
                   <Save className="mr-2 h-4 w-4" />
-                  Save Changes
+                  {t('admin.common.saveChanges')}
                 </Button>
               </div>
             </form>
           </Form>
         </Tabs>
-      </div>
       </TooltipProvider>
     </AdminLayout>
   );

@@ -86,10 +86,12 @@ footerRouter.get("/api/pages/footer", async (_req, res) => {
     const pageContent = await storage.getPageContent("footer");
 
     if (pageContent && pageContent.content) {
+      res.setHeader("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=86400");
       return res.status(200).json(ok(pageContent));
     }
 
     // Return default footer content without writing to DB
+    res.setHeader("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=86400");
     res.status(200).json(ok({ content: defaultFooterContent }));
   } catch (err) {
     logger.error("Error fetching footer content", { error: err instanceof Error ? err.message : String(err) });
@@ -131,8 +133,8 @@ footerRouter.put("/api/pages/footer", requireAuth, requireAdmin, upload.single("
       // Save the uploaded file
       await fs.rename(file.path, destPath);
 
-      // Update logo URL in footer data
-      validation.data.logoUrl = `/footer/${fileName}?t=${Date.now()}`;
+      // Update logo URL in footer data with stable versioning
+      validation.data.logoUrl = `/footer/${fileName}?v=1`;
     }
 
     // Update footer content in database

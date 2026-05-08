@@ -7,12 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Upload, Info, ImageIcon } from "lucide-react";
 import AdminLayout from "@/components/layout/AdminLayout";
-import AdminNavbar from "@/components/layout/admin-navbar";
+import { useAuth } from "@/hooks/useAuth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { queryKeys, apiRequest } from "@/lib/queryClient";
 import { AboutContent } from "@/types/api";
+import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 
 interface FileUpload {
   mainImage: File | null;
@@ -20,6 +21,7 @@ interface FileUpload {
 }
 
 export default function AboutEditor() {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const formRef = useRef<HTMLFormElement>(null);
@@ -50,9 +52,10 @@ export default function AboutEditor() {
   content: AboutContent;
 }
 
-const { data: pageData, isLoading } = useQuery<AboutPageData>({
+const { data: pageData, isLoading, isError } = useQuery<AboutPageData>({
     queryKey: queryKeys.admin.pages.about,
-    queryFn: () => apiRequest<AboutPageData>("/api/pages/about")
+    queryFn: () => apiRequest<AboutPageData>("/api/pages/about"),
+    enabled: !!isAuthenticated,
   });
 
   useEffect(() => {
@@ -165,11 +168,28 @@ const { data: pageData, isLoading } = useQuery<AboutPageData>({
     }
   };
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
+      <AdminLayout>
+        <AdminPageSkeleton title="Edit About Page" showTabs />
+      </AdminLayout>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  if (isError) {
+    return (
+      <AdminLayout>
+        <div className="flex flex-col items-center justify-center min-h-[400px]">
+          <p className="text-muted-foreground mb-4">Failed to load about page data. Please try again.</p>
+          <Button onClick={() => queryClient.invalidateQueries({ queryKey: queryKeys.admin.pages.about })}>
+            Retry
+          </Button>
+        </div>
+      </AdminLayout>
     );
   }
 

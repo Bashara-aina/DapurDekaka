@@ -4,8 +4,10 @@ import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export default function AuthPage() {
+  const { t } = useLanguage();
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -22,7 +24,7 @@ export default function AuthPage() {
           headers: {
             "Content-Type": "application/json",
           },
-          credentials: "include", // Important for sessions to work across domains
+          credentials: "include",
           body: JSON.stringify({ username, password }),
         });
 
@@ -32,17 +34,16 @@ export default function AuthPage() {
         }
 
         toast({
-          title: "Success",
-          description: "Logged in successfully",
+          title: t('common.messages.success'),
+          description: t('auth.success.login'),
         });
       } else {
-        // Registration
         const response = await fetch("/api/register", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          credentials: "include", // Important for sessions to work across domains
+          credentials: "include",
           body: JSON.stringify({ username, email, password }),
         });
 
@@ -52,8 +53,8 @@ export default function AuthPage() {
         }
 
         toast({
-          title: "Success",
-          description: "Account created successfully! You can now log in.",
+          title: t('common.messages.success'),
+          description: t('auth.success.register'),
         });
         setIsLogin(true);
         return;
@@ -62,9 +63,9 @@ export default function AuthPage() {
       setLocation("/admin");
     } catch (error) {
       toast({
-        title: "Error",
+        title: t('common.messages.error'),
         description:
-          error instanceof Error ? error.message : "An error occurred",
+          error instanceof Error ? error.message : t('auth.error.generic'),
         variant: "destructive",
       });
     }
@@ -75,19 +76,17 @@ export default function AuthPage() {
       <Card className="w-full max-w-md p-6">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold">
-            {isLogin ? "Admin Login" : "Create Account"}
+            {isLogin ? t('auth.loginTitle') : t('auth.registerTitle')}
           </h1>
           <p className="text-muted-foreground">
-            {isLogin
-              ? "Log in to manage your blog posts"
-              : "Create an account to manage blog posts"}
+            {isLogin ? t('auth.loginSubtitle') : t('auth.registerSubtitle')}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <label htmlFor="username" className="text-sm font-medium">
-              Username
+              {t('auth.username')}
             </label>
             <Input
               id="username"
@@ -100,7 +99,7 @@ export default function AuthPage() {
           {!isLogin && (
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium">
-                Email
+                {t('auth.email')}
               </label>
               <Input
                 id="email"
@@ -113,7 +112,7 @@ export default function AuthPage() {
           )}
           <div className="space-y-2">
             <label htmlFor="password" className="text-sm font-medium">
-              Password
+              {t('auth.password')}
             </label>
             <Input
               id="password"
@@ -125,7 +124,7 @@ export default function AuthPage() {
             />
           </div>
           <Button type="submit" className="w-full">
-            {isLogin ? "Login" : "Create Account"}
+            {isLogin ? t('auth.loginButton') : t('auth.registerTitle')}
           </Button>
           <div className="text-center mt-4">
             <button
@@ -133,9 +132,7 @@ export default function AuthPage() {
               className="text-sm text-primary hover:underline"
               onClick={() => setIsLogin(!isLogin)}
             >
-              {isLogin
-                ? "Don't have an account? Create one"
-                : "Already have an account? Login"}
+              {isLogin ? t('auth.noAccount') : t('auth.hasAccount')}
             </button>
           </div>
         </form>

@@ -30,23 +30,16 @@ export default function FeaturedProducts() {
   const { data: pageData } = useQuery({
     queryKey: ["pages", "homepage"],
     queryFn: async () => {
-      const timestamp = Date.now();
-      const response = await fetch(`/api/pages/homepage?_=${timestamp}`, {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      });
+      const response = await fetch("/api/pages/homepage");
       if (!response.ok) throw new Error("Failed to fetch homepage data");
       return response.json();
     },
-    staleTime: 0, // Always consider data stale
-    gcTime: 10000, // Keep unused data in cache for only 10 seconds
-    refetchOnWindowFocus: true, // Always refetch on tab focus
-    refetchOnMount: true, // Always refetch on component mount
-    refetchOnReconnect: true, // Always refetch on reconnect
-    refetchInterval: 30000, // Refetch every 30 seconds
+    // Homepage config changes rarely, so we can safely cache it for a while.
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: true,
+    refetchOnReconnect: true,
   });
 
   const scroll = (direction: "left" | "right") => {
@@ -68,12 +61,12 @@ export default function FeaturedProducts() {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <Card className="max-w-md w-full p-6 text-center">
-          <p className="text-destructive mb-4">Failed to load menu items.</p>
+          <p className="text-destructive mb-4">{t('common.messages.error')}</p>
           <Button
             variant="outline"
             onClick={() => window.location.reload()}
           >
-            Retry
+            {t('common.buttons.retry')}
           </Button>
         </Card>
       </div>
@@ -153,7 +146,7 @@ export default function FeaturedProducts() {
                   <OrderModal 
                     trigger={
                       <Button size="sm" className="w-full">
-                        Pesan
+                        {t('common.buttons.order')}
                       </Button>
                     }
                     menuItem={item}

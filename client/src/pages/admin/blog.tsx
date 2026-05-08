@@ -6,14 +6,18 @@ import { BlogPost } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Pencil, Trash2, Plus, Image as ImageIcon, Loader2, ChevronUp, ChevronDown, Star } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import AdminLayout from "@/components/layout/AdminLayout";
-import AdminNavbar from "@/components/layout/admin-navbar";
 import { useAuth } from "@/hooks/useAuth";
 import { queryKeys } from "@/lib/queryClient";
 import { apiRequest } from "@/lib/queryClient";
@@ -30,6 +34,32 @@ const BLOG_CATEGORIES = [
   "other"
 ] as const;
 
+function BlogPostCardSkeleton() {
+  return (
+    <Card className="p-6 border border-gray-200 mb-4">
+      <div className="flex justify-between items-start gap-4">
+        <div className="space-y-2 flex-1">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-6 w-48" />
+          </div>
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-4 w-full mt-2" />
+        </div>
+        <div className="flex flex-col gap-2 flex-shrink-0">
+          <Skeleton className="h-8 w-8" />
+          <Skeleton className="h-8 w-8" />
+          <div className="flex gap-2 mt-4">
+            <Skeleton className="h-8 w-8" />
+            <Skeleton className="h-8 w-8" />
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 export default function AdminBlogPage() {
   const { t } = useLanguage();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -37,17 +67,19 @@ export default function AdminBlogPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [localBlogPosts, setLocalBlogPosts] = useState<BlogPost[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [published, setPublished] = useState(false);
+  const [featured, setFeatured] = useState(false);
+  const [deletePostId, setDeletePostId] = useState<number | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Query for fetching posts
   const { data: posts, isLoading: postsLoading } = useQuery<BlogPost[]>({
     queryKey: queryKeys.admin.blog,
     queryFn: () => apiRequest("/api/blog"),
     enabled: !!isAuthenticated,
   });
 
-  // Define mutations at the top level
   const createMutation = useMutation({
     mutationFn: async (formData: FormData) => {
       return await apiRequest("/api/blog", {
@@ -57,11 +89,11 @@ export default function AdminBlogPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.blog });
-      toast({ title: "Success", description: "Blog post created successfully" });
+      toast({ title: t('common.messages.success'), description: t('admin.blog.created') });
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
+        title: t('common.messages.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -77,11 +109,11 @@ export default function AdminBlogPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.blog });
-      toast({ title: "Success", description: "Blog post updated successfully" });
+      toast({ title: t('common.messages.success'), description: t('admin.blog.updated') });
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
+        title: t('common.messages.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -96,18 +128,18 @@ export default function AdminBlogPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.blog });
-      toast({ title: "Success", description: "Blog post deleted successfully" });
+      toast({ title: t('common.messages.success'), description: t('admin.blog.deleted') });
+      setDeletePostId(null);
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
+        title: t('common.messages.error'),
         description: error.message,
         variant: "destructive",
       });
     },
   });
 
-  // Mutation for reordering blog posts
   const reorderMutation = useMutation({
     mutationFn: async (postIds: number[]) => {
       return await apiRequest("/api/blog/reorder", {
@@ -115,23 +147,37 @@ export default function AdminBlogPage() {
         body: JSON.stringify({ postIds }),
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.admin.blog });
-      toast({
-        title: "Blog posts reordered successfully",
-        variant: "default"
+    onMutate: async (newPostIds) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.admin.blog });
+      const previousPosts = queryClient.getQueryData<BlogPost[]>(queryKeys.admin.blog);
+
+      setLocalBlogPosts(current => {
+        const postMap = new Map(current.map(p => [p.id, p]));
+        const reordered = newPostIds.map((id, idx) => {
+          const post = postMap.get(id);
+          return post ? { ...post, orderIndex: idx } : null;
+        }).filter(Boolean) as BlogPost[];
+        return reordered;
       });
+
+      return { previousPosts };
     },
-    onError: (error: Error) => {
+    onError: (_err, _newPostIds, context) => {
+      if (context?.previousPosts) {
+        queryClient.setQueryData<BlogPost[]>(queryKeys.admin.blog, context.previousPosts);
+        setLocalBlogPosts(context.previousPosts);
+      }
       toast({
-        title: "Error",
-        description: error.message,
+        title: t('common.messages.error'),
+        description: t('admin.blog.reorderFailed'),
         variant: "destructive",
       });
     },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.blog });
+    },
   });
 
-  // Update localBlogPosts when posts data changes
   useEffect(() => {
     if (posts) {
       setLocalBlogPosts(posts);
@@ -149,54 +195,20 @@ export default function AdminBlogPage() {
     }
   };
 
-  // Handle moving post up or down
   const handleMovePost = async (postId: number, direction: 'up' | 'down') => {
     const currentIndex = localBlogPosts.findIndex(post => post.id === postId);
-
     if (currentIndex === -1) return;
-
-    // Cannot move first post up or last post down
-    if (
-      (direction === 'up' && currentIndex === 0) ||
-      (direction === 'down' && currentIndex === localBlogPosts.length - 1)
-    ) {
+    if ((direction === 'up' && currentIndex === 0) || (direction === 'down' && currentIndex === localBlogPosts.length - 1)) {
       return;
     }
 
-    // Calculate new index
     const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-
-    // Update local state for immediate UI feedback
     const newPosts = [...localBlogPosts];
-    // Remove item from current position
     const [movedPost] = newPosts.splice(currentIndex, 1);
-    // Insert item at new position
     newPosts.splice(newIndex, 0, movedPost);
-    setLocalBlogPosts(newPosts);
+    const postIds = newPosts.map(post => post.id);
 
-    // Send reorder request to server
-    try {
-      const postIds = newPosts.map(post => post.id);
-      await reorderMutation.mutateAsync(postIds);
-
-      // Refresh data from server
-      queryClient.invalidateQueries({ queryKey: ["/api/blog"] });
-
-      toast({
-        title: `Post moved ${direction}`,
-        variant: "default"
-      });
-    } catch (error) {
-      console.error(`Error moving post ${direction}:`, error);
-      toast({
-        title: `Failed to move post ${direction}`,
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive"
-      });
-
-      // Revert to original order if server update fails
-      setLocalBlogPosts(posts || []);
-    }
+    reorderMutation.mutate(postIds);
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -208,8 +220,8 @@ export default function AdminBlogPage() {
 
     if (!title || !content) {
       toast({
-        title: "Error",
-        description: "Title and content are required",
+        title: t('common.messages.error'),
+        description: `${t("admin.blog.titleLabel")} & ${t("admin.blog.contentLabel")} are required`,
         variant: "destructive",
       });
       return;
@@ -217,8 +229,8 @@ export default function AdminBlogPage() {
 
     formData.set('title', title);
     formData.set('content', content);
-    formData.set('published', formData.get('published') ? '1' : '0');
-    formData.set('featured', formData.get('featured') ? '1' : '0');
+    formData.set('published', published ? '1' : '0');
+    formData.set('featured', featured ? '1' : '0');
 
     try {
       if (editingPost) {
@@ -230,21 +242,48 @@ export default function AdminBlogPage() {
       setEditingPost(null);
       setImagePreview(null);
       setIsEditing(false);
+      setSelectedCategory('');
+      setPublished(false);
+      setFeatured(false);
     } catch (error) {
       console.error('Error:', error);
     }
   };
 
-  // Show loading state
+  const openEditForm = (post: BlogPost) => {
+    setEditingPost(post);
+    setSelectedCategory(post.category || '');
+    setPublished(post.published === 1);
+    setFeatured(post.featured === 1);
+    setIsEditing(true);
+  };
+
+  const openCreateForm = () => {
+    setEditingPost(null);
+    setSelectedCategory('');
+    setPublished(false);
+    setFeatured(false);
+    setIsEditing(true);
+  };
+
   if (authLoading || postsLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
+      <AdminLayout>
+        <div className="flex justify-between items-center mb-6">
+          <Skeleton className="h-9 w-48" />
+          <Skeleton className="h-10 w-36" />
+        </div>
+        <ScrollArea className="h-[calc(100vh-200px)]">
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <BlogPostCardSkeleton key={i} />
+            ))}
+          </div>
+        </ScrollArea>
+      </AdminLayout>
     );
   }
 
-  // Redirect if not authenticated
   if (!isAuthenticated) {
     return null;
   }
@@ -266,10 +305,10 @@ export default function AdminBlogPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Title */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">{t("admin.blog.titleLabel")} *</label>
+            <Label htmlFor="title">{t("admin.blog.titleLabel")} *</Label>
             <Input
+              id="title"
               name="title"
               defaultValue={editingPost?.title}
               required
@@ -279,45 +318,45 @@ export default function AdminBlogPage() {
             />
           </div>
 
-          {/* Author Name */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">{t("admin.blog.authorNameLabel")}</label>
+            <Label htmlFor="authorName">{t("admin.blog.authorNameLabel")}</Label>
             <Input
+              id="authorName"
               name="authorName"
               defaultValue={editingPost?.authorName || ''}
               placeholder={t("admin.blog.authorNamePlaceholder")}
             />
           </div>
 
-          {/* Slug */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">{t("admin.blog.slugLabel")}</label>
+            <Label htmlFor="slug">{t("admin.blog.slugLabel")}</Label>
             <Input
+              id="slug"
               name="slug"
               defaultValue={editingPost?.slug || ''}
               placeholder={t("admin.blog.slugPlaceholder")}
             />
           </div>
 
-          {/* Category */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">{t("admin.blog.categoryLabel")}</label>
-            <select
-              name="category"
-              defaultValue={editingPost?.category || ''}
-              className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option value="">{t("admin.blog.categoryPlaceholder")}</option>
-              {BLOG_CATEGORIES.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
+            <Label htmlFor="category">{t("admin.blog.categoryLabel")}</Label>
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger id="category" name="category">
+                <SelectValue placeholder={t("admin.blog.categoryPlaceholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                {BLOG_CATEGORIES.map(cat => (
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <input type="hidden" name="category" value={selectedCategory} />
           </div>
 
-          {/* Image Upload */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">{t("admin.blog.imageLabel")}</label>
+            <Label htmlFor="image">{t("admin.blog.imageLabel")}</Label>
             <Input
+              id="image"
               type="file"
               name="image"
               accept="image/*"
@@ -334,10 +373,10 @@ export default function AdminBlogPage() {
             )}
           </div>
 
-          {/* Excerpt */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">{t("admin.blog.excerptLabel")}</label>
+            <Label htmlFor="excerpt">{t("admin.blog.excerptLabel")}</Label>
             <Textarea
+              id="excerpt"
               name="excerpt"
               defaultValue={editingPost?.excerpt || ''}
               placeholder={t("admin.blog.excerptPlaceholder")}
@@ -345,9 +384,8 @@ export default function AdminBlogPage() {
             />
           </div>
 
-          {/* Content Editor */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">{t("admin.blog.contentLabel")} *</label>
+            <Label htmlFor="content">{t("admin.blog.contentLabel")} *</Label>
             <Editor
               apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
               init={{
@@ -383,35 +421,29 @@ export default function AdminBlogPage() {
             <textarea name="content" defaultValue={editingPost?.content} hidden />
           </div>
 
-          {/* Publish and Featured toggles */}
           <div className="flex flex-wrap gap-6">
-            <div className="flex items-center space-x-2">
-              <Input
-                type="checkbox"
-                name="published"
-                defaultChecked={editingPost?.published === 1}
-                className="w-4 h-4"
+            <div className="flex items-center gap-2">
+              <Switch
                 id="published"
+                checked={published}
+                onCheckedChange={setPublished}
               />
-              <label htmlFor="published" className="text-sm font-medium">
+              <Label htmlFor="published" className="text-sm font-medium cursor-pointer">
                 {t("admin.blog.published")}
-              </label>
+              </Label>
             </div>
-            <div className="flex items-center space-x-2">
-              <Input
-                type="checkbox"
-                name="featured"
-                defaultChecked={editingPost?.featured === 1}
-                className="w-4 h-4"
+            <div className="flex items-center gap-2">
+              <Switch
                 id="featured"
+                checked={featured}
+                onCheckedChange={setFeatured}
               />
-              <label htmlFor="featured" className="text-sm font-medium">
+              <Label htmlFor="featured" className="text-sm font-medium cursor-pointer">
                 {t("admin.blog.featuredLabel")}
-              </label>
+              </Label>
             </div>
           </div>
 
-          {/* Read time display (computed) */}
           {editingPost?.readTime && (
             <div className="text-sm text-muted-foreground">
               {t("admin.blog.readTimeLabel")}: {editingPost.readTime} min
@@ -441,7 +473,7 @@ export default function AdminBlogPage() {
             </span>
           </div>
         </div>
-        <Button onClick={() => setIsEditing(true)}>
+        <Button onClick={openCreateForm}>
           <Plus className="w-4 h-4 mr-2" />
           {t("admin.blog.createNew")}
         </Button>
@@ -456,15 +488,20 @@ export default function AdminBlogPage() {
                 <div className="space-y-2 flex-1">
                   <div className="flex items-center gap-2">
                     {post.featured === 1 && (
-                      <Star className="w-4 h-4 text-yellow-500" style={{ fill: "yellow" }} aria-label="Featured" />
+                      <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" aria-label="Featured" />
                     )}
                     <h2 className="text-xl font-semibold">{post.title}</h2>
+                    {post.published !== 1 && (
+                      <span className="text-xs px-2 py-1 bg-gray-200 text-gray-600 rounded-full">
+                        Draft
+                      </span>
+                    )}
                   </div>
                   {post.authorName && (
                     <p className="text-sm text-gray-500">By {post.authorName}</p>
                   )}
                   {post.category && (
-                    <span className="inline-block px-2 py-1 text-xs bg-gray-100 rounded-full">
+                    <span className="inline-block px-2 py-1 text-xs bg-primary/10 text-primary rounded-full capitalize">
                       {post.category}
                     </span>
                   )}
@@ -489,22 +526,20 @@ export default function AdminBlogPage() {
                       variant="outline"
                       size="icon"
                       onClick={() => handleMovePost(post.id, 'up')}
-                      disabled={index === 0}
+                      disabled={index === 0 || reorderMutation.isPending}
                       title={t("admin.blog.moveUp")}
-                      className={index === 0 ? "opacity-50 cursor-not-allowed" : ""}
                     >
                       <ChevronUp className="h-4 w-4" />
                     </Button>
                     <span className="text-xs text-center text-muted-foreground">
-                      Order
+                      {t('admin.blog.order')}
                     </span>
                     <Button
                       variant="outline"
                       size="icon"
                       onClick={() => handleMovePost(post.id, 'down')}
-                      disabled={index === localBlogPosts.length - 1}
+                      disabled={index === localBlogPosts.length - 1 || reorderMutation.isPending}
                       title={t("admin.blog.moveDown")}
-                      className={index === localBlogPosts.length - 1 ? "opacity-50 cursor-not-allowed" : ""}
                     >
                       <ChevronDown className="h-4 w-4" />
                     </Button>
@@ -513,26 +548,43 @@ export default function AdminBlogPage() {
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => {
-                        setEditingPost(post);
-                        setIsEditing(true);
-                      }}
-                      title="Edit post"
+                      onClick={() => openEditForm(post)}
+                      title={t('admin.blog.edit')}
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => {
-                        if (confirm(t('admin.blog.deleteConfirm'))) {
-                          deleteMutation.mutate(post.id);
-                        }
-                      }}
-                      title="Delete post"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setDeletePostId(post.id)}
+                          title={t('admin.blog.delete')}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>{t('admin.blog.deleteTitle')}</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {t('admin.blog.deleteConfirm')}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel onClick={() => setDeletePostId(null)}>
+                            {t('common.actions.cancel')}
+                          </AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deletePostId && deleteMutation.mutate(deletePostId)}
+                            disabled={deleteMutation.isPending}
+                          >
+                            {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {t('common.actions.delete')}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               </div>

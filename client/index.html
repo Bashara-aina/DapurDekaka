@@ -3,35 +3,38 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    
+
     <!-- Favicon - PNG for modern browsers, ICO for traditional browsers, ICNS for Safari macOS -->
-    <link rel="icon" href="/logo/favicon.ico" type="image/x-icon" />
-    <link rel="icon" href="/logo/favicon.icns" type="image/x-icns" />
+    <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+    <link rel="icon" href="/favicon.icns" type="image/x-icns" />
     <link rel="icon" href="/logo/logo.png" type="image/png" sizes="any" />
     <link rel="shortcut icon" href="/logo/logo.png" type="image/png" />
     <!-- iOS touch icon -->
     <link rel="apple-touch-icon" href="/logo/logo.png" />
-    
-    <!-- Performance optimizations -->
-    <!-- Preconnect to same origin for SPA API calls - the browser will use current origin -->
-    
-    <!-- Critical assets preloaded via Vite's modulepreload plugin during build -->
 
-    <!-- Disable automatic image loading until JS is ready -->
+    <!-- Critical CSS inlined for instant first paint -->
     <style>
-      img:not([src]) {
-        visibility: hidden;
-      }
-      .image-placeholder {
-        background-color: #f0f0f0;
-        animation: pulse 1.5s infinite ease-in-out;
-      }
-      @keyframes pulse {
-        0% { opacity: 0.6; }
-        50% { opacity: 1; }
-        100% { opacity: 0.6; }
-      }
+      *,::after,::before{box-sizing:border-box;border:0 solid #e5e7eb}
+      body{margin:0;font-family:system-ui,sans-serif;background:#fff;color:#111827}
+      .img-placeholder{background:#f3f4f6;animation:pulse 1.5s ease-in-out infinite}
+      @keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+      img:not([src]){visibility:hidden}
+      /* Hero skeleton — shown before React hydrates */
+      .hero-skeleton{position:absolute;inset:0;background:#111}
+      .hero-skeleton::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,#000 100%)}
     </style>
+
+    <!-- Preconnect to same origin — eliminates DNS lookup time -->
+    <link rel="preconnect" href="/" />
+
+    <!-- Preload critical assets: fonts, first hero image, main JS bundle -->
+    <link rel="preload" as="image" href="/asset/1.jpg" fetchpriority="high" />
+    <link rel="preload" as="script" href="/src/main.tsx" />
+
+    <!-- Prefetch likely next routes for instant navigation -->
+    <link rel="prefetch" href="/menu" />
+    <link rel="prefetch" href="/api/menu/items" />
+    <link rel="prefetch" href="/api/pages/homepage" />
   </head>
   <body>
     <div id="root"></div>

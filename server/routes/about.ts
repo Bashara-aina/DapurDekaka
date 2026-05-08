@@ -70,7 +70,7 @@ router.get("/api/pages/about", cors(), async (req, res) => {
       }
     };
 
-    // Add a timestamp parameter to force image refresh
+    // Cache static assets for 1 year (immutable)
     const timestamp = Date.now();
     if (pageContent && pageContent.content) {
       const aboutContent = pageContent.content as {
@@ -82,22 +82,22 @@ router.get("/api/pages/about", cors(), async (req, res) => {
         features: { id: string; title: string; description: string; image: string; }[];
       };
       
-      // Add timestamp to main image
+      // Use stable version param for CDN cache (no per-request busting)
       if (aboutContent.mainImage) {
         const imageUrl = aboutContent.mainImage;
         aboutContent.mainImage = imageUrl.includes('?') 
           ? imageUrl
-          : `${imageUrl}?t=${timestamp}`;
+          : `${imageUrl}?v=1`;
       }
       
-      // Add timestamp to feature images
+      // Use stable version param for feature images
       if (aboutContent.features && Array.isArray(aboutContent.features)) {
         aboutContent.features = aboutContent.features.map(feature => {
           if (feature.image) {
             const imageUrl = feature.image;
             return {
               ...feature,
-              image: imageUrl.includes('?') ? imageUrl : `${imageUrl}?t=${timestamp}`
+              image: imageUrl.includes('?') ? imageUrl : `${imageUrl}?v=1`
             };
           }
           return feature;
@@ -108,6 +108,7 @@ router.get("/api/pages/about", cors(), async (req, res) => {
       pageContent.content = aboutContent;
     }
 
+    res.setHeader("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=86400");
     res.status(200).json(ok(pageContent || defaultContent));
   } catch (err) {
     console.error("Error fetching about page:", err);

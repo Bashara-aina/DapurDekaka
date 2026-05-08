@@ -6,6 +6,8 @@ import { Icon } from "@iconify/react";
 import { TranslateWrapper } from "@/components/TranslateWrapper";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { SEOHead } from "@/components/SEOHead";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 type ContactPageContent = {
   title: string;
@@ -28,6 +30,7 @@ type ContactPageContent = {
 };
 
 export default function Contact() {
+  const { t } = useLanguage();
   const [pageContent, setPageContent] = useState<ContactPageContent | null>(null);
   
   // Fetch contact page data from API
@@ -48,12 +51,23 @@ export default function Contact() {
     }
   }, [data]);
 
+  const siteUrl = typeof window !== 'undefined' ? window.location.origin : '';
+
   // Render loading state while fetching data
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-20 flex justify-center items-center h-[60vh]">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
+      <>
+        <SEOHead
+          title="Contact Us - Dapur Dekaka"
+          description="Get in touch with Dapur Dekaka for inquiries about our premium halal dim sum. Contact us for reservations, catering, or any questions about our menu."
+          keywords="contact Dapur Dekaka, halal dim sum Bandung, dim sum catering, Indonesian food contact"
+          ogType="website"
+          ogImage="/logo/logo.png"
+        />
+        <div className="container mx-auto px-4 py-20 flex justify-center items-center h-[60vh]">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+      </>
     );
   }
 
@@ -66,7 +80,15 @@ export default function Contact() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-20">
+    <>
+      <SEOHead
+        title="Contact Us - Dapur Dekaka"
+        description="Get in touch with Dapur Dekaka for inquiries about our premium halal dim sum. Contact us for reservations, catering, or any questions about our menu."
+        keywords="contact Dapur Dekaka, halal dim sum Bandung, dim sum catering, Indonesian food contact"
+        ogType="website"
+        ogImage="/logo/logo.png"
+      />
+      <div className="container mx-auto px-4 py-20">
       <div className="max-w-4xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -95,13 +117,13 @@ export default function Contact() {
             <Card>
               <CardContent className="p-6">
                 <h2 className="text-2xl font-semibold mb-6">
-                  Contact Information
+                  {t('contact.page.infoTitle')}
                 </h2>
                 <div className="space-y-6">
                   <div className="flex items-start gap-4">
                     <MapPin className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
                     <div>
-                      <h3 className="font-semibold">Address</h3>
+                      <h3 className="font-semibold">{t('contact.page.address')}</h3>
                       <p className="text-gray-600">
                         {pageContent?.contactInfo?.address || "Jl. Sinom V No.7, Turangga, Kec. Lengkong, Kota Bandung, Jawa Barat 40264"}
                       </p>
@@ -110,21 +132,21 @@ export default function Contact() {
                   <div className="flex items-center gap-4">
                     <Phone className="h-6 w-6 text-primary flex-shrink-0" />
                     <div>
-                      <h3 className="font-semibold">Phone</h3>
+                      <h3 className="font-semibold">{t('contact.page.phone')}</h3>
                       <p className="text-gray-600">{pageContent?.contactInfo?.phone || "+62 8229-5986-407"}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
                     <Mail className="h-6 w-6 text-primary flex-shrink-0" />
                     <div>
-                      <h3 className="font-semibold">Email</h3>
+                      <h3 className="font-semibold">{t('contact.page.email')}</h3>
                       <p className="text-gray-600">{pageContent?.contactInfo?.email || "dapurdekaka@gmail.com"}</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-8">
-                  <h3 className="font-semibold mb-4">Follow Us</h3>
+                  <h3 className="font-semibold mb-4">{t('contact.page.followUs')}</h3>
                   <div className="flex gap-4">
                     {pageContent?.socialLinks?.map((link) => (
                       <Button key={link.id} variant="outline" size="icon" asChild>
@@ -188,23 +210,23 @@ export default function Contact() {
           >
             <Card>
               <CardContent className="p-6">
-                <h2 className="text-2xl font-semibold mb-6">Opening Hours</h2>
+                <h2 className="text-2xl font-semibold mb-6">{t('contact.page.hours')}</h2>
                 <div className="space-y-4">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Daily</span>
+                    <span className="text-gray-600">{t('contact.page.daily')}</span>
                     <span>{pageContent?.contactInfo?.openingHours || "07:30 - 20:00"}</span>
                   </div>
                 </div>
 
                 <div className="mt-8">
-                  <h3 className="font-semibold mb-4">Quick Order</h3>
+                  <h3 className="font-semibold mb-4">{t('contact.page.quickOrder')}</h3>
                   <Button className="w-full" size="lg" asChild>
                     <a
                       href={pageContent?.quickOrderUrl || "https://wa.me/6282295986407"}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      Order via WhatsApp
+                      {t('contact.page.orderViaWhatsApp')}
                     </a>
                   </Button>
                 </div>
@@ -222,7 +244,7 @@ export default function Contact() {
         >
           <Card>
             <CardContent className="p-6">
-              <h2 className="text-2xl font-semibold mb-6">Find Us</h2>
+              <h2 className="text-2xl font-semibold mb-6">{t('contact.page.findUs')}</h2>
               <div className="aspect-video w-full rounded-lg overflow-hidden">
                 <iframe
                   src={pageContent?.contactInfo?.mapEmbedUrl || "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3960.628663657452!2d107.62787277454113!3d-6.934907867883335!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e68e98f06fbfe3f%3A0xd60d9e2dbd74a207!2sDapur%20Dekaka!5e0!3m2!1sid!2sid!4v1739461694952!5m2!1sid!2sid"}
@@ -239,5 +261,6 @@ export default function Contact() {
         </motion.div>
       </div>
     </div>
+    </>
   );
 }

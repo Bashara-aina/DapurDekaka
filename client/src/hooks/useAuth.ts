@@ -27,8 +27,8 @@ export function useAuth(): UseAuthResult {
       return true;
     },
     retry: false,
-    staleTime: 0,
-    gcTime: 0,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
   });
 
   useEffect(() => {

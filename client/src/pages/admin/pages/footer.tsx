@@ -7,10 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Trash2, MapPin, Phone, Mail, Instagram, ShoppingBag } from "lucide-react";
 import AdminLayout from "@/components/layout/AdminLayout";
+import { useAuth } from "@/hooks/useAuth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { queryKeys } from "@/lib/queryClient";
 import { apiRequest } from "@/lib/queryClient";
+import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 
 interface SocialLink {
   id: string;
@@ -31,6 +34,7 @@ interface FooterContent {
 }
 
 export default function FooterEditor() {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("general");
@@ -59,9 +63,10 @@ export default function FooterEditor() {
     logoUrl: ""
   });
 
-  const { data, isLoading } = useQuery<{ content: FooterContent }>({
+  const { data, isLoading, isError } = useQuery<{ content: FooterContent }>({
     queryKey: queryKeys.admin.pages.footer,
-    queryFn: () => apiRequest("/api/pages/footer")
+    queryFn: () => apiRequest("/api/pages/footer"),
+    enabled: !!isAuthenticated,
   });
 
   const updateMutation = useMutation({
@@ -139,11 +144,28 @@ export default function FooterEditor() {
     }
   }, [data]);
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
+      <AdminLayout>
+        <AdminPageSkeleton title="Edit Footer" showTabs />
+      </AdminLayout>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  if (isError) {
+    return (
+      <AdminLayout>
+        <div className="flex flex-col items-center justify-center min-h-[400px]">
+          <p className="text-muted-foreground mb-4">Failed to load footer data. Please try again.</p>
+          <Button onClick={() => queryClient.invalidateQueries({ queryKey: queryKeys.admin.pages.footer })}>
+            Retry
+          </Button>
+        </div>
+      </AdminLayout>
     );
   }
 
@@ -290,16 +312,17 @@ export default function FooterEditor() {
                           </div>
                           <div className="space-y-2">
                             <Label>Icon</Label>
-                            <select 
-                              className="w-full px-3 py-2 border rounded-md"
-                              value={link.icon}
-                              onChange={(e) => handleSocialLinkChange(index, 'icon', e.target.value)}
-                            >
-                              <option value="Instagram">Instagram</option>
-                              <option value="Shopee">Shopee</option>
-                              <option value="WhatsApp">WhatsApp</option>
-                              <option value="Grab">Grab</option>
-                            </select>
+                            <Select value={link.icon} onValueChange={(value) => handleSocialLinkChange(index, 'icon', value)}>
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select icon" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Instagram">Instagram</SelectItem>
+                                <SelectItem value="Shopee">Shopee</SelectItem>
+                                <SelectItem value="WhatsApp">WhatsApp</SelectItem>
+                                <SelectItem value="Grab">Grab</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
                         </div>
                         <div className="space-y-2">

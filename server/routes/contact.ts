@@ -93,6 +93,7 @@ router.get("/api/pages/contact", cors(), async (_req, res) => {
       }
     };
 
+    res.setHeader("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=86400");
     res.status(200).json(ok(pageContent || defaultContent));
   } catch (err) {
     logger.error("Error fetching contact page", { error: err instanceof Error ? err.message : String(err) });

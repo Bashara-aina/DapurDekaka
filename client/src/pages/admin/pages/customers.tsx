@@ -7,9 +7,11 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Upload, Trash2, GripVertical, AlertTriangle } from "lucide-react";
 import AdminLayout from "@/components/layout/AdminLayout";
+import { useAuth } from "@/hooks/useAuth";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { queryKeys } from "@/lib/queryClient";
 import { apiRequest } from "@/lib/queryClient";
+import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import {
   DndContext,
   closestCenter,
@@ -97,6 +99,7 @@ const SortableLogo = ({ id, url, onDelete }: SortableLogoProps) => {
 };
 
 export default function CustomersPageEditor() {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [files, setFiles] = useState<File[]>([]);
@@ -130,9 +133,10 @@ export default function CustomersPageEditor() {
   timestamp?: number;
 }
 
-const { data: pageData, isLoading } = useQuery<HomepageData>({
+const { data: pageData, isLoading, isError } = useQuery<HomepageData>({
     queryKey: queryKeys.pages.homepage,
-    queryFn: () => apiRequest<HomepageData>("/api/pages/homepage")
+    queryFn: () => apiRequest<HomepageData>("/api/pages/homepage"),
+    enabled: !!isAuthenticated,
   });
 
   const updateMutation = useMutation({
@@ -230,11 +234,28 @@ const { data: pageData, isLoading } = useQuery<HomepageData>({
     }
   };
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
+      <AdminLayout>
+        <AdminPageSkeleton title="Customers Section" showTabs />
+      </AdminLayout>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  if (isError) {
+    return (
+      <AdminLayout>
+        <div className="flex flex-col items-center justify-center min-h-[400px]">
+          <p className="text-muted-foreground mb-4">Failed to load customers data. Please try again.</p>
+          <Button onClick={() => queryClient.invalidateQueries({ queryKey: queryKeys.pages.homepage })}>
+            Retry
+          </Button>
+        </div>
+      </AdminLayout>
     );
   }
 

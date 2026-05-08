@@ -7,6 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
+import AdminLayout from "@/components/layout/AdminLayout";
+import { useAuth } from "@/hooks/useAuth";
+import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 
 interface PageContent {
   id: string;
@@ -16,17 +20,19 @@ interface PageContent {
 }
 
 export default function AdminPageEditor({ params }: { params: { pageId: string } }) {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [editedContent, setEditedContent] = useState<PageContent | null>(null);
 
-  const { data: pageContent, isLoading } = useQuery<PageContent>({
+  const { data: pageContent, isLoading, isError } = useQuery<PageContent>({
     queryKey: [`/api/pages/${params.pageId}`],
     queryFn: async () => {
       const response = await fetch(`/api/pages/${params.pageId}`);
       if (!response.ok) throw new Error("Failed to fetch page content");
       return response.json();
     },
+    enabled: !!isAuthenticated,
   });
 
   const updateMutation = useMutation({
@@ -52,8 +58,29 @@ export default function AdminPageEditor({ params }: { params: { pageId: string }
     },
   });
 
-  if (isLoading) {
-    return <div>Loading...</div>;
+  if (authLoading || isLoading) {
+    return (
+      <AdminLayout>
+        <AdminPageSkeleton title="Edit Page" />
+      </AdminLayout>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  if (isError) {
+    return (
+      <AdminLayout>
+        <div className="flex flex-col items-center justify-center min-h-[400px]">
+          <p className="text-muted-foreground mb-4">Failed to load page content. Please try again.</p>
+          <Button onClick={() => queryClient.invalidateQueries({ queryKey: [`/api/pages/${params.pageId}`] })}>
+            Retry
+          </Button>
+        </div>
+      </AdminLayout>
+    );
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -68,7 +95,7 @@ export default function AdminPageEditor({ params }: { params: { pageId: string }
   };
 
   return (
-    <div className="container mx-auto p-6">
+    <AdminLayout>
       <h1 className="text-3xl font-bold mb-6">
         Edit {params.pageId.charAt(0).toUpperCase() + params.pageId.slice(1)} Page
       </h1>
@@ -132,6 +159,6 @@ export default function AdminPageEditor({ params }: { params: { pageId: string }
           Save Changes
         </Button>
       </form>
-    </div>
+    </AdminLayout>
   );
 }

@@ -9,10 +9,12 @@ import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { OrderModal } from "@/components/OrderModal";
 import { useToast } from "@/hooks/use-toast";
+import { SEOHead } from "@/components/SEOHead";
 
 export default function Menu() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { toast } = useToast();
+  const siteUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
   const { data: menuItems, isLoading: menuLoading, error: menuError } = useQuery<MenuItem[]>({
     queryKey: queryKeys.menu.items,
@@ -48,7 +50,16 @@ export default function Menu() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-16">
+    <>
+      <SEOHead
+        title="Menu - Dapur Dekaka"
+        description="Explore our premium halal dim sum menu. View our selection of steamed dim sum, rice dishes, and signature sauces. Order now for delivery or pickup."
+        keywords="halal dim sum menu, Indonesian dim sum, dim sum delivery Bandung, halal food menu"
+        ogType="website"
+        ogImage="/logo/logo.png"
+        schemaType="WebSite"
+      />
+      <div className="container mx-auto px-4 py-16">
       <div className="max-w-2xl mx-auto text-center mb-12">
         <h1 className="text-4xl font-bold text-gray-900 mb-4">
           {t("menu.title")}
@@ -90,7 +101,7 @@ export default function Menu() {
                   </p>
                   <div className="mt-auto pt-2">
                     <OrderModal
-                      trigger={<Button className="w-full">Pesan</Button>}
+                      trigger={<Button className="w-full">{t('common.buttons.order')}</Button>}
                       menuItem={item}
                     />
                   </div>
@@ -140,7 +151,7 @@ export default function Menu() {
                         {sauce.price && sauce.price.startsWith('RP') ? sauce.price : `RP ${sauce.price}`}
                       </p>
                       <OrderModal
-                        trigger={<Button className="w-full">Pesan</Button>}
+                        trigger={<Button className="w-full">{t('common.buttons.order')}</Button>}
                         menuItem={sauce}
                       />
                     </div>
@@ -152,5 +163,6 @@ export default function Menu() {
         </div>
       )}
     </div>
+    </>
   );
 }

@@ -40,10 +40,15 @@ const upload = multer({
 
 export const menuRouter = Router();
 
+const setPublicCacheHeaders = (res: Response) => {
+  res.set("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=86400");
+};
+
 // Get all menu items
 menuRouter.get("/items", async (_req, res) => {
   try {
     const items = await storage.getAllMenuItems();
+    setPublicCacheHeaders(res);
     res.status(200).json(ok(items));
   } catch (err) {
     logger.error("Failed to fetch menu items", { error: err instanceof Error ? err.message : String(err) });
@@ -55,6 +60,7 @@ menuRouter.get("/items", async (_req, res) => {
 menuRouter.get("/sauces", async (_req, res) => {
   try {
     const allSauces = await storage.getAllSauces();
+    setPublicCacheHeaders(res);
     res.status(200).json(ok(allSauces));
   } catch (err) {
     logger.error("Failed to fetch sauces", { error: err instanceof Error ? err.message : String(err) });

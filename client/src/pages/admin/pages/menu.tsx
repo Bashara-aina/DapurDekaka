@@ -8,10 +8,12 @@ import { MenuItem, Sauce } from "@shared/schema";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Loader2, Plus, MoveVertical, Edit, Trash } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import AdminNavbar from "@/components/layout/admin-navbar";
+import AdminLayout from "@/components/layout/AdminLayout";
+import { useAuth } from "@/hooks/useAuth";
 import { queryKeys, apiRequest } from "@/lib/queryClient";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +44,7 @@ import { SortableItem, DragHandle } from "@/components/ui/SortableItem";
 type FormFieldValue = string | File;
 
 export default function AdminMenuPage() {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [editingSauce, setEditingSauce] = useState<Sauce | null>(null);
@@ -188,14 +191,16 @@ export default function AdminMenuPage() {
     }
   };
 
-  const { data: menuItems, isLoading: menuLoading } = useQuery<MenuItem[]>({
+  const { data: menuItems, isLoading: menuLoading, isError: menuError } = useQuery<MenuItem[]>({
     queryKey: queryKeys.menu.items,
-    queryFn: () => apiRequest<MenuItem[]>("/api/menu/items")
+    queryFn: () => apiRequest<MenuItem[]>("/api/menu/items"),
+    enabled: !!isAuthenticated,
   });
 
-  const { data: sauces, isLoading: saucesLoading } = useQuery<Sauce[]>({
+  const { data: sauces, isLoading: saucesLoading, isError: saucesError } = useQuery<Sauce[]>({
     queryKey: queryKeys.menu.sauces,
-    queryFn: () => apiRequest<Sauce[]>("/api/menu/sauces")
+    queryFn: () => apiRequest<Sauce[]>("/api/menu/sauces"),
+    enabled: !!isAuthenticated,
   });
   
   useEffect(() => {
@@ -374,19 +379,37 @@ export default function AdminMenuPage() {
     }
   };
 
-  if (menuLoading || saucesLoading) {
+  if (authLoading || menuLoading || saucesLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
+      <AdminLayout>
+        <AdminPageSkeleton title="Menu Management" showCards scrollAreaHeight="h-[600px]" />
+      </AdminLayout>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  if (menuError || saucesError) {
+    return (
+      <AdminLayout>
+        <div className="flex flex-col items-center justify-center min-h-[400px]">
+          <p className="text-muted-foreground mb-4">Failed to load menu data. Please try again.</p>
+          <Button onClick={() => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.menu.items });
+            queryClient.invalidateQueries({ queryKey: queryKeys.menu.sauces });
+          }}>
+            Retry
+          </Button>
+        </div>
+      </AdminLayout>
     );
   }
 
   return (
-    <>
-      <AdminNavbar />
-      <div className="container mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
+    <AdminLayout>
+      <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Menu Management</h1>
           <Button onClick={() => setIsEditing(true)}>
             <Plus className="w-4 h-4 mr-2" />
@@ -599,7 +622,6 @@ export default function AdminMenuPage() {
             </DndContext>
           </TabsContent>
         </Tabs>
-      </div>
       <Dialog open={!!editingItem} onOpenChange={() => setEditingItem(null)}>
         <DialogContent>
           <DialogHeader>
@@ -712,6 +734,6 @@ export default function AdminMenuPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </AdminLayout>
   );
 }

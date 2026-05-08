@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useEffect, useState } from "react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface SocialLink {
   id: string;
@@ -29,28 +29,21 @@ interface FooterContent {
 }
 
 export default function Footer() {
-  const [footerData, setFooterData] = useState<FooterContent | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { t } = useLanguage();
 
-  // Fetch footer data directly to ensure it's always fresh
-  useEffect(() => {
-    async function fetchFooterData() {
-      try {
-        setIsLoading(true);
-        const response = await fetch("/api/pages/footer");
-        if (response.ok) {
-          const data = await response.json();
-          setFooterData(data.content);
-        }
-      } catch (error) {
-        console.error("Failed to fetch footer data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
+  const { data: response, isLoading } = useQuery<{ success: boolean; content?: FooterContent }>({
+    queryKey: ["pages", "footer"],
+    queryFn: async () => {
+      const resp = await fetch("/api/pages/footer");
+      if (!resp.ok) throw new Error("Failed to fetch footer");
+      return resp.json();
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
 
-    fetchFooterData();
-  }, []);
+  const footerData = response?.content ?? null;
 
   const renderSocialIcon = (icon: string) => {
     switch (icon) {

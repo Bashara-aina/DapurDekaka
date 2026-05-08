@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { PageContent } from "@shared/schema";
 import { SEOHead } from "@/components/SEOHead";
 import { ImageOptimizer } from "@/components/ImageOptimizer";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface Feature {
   id: string;
@@ -25,6 +26,7 @@ interface AboutContent {
 }
 
 export default function About() {
+  const { t } = useLanguage();
   const { data: pageData, isLoading } = useQuery<PageContent>({
     queryKey: ["/api/pages/about"],
     queryFn: async () => {
@@ -35,37 +37,37 @@ export default function About() {
   });
 
   const defaultContent: AboutContent = {
-    title: "About Dapur Dekaka",
-    description: "Learn about our journey, values, and the premium quality ingredients we use at Dapur Dekaka",
+    title: t('about.default.pageTitle'),
+    description: t('about.default.pageSubtitle'),
     mainImage: "/asset/28.jpg",
-    mainDescription: "Dapur Dekaka adalah produsen frozen food dimsum berbagai varian. Berlokasi di Bandung, kami telah mendistribusikan produk sampai ke Jakarta, Bekasi, Tangerang, dan Palembang. Produk kami dibuat dengan resep khas turun temurun yang sudah lebih dari 5 tahun, alur produksinya memperhatikan keamanan pangan, kebersihan terjamin, tidak pakai pengawet, tidak pakai pewarna buatan. Prioritas kami terhadap konsistensi kualitas menjadikan kami selalu dipercaya oleh restoran, kafe, reseller, dan para pengusaha sebagai mitra.",
+    mainDescription: t('about.default.mainDescription'),
     sections: [{
-      title: "Di Dapur Dekaka",
-      description: "Di Dapur Dekaka, kami sangat bersemangat untuk menghadirkan cita rasa otentik dim sum buatan tangan ke meja Anda. Berbasis di Bandung, kami bangga memberikan produk berkualitas tinggi yang menonjol karena rasa dan integritasnya. Inilah alasan mengapa Anda harus memilih kami:"
+      title: t('about.story.title'),
+      description: t('about.default.sectionDescription')
     }],
     features: [
       {
         id: "premium",
-        title: "Bahan-bahan Premium",
-        description: "Kami hanya menggunakan bahan-bahan terbaik untuk memastikan rasa dan kualitas yang luar biasa.",
+        title: t('about.features.premiumMaterials'),
+        description: t('about.features.premiumMaterialsDesc'),
         image: "/asset/17.jpg"
       },
       {
         id: "handmade",
-        title: "Keunggulan Buatan Tangan",
-        description: "Setiap potongan dim sum dibuat dengan hati-hati, mempertahankan sentuhan tradisional.",
+        title: t('about.features.handcrafted'),
+        description: t('about.features.handcraftedDesc'),
         image: "/asset/19.jpg"
       },
       {
         id: "halal",
-        title: "Bersertifikat Halal",
-        description: "Nikmati produk kami dengan tenang, karena telah memenuhi standar halal tertinggi.",
+        title: t('about.features.halal'),
+        description: t('about.features.halalDesc'),
         image: "/asset/21.jpg"
       },
       {
         id: "preservative",
-        title: "Tanpa Pengawet",
-        description: "Kesegaran dan rasa alami adalah prioritas kami, tanpa bahan pengawet.",
+        title: t('about.features.noPreservatives'),
+        description: t('about.features.noPreservativesDesc'),
         image: "/asset/23.jpg"
       }
     ]
@@ -192,7 +194,7 @@ export default function About() {
           className="text-center mt-16"
         >
           <p className="text-2xl text-gray-600">
-            Rasakan perbedaannya dengan dim sum kami yang autentik, beraroma, dan sehat hari ini!
+            {t('about.cta')}
           </p>
         </motion.div>
       </div>

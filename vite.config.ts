@@ -4,7 +4,6 @@ import themePlugin from "@replit/vite-plugin-shadcn-theme-json";
 import path, { dirname } from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { fileURLToPath } from "url";
-// import bundleVisualizer from "vite-bundle-visualizer";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -13,10 +12,6 @@ export default defineConfig({
     react(),
     runtimeErrorOverlay(),
     themePlugin(),
-    // bundleVisualizer({
-    //   filename: "./dist/bundle-report.html",
-    //   open: false,
-    // }),
   ],
   resolve: {
     alias: {
@@ -28,6 +23,7 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
+    cssCodeSplit: false,
     rollupOptions: {
       output: {
         manualChunks: {
@@ -38,6 +34,7 @@ export default defineConfig({
             "clsx",
             "tailwind-merge",
             "tailwindcss-animate",
+            "tailwindcss",
           ],
           motion: ["framer-motion"],
           carousel: ["embla-carousel-react", "embla-carousel-autoplay"],
@@ -47,4 +44,5 @@ export default defineConfig({
       },
     },
   },
+  assetsInclude: ["**/*.jpg", "**/*.jpeg", "**/*.png", "**/*.webp", "**/*.avif"],
 });

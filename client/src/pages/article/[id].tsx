@@ -76,8 +76,8 @@ export default function ArticleDetail() {
   if (!post) return (
     <div className="container mx-auto py-16 px-4">
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900">Article not found</h1>
-        <p className="mt-2 text-gray-600">The article you're looking for doesn't exist or has been removed.</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('article.notFound')}</h1>
+        <p className="mt-2 text-gray-600">{t('article.notFoundDesc')}</p>
         <Link href="/articles" className="mt-6 inline-block">
           <Button className="flex items-center gap-2">
             <ArrowLeft className="h-4 w-4" />
@@ -125,14 +125,43 @@ export default function ArticleDetail() {
         description={metaDescription}
         keywords={`halal dim sum, Dapur Dekaka, ${post.title}, food article, dim sum recipes`}
         ogType="article"
-        ogImage={post.imageUrl || "/asset/1.jpg"}
+        ogImage={post.imageUrl || "/logo/logo.png"}
         twitterCard="summary_large_image"
-        canonicalUrl={typeof window !== 'undefined' ? window.location.href : ''}
+        canonicalUrl={`/article/${post.id}`}
+        articlePublishedTime={new Date(post.createdAt).toISOString()}
+        articleAuthor={post.authorName || "Dapur Dekaka"}
+        articleSection={post.category || "Food"}
+        schemaData={articleSchema}
       />
 
       {/* Add structured data for better search engine understanding */}
       <script type="application/ld+json">
-        {JSON.stringify(articleSchema)}
+        {JSON.stringify([
+          articleSchema,
+          {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": typeof window !== 'undefined' ? window.location.origin : ''
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Articles",
+                "item": typeof window !== 'undefined' ? `${window.location.origin}/articles` : ''
+              },
+              {
+                "@type": "ListItem",
+                "position": 3,
+                "name": post.title
+              }
+            ]
+          }
+        ])}
       </script>
 
       <div className="container mx-auto py-10 px-4">
@@ -225,7 +254,7 @@ export default function ArticleDetail() {
           <footer className="mt-12 pt-6 border-t border-gray-200">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <p className="text-gray-600">
-                Thanks for reading! Share this article:
+                {t('article.thanksReading')}
               </p>
               <div className="flex gap-3">
                 <Button
@@ -241,13 +270,13 @@ export default function ArticleDetail() {
                       }).catch(err => console.error('Error sharing:', err));
                     } else {
                       navigator.clipboard.writeText(window.location.href)
-                        .then(() => alert('Link copied to clipboard!'))
+                        .then(() => alert(t('article.linkCopied')))
                         .catch(err => console.error('Failed to copy:', err));
                     }
                   }}
                 >
                   <Share2 className="h-4 w-4" />
-                  Share
+                  {t('article.share')}
                 </Button>
                 <Link href="/articles">
                   <Button size="sm">{t("articles.backToList")}</Button>

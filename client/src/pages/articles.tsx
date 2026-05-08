@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BlogPost } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,8 @@ import { ImageOptimizer } from "@/components/ImageOptimizer";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useDebounce } from "@/hooks/useDebounce";
 
 interface BlogListResponse {
   success: boolean;
@@ -22,28 +24,80 @@ interface BlogListResponse {
   };
 }
 
-// Helper function to sanitize HTML content
 function stripHtml(html: string): string {
   return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function ArticleCardSkeleton() {
+  return (
+    <Card className="h-full">
+      <Skeleton className="aspect-video rounded-t-lg" />
+      <CardHeader>
+        <div className="flex items-center gap-2 mb-2">
+          <Skeleton className="h-5 w-20" />
+        </div>
+        <Skeleton className="h-6 w-3/4" />
+        <div className="flex items-center gap-3 mt-2">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-4 w-16" />
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Skeleton className="h-4 w-full mb-2" />
+        <Skeleton className="h-4 w-2/3" />
+      </CardContent>
+    </Card>
+  );
+}
+
+function ErrorState({ onRetry, t }: { onRetry: () => void; t: (key: string) => string }) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+      <p className="text-gray-600">Failed to load articles. Please try again.</p>
+      <Button onClick={onRetry} variant="outline">
+        {t('common.buttons.retry')}
+      </Button>
+    </div>
+  );
+}
+
+function EmptyState({ searchTerm }: { searchTerm: string }) {
+  return (
+    <div className="text-center py-16">
+      <Search className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+      <p className="text-gray-600 mb-2">
+        {searchTerm
+          ? `No articles found matching "${searchTerm}"`
+          : "No articles available yet."}
+      </p>
+      {searchTerm && (
+        <Link href="/articles">
+          <Button variant="link">Clear search</Button>
+        </Link>
+      )}
+    </div>
+  );
 }
 
 export default function Articles() {
   const { t, language } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredPosts, setFilteredPosts] = useState<BlogPost[]>([]);
   const [page, setPage] = useState(1);
   const [category, setCategory] = useState<string | undefined>();
   const [totalPages, setTotalPages] = useState(1);
 
+  const debouncedSearch = useDebounce(searchTerm, 300);
   const limit = 6;
 
-  const { data: response, isLoading, error } = useQuery<BlogListResponse>({
-    queryKey: ["/api/blog", page, limit, category],
+  const { data: response, isLoading, error, refetch } = useQuery<BlogListResponse>({
+    queryKey: ["/api/blog", page, limit, category, debouncedSearch],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.set('page', String(page));
       params.set('limit', String(limit));
       if (category) params.set('category', category);
+      if (debouncedSearch) params.set('search', debouncedSearch);
+
       const response = await fetch(`/api/blog?${params.toString()}`, {
         headers: { 'Cache-Control': 'max-age=300' }
       });
@@ -57,79 +111,51 @@ export default function Articles() {
     refetchOnWindowFocus: false
   });
 
-  // Filter posts based on search term (client-side filter on current page)
-  useEffect(() => {
-    if (!response?.data) return;
+  const filteredPosts = response?.data || [];
 
-    const posts = response.data;
-
-    if (!searchTerm.trim()) {
-      setFilteredPosts(posts);
-      return;
-    }
-
-    const normalizedSearch = searchTerm.toLowerCase().trim();
-    const filtered = posts.filter(post =>
-      post.title.toLowerCase().includes(normalizedSearch) ||
-      (post.excerpt && post.excerpt.toLowerCase().includes(normalizedSearch)) ||
-      stripHtml(post.content).toLowerCase().includes(normalizedSearch)
-    );
-
-    setFilteredPosts(filtered);
-  }, [response, searchTerm]);
-
-  // Update total pages when response changes
   useEffect(() => {
     if (response?.meta?.totalPages) {
       setTotalPages(response.meta.totalPages);
     }
   }, [response]);
 
-  // Scroll to top when component mounts or page changes
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [page]);
 
-  // Schema markup for article list page
-  const blogListSchema = {
-    "@context": "https://schema.org",
-    "@type": "Blog",
-    "name": "Dapur Dekaka Blog",
-    "description": "Discover delicious dim sum recipes, cooking tips, and food culture articles",
-    "url": typeof window !== 'undefined' ? window.location.href : '',
-    "publisher": {
-      "@type": "Organization",
-      "name": "Dapur Dekaka",
-      "logo": {
-        "@type": "ImageObject",
-        "url": typeof window !== 'undefined' ? `${window.location.origin}/logo/logo.png` : ''
-      }
-    },
-    "blogPosts": filteredPosts?.map(post => ({
-      "@type": "BlogPosting",
-      "headline": post.title,
-      "datePublished": new Date(post.createdAt).toISOString(),
-      "dateModified": new Date(post.updatedAt || post.createdAt).toISOString(),
-      "mainEntityOfPage": {
-        "@type": "WebPage",
-        "@id": typeof window !== 'undefined' ? `${window.location.origin}/article/${post.id}` : ''
-      },
-      "author": {
-        "@type": "Person",
-        "name": post.authorName || "Dapur Dekaka"
-      },
-      "image": post.imageUrl ? (
-        typeof window !== 'undefined' ? `${window.location.origin}${post.imageUrl}` : ''
-      ) : undefined
-    }))
-  };
+  useEffect(() => {
+    setPage(1);
+  }, [category, debouncedSearch]);
 
-  // Loading state
-  if (isLoading) return (
-    <div className="flex justify-center items-center min-h-screen">
-      <Loader2 className="h-12 w-12 animate-spin border-t-2 border-b-2 border-primary" />
-    </div>
-  );
+  const schemaBlogPosts = useMemo(() => filteredPosts.map(post => ({
+    "@type": "BlogPosting",
+    "headline": post.title,
+    "datePublished": new Date(post.createdAt).toISOString(),
+    "dateModified": new Date(post.updatedAt || post.createdAt).toISOString(),
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": `${typeof window !== 'undefined' ? window.location.origin : ''}/article/${post.id}`
+    },
+    "author": {
+      "@type": "Person",
+      "name": post.authorName || "Dapur Dekaka"
+    },
+    "image": post.imageUrl ? `${typeof window !== 'undefined' ? window.location.origin : ''}${post.imageUrl}` : undefined
+  })), [filteredPosts]);
+
+  if (error) {
+    return (
+      <>
+        <SEOHead
+          title="Blog & Articles - Dapur Dekaka"
+          description="Discover premium halal dim sum recipes, cooking tips, and food culture articles from Dapur Dekaka"
+          ogType="website"
+          ogImage="/logo/logo.png"
+        />
+        <ErrorState onRetry={() => refetch()} t={t} />
+      </>
+    );
+  }
 
   return (
     <>
@@ -138,31 +164,45 @@ export default function Articles() {
         description="Discover premium halal dim sum recipes, cooking tips, and food culture articles from Dapur Dekaka"
         keywords="halal dim sum, Dapur Dekaka blog, dim sum recipes, Indonesian food, cooking tips, food articles"
         ogType="website"
-        ogImage="/asset/1.jpg"
+        ogImage="/logo/logo.png"
         twitterCard="summary_large_image"
+        canonicalUrl={page > 1 ? `/articles?page=${page}` : undefined}
+        schemaType="WebSite"
       />
 
-      {/* Add structured data for better search engine understanding */}
       <script type="application/ld+json">
-        {JSON.stringify(blogListSchema)}
+        {JSON.stringify([{
+          "@context": "https://schema.org",
+          "@type": "Blog",
+          "name": "Dapur Dekaka Blog",
+          "description": "Discover delicious dim sum recipes, cooking tips, and food culture articles",
+          "url": typeof window !== 'undefined' ? window.location.href : '',
+          "publisher": {
+            "@type": "Organization",
+            "name": "Dapur Dekaka",
+            "logo": {
+              "@type": "ImageObject",
+              "url": typeof window !== 'undefined' ? `${window.location.origin}/logo/logo.png` : ''
+            }
+          },
+          "blogPosts": schemaBlogPosts
+        }])}
       </script>
 
       <div className="container mx-auto py-16 px-4">
-        {/* Page header with search functionality */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-12 gap-4">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Blog & Articles</h1>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">{t('articles.title')}</h1>
             <p className="text-gray-600 max-w-2xl">
-              Explore our collection of articles about dim sum recipes, food culture, and cooking tips
+              {t('articles.subtitle')}
             </p>
           </div>
 
-          {/* Search box */}
           <div className="relative w-full md:w-64">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
               type="search"
-              placeholder="Search articles..."
+              placeholder={t('common.placeholders.searchArticles')}
               className="pl-10 pr-4"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -171,7 +211,6 @@ export default function Articles() {
           </div>
         </div>
 
-        {/* Category filter tabs */}
         <div className="flex flex-wrap gap-2 mb-8">
           <Button
             variant={category === undefined ? "default" : "outline"}
@@ -193,14 +232,14 @@ export default function Articles() {
           ))}
         </div>
 
-        {/* Show search result count when filtering */}
-        {searchTerm && (
+        {debouncedSearch && (
           <p className="mb-6 text-gray-500" role="status" aria-live="polite">
-            Found {filteredPosts.length} articles matching "{searchTerm}"
+            {language === 'id'
+              ? `Ditemukan ${filteredPosts.length} artikel yang sesuai dengan "${debouncedSearch}"`
+              : `Found ${filteredPosts.length} articles matching "${debouncedSearch}"`}
           </p>
         )}
 
-        {/* Pagination info */}
         {response?.meta && (
           <p className="mb-6 text-sm text-gray-500">
             {language === 'id' ? 'Menampilkan' : 'Showing'} {filteredPosts.length}{' '}
@@ -209,8 +248,13 @@ export default function Articles() {
           </p>
         )}
 
-        {/* Article grid */}
-        {filteredPosts.length > 0 ? (
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <ArticleCardSkeleton key={i} />
+            ))}
+          </div>
+        ) : filteredPosts.length > 0 ? (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredPosts.map((post, index) => (
@@ -294,7 +338,6 @@ export default function Articles() {
               ))}
             </div>
 
-            {/* Pagination controls */}
             {totalPages > 1 && (
               <div className="flex justify-center items-center gap-2 mt-12">
                 <Button
@@ -320,9 +363,7 @@ export default function Articles() {
             )}
           </>
         ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-600 mb-4">No articles found matching your search criteria.</p>
-          </div>
+          <EmptyState searchTerm={debouncedSearch} />
         )}
       </div>
     </>

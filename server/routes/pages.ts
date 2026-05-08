@@ -122,18 +122,24 @@ async function ensureDirectories() {
   }
 }
 
-// Add strict no-cache headers and debug logging
-const setNoCacheHeaders = (res: Response) => {
-  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-  res.set('Pragma', 'no-cache');
-  res.set('Expires', '0');
-  res.set('Surrogate-Control', 'no-store');
-  res.set('ETag', Date.now().toString()); // Force new ETag on every request
+// Cache-control helpers for public and admin routes
+const setPublicCacheHeaders = (res: Response) => {
+  // Allow Vercel's edge cache and browsers to reuse homepage data briefly,
+  // while still revalidating in the background to keep it fresh.
+  res.set("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=86400");
 };
 
-pagesRouter.get("/homepage", async (req, res) => {
-  // Apply stronger no-cache headers
-  setNoCacheHeaders(res);
+const setNoCacheHeaders = (res: Response) => {
+  // Used on admin mutation routes so editors always see fresh data.
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
+  res.set("Surrogate-Control", "no-store");
+};
+
+pagesRouter.get("/homepage", async (_req, res) => {
+  // Allow public homepage config to be cached at the edge to reduce Fast Origin Transfer usage
+  setPublicCacheHeaders(res);
 
   // Fetch fresh from DB each time
   let homepageData: HomepageConfig = { ...defaultHomepageConfig };
@@ -169,17 +175,7 @@ pagesRouter.get("/homepage", async (req, res) => {
     // Use default on error
   }
 
-  // Add logo version parameter to force client refresh
-  const configWithTimestamp = {
-    ...homepageData,
-    timestamp: Date.now(),
-    logo: homepageData.logo ?
-      (homepageData.logo.includes('?') ? homepageData.logo : `${homepageData.logo}?t=${Date.now()}`) :
-      homepageData.logo
-  };
-
-  logger.debug('[GET] Sending homepage data');
-  res.status(200).json(ok(configWithTimestamp));
+  res.status(200).json(ok(homepageData));
 });
 
 // Add handler for customer logo uploads and processing
@@ -427,10 +423,8 @@ pagesRouter.put("/homepage", requireAuth, requireAdmin, upload.fields([
         return res.status(500).json(error("WRITE_FAILED", `Failed to save logo file: ${message}`, 500));
       }
 
-      // Generate a timestamp to force cache invalidation
-      const timestamp = Date.now();
-      // Set the logo path with timestamp for cache busting
-      homepageConfig.logo = `/logo/logo.png?t=${timestamp}`;
+      // Set the logo path with stable version for CDN cache
+      homepageConfig.logo = `/logo/logo.png?v=1`;
 
       // Clean up temp file
       try {

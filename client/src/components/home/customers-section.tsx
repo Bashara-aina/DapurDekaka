@@ -1,6 +1,6 @@
 import { useLanguage } from "@/lib/i18n/LanguageContext";
-import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 interface CustomersData {
   title: string;
@@ -10,72 +10,20 @@ interface CustomersData {
 
 export default function CustomersSection() {
   const { t } = useLanguage();
-  const [customersData, setCustomersData] = useState<CustomersData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  
-  // Fetch data directly to ensure it's always fresh
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        setIsLoading(true);
-        const response = await fetch(`/api/pages/homepage`, {
-          method: "GET",
-          headers: {
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache",
-            "Expires": "0"
-          },
-        });
-        
-        if (!response.ok) throw new Error("Failed to fetch homepage data");
-        const pageData = await response.json();
-        
-        // Debug log to see what's being received
-        console.log("Customer logos from API:", pageData?.content?.customers?.logos);
-        
-        // Extract customers section data
-        if (pageData?.content?.customers) {
-          setCustomersData({
-            title: pageData.content.customers.title || "Our Customers",
-            subtitle: pageData.content.customers.subtitle || "Trusted by businesses across Indonesia",
-            logos: pageData.content.customers.logos || [
-              "/logo/logo.png",
-              "/logo/halal.png",
-              "/logo/logo.png", 
-              "/logo/halal.png"
-            ]
-          });
-          
-          // Debug log to see what's being set in state
-          console.log("Customer logos set in state:", pageData.content.customers.logos);
-        } else {
-          // Default data if not available
-          setCustomersData({
-            title: "Our Customers",
-            subtitle: "Trusted by businesses across Indonesia",
-            logos: [
-              "/logo/logo.png",
-              "/logo/halal.png",
-              "/logo/logo.png",
-              "/logo/halal.png"
-            ]
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching customers data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    
-    fetchData();
-  }, []);
 
-  // Function to handle image load errors
-  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>, logo: string) => {
-    console.error(`Failed to load customer logo: ${logo}`);
-    e.currentTarget.src = '/logo/logo.png'; // Fallback image
-  };
+  const { data: pageData, isLoading, isError } = useQuery<{ success: boolean; content?: { customers: CustomersData } }>({
+    queryKey: ["pages", "homepage"],
+    queryFn: async () => {
+      const response = await fetch("/api/pages/homepage");
+      if (!response.ok) throw new Error("Failed to fetch homepage data");
+      return response.json();
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  const customersData = pageData?.content?.customers ?? null;
 
   if (isLoading) {
     return (
@@ -87,27 +35,22 @@ export default function CustomersSection() {
     );
   }
 
-  // Ensure we have data
-  const content = customersData || {
-    title: "Our Customers",
-    subtitle: "Trusted by businesses across Indonesia",
-    logos: ["/logo/logo.png", "/logo/halal.png", "/logo/logo.png", "/logo/halal.png"]
-  };
-
-  // Don't render if no logos available
-  if (!content.logos || content.logos.length === 0) {
+  if (isError || !customersData) {
     return null;
   }
+
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>, logo: string) => {
+    e.currentTarget.src = '/logo/logo.png';
+  };
 
   return (
     <section className="py-12 bg-gray-50">
       <div className="container mx-auto px-4">
         <div className="text-center mb-10">
-          <h2 className="text-3xl font-bold text-gray-900">{content.title}</h2>
-          <p className="text-gray-600 mt-2">{content.subtitle}</p>
+          <h2 className="text-3xl font-bold text-gray-900">{customersData.title}</h2>
+          <p className="text-gray-600 mt-2">{customersData.subtitle}</p>
         </div>
 
-        {/* Customer Logos with enhanced scrolling effect */}
         <div className="relative overflow-hidden">
           <style dangerouslySetInnerHTML={{ __html: `
             @keyframes scrollX {
@@ -126,31 +69,29 @@ export default function CustomersSection() {
 
           <div className="overflow-hidden w-full relative">
             <div className="logo-marquee">
-              {/* First set of logos */}
-              {content.logos.map((logo: string, index: number) => (
-                <div 
-                  key={`logo-1-${index}`} 
+              {customersData.logos.map((logo: string, index: number) => (
+                <div
+                  key={`logo-1-${index}`}
                   className="flex-none mx-4 md:mx-8 p-2"
                   style={{ minWidth: "150px" }}
                 >
-                  <img 
-                    src={logo} 
+                  <img
+                    src={logo}
                     alt={`Customer logo ${index + 1}`}
                     className="h-20 md:h-24 w-auto mx-auto object-contain hover:scale-110 transition-all duration-300"
                     onError={(e) => handleImageError(e, logo)}
                   />
                 </div>
               ))}
-              
-              {/* Duplicate set for seamless looping */}
-              {content.logos.map((logo: string, index: number) => (
-                <div 
-                  key={`logo-2-${index}`} 
+
+              {customersData.logos.map((logo: string, index: number) => (
+                <div
+                  key={`logo-2-${index}`}
                   className="flex-none mx-4 md:mx-8 p-2"
                   style={{ minWidth: "150px" }}
                 >
-                  <img 
-                    src={logo} 
+                  <img
+                    src={logo}
                     alt={`Customer logo ${index + 1}`}
                     className="h-20 md:h-24 w-auto mx-auto object-contain hover:scale-110 transition-all duration-300"
                     onError={(e) => handleImageError(e, logo)}

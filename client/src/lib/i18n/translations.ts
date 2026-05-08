@@ -85,7 +85,14 @@ export const translations = {
         send: "Kirim Pesan"
       }
     },
-    articles: {
+    blog: {
+      pageTitle: "Blog & Artikel - Dapur Dekaka",
+      pageDescription: "Temukan artikel resep dimsum halal premium, tips memasak, dan budaya kuliner dari Dapur Dekaka",
+      metaKeywords: "dimsum halal, blog Dapur Dekaka, resep dimsum, masakan Indonesia, tips memasak, artikel kuliner",
+      title: "Blog & Artikel",
+      subtitle: "Jelajahi koleksi artikel kami tentang resep dimsum, budaya kuliner, dan tips memasak",
+      noResults: "Tidak ada artikel yang sesuai dengan pencarian Anda.",
+      foundResults: "Ditemukan {n} artikel yang sesuai dengan \"{searchTerm}\"",
       readTime: "{minutes} menit membaca",
       publishedOn: "Dipublikasikan pada {date}",
       relatedArticles: "Artikel Terkait",
@@ -105,7 +112,7 @@ export const translations = {
         }
       }
     },
-    about: {
+    article: {
       title: "Tentang Kami",
       story: {
         title: "Cerita Kami",
@@ -191,16 +198,7 @@ export const translations = {
         messagePlaceholder: "Tulis pesan Anda di sini..."
       }
     },
-    articles: {
-      pageTitle: "Blog & Artikel - Dapur Dekaka",
-      pageDescription: "Temukan artikel resep dimsum halal premium, tips memasak, dan budaya kuliner dari Dapur Dekaka",
-      metaKeywords: "dimsum halal, blog Dapur Dekaka, resep dimsum, masakan Indonesia, tips memasak, artikel kuliner",
-      title: "Blog & Artikel",
-      subtitle: "Jelajahi koleksi artikel kami tentang resep dimsum, budaya kuliner, dan tips memasak",
-      noResults: "Tidak ada artikel yang sesuai dengan pencarian Anda.",
-      foundResults: "Ditemukan {n} artikel yang sesuai dengan \"{searchTerm}\""
-    },
-    article: {
+    about: {
       notFound: "Artikel Tidak Ditemukan",
       notFoundDesc: "Artikel yang Anda cari tidak ada atau telah dihapus.",
       backToArticles: "Kembali ke Artikel",
@@ -225,56 +223,186 @@ export const translations = {
       },
       dashboard: {
         title: "Admin Dashboard",
-        welcome: "Welcome to Admin Panel",
+        welcome: "Selamat datang di Panel Admin",
         pages: "Pages",
         blog: "Blog",
         orders: "Orders",
         settings: "Settings"
       },
       pages: {
-        title: "Page Management",
-        home: "Homepage",
-        about: "About Page",
-        menu: "Menu Page",
-        contact: "Contact Page",
+        title: "Manajemen Halaman",
+        home: "Halaman Beranda",
+        about: "Halaman Tentang",
+        menu: "Halaman Menu",
+        contact: "Halaman Kontak",
         footer: "Footer",
-        footerDesc: "Edit website footer content",
-        customers: "Customers Section",
-        customersDesc: "Edit customer testimonials and partner logos",
+        footerDesc: "Edit konten footer website",
+        customers: "Bagian Pelanggan",
+        customersDesc: "Edit testimonial pelanggan dan logo partner",
         edit: "Edit {page}",
-        save: "Save Changes",
-        cancel: "Cancel",
-        success: "Changes saved successfully",
-        error: "Failed to save changes"
+        save: "Simpan Perubahan",
+        cancel: "Batal",
+        success: "Perubahan berhasil disimpan",
+        error: "Gagal menyimpan perubahan"
       },
       blog: {
-        title: "Blog Posts",
-        createNew: "Create New Post",
-        editPost: "Edit Blog Post",
-        createPost: "Create Blog Post",
-        backToPosts: "Back to Posts",
-        updatePost: "Update Post",
-        moveUp: "Move post up",
-        moveDown: "Move post down",
-        loggedIn: "Logged In",
-        loggedOut: "Logged Out",
-        useArrowsToReorder: "Use up and down buttons to change post order.",
-        published: "Publish",
-        titleLabel: "Title *",
-        titlePlaceholder: "Enter blog post title",
-        imageLabel: "Image",
-        contentLabel: "Content *",
-        deleteConfirm: "Are you sure you want to delete this post?",
-        excerptLabel: "Excerpt",
-        excerptPlaceholder: "Brief summary for previews...",
-        authorNameLabel: "Author Name",
-        authorNamePlaceholder: "Author name...",
+        title: "Artikel Blog",
+        createNew: "Buat Artikel Baru",
+        editPost: "Edit Artikel",
+        createPost: "Buat Artikel",
+        backToPosts: "Kembali ke Artikel",
+        updatePost: "Perbarui Artikel",
+        moveUp: "Pindahkan ke atas",
+        moveDown: "Pindahkan ke bawah",
+        loggedIn: "Terdaftar",
+        loggedOut: "Keluar",
+        useArrowsToReorder: "Gunakan tombol atas dan bawah untuk mengubah urutan artikel.",
+        published: "Publikasikan",
+        titleLabel: "Judul *",
+        titlePlaceholder: "Masukkan judul artikel",
+        imageLabel: "Gambar",
+        contentLabel: "Konten *",
+        deleteConfirm: "Apakah Anda yakin ingin menghapus artikel ini?",
+        excerptLabel: "Kutipan",
+        excerptPlaceholder: "Ringkasan singkat untuk pratinjau...",
+        authorNameLabel: "Nama Penulis",
+        authorNamePlaceholder: "Nama penulis...",
         slugLabel: "URL Slug",
-        slugPlaceholder: "auto-generated-from-title",
-        categoryLabel: "Category",
-        categoryPlaceholder: "Select or type category",
-        featuredLabel: "Featured",
-        readTimeLabel: "Estimated read time"
+        slugPlaceholder: "diubah-dari-judul",
+        categoryLabel: "Kategori",
+        categoryPlaceholder: "Pilih atau ketik kategori",
+        featuredLabel: "Unggulan",
+        readTimeLabel: "Waktu baca perkiraan",
+        order: "Urutan",
+        edit: "Edit Artikel",
+        delete: "Hapus Artikel",
+        created: "Artikel berhasil dibuat",
+        updated: "Artikel berhasil diperbarui",
+        deleted: "Artikel berhasil dihapus",
+        reordered: "Artikel berhasil diurutkan ulang",
+        moveFailed: "Gagal memindahkan artikel",
+        reorderFailed: "Gagal mengurutkan ulang artikel"
+      },
+      index: {
+        managePages: "Kelola halaman dan konten website",
+        manageBlog: "Kelola artikel blog"
+      },
+      common: {
+        pageEditor: "Editor Halaman",
+        generalInfo: "Informasi Umum",
+        preview: "Pratinjau",
+        saving: "Menyimpan...",
+        reset: "Atur Ulang",
+        success: "Berhasil!",
+        error: "Gagal!",
+        successMsg: "Perubahan berhasil disimpan",
+        errorMsg: "Gagal menyimpan perubahan. Silakan coba lagi.",
+        content: "Konten",
+        images: "Gambar"
+      },
+      contact: {
+        editTitle: "Edit Halaman Kontak",
+        generalInfo: "Informasi Umum",
+        socialContact: "Info Sosial & Kontak",
+        pageTitle: "Judul Halaman",
+        pageDesc: "Deskripsi Halaman",
+        contactInfo: "Informasi Kontak",
+        address: "Alamat",
+        phoneNumber: "Nomor Telepon",
+        email: "Email",
+        openingHours: "Jam Buka",
+        googleMapsUrl: "URL Embed Google Maps",
+        googleMapsHint: "Masukkan URL embed dari Google Maps (atribut src iframe)",
+        whatsAppUrl: "URL Pesan Cepat (WhatsApp)",
+        whatsAppHint: "Masukkan URL WhatsApp (misal: https://wa.me/6282295986407)",
+        socialMedia: "Tautan Media Sosial",
+        followUs: "Ikuti Kami",
+        pagePreview: "Pratinjau Halaman Kontak"
+      },
+      home: {
+        editTitle: "Edit Halaman Beranda",
+        logo: "Logo",
+        carouselText: "Teks Carousel",
+        title: "Judul",
+        subtitle: "Subtitel",
+        carouselImages: "Gambar Carousel"
+      },
+      menu: {
+        management: "Pengelolaan Menu",
+        addItem: "Tambah Item",
+        addNewItem: "Tambah Item Menu Baru",
+        name: "Nama",
+        description: "Deskripsi",
+        price: "Harga",
+        image: "Gambar",
+        namePlaceholder: "Masukkan nama item",
+        descPlaceholder: "Masukkan deskripsi item",
+        pricePlaceholder: "Masukkan harga (misal: Rp 25.000)",
+        dragReorder: "Seret untuk mengubah urutan item menu",
+        dragOrderNote: "Item akan muncul dalam urutan ini di menu publik",
+        dragHere: "Seret ke sini",
+        tabs: {
+          items: "Item Menu",
+          sauces: "Saus"
+        },
+        addSauce: "Tambah Saus",
+        sauceName: "Nama Saus",
+        sauceDesc: "Deskripsi Saus",
+        deleteConfirm: "Apakah Anda yakin?",
+        deleteItemNote: "Tindakan ini tidak dapat dibatalkan. Ini akan menghapus item menu ini secara permanen.",
+        deleteSauceNote: "Tindakan ini tidak dapat dibatalkan. Ini akan menghapus saus ini secara permanen.",
+        editItem: "Edit Item Menu",
+        editSauce: "Edit Saus",
+        creating: "Membuat..."
+      },
+      footer: {
+        editFooter: "Edit Footer",
+        companyName: "Nama Perusahaan",
+        tagline: "Tagline",
+        copyright: "Teks Hak Cipta",
+        platform: "Platform",
+        icon: "Ikon",
+        url: "URL",
+        addSocialLink: "Tambah Tautan Sosial",
+        footerPreview: "Pratinjau Footer"
+      },
+      customers: {
+        section: "Bagian Pelanggan",
+        generalInfo: "Informasi Umum",
+        logos: "Logo Pelanggan",
+        sectionTitle: "Judul Bagian",
+        sectionSubtitle: "Subtitel Bagian",
+        placeholder: {
+          title: "Pelanggan Kami",
+          subtitle: "Dipercaya oleh bisnis di seluruh Indonesia"
+        },
+        uploadHint: "Unggah logo perusahaan untuk ditampilkan di bagian logo pelanggan yang scrolling...",
+        dragReorder: "Seret dan lepas untuk mengubah urutan logo. Klik ikon tempat sampah untuk menghapus.",
+        noLogosYet: "Belum ada logo pelanggan. Unggah beberapa logo untuk memulai.",
+        noLogosDisplay: "Tidak ada logo untuk ditampilkan. Tambahkan logo di tab \"Logo Pelanggan\".",
+        scrollNote: "Di halaman beranda, logo akan muncul dalam animasi scrolling berkelanjutan."
+      },
+      about: {
+        editTitle: "Edit Halaman Tentang",
+        pageDesc: "Edit konten yang ditampilkan di halaman /tentang",
+        tabs: {
+          content: "Konten",
+          images: "Gambar"
+        },
+        pageTitle: "Judul Halaman",
+        mainImage: "Gambar Utama",
+        mainDesc: "Deskripsi Utama",
+        sectionInfo: "Informasi Bagian",
+        sectionTitle: "Judul Bagian",
+        sectionDesc: "Deskripsi Bagian",
+        features: "Fitur",
+        featureTitle: "Judul Fitur",
+        featureDesc: "Deskripsi Fitur",
+        featureImage: "Gambar Fitur",
+        imageUrl: "URL Gambar",
+        imageUrlHint: "Anda dapat mengunggah gambar baru atau memberikan URL langsung",
+        currentImage: "Gambar saat ini:",
+        previewTitle: "Pratinjau Konten Halaman Tentang"
       }
     }
   },
@@ -362,7 +490,14 @@ export const translations = {
         send: "Send Message"
       }
     },
-    articles: {
+    blog: {
+      pageTitle: "Blog & Articles - Dapur Dekaka",
+      pageDescription: "Discover premium halal dim sum recipes, cooking tips, and food culture articles from Dapur Dekaka",
+      metaKeywords: "halal dim sum, Dapur Dekaka blog, dim sum recipes, Indonesian food, cooking tips, food articles",
+      title: "Blog & Articles",
+      subtitle: "Explore our collection of articles about dim sum recipes, food culture, and cooking tips",
+      noResults: "No articles found matching your search criteria.",
+      foundResults: "Found {n} articles matching \"{searchTerm}\"",
       readTime: "{minutes} min read",
       publishedOn: "Published on {date}",
       relatedArticles: "Related Articles",
@@ -382,7 +517,7 @@ export const translations = {
         }
       }
     },
-    about: {
+    article: {
       title: "About Us",
       story: {
         title: "Our Story",
@@ -468,16 +603,7 @@ export const translations = {
         messagePlaceholder: "Write your message here..."
       }
     },
-    articles: {
-      pageTitle: "Blog & Articles - Dapur Dekaka",
-      pageDescription: "Discover premium halal dim sum recipes, cooking tips, and food culture articles from Dapur Dekaka",
-      metaKeywords: "halal dim sum, Dapur Dekaka blog, dim sum recipes, Indonesian food, cooking tips, food articles",
-      title: "Blog & Articles",
-      subtitle: "Explore our collection of articles about dim sum recipes, food culture, and cooking tips",
-      noResults: "No articles found matching your search criteria.",
-      foundResults: "Found {n} articles matching \"{searchTerm}\""
-    },
-    article: {
+    about: {
       notFound: "Article Not Found",
       notFoundDesc: "The article you're looking for doesn't exist or has been removed.",
       backToArticles: "Back to Articles",
@@ -551,7 +677,137 @@ export const translations = {
         categoryLabel: "Category",
         categoryPlaceholder: "Select or type category",
         featuredLabel: "Featured",
-        readTimeLabel: "Estimated read time"
+        readTimeLabel: "Estimated read time",
+        order: "Order",
+        edit: "Edit Post",
+        delete: "Delete Post",
+        created: "Blog post created successfully",
+        updated: "Blog post updated successfully",
+        deleted: "Blog post deleted successfully",
+        reordered: "Blog posts reordered successfully",
+        moveFailed: "Failed to move post up/down",
+        reorderFailed: "Failed to reorder blog posts"
+      },
+      index: {
+        managePages: "Manage website pages and content",
+        manageBlog: "Manage blog posts and articles"
+      },
+      common: {
+        pageEditor: "Page Editor",
+        generalInfo: "General Information",
+        preview: "Preview",
+        saving: "Saving...",
+        reset: "Reset",
+        success: "Success!",
+        error: "Error!",
+        successMsg: "Changes saved successfully",
+        errorMsg: "Failed to save changes. Please try again.",
+        content: "Content",
+        images: "Images"
+      },
+      contact: {
+        editTitle: "Edit Contact Page",
+        generalInfo: "General Information",
+        socialContact: "Social & Contact Info",
+        pageTitle: "Page Title",
+        pageDesc: "Page Description",
+        contactInfo: "Contact Information",
+        address: "Address",
+        phoneNumber: "Phone Number",
+        email: "Email",
+        openingHours: "Opening Hours",
+        googleMapsUrl: "Google Maps Embed URL",
+        googleMapsHint: "Enter the embed URL from Google Maps (iframe src attribute)",
+        whatsAppUrl: "Quick Order URL (WhatsApp)",
+        whatsAppHint: "Enter the WhatsApp URL (e.g., https://wa.me/6282295986407)",
+        socialMedia: "Social Media Links",
+        followUs: "Follow Us",
+        pagePreview: "Contact Page Preview"
+      },
+      home: {
+        editTitle: "Edit Homepage",
+        logo: "Logo",
+        carouselText: "Carousel Text",
+        title: "Title",
+        subtitle: "Subtitle",
+        carouselImages: "Carousel Images"
+      },
+      menu: {
+        management: "Menu Management",
+        addItem: "Add Item",
+        addNewItem: "Add New Menu Item",
+        name: "Name",
+        description: "Description",
+        price: "Price",
+        image: "Image",
+        namePlaceholder: "Enter item name",
+        descPlaceholder: "Enter item description",
+        pricePlaceholder: "Enter price (e.g., Rp 25.000)",
+        dragReorder: "Drag to reorder menu items",
+        dragOrderNote: "Items will appear in this order on the public menu",
+        dragHere: "Drag here",
+        tabs: {
+          items: "Menu Items",
+          sauces: "Sauces"
+        },
+        addSauce: "Add Sauce",
+        sauceName: "Sauce name",
+        sauceDesc: "Sauce description",
+        deleteConfirm: "Are you sure?",
+        deleteItemNote: "This action cannot be undone. This will permanently delete this menu item.",
+        deleteSauceNote: "This action cannot be undone. This will permanently delete this sauce.",
+        editItem: "Edit Menu Item",
+        editSauce: "Edit Sauce",
+        creating: "Creating..."
+      },
+      footer: {
+        editFooter: "Edit Footer",
+        companyName: "Company Name",
+        tagline: "Tagline",
+        copyright: "Copyright Text",
+        platform: "Platform",
+        icon: "Icon",
+        url: "URL",
+        addSocialLink: "Add Social Link",
+        footerPreview: "Footer Preview"
+      },
+      customers: {
+        section: "Customers Section",
+        generalInfo: "General Information",
+        logos: "Customer Logos",
+        sectionTitle: "Section Title",
+        sectionSubtitle: "Section Subtitle",
+        placeholder: {
+          title: "Our Customers",
+          subtitle: "Trusted by businesses across Indonesia"
+        },
+        uploadHint: "Upload company logos to be displayed in the scrolling customer logo section...",
+        dragReorder: "Drag and drop to reorder logos. Click the trash icon to delete.",
+        noLogosYet: "No customer logos yet. Upload some logos to get started.",
+        noLogosDisplay: "No logos to display. Add logos in the \"Customer Logos\" tab.",
+        scrollNote: "On the homepage, logos will appear in a continuous scrolling animation."
+      },
+      about: {
+        editTitle: "Edit About Page",
+        pageDesc: "This page lets you edit the content shown on the /about page",
+        tabs: {
+          content: "Content",
+          images: "Images"
+        },
+        pageTitle: "Page Title",
+        mainImage: "Main Image",
+        mainDesc: "Main Description",
+        sectionInfo: "Section Information",
+        sectionTitle: "Section Title",
+        sectionDesc: "Section Description",
+        features: "Features",
+        featureTitle: "Feature Title",
+        featureDesc: "Feature Description",
+        featureImage: "Feature Image",
+        imageUrl: "Image URL",
+        imageUrlHint: "You can either upload a new image or provide a URL directly",
+        currentImage: "Current image:",
+        previewTitle: "Preview of About Page Content"
       }
     }
   }

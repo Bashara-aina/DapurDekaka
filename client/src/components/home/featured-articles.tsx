@@ -109,15 +109,15 @@ export default function FeaturedArticles() {
         >
           <div>
             <h2 className="text-3xl font-bold text-gray-900">
-              {pageData?.content.latestArticles.title || "Latest Articles"}
+              {pageData?.content?.latestArticles?.title || t('articles.title')}
             </h2>
             <p className="text-gray-600 mt-2">
-              {pageData?.content.latestArticles.subtitle || "Discover our latest news and updates"}
+              {pageData?.content?.latestArticles?.subtitle || t('articles.subtitle')}
             </p>
           </div>
           <Link href="/articles">
             <Button variant="ghost" className="group">
-              View All Articles
+              {t('common.buttons.viewAll')}
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Button>
           </Link>
