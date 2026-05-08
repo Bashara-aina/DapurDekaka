@@ -5,18 +5,6 @@ import * as fs from 'fs';
 import { logger } from './utils/logger.js';
 import { db, resetPool, getDb, isNeonTerminationError } from "./db";
 
-// #region debug instrumentation
-const DEBUG_SERVER = 'http://127.0.0.1:7810/ingest/48e4779b-a190-4144-bebe-5f691c4717c5';
-const SESSION_ID = 'f5d4d3';
-function logDb(location: string, message: string, data: Record<string, unknown> = {}) {
-  fetch(DEBUG_SERVER, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': SESSION_ID },
-    body: JSON.stringify({ sessionId: SESSION_ID, runId: 'post-fix', location, message, data, timestamp: Date.now() })
-  }).catch(() => {});
-}
-// #endregion
-
 /**
  * Unified file size limit for all multer uploads across the application.
  * Ensures consistent upload limits regardless of which route handles the request.
@@ -73,8 +61,7 @@ import { menuItems, type MenuItem, type InsertMenuItem } from "@shared/schema";
 import { blogPosts, type BlogPost, type InsertBlogPost } from "@shared/schema";
 import { sauces, type Sauce, type InsertSauce } from "@shared/schema";
 import { pages, type Page, type PageContent } from "@shared/schema";
-import { db } from "./db";
-import { eq, and, ne, like, or } from "drizzle-orm";
+import { eq, and, ne, like, or, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 export interface IStorage {
@@ -469,8 +456,11 @@ export class DatabaseStorage implements IStorage {
       }
 
       // Get total count
-      const allPosts = await db.select().from(blogPosts).where(and(...conditions));
-      const total = allPosts.length;
+      const countResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(blogPosts)
+        .where(and(...conditions));
+      const total = countResult[0]?.count ?? 0;
       const totalPages = Math.ceil(total / limit);
 
       // Get paginated results, featured posts first, then by orderIndex
@@ -582,10 +572,10 @@ export class DatabaseStorage implements IStorage {
       logger.debug("Creating blog post", { title: post.title });
 
       // Get current max orderIndex for blog posts
-      const allPosts = await db.select().from(blogPosts);
-      const maxOrderIndex = allPosts.length > 0
-        ? Math.max(...allPosts.map(post => post.orderIndex || 0))
-        : -1;
+      const maxResult = await db
+        .select({ maxOrder: sql<number>`COALESCE(MAX("orderIndex"), -1)` })
+        .from(blogPosts);
+      const maxOrderIndex = maxResult[0]?.maxOrder ?? -1;
 
       // Set the new post's orderIndex to maxOrderIndex + 1
       const postWithOrder = {
