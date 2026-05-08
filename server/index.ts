@@ -4,10 +4,49 @@ import { setupVite, serveStatic, log } from "./vite";
 import path from "path";
 import fs from 'fs';
 import { storage } from "./storage";
+import { resetPool, isNeonTerminationError } from "./db";
 import { createServer } from 'http';
 import { AddressInfo } from "net";
 import cors from 'cors';
 import session from 'express-session';
+
+/**
+ * Global error handlers for uncaught exceptions and unhandled rejections.
+ * Neon serverless driver can throw from WebSocket event handlers which bypass
+ * normal try/catch. These handlers ensure the process stays alive and the
+ * connection pool is reset when connection termination is detected.
+ */
+process.on('uncaughtException', (error: Error) => {
+  console.error('[Process] Uncaught exception:', error.message);
+  console.error('[Process] Stack:', error.stack);
+  console.error('[Process] Full error:', JSON.stringify(error, null, 2));
+
+  // Check if this is a Neon termination error (check nested sourceError too)
+  const sourceErr = (error as unknown as { sourceError?: unknown }).sourceError;
+  console.log('[Process] sourceError:', sourceErr ? String(sourceErr) : 'none');
+  const isNeonErr = isNeonTerminationError(error) || (sourceErr && isNeonTerminationError(sourceErr as unknown));
+  console.log('[Process] isNeonTerminationError:', isNeonErr);
+  if (isNeonErr) {
+    console.log('[Process] Neon connection termination detected, resetting pool...');
+    try { resetPool(); } catch (e) { console.error('[Process] resetPool failed:', e); }
+  }
+});
+
+process.on('unhandledRejection', (reason: unknown) => {
+  console.error('[Process] Unhandled rejection:', String(reason));
+  if (reason instanceof Error) {
+    console.error('[Process] Rejection stack:', reason.stack);
+  }
+  if (isNeonTerminationError(reason)) {
+    console.log('[Process] Neon connection termination in promise, resetting pool...');
+    try { resetPool(); } catch (e) { console.error('[Process] resetPool in rejection failed:', e); }
+  }
+});
+
+// Also catch process exit to log the exit code
+process.on('exit', (code) => {
+  console.log(`[Process] Process exiting with code: ${code}`);
+});
 
 const app = express();
 
@@ -135,14 +174,18 @@ const startServer = async () => {
       res.status(500).json({ success: false, error: { code: "INTERNAL_ERROR", message: "An unexpected error occurred" } });
     });
 
-    // Always use Vite in development mode
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[Middleware] Setting up Vite development middleware');
-      await setupVite(app, server);
-    } else {
-      console.log('[Middleware] Setting up static file serving');
-      serveStatic(app);
-    }
+// Always use Vite in development mode or when DEV env is set
+// In production (NODE_ENV=production), always use static file serving
+const isDev = process.env.NODE_ENV !== 'production' && process.env.DEV === 'true';
+console.log(`[Middleware] Environment check: NODE_ENV=${process.env.NODE_ENV}, DEV=${process.env.DEV}, isDev=${isDev}`);
+
+if (isDev) {
+  console.log('[Middleware] Setting up Vite development middleware');
+  await setupVite(app, server);
+} else {
+  console.log('[Middleware] Setting up static file serving');
+  serveStatic(app);
+}
 
     // Ensure directories are created before continuing
     await dirPromise;

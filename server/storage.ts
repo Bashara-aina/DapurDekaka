@@ -3,12 +3,43 @@ import multer from 'multer';
 import path from 'path';
 import * as fs from 'fs';
 import { logger } from './utils/logger.js';
+import { db, resetPool, getDb, isNeonTerminationError } from "./db";
+
+// #region debug instrumentation
+const DEBUG_SERVER = 'http://127.0.0.1:7810/ingest/48e4779b-a190-4144-bebe-5f691c4717c5';
+const SESSION_ID = 'f5d4d3';
+function logDb(location: string, message: string, data: Record<string, unknown> = {}) {
+  fetch(DEBUG_SERVER, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': SESSION_ID },
+    body: JSON.stringify({ sessionId: SESSION_ID, runId: 'post-fix', location, message, data, timestamp: Date.now() })
+  }).catch(() => {});
+}
+// #endregion
 
 /**
  * Unified file size limit for all multer uploads across the application.
  * Ensures consistent upload limits regardless of which route handles the request.
  */
 export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit shared across all file uploads
+
+/**
+ * Wraps a database operation with retry logic for Neon termination errors.
+ * On termination error, resets the pool and retries once with a fresh connection.
+ */
+async function withRetry<T>(operation: () => Promise<T>, operationName: string): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (isNeonTerminationError(error)) {
+      logger.warn(`${operationName} hit Neon connection termination, retrying with fresh pool...`);
+      resetPool();
+      // After reset, getDb() will create a fresh connection
+      return await operation();
+    }
+    throw error;
+  }
+}
 
 /**
  * Multer middleware configured for disk storage with unique filename generation.
@@ -40,7 +71,7 @@ import { blogPosts, type BlogPost, type InsertBlogPost } from "@shared/schema";
 import { sauces, type Sauce, type InsertSauce } from "@shared/schema";
 import { pages, type Page, type PageContent } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, ne } from "drizzle-orm";
+import { eq, and, ne, like, or } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 export interface IStorage {
@@ -88,7 +119,11 @@ export class DatabaseStorage implements IStorage {
   async getAllMenuItems(): Promise<MenuItem[]> {
     try {
       logger.debug("Fetching all menu items");
-      return await db.select().from(menuItems).orderBy(menuItems.orderIndex);
+      const result = await withRetry(
+        () => getDb().select().from(menuItems).orderBy(menuItems.orderIndex),
+        'getAllMenuItems'
+      );
+      return result;
     } catch (error) {
       logger.error("Error fetching menu items", { error: error instanceof Error ? error.message : String(error) });
       throw new Error("Failed to fetch menu items");
@@ -98,7 +133,10 @@ export class DatabaseStorage implements IStorage {
   async getMenuItem(id: number): Promise<MenuItem | undefined> {
     try {
       logger.debug(`Fetching menu item with ID: ${id}`);
-      const [item] = await db.select().from(menuItems).where(eq(menuItems.id, id));
+      const [item] = await withRetry(
+        () => getDb()!.select().from(menuItems).where(eq(menuItems.id, id)),
+        'getMenuItem'
+      );
       return item;
     } catch (error) {
       logger.error(`Error fetching menu item ${id}`, { error: error instanceof Error ? error.message : String(error) });
@@ -395,13 +433,14 @@ export class DatabaseStorage implements IStorage {
     category?: string;
     featured?: boolean;
     author?: string;
+    search?: string;
   }): Promise<{ posts: BlogPost[]; total: number; totalPages: number }> {
     try {
       const page = Math.max(1, opts.page || 1);
       const limit = Math.min(100, Math.max(1, opts.limit || 10));
       const offset = (page - 1) * limit;
 
-      logger.debug("Fetching published blog posts", { page, limit, category: opts.category, featured: opts.featured, author: opts.author });
+      logger.debug("Fetching published blog posts", { page, limit, category: opts.category, featured: opts.featured, author: opts.author, search: opts.search });
 
       // Build dynamic filters
       const conditions = [eq(blogPosts.published, 1)];
@@ -414,6 +453,16 @@ export class DatabaseStorage implements IStorage {
       }
       if (opts.author) {
         conditions.push(eq(blogPosts.authorName, opts.author));
+      }
+      if (opts.search) {
+        const searchTerm = `%${opts.search}%`;
+        const searchCondition = or(
+          like(blogPosts.title, searchTerm),
+          like(blogPosts.content, searchTerm)
+        );
+        if (searchCondition) {
+          conditions.push(searchCondition);
+        }
       }
 
       // Get total count
@@ -511,6 +560,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   /**
+   * Retrieves a blog post by slug.
+   */
+  async getBlogPostBySlug(slug: string): Promise<BlogPost | undefined> {
+    logger.debug(`Fetching blog post with slug: ${slug}`);
+    const [post] = await db
+      .select()
+      .from(blogPosts)
+      .where(eq(blogPosts.slug, slug));
+    return post;
+  }
+
+  /**
    * Creates a new blog post with auto-generated orderIndex.
    */
   async createBlogPost(post: InsertBlogPost & { authorId: number; slug?: string; readTime?: number }): Promise<BlogPost> {
@@ -574,9 +635,9 @@ export class DatabaseStorage implements IStorage {
    * @returns PageContent with parsed JSON content, or undefined if not found
    */
   async getPageContent(pageName: string): Promise<PageContent | undefined> {
-    try {
+    return withRetry(async () => {
       logger.debug(`Fetching page content for ${pageName}`);
-      const [page] = await db
+      const [page] = await getDb()
         .select()
         .from(pages)
         .where(eq(pages.pageName, pageName));
@@ -585,10 +646,7 @@ export class DatabaseStorage implements IStorage {
         return { content: JSON.parse(page.content) };
       }
       return undefined;
-    } catch (error) {
-      logger.error(`Error fetching page content for ${pageName}`, { error: error instanceof Error ? error.message : String(error) });
-      throw new Error(`Failed to fetch page content for ${pageName}`);
-    }
+    }, `getPageContent(${pageName})`);
   }
 
   /**
