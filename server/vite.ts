@@ -33,7 +33,7 @@ export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
-    allowedHosts: true as const,
+    allowedHosts: ".",
   };
 
   // Inline minimal config - do NOT import vite.config.ts to avoid bundling

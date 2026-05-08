@@ -11,10 +11,9 @@ import aboutRouter from "./routes/about";
 import footerRouter from "./routes/footer";
 import blogSitemapRouter from "./routes/sitemap";
 import bcrypt from "bcryptjs";
-import session from "express-session";
 import { requireAuth } from "./auth";
 import { menuData, saucesData } from "@shared/menu-data";
-import { defaultLimiter, authLimiter, contactLimiter } from "./rateLimit";
+import { authLimiter, contactLimiter } from "./rateLimit";
 
 declare module "express-session" {
   interface SessionData {
@@ -24,48 +23,15 @@ declare module "express-session" {
 
 /**
  * Registers all API routes and middleware on the Express app.
- * Initializes session handling, authentication, and all route modules.
+ * Session middleware and global rate limiter are configured in server/index.ts.
  * Must be called before starting the server.
  *
  * @param app - The Express application instance to attach routes to
  * @returns The HTTP server instance
- * @throws Error if SESSION_SECRET is missing in production
- */
-/**
- * Registers all API routes with the Express app and initializes session middleware.
- * Also triggers menu items and sauces seeding on startup if tables are empty.
- * @param app - Express application instance
- * @returns HTTP server instance
  */
 export function registerRoutes(app: Express): Server {
   // Initialize menu items when the server starts
   initializeMenuItems();
-
-  // Apply global rate limiter
-  app.use(defaultLimiter);
-
-  // Session middleware with improved domain handling for multiple domains
-  const sessionSecret = process.env.SESSION_SECRET;
-  if (!sessionSecret) {
-    console.warn('[Session] SESSION_SECRET not set - session features disabled');
-  } else {
-    app.use(
-      session({
-        secret: sessionSecret,
-        resave: false,
-        saveUninitialized: false,
-        proxy: true,
-        cookie: {
-          secure: process.env.NODE_ENV === "production",
-          httpOnly: true,
-          maxAge: 24 * 60 * 60 * 1000, // 24 hours
-          sameSite: process.env.NODE_ENV === "production" ? 'none' : 'lax',
-          // Don't set domain to allow it to work on any domain
-          domain: undefined,
-        },
-      })
-    );
-  }
 
   // Apply routers
   app.use("/api/menu", menuRouter);

@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -10,6 +11,7 @@ import { AddressInfo } from "net";
 import cors from 'cors';
 import session from 'express-session';
 import compression from 'compression';
+import { defaultLimiter } from "./rateLimit";
 
 /**
  * Global error handlers for uncaught exceptions and unhandled rejections.
@@ -62,7 +64,6 @@ process.on('exit', (code) => {
 
 const app = express();
 
-// Configure CORS for cross-domain cookie support
 app.use(cors({
   origin: function(origin, callback) {
     const allowedOrigins = [
@@ -82,10 +83,36 @@ app.use(cors({
   exposedHeaders: ['Set-Cookie']
 }));
 
-// Session middleware is configured in routes.ts to prevent duplication
+// Apply rate limiting before body parsing to reject early
+app.use(defaultLimiter);
+
+// Body parsing with size limits to prevent DoS
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
 app.use(compression());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// Session middleware
+const sessionSecret = process.env.SESSION_SECRET;
+if (!sessionSecret) {
+  console.warn('[Session] SESSION_SECRET not set - session features disabled');
+} else {
+  app.use(
+    session({
+      secret: sessionSecret,
+      resave: false,
+      saveUninitialized: false,
+      proxy: true,
+      cookie: {
+        secure: process.env.NODE_ENV === "production",
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000,
+        sameSite: process.env.NODE_ENV === "production" ? 'none' : 'lax',
+        domain: undefined,
+      },
+    })
+  );
+}
 
 // Configure static file serving with proper error handling
 const staticFileOptions = {
@@ -93,7 +120,7 @@ const staticFileOptions = {
     res.set('Cache-Control', 'public, max-age=31536000');
     res.set('Access-Control-Allow-Origin', '*');
   },
-  fallthrough: true // Allow falling through to next middleware if file not found
+  fallthrough: true
 };
 
 // Ensure uploads directory exists
@@ -112,7 +139,7 @@ app.use('/public', express.static(path.join(process.cwd(), 'public'), staticFile
 // Enhanced request logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
-  const path = req.path;
+  const requestPath = req.path;
   let capturedJsonResponse: Record<string, unknown> | undefined = undefined;
 
   const originalResJson = res.json;
@@ -123,8 +150,8 @@ app.use((req, res, next) => {
 
   res.on("finish", () => {
     const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+    if (requestPath.startsWith("/api")) {
+      let logLine = `${req.method} ${requestPath} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
@@ -211,7 +238,6 @@ if (isDev) {
           // Get the actual port that was assigned (useful if we're using port 0)
           const address = httpServer.address() as AddressInfo;
           const usedPort = address?.port || currentPort;
-          log(`[Server] Running on port ${usedPort}`);
           log(`[Server] Running on port ${usedPort}`);
           
           // Perform database initialization in the background
