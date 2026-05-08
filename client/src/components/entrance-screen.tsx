@@ -14,21 +14,13 @@ import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryClient";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
-// Fallback carousel images — used when API data not yet loaded
-const FALLBACK_IMAGES = Array.from({ length: 33 }, (_, i) => `/asset/${i + 1}.jpg`);
+const FALLBACK_IMAGES: string[] = [];
 
 export default function EntranceSection() {
   const { t } = useLanguage();
   const preloadRunRef = useRef(0);
 
-  // Embeddable homepage data from window.__INITIAL_DATA__ (set by server)
-  const [carouselImages, setCarouselImages] = useState<string[]>(() => {
-    if (typeof window !== "undefined" && (window as Window & { __INITIAL_DATA__?: { carousel?: { images?: string[] }; logo?: string; carouselTitle?: string; carouselSubtitle?: string } }).__INITIAL_DATA__) {
-      const init = (window as Window & { __INITIAL_DATA__?: { carousel?: { images?: string[] }; logo?: string; carouselTitle?: string; carouselSubtitle?: string } }).__INITIAL_DATA__;
-      return init?.carousel?.images || FALLBACK_IMAGES;
-    }
-    return FALLBACK_IMAGES;
-  });
+  const [carouselImages, setCarouselImages] = useState<string[]>(FALLBACK_IMAGES);
   const [logoUrl, setLogoUrl] = useState<string | undefined>(undefined);
   const [carouselTitle, setCarouselTitle] = useState<string>("");
   const [carouselSubtitle, setCarouselSubtitle] = useState<string>("");
@@ -45,10 +37,6 @@ export default function EntranceSection() {
     staleTime: 300000,
     gcTime: 600000,
     refetchOnWindowFocus: false,
-    // Don't refetch if we already have data from window.__INITIAL_DATA__
-    initialData: typeof window !== "undefined" && (window as Window & { __INITIAL_DATA__?: unknown }).__INITIAL_DATA__
-      ? (window as Window & { __INITIAL_DATA__?: { carousel?: { images?: string[] }; logo?: string; carouselTitle?: string; carouselSubtitle?: string } }).__INITIAL_DATA__
-      : undefined,
   });
 
   // Sync API data into state when it arrives
@@ -110,8 +98,8 @@ export default function EntranceSection() {
   const displayImages = [...carouselImages, ...carouselImages];
 
   // First image is always the hero — show it eagerly
-  const heroImage = carouselImages[0] || "/asset/1.jpg";
-  const heroLoaded = loadedImages.has(heroImage) || !heroImage.startsWith("/asset/");
+  const heroImage = carouselImages[0] || "";
+  const heroLoaded = loadedImages.has(heroImage) || heroImage.length === 0;
 
   return (
     <section className="relative h-screen overflow-hidden">

@@ -49,7 +49,7 @@ export default function Home() {
   const title = pageData?.content?.hero?.title || "Dapur Dekaka | Premium Halal Dim Sum";
   const description = pageData?.content?.hero?.subtitle || "Nikmati Sensasi Dimsum Premium dengan Cita Rasa Autentik!";
   // Use first carousel image if available, otherwise fallback
-  const ogImage = pageData?.carousel?.images?.[0] || "/asset/1.jpg";
+  const ogImage = pageData?.carousel?.images?.[0] || "/logo/logo.png";
   
   return (
     <div className="relative">

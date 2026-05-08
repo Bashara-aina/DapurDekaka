@@ -1,52 +1,13 @@
 {
-  "version": 2,
-  "buildCommand": "npm run build",
-  "installCommand": "npm install --include=optional",
-  "framework": null,
+  "framework": "vite",
+  "buildCommand": "vite build",
+  "outputDirectory": "dist/public",
   "regions": ["sin1"],
-  "builds": [
+  "rewrites": [
     {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist/public"
-      }
-    },
-    {
-      "src": "dist/index.js",
-      "use": "@vercel/node",
-      "config": {
-        "runtime": "nodejs20.x"
-      }
+      "source": "/((?!api/|sitemap.xml|favicon\\.ico|assets/|logo/|asset/).*)",
+      "destination": "/index.html"
     }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "dist/index.js"
-    },
-    {
-      "src": "/sitemap.xml",
-      "dest": "dist/index.js"
-    },
-    {
-      "src": "/uploads/(.*)",
-      "dest": "/uploads/$1"
-    },
-    {
-      "src": "/image/(.*)",
-      "dest": "/image/$1"
-    },
-    {
-      "src": "/logo/(.*)",
-      "dest": "/logo/$1"
-    },
-    {
-      "src": "/public/(.*)",
-      "dest": "/public/$1"
-    },
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.html" }
   ],
   "headers": [
     {
@@ -70,10 +31,6 @@
           "value": "DENY"
         },
         {
-          "key": "X-XSS-Protection",
-          "value": "1; mode=block"
-        },
-        {
           "key": "Referrer-Policy",
           "value": "strict-origin-when-cross-origin"
         }
@@ -81,60 +38,6 @@
     },
     {
       "source": "/assets/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
-    },
-    {
-      "source": "/asset/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
-    },
-    {
-      "source": "/favicon.ico",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=86400, immutable"
-        }
-      ]
-    },
-    {
-      "source": "/favicon.icns",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=86400"
-        }
-      ]
-    },
-    {
-      "source": "/logo/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
-    },
-    {
-      "source": "/uploads/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
-    },
-    {
-      "source": "/public/logo/customers/(.*)",
       "headers": [
         {
           "key": "Cache-Control",

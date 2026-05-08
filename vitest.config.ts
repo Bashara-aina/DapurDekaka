@@ -9,14 +9,13 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    include: ["server/**/*.test.ts"],
+    include: ["api/**/*.test.ts"],
     exclude: ["node_modules", "dist", ".vercel"],
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
       exclude: ["node_modules", "dist", ".vercel", "**/*.d.ts"],
     },
-    setupFiles: ["./server/test-setup.ts"],
     mockReset: true,
   },
   resolve: {
