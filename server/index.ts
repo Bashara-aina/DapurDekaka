@@ -9,6 +9,7 @@ import { createServer } from 'http';
 import { AddressInfo } from "net";
 import cors from 'cors';
 import session from 'express-session';
+import compression from 'compression';
 
 /**
  * Global error handlers for uncaught exceptions and unhandled rejections.
@@ -82,6 +83,7 @@ app.use(cors({
 }));
 
 // Session middleware is configured in routes.ts to prevent duplication
+app.use(compression());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -185,9 +187,9 @@ const startServer = async () => {
       res.status(500).json({ success: false, error: { code: "INTERNAL_ERROR", message: "An unexpected error occurred" } });
     });
 
-// Always use Vite in development mode or when DEV env is set
-// In production (NODE_ENV=production), always use static file serving
-const isDev = process.env.NODE_ENV !== 'production' && process.env.DEV === 'true';
+// Use Vite in all non-production environments by default.
+// DEV=true remains an explicit override for local debugging scenarios.
+const isDev = process.env.NODE_ENV !== 'production' || process.env.DEV === 'true';
 console.log(`[Middleware] Environment check: NODE_ENV=${process.env.NODE_ENV}, DEV=${process.env.DEV}, isDev=${isDev}`);
 
 if (isDev) {

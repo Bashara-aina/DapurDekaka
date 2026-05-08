@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Response } from "express";
 import multer from "multer";
 import path from "path";
 import { storage } from "../storage";
@@ -46,6 +46,10 @@ function calculateReadTime(content: string): number {
 
 export const blogRouter = Router();
 
+const setPublicCacheHeaders = (res: Response) => {
+  res.set("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=86400");
+};
+
 // Create post
 blogRouter.post("/", requireAuth, requireAdmin, upload.single('image'), async (req, res) => {
   try {
@@ -70,6 +74,13 @@ blogRouter.post("/", requireAuth, requireAdmin, upload.single('image'), async (r
 
     // Auto-generate slug from title if not provided
     const finalSlug = validation.data.slug || generateSlug(title);
+
+    // Check for slug uniqueness
+    const existingPost = await storage.getBlogPostBySlug(finalSlug);
+    if (existingPost) {
+      return res.status(409).json(error("SLUG_EXISTS", "A post with this slug already exists. Please use a different slug.", 409));
+    }
+
     const readTime = calculateReadTime(content);
 
     // Create blog post
@@ -96,18 +107,53 @@ blogRouter.get("/", async (req, res) => {
     const category = req.query.category as string | undefined;
     const featured = req.query.featured === 'true' ? true : req.query.featured === 'false' ? false : undefined;
     const author = req.query.author as string | undefined;
+    const search = req.query.search as string | undefined;
+    const fields = req.query.fields as string | undefined;
 
     const result = await storage.getPublishedBlogPosts({
       page,
       limit,
       category,
       featured,
-      author
+      author,
+      search
     });
 
-    res.status(200).json(ok(result.posts, { total: result.total, page, limit, totalPages: result.totalPages }));
+    // Slim payload: exclude full HTML content for list views
+    const slim = fields !== 'full' ? result.posts.map(({ content: _content, ...rest }) => rest) : result.posts;
+
+    setPublicCacheHeaders(res);
+    res.status(200).json(ok(slim, { total: result.total, page, limit, totalPages: result.totalPages }));
   } catch (err) {
     logger.error("Error fetching blog posts", { error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json(error("FETCH_FAILED", "Failed to fetch blog posts", 500));
+  }
+});
+
+// Lightweight list endpoint for feeds — full content excluded
+blogRouter.get("/list", async (req, res) => {
+  try {
+    const limit = Math.min(20, Math.max(1, parseInt(req.query.limit as string) || 10));
+
+    const result = await storage.getPublishedBlogPosts({ limit });
+
+    const slim = result.posts.map(({ content: _content, ...rest }) => rest);
+
+    setPublicCacheHeaders(res);
+    res.status(200).json(ok(slim));
+  } catch (err) {
+    logger.error("Error fetching blog list", { error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json(error("FETCH_FAILED", "Failed to fetch blog list", 500));
+  }
+});
+
+// Get all posts for admin (including drafts) - auth required
+blogRouter.get("/admin/all", requireAuth, requireAdmin, async (_req, res) => {
+  try {
+    const allPosts = await storage.getAllBlogPosts();
+    res.status(200).json(ok(allPosts));
+  } catch (err) {
+    logger.error("Error fetching all blog posts for admin", { error: err instanceof Error ? err.message : String(err) });
     res.status(500).json(error("FETCH_FAILED", "Failed to fetch blog posts", 500));
   }
 });
@@ -115,6 +161,7 @@ blogRouter.get("/", async (req, res) => {
 // Get single post
 blogRouter.get("/:id", async (req, res) => {
   try {
+    setPublicCacheHeaders(res);
     const id = parseInt(req.params.id);
     const post = await storage.getBlogPost(id);
 
@@ -132,6 +179,7 @@ blogRouter.get("/:id", async (req, res) => {
 // Get related posts for an article
 blogRouter.get("/:id/related", async (req, res) => {
   try {
+    setPublicCacheHeaders(res);
     const id = parseInt(req.params.id);
     const limit = Math.min(10, Math.max(1, parseInt(req.query.limit as string) || 3));
 
@@ -177,6 +225,14 @@ blogRouter.put("/:id", requireAuth, requireAdmin, upload.single('image'), async 
       return res.status(400).json(error("VALIDATION_FAILED", fromZodError(validation.error).message, 400));
     }
 
+    // Check for slug uniqueness if slug is being changed
+    if (validation.data.slug) {
+      const existingPost = await storage.getBlogPostBySlug(validation.data.slug);
+      if (existingPost && existingPost.id !== id) {
+        return res.status(409).json(error("SLUG_EXISTS", "A post with this slug already exists. Please use a different slug.", 409));
+      }
+    }
+
     const updateData: Record<string, unknown> = {
       ...validation.data,
     };
@@ -191,7 +247,7 @@ blogRouter.put("/:id", requireAuth, requireAdmin, upload.single('image'), async 
     }
 
     // Auto-generate slug from title if title changed and slug not explicitly provided
-    if (validation.data.title && !validation.data.slug) {
+    if (validation.data.title && !validation.data.slug && !post.slug) {
       updateData.slug = generateSlug(validation.data.title);
     }
 
@@ -246,5 +302,40 @@ blogRouter.post("/reorder", requireAuth, requireAdmin, async (req, res) => {
   } catch (err) {
     logger.error("Error reordering blog posts", { error: err instanceof Error ? err.message : String(err) });
     res.status(500).json(error("REORDER_FAILED", "Failed to reorder blog posts", 500));
+  }
+});
+
+// Get all posts for sitemap (public)
+blogRouter.get("/sitemap/all", async (_req, res) => {
+  try {
+    const allPosts = await storage.getAllBlogPosts();
+    const siteUrl = process.env.SITE_URL || 'https://dapurdekaka.com';
+
+    const staticPages = [
+      { url: '/', priority: '1.0', changefreq: 'daily' },
+      { url: '/menu', priority: '0.8', changefreq: 'weekly' },
+      { url: '/articles', priority: '0.9', changefreq: 'daily' },
+      { url: '/contact', priority: '0.6', changefreq: 'monthly' },
+      { url: '/about', priority: '0.6', changefreq: 'monthly' },
+    ];
+
+    const blogPosts = allPosts
+      .filter(post => post.published === 1)
+      .map(post => ({
+        url: `/article/${post.id}`,
+        lastmod: post.updatedAt ? new Date(post.updatedAt).toISOString() : new Date(post.createdAt).toISOString(),
+        priority: '0.7',
+        changefreq: 'weekly'
+      }));
+
+    const allUrls = [
+      ...staticPages.map(p => ({ ...p, lastmod: new Date().toISOString() })),
+      ...blogPosts
+    ];
+
+    res.status(200).json(ok({ pages: allUrls, siteUrl }));
+  } catch (err) {
+    logger.error("Error fetching sitemap data", { error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json(error("SITEMAP_FAILED", "Failed to fetch sitemap data", 500));
   }
 });
