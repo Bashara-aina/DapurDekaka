@@ -31,10 +31,13 @@ async function withRetry<T>(operation: () => Promise<T>, operationName: string):
   try {
     return await operation();
   } catch (error) {
+    const errStr = error instanceof Error ? error.message : String(error);
+    const causeStr = error instanceof Error && error.cause ? (error.cause instanceof Error ? error.cause.message : String(error.cause)) : 'none';
+    const sourceStr = (error as unknown as { sourceError?: unknown }).sourceError ? String((error as unknown as { sourceError?: unknown }).sourceError) : 'none';
+    console.log(`[Storage] ${operationName} error: "${errStr}" | cause: "${causeStr}" | sourceError: "${sourceStr}"`);
     if (isNeonTerminationError(error)) {
       logger.warn(`${operationName} hit Neon connection termination, retrying with fresh pool...`);
       resetPool();
-      // After reset, getDb() will create a fresh connection
       return await operation();
     }
     throw error;

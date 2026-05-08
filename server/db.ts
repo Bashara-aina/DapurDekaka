@@ -29,8 +29,8 @@ function createDbConnection(): ReturnType<typeof drizzle> | null {
     pool = new Pool({
       connectionString: process.env.DATABASE_URL,
       max: 1,
-      idleTimeoutMillis: 10000, // 10 seconds - aggressively close idle connections
-      connectionTimeoutMillis: 5000,
+      idleTimeoutMillis: 30000, // 30 seconds - Neon autosuspend will handle idle termination
+      connectionTimeoutMillis: 10000, // 10 second connection timeout
     });
     dbConnection = drizzle({ client: pool, schema });
     console.log('[DB] Connection pool created successfully');
@@ -82,10 +82,16 @@ export function isNeonTerminationError(error: unknown): boolean {
     else if (source && typeof source === 'object' && 'message' in source) {
       msgs.push(String((source as { message: unknown }).message));
     }
+    // Also check code property (Neon sometimes uses error codes)
+    if ('code' in error) msgs.push(String((error as { code: unknown }).code));
   } else if (typeof error === 'string') {
     msgs.push(error);
   } else if (typeof error === 'object' && error !== null && 'message' in error) {
     msgs.push(String((error as { message: unknown }).message));
+    // Also check code
+    if ('code' in error) msgs.push(String((error as { code: unknown }).code));
+  } else if (typeof error === 'object' && error !== null && 'code' in error) {
+    msgs.push(String((error as { code: unknown }).code));
   } else {
     msgs.push(String(error));
   }
@@ -101,7 +107,10 @@ export function isNeonTerminationError(error: unknown): boolean {
          combined.includes('Server closed the connection') ||
          combined.includes('Connection refused') ||
          combined.includes('getaddrinfo') ||
-         combined.includes('ECONNREFUSED');
+         combined.includes('ECONNREFUSED') ||
+         combined.includes('ENOTFOUND') ||
+         combined.includes('Cannot set property message of #<ErrorEvent>') ||
+         combined.includes('ErrorEvent');
 }
 
 export function resetPool() {

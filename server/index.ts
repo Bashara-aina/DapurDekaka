@@ -19,17 +19,28 @@ import session from 'express-session';
 process.on('uncaughtException', (error: Error) => {
   console.error('[Process] Uncaught exception:', error.message);
   console.error('[Process] Stack:', error.stack);
-  console.error('[Process] Full error:', JSON.stringify(error, null, 2));
 
-  // Check if this is a Neon termination error (check nested sourceError too)
+  // Check if error originates from the Neon module (by stack trace)
+  const isFromNeonModule = error.stack?.includes('@neondatabase/serverless') ||
+    error.stack?.includes('neon_serverless') ||
+    error.stack?.includes('neondatabase');
+
   const sourceErr = (error as unknown as { sourceError?: unknown }).sourceError;
-  console.log('[Process] sourceError:', sourceErr ? String(sourceErr) : 'none');
-  const isNeonErr = isNeonTerminationError(error) || (sourceErr && isNeonTerminationError(sourceErr as unknown));
-  console.log('[Process] isNeonTerminationError:', isNeonErr);
+  const isNeonErr = isNeonTerminationError(error) ||
+    (sourceErr && isNeonTerminationError(sourceErr as unknown)) ||
+    isFromNeonModule;
+
+  console.log('[Process] isNeonError:', isNeonErr, '| fromNeonModule:', isFromNeonModule);
+
   if (isNeonErr) {
-    console.log('[Process] Neon connection termination detected, resetting pool...');
+    console.log('[Process] Neon error detected, resetting pool and recovering...');
     try { resetPool(); } catch (e) { console.error('[Process] resetPool failed:', e); }
+    // Do NOT exit - let the server continue serving requests
+    return;
   }
+
+  // For truly unknown errors not from Neon, log but still try to survive
+  console.error('[Process] Unknown uncaught exception, attempting to continue...');
 });
 
 process.on('unhandledRejection', (reason: unknown) => {
