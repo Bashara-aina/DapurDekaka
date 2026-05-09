@@ -102,22 +102,14 @@ function getDefaultHomepageConfig(): HomepageConfig {
 }
 
 async function loadHomepageConfig(): Promise<HomepageConfig> {
-  // #region agent debug log
-  fetch('http://127.0.0.1:7810/ingest/48e4779b-a190-4144-bebe-5f691c4717c5', {method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d8670c'},body:JSON.stringify({sessionId:'d8670c',location:'app/api/pages/homepage/route.ts:104',message:'loadHomepageConfig start',data:{},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   const stored = await storage.getPageContent("homepage");
-  // #region agent debug log
-  fetch('http://127.0.0.1:7810/ingest/48e4779b-a190-4144-bebe-5f691c4717c5', {method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d8670c'},body:JSON.stringify({sessionId:'d8670c',location:'app/api/pages/homepage/route.ts:105',message:'storage.getPageContent result',data:{stored: stored ? 'exists' : 'undefined', keys: stored ? Object.keys(stored) : [], hasContent: stored?.content ? 'yes' : 'no'},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   if (!stored?.content) {
     return getDefaultHomepageConfig();
   }
 
   const parsed = homepageSchema.safeParse(stored.content);
-  // #region agent debug log
-  fetch('http://127.0.0.1:7810/ingest/48e4779b-a190-4144-bebe-5f691c4717c5', {method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d8670c'},body:JSON.stringify({sessionId:'d8670c',location:'app/api/pages/homepage/route.ts:110',message:'schema.safeParse result',data:{success: parsed.success, error: parsed.success ? null : parsed.error?.message},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   if (!parsed.success) {
+    console.error("[homepage] schema.safeParse failed:", stored.content, parsed.error);
     return getDefaultHomepageConfig();
   }
 
@@ -186,14 +178,23 @@ async function applyMultipartUploads(request: Request, configData: HomepageConfi
   }
 }
 
-export async function GET(): Promise<Response> {
+export async function GET(request: Request): Promise<Response> {
   try {
-    // #region agent debug log
-    const logMsgs: Array<{ msg: string; data: unknown }> = [];
-    logMsgs.push({ msg: "GET /api/pages/homepage called", data: {} });
-    // #endregion
+    const url = new URL(request.url);
+    const debug = url.searchParams.get("debug");
+    if (debug) {
+      const logs: string[] = [];
+      try {
+        logs.push("requireDb check: DATABASE_URL=" + (process.env.DATABASE_URL ? "SET" : "MISSING"));
+        const stored = await storage.getPageContent("homepage");
+        logs.push("getPageContent result: stored=" + (stored ? "exists" : "undefined"));
+        logs.push("JSON.parse content: " + (stored?.content ? "yes" : "no"));
+      } catch (e) {
+        logs.push("inner error: " + String(e));
+      }
+      return NextResponse.json({ debug: logs });
+    }
     const homepage = await loadHomepageConfig();
-    logMsgs.push({ msg: "loadHomepageConfig success", data: { homepage: typeof homepage } });
     return NextResponse.json(ok(homepage), {
       status: 200,
       headers: {
@@ -202,10 +203,17 @@ export async function GET(): Promise<Response> {
       },
     });
   } catch (caught: unknown) {
-    // #region agent debug log
-    fetch('http://127.0.0.1:7810/ingest/48e4779b-a190-4144-bebe-5f691c4717c5', {method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d8670c'},body:JSON.stringify({sessionId:'d8670c',location:'app/api/pages/homepage/route.ts:192',message:'GET error',data:{caught: String(caught), stack: caught instanceof Error ? caught.stack : null, name: caught instanceof Error ? caught.name : typeof caught},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
-    return NextResponse.json(error("FETCH_FAILED", "Failed to fetch homepage content", 500), { status: 500 });
+    const msg = caught instanceof Error ? caught.message : String(caught);
+    const stack = caught instanceof Error ? caught.stack : null;
+    return NextResponse.json(
+      error(
+        "FETCH_FAILED",
+        "Failed to fetch homepage content",
+        500,
+        { runtimeError: msg, stack: stack ? String(stack).substring(0, 500) : null }
+      ),
+      { status: 500 }
+    );
   }
 }
 
