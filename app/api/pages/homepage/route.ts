@@ -206,12 +206,7 @@ export async function GET(request: Request): Promise<Response> {
     const msg = caught instanceof Error ? caught.message : String(caught);
     const stack = caught instanceof Error ? caught.stack : null;
     return NextResponse.json(
-      error(
-        "FETCH_FAILED",
-        "Failed to fetch homepage content",
-        500,
-        { runtimeError: msg, stack: stack ? String(stack).substring(0, 500) : null }
-      ),
+      { success: false, error: { code: "FETCH_FAILED", message: "Failed to fetch homepage content", runtimeError: msg, stack: stack ? String(stack).substring(0, 800) : null }, status: 500 },
       { status: 500 }
     );
   }
