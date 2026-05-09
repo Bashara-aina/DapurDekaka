@@ -47,6 +47,9 @@
       ],
       "@shared/*": [
         "./shared/*"
+      ],
+      "@lib/*": [
+        "./lib/*"
       ]
     },
     "allowJs": true,

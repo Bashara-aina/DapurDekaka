@@ -16,7 +16,7 @@ import {
   type Sauce,
   type User,
 } from "../shared/schema";
-import { getDb, isNeonTerminationError, resetPool } from "./db";
+import { getDb, isConnectionError, resetPool } from "./db";
 import { logger } from "./utils/logger";
 
 export interface PublishedBlogOptions {
@@ -72,8 +72,8 @@ async function withRetry<T>(operation: () => Promise<T>): Promise<T> {
   try {
     return await operation();
   } catch (error) {
-    if (isNeonTerminationError(error)) {
-      resetPool();
+    if (isConnectionError(error)) {
+      await resetPool();
       return operation();
     }
     throw error;
