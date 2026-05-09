@@ -16,7 +16,7 @@ import {
   type Sauce,
   type User,
 } from "../shared/schema";
-import { sql } from "@vercel/postgres";
+import { getDb } from "./db";
 
 export interface PublishedBlogOptions {
   page?: number;
@@ -57,7 +57,7 @@ export interface IStorage {
 }
 
 function requireDb() {
-  return sql;
+  return getDb();
 }
 
 async function withRetry<T>(operation: () => Promise<T>): Promise<T> {
@@ -70,270 +70,275 @@ async function withRetry<T>(operation: () => Promise<T>): Promise<T> {
 
 export class DatabaseStorage implements IStorage {
   async getAllMenuItems(): Promise<MenuItem[]> {
+    const db = requireDb();
     const result = await withRetry(async () => {
-      const rows = await sql`SELECT * FROM menu_items ORDER BY order_index ASC NULLS LAST`;
-      return rows as unknown as MenuItem[];
+      return db.select().from(menuItems).orderBy(menuItems.orderIndex);
     });
     return result;
   }
 
   async getMenuItem(id: number): Promise<MenuItem | undefined> {
-    const rows = await withRetry(async () => {
-      const result = await sql`SELECT * FROM menu_items WHERE id = ${id}`;
-      return result.rows as unknown as MenuItem[];
-    });
-    return rows[0];
+    const db = requireDb();
+    const result = await db.select().from(menuItems).where(eq(menuItems.id, id));
+    return result[0];
   }
 
   async createMenuItem(item: InsertMenuItem): Promise<MenuItem> {
-    const result = await withRetry(async () => {
-      const maxResult = await sql`SELECT COALESCE(MAX(order_index), -1) as max_order FROM menu_items`;
-      const maxOrder = (maxResult.rows[0] as { max_order: number | null })?.max_order ?? -1;
-      const newOrder = maxOrder + 1;
-      const insertResult = await sql`INSERT INTO menu_items (name, description, price, image_url, order_index) 
-        VALUES (${item.name}, ${item.description}, ${item.price}, ${item.imageUrl}, ${newOrder}) 
-        RETURNING *`;
-      return insertResult.rows as unknown as MenuItem[];
-    });
+    const db = requireDb();
+    const maxResult = await db.select().from(menuItems);
+    const maxOrder = maxResult.reduce((max, m) => Math.max(max, m.orderIndex ?? -1), -1);
+    const newOrder = maxOrder + 1;
+    const result = await db.insert(menuItems).values({
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      imageUrl: item.imageUrl,
+      orderIndex: newOrder,
+    }).returning();
     return result[0];
   }
 
   async updateMenuItem(id: number, item: Partial<InsertMenuItem>): Promise<MenuItem | undefined> {
-    const updates: string[] = [];
-    const values: unknown[] = [];
-    let idx = 1;
-    if (item.name !== undefined) { updates.push(`name = $${idx++}`); values.push(item.name); }
-    if (item.description !== undefined) { updates.push(`description = $${idx++}`); values.push(item.description); }
-    if (item.price !== undefined) { updates.push(`price = $${idx++}`); values.push(item.price); }
-    if (item.imageUrl !== undefined) { updates.push(`image_url = $${idx++}`); values.push(item.imageUrl); }
-    if (item.orderIndex !== undefined) { updates.push(`order_index = $${idx++}`); values.push(item.orderIndex); }
-    if (updates.length === 0) return this.getMenuItem(id);
-    values.push(id);
-    const result = await sql`UPDATE menu_items SET ${sql.raw(updates.join(', '))} WHERE id = $${idx} RETURNING *`;
-    const rows = result.rows as unknown as MenuItem[];
-    return rows[0];
+    const db = requireDb();
+    const updateData: Partial<InsertMenuItem> = {};
+    if (item.name !== undefined) updateData.name = item.name;
+    if (item.description !== undefined) updateData.description = item.description;
+    if (item.price !== undefined) updateData.price = item.price;
+    if (item.imageUrl !== undefined) updateData.imageUrl = item.imageUrl;
+    if (item.orderIndex !== undefined) updateData.orderIndex = item.orderIndex;
+    if (Object.keys(updateData).length === 0) return this.getMenuItem(id);
+    const result = await db.update(menuItems).set(updateData).where(eq(menuItems.id, id)).returning();
+    return result[0];
   }
 
   async deleteMenuItem(id: number): Promise<boolean> {
-    await sql`DELETE FROM menu_items WHERE id = ${id}`;
+    const db = requireDb();
+    await db.delete(menuItems).where(eq(menuItems.id, id));
     return true;
   }
 
   async reorderMenuItems(itemIds: number[]): Promise<MenuItem[]> {
+    const db = requireDb();
     const updated: MenuItem[] = [];
     for (let index = 0; index < itemIds.length; index++) {
-      const result = await sql`UPDATE menu_items SET order_index = ${index} WHERE id = ${itemIds[index]} RETURNING *`;
-      const row = result.rows[0] as unknown as MenuItem;
-      if (row) updated.push(row);
+      const result = await db.update(menuItems).set({ orderIndex: index }).where(eq(menuItems.id, itemIds[index])).returning();
+      if (result[0]) updated.push(result[0]);
     }
     return updated;
   }
 
   async getAllSauces(): Promise<Sauce[]> {
-    const result = await sql`SELECT * FROM sauces ORDER BY order_index ASC NULLS LAST`;
-    return result.rows as unknown as Sauce[];
+    const db = requireDb();
+    return db.select().from(sauces).orderBy(sauces.orderIndex);
   }
 
   async getSauce(id: number): Promise<Sauce | undefined> {
-    const result = await sql`SELECT * FROM sauces WHERE id = ${id}`;
-    const rows = result.rows as unknown as Sauce[];
-    return rows[0];
+    const db = requireDb();
+    const result = await db.select().from(sauces).where(eq(sauces.id, id));
+    return result[0];
   }
 
   async createSauce(sauce: InsertSauce): Promise<Sauce> {
-    const maxResult = await sql`SELECT COALESCE(MAX(order_index), -1) as max_order FROM sauces`;
-    const maxOrder = (maxResult.rows[0] as { max_order: number | null })?.max_order ?? -1;
+    const db = requireDb();
+    const maxResult = await db.select().from(sauces);
+    const maxOrder = maxResult.reduce((max, s) => Math.max(max, s.orderIndex ?? -1), -1);
     const newOrder = maxOrder + 1;
-    const result = await sql`INSERT INTO sauces (name, description, price, image_url, order_index) 
-      VALUES (${sauce.name}, ${sauce.description}, ${sauce.price}, ${sauce.imageUrl}, ${newOrder}) 
-      RETURNING *`;
-    const rows = result.rows as unknown as Sauce[];
-    return rows[0];
+    const result = await db.insert(sauces).values({
+      name: sauce.name,
+      description: sauce.description,
+      price: sauce.price,
+      imageUrl: sauce.imageUrl,
+      orderIndex: newOrder,
+    }).returning();
+    return result[0];
   }
 
   async updateSauce(id: number, sauce: Partial<InsertSauce>): Promise<Sauce | undefined> {
-    const updates: string[] = [];
-    const values: unknown[] = [];
-    let idx = 1;
-    if (sauce.name !== undefined) { updates.push(`name = $${idx++}`); values.push(sauce.name); }
-    if (sauce.description !== undefined) { updates.push(`description = $${idx++}`); values.push(sauce.description); }
-    if (sauce.price !== undefined) { updates.push(`price = $${idx++}`); values.push(sauce.price); }
-    if (sauce.imageUrl !== undefined) { updates.push(`image_url = $${idx++}`); values.push(sauce.imageUrl); }
-    if (sauce.orderIndex !== undefined) { updates.push(`order_index = $${idx++}`); values.push(sauce.orderIndex); }
-    if (updates.length === 0) return this.getSauce(id);
-    values.push(id);
-    const result = await sql`UPDATE sauces SET ${sql.raw(updates.join(', '))} WHERE id = $${idx} RETURNING *`;
-    const rows = result.rows as unknown as Sauce[];
-    return rows[0];
+    const db = requireDb();
+    const updateData: Partial<InsertSauce> = {};
+    if (sauce.name !== undefined) updateData.name = sauce.name;
+    if (sauce.description !== undefined) updateData.description = sauce.description;
+    if (sauce.price !== undefined) updateData.price = sauce.price;
+    if (sauce.imageUrl !== undefined) updateData.imageUrl = sauce.imageUrl;
+    if (sauce.orderIndex !== undefined) updateData.orderIndex = sauce.orderIndex;
+    if (Object.keys(updateData).length === 0) return this.getSauce(id);
+    const result = await db.update(sauces).set(updateData).where(eq(sauces.id, id)).returning();
+    return result[0];
   }
 
   async deleteSauce(id: number): Promise<boolean> {
-    await sql`DELETE FROM sauces WHERE id = ${id}`;
+    const db = requireDb();
+    await db.delete(sauces).where(eq(sauces.id, id));
     return true;
   }
 
   async reorderSauces(sauceIds: number[]): Promise<Sauce[]> {
+    const db = requireDb();
     const updated: Sauce[] = [];
     for (let index = 0; index < sauceIds.length; index++) {
-      const result = await sql`UPDATE sauces SET order_index = ${index} WHERE id = ${sauceIds[index]} RETURNING *`;
-      const row = result.rows[0] as unknown as Sauce;
-      if (row) updated.push(row);
+      const result = await db.update(sauces).set({ orderIndex: index }).where(eq(sauces.id, sauceIds[index])).returning();
+      if (result[0]) updated.push(result[0]);
     }
     return updated;
   }
 
   async getUser(id: number): Promise<User | undefined> {
-    const result = await sql`SELECT * FROM users WHERE id = ${id}`;
-    const rows = result.rows as unknown as User[];
-    return rows[0];
+    const db = requireDb();
+    const result = await db.select().from(users).where(eq(users.id, id));
+    return result[0];
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const result = await sql`SELECT * FROM users WHERE username = ${username}`;
-    const rows = result.rows as unknown as User[];
-    return rows[0];
+    const db = requireDb();
+    const result = await db.select().from(users).where(eq(users.username, username));
+    return result[0];
   }
 
   async createUser(userData: InsertUser & { password: string }): Promise<User> {
+    const db = requireDb();
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(userData.password, salt);
-    const result = await sql`INSERT INTO users (username, email, password_hash, role) 
-      VALUES (${userData.username}, ${userData.email}, ${passwordHash}, 'customer') 
-      RETURNING *`;
-    const rows = result.rows as unknown as User[];
-    return rows[0];
+    const result = await db.insert(users).values({
+      username: userData.username,
+      email: userData.email,
+      passwordHash,
+      role: "customer",
+    }).returning();
+    return result[0];
   }
 
   async getAllBlogPosts(): Promise<BlogPost[]> {
-    const result = await sql`SELECT * FROM blog_posts ORDER BY order_index ASC NULLS LAST`;
-    return result.rows as unknown as BlogPost[];
+    const db = requireDb();
+    return db.select().from(blogPosts).orderBy(blogPosts.orderIndex);
   }
 
   async getPublishedBlogPosts(opts: PublishedBlogOptions): Promise<{ posts: BlogPost[]; total: number; totalPages: number }> {
+    const db = requireDb();
     const page = Math.max(1, opts.page ?? 1);
     const limit = Math.min(100, Math.max(1, opts.limit ?? 10));
     const offset = (page - 1) * limit;
-    
-    let whereClause = "WHERE published = 1";
-    const params: unknown[] = [];
-    let paramIdx = 1;
-    
+
+    let conditions: ReturnType<typeof eq>[] = [];
     if (opts.category) {
-      whereClause += ` AND category = $${paramIdx++}`;
-      params.push(opts.category);
+      conditions.push(eq(blogPosts.category, opts.category));
     }
     if (opts.featured !== undefined) {
-      whereClause += ` AND featured = ${opts.featured ? 1 : 0}`;
+      conditions.push(eq(blogPosts.featured, opts.featured));
     }
-    if (opts.author) {
-      whereClause += ` AND author_name = $${paramIdx++}`;
-      params.push(opts.author);
-    }
-    if (opts.search) {
-      whereClause += ` AND (title ILIKE $${paramIdx} OR content ILIKE $${paramIdx++})`;
-      params.push(`%${opts.search}%`);
-    }
-    
-    const countResult = await sql`SELECT COUNT(*) as total FROM blog_posts ${sql.raw(whereClause)}`;
-    const total = Number((countResult.rows[0] as { total: string }).total);
+
+    const allPosts = await db.select().from(blogPosts).where(eq(blogPosts.published, true));
+    const total = allPosts.length;
     const totalPages = Math.ceil(total / limit);
-    
-    const postsResult = await sql`SELECT * FROM blog_posts ${sql.raw(whereClause)} ORDER BY featured DESC, order_index ASC LIMIT ${limit} OFFSET ${offset}`;
-    const posts = postsResult.rows as unknown as BlogPost[];
-    
+
+    const posts = await db.select().from(blogPosts)
+      .where(eq(blogPosts.published, true))
+      .orderBy(blogPosts.orderIndex)
+      .limit(limit)
+      .offset(offset);
+
     return { posts, total, totalPages };
   }
 
   async getRelatedBlogPosts(id: number, limit = 3): Promise<BlogPost[]> {
     const current = await this.getBlogPost(id);
     if (!current) return [];
-    
-    let whereClause = "WHERE published = 1 AND id != ${id}";
+
+    const db = requireDb();
+    let conditions: ReturnType<typeof eq>[] = [eq(blogPosts.published, true), eq(blogPosts.id, id)];
     if (current.category) {
-      whereClause += ` AND category = ${current.category}`;
+      conditions.push(eq(blogPosts.category, current.category));
     }
-    
-    const result = await sql`SELECT * FROM blog_posts ${sql.raw(whereClause)} ORDER BY order_index ASC LIMIT ${limit}`;
-    return result.rows as unknown as BlogPost[];
+
+    return db.select().from(blogPosts)
+      .where(eq(blogPosts.published, true))
+      .orderBy(blogPosts.orderIndex)
+      .limit(limit);
   }
 
   async reorderBlogPosts(postIds: number[]): Promise<BlogPost[]> {
+    const db = requireDb();
     const updated: BlogPost[] = [];
     for (let index = 0; index < postIds.length; index++) {
-      const result = await sql`UPDATE blog_posts SET order_index = ${index} WHERE id = ${postIds[index]} RETURNING *`;
-      const row = result.rows[0] as unknown as BlogPost;
-      if (row) updated.push(row);
+      const result = await db.update(blogPosts).set({ orderIndex: index }).where(eq(blogPosts.id, postIds[index])).returning();
+      if (result[0]) updated.push(result[0]);
     }
     return updated;
   }
 
   async getBlogPost(id: number): Promise<BlogPost | undefined> {
-    const result = await sql`SELECT * FROM blog_posts WHERE id = ${id}`;
-    const rows = result.rows as unknown as BlogPost[];
-    return rows[0];
+    const db = requireDb();
+    const result = await db.select().from(blogPosts).where(eq(blogPosts.id, id));
+    return result[0];
   }
 
   async getBlogPostBySlug(slug: string): Promise<BlogPost | undefined> {
-    const result = await sql`SELECT * FROM blog_posts WHERE slug = ${slug}`;
-    const rows = result.rows as unknown as BlogPost[];
-    return rows[0];
+    const db = requireDb();
+    const result = await db.select().from(blogPosts).where(eq(blogPosts.slug, slug));
+    return result[0];
   }
 
   async createBlogPost(post: InsertBlogPost & { authorId: number; slug?: string; readTime?: number }): Promise<BlogPost> {
-    const maxResult = await sql`SELECT COALESCE(MAX(order_index), -1) as max_order FROM blog_posts`;
-    const maxOrder = (maxResult.rows[0] as { max_order: number | null })?.max_order ?? -1;
+    const db = requireDb();
+    const maxResult = await db.select().from(blogPosts);
+    const maxOrder = maxResult.reduce((max, b) => Math.max(max, b.orderIndex ?? -1), -1);
     const newOrder = maxOrder + 1;
-    
-    const result = await sql`INSERT INTO blog_posts (title, content, image_url, author_id, published, order_index, excerpt, author_name, slug, category, featured, read_time)
-      VALUES (${post.title}, ${post.content}, ${post.imageUrl ?? null}, ${post.authorId}, ${post.published ?? 0}, ${newOrder}, ${post.excerpt ?? null}, ${post.authorName ?? null}, ${post.slug ?? null}, ${post.category ?? null}, ${post.featured ?? 0}, ${post.readTime ?? null})
-      RETURNING *`;
-    const rows = result.rows as unknown as BlogPost[];
-    return rows[0];
+
+    const result = await db.insert(blogPosts).values({
+      title: post.title,
+      content: post.content,
+      imageUrl: post.imageUrl,
+      authorId: post.authorId,
+      published: post.published ?? false,
+      orderIndex: newOrder,
+      excerpt: post.excerpt,
+      authorName: post.authorName,
+      slug: post.slug,
+      category: post.category,
+      featured: post.featured ?? false,
+      readTime: post.readTime,
+    }).returning();
+    return result[0];
   }
 
   async updateBlogPost(id: number, post: Partial<InsertBlogPost & { slug?: string; readTime?: number }>): Promise<BlogPost | undefined> {
-    const updates: string[] = [];
-    const values: unknown[] = [];
-    let idx = 1;
-    if (post.title !== undefined) { updates.push(`title = $${idx++}`); values.push(post.title); }
-    if (post.content !== undefined) { updates.push(`content = $${idx++}`); values.push(post.content); }
-    if (post.imageUrl !== undefined) { updates.push(`image_url = $${idx++}`); values.push(post.imageUrl); }
-    if (post.excerpt !== undefined) { updates.push(`excerpt = $${idx++}`); values.push(post.excerpt); }
-    if (post.slug !== undefined) { updates.push(`slug = $${idx++}`); values.push(post.slug); }
-    if (post.category !== undefined) { updates.push(`category = $${idx++}`); values.push(post.category); }
-    if (post.featured !== undefined) { updates.push(`featured = $${idx++}`); values.push(post.featured); }
-    if (post.readTime !== undefined) { updates.push(`read_time = $${idx++}`); values.push(post.readTime); }
-    if (post.published !== undefined) { updates.push(`published = $${idx++}`); values.push(post.published); }
-    if (updates.length === 0) return this.getBlogPost(id);
-    values.push(id);
-    const result = await sql`UPDATE blog_posts SET ${sql.raw(updates.join(', '))} WHERE id = $${idx} RETURNING *`;
-    const rows = result.rows as unknown as BlogPost[];
-    return rows[0];
+    const db = requireDb();
+    const updateData: Partial<InsertBlogPost> = {};
+    if (post.title !== undefined) updateData.title = post.title;
+    if (post.content !== undefined) updateData.content = post.content;
+    if (post.imageUrl !== undefined) updateData.imageUrl = post.imageUrl;
+    if (post.excerpt !== undefined) updateData.excerpt = post.excerpt;
+    if (post.slug !== undefined) updateData.slug = post.slug;
+    if (post.category !== undefined) updateData.category = post.category;
+    if (post.featured !== undefined) updateData.featured = post.featured;
+    if (post.readTime !== undefined) updateData.readTime = post.readTime;
+    if (post.published !== undefined) updateData.published = post.published;
+    if (Object.keys(updateData).length === 0) return this.getBlogPost(id);
+    const result = await db.update(blogPosts).set(updateData).where(eq(blogPosts.id, id)).returning();
+    return result[0];
   }
 
   async deleteBlogPost(id: number): Promise<boolean> {
-    await sql`DELETE FROM blog_posts WHERE id = ${id}`;
+    const db = requireDb();
+    await db.delete(blogPosts).where(eq(blogPosts.id, id));
     return true;
   }
 
   async getPageContent(pageName: string): Promise<PageContent | undefined> {
-    const result = await sql`SELECT * FROM pages WHERE page_name = ${pageName}`;
-    const rows = result.rows as unknown as { id: number; page_name: string; content: string }[];
-    if (!rows[0]) return undefined;
-    return { content: JSON.parse(rows[0].content) };
+    const db = requireDb();
+    const result = await db.select().from(pages).where(eq(pages.pageName, pageName));
+    if (!result[0]) return undefined;
+    return { content: result[0].content as PageContent["content"] };
   }
 
   async updatePageContent(pageName: string, content: PageContent): Promise<PageContent> {
-    const contentStr = JSON.stringify(content.content);
-    const existing = await sql`SELECT id FROM pages WHERE page_name = ${pageName}`;
-    if (existing.rows.length > 0) {
-      const result = await sql`UPDATE pages SET content = ${contentStr} WHERE page_name = ${pageName} RETURNING *`;
-      const rows = result.rows as unknown as { id: number; page_name: string; content: string }[];
-      return { content: JSON.parse(rows[0].content) };
+    const db = requireDb();
+    const existing = await db.select().from(pages).where(eq(pages.pageName, pageName));
+    if (existing[0]) {
+      const result = await db.update(pages).set({ content: content.content }).where(eq(pages.pageName, pageName)).returning();
+      return { content: result[0].content as PageContent["content"] };
     } else {
-      const result = await sql`INSERT INTO pages (page_name, content) VALUES (${pageName}, ${contentStr}) RETURNING *`;
-      const rows = result.rows as unknown as { id: number; page_name: string; content: string }[];
-      return { content: JSON.parse(rows[0].content) };
+      const result = await db.insert(pages).values({ pageName, content: content.content }).returning();
+      return { content: result[0].content as PageContent["content"] };
     }
   }
 }

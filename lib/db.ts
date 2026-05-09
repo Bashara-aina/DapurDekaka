@@ -1,8 +1,11 @@
+import { drizzle } from "drizzle-orm/vercel-postgres";
 import { sql } from "@vercel/postgres";
-import type { PageContent } from "../shared/schema";
+import * as schema from "../shared/schema";
+
+export const db = drizzle(sql, { schema });
 
 export function getDb() {
-  return sql;
+  return db;
 }
 
 export function isConnectionError(error: unknown): boolean {
