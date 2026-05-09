@@ -15,7 +15,7 @@ import {
   type PageContent,
   type Sauce,
   type User,
-} from "@shared/schema";
+} from "../shared/schema";
 import { getDb, isNeonTerminationError, resetPool } from "./db";
 import { logger } from "./utils/logger";
 
@@ -58,6 +58,9 @@ export interface IStorage {
 }
 
 function requireDb() {
+  // #region agent debug log
+  fetch('http://127.0.0.1:7810/ingest/48e4779b-a190-4144-bebe-5f691c4717c5', {method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d8670c'},body:JSON.stringify({sessionId:'d8670c',location:'lib/storage.ts:60',message:'requireDb called',data:{DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'MISSING'},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   const db = getDb();
   if (!db) {
     throw new Error("DATABASE_UNAVAILABLE");
@@ -292,7 +295,13 @@ export class DatabaseStorage implements IStorage {
 
   async getPageContent(pageName: string): Promise<PageContent | undefined> {
     return withRetry(async () => {
+      // #region agent debug log
+      fetch('http://127.0.0.1:7810/ingest/48e4779b-a190-4144-bebe-5f691c4717c5', {method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d8670c'},body:JSON.stringify({sessionId:'d8670c',location:'lib/storage.ts:293',message:'getPageContent start',data:{pageName},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       const [page] = await requireDb().select().from(pages).where(eq(pages.pageName, pageName));
+      // #region agent debug log
+      fetch('http://127.0.0.1:7810/ingest/48e4779b-a190-4144-bebe-5f691c4717c5', {method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d8670c'},body:JSON.stringify({sessionId:'d8670c',location:'lib/storage.ts:295',message:'getPageContent query done',data:{pageFound: !!page, pageName},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       if (!page) return undefined;
       return { content: JSON.parse(page.content) };
     });

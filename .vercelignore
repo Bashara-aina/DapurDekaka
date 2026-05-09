@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+.next/
+
+# Development
+.env
+.env.*
+!.env.example
+
+# IDE
+.cursor/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Old server (migrated to Vercel Functions in api/)
+server/
+
+# Scripts and tooling
+scripts/
+
+# Testing
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
