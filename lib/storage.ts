@@ -223,15 +223,15 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(blogPosts.category, opts.category));
     }
     if (opts.featured !== undefined) {
-      conditions.push(eq(blogPosts.featured, opts.featured));
+      conditions.push(eq(blogPosts.featured, opts.featured ? 1 : 0));
     }
 
-    const allPosts = await db.select().from(blogPosts).where(eq(blogPosts.published, true));
+    const allPosts = await db.select().from(blogPosts).where(eq(blogPosts.published, 1));
     const total = allPosts.length;
     const totalPages = Math.ceil(total / limit);
 
     const posts = await db.select().from(blogPosts)
-      .where(eq(blogPosts.published, true))
+      .where(eq(blogPosts.published, 1))
       .orderBy(blogPosts.orderIndex)
       .limit(limit)
       .offset(offset);
@@ -244,13 +244,8 @@ export class DatabaseStorage implements IStorage {
     if (!current) return [];
 
     const db = requireDb();
-    let conditions: ReturnType<typeof eq>[] = [eq(blogPosts.published, true), eq(blogPosts.id, id)];
-    if (current.category) {
-      conditions.push(eq(blogPosts.category, current.category));
-    }
-
     return db.select().from(blogPosts)
-      .where(eq(blogPosts.published, true))
+      .where(eq(blogPosts.published, 1))
       .orderBy(blogPosts.orderIndex)
       .limit(limit);
   }
