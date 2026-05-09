@@ -1,21 +1,8 @@
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
+import { sql } from "@vercel/postgres";
+import { drizzle } from "drizzle-orm/vercel-postgres";
 import * as schema from "../shared/schema";
 
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  throw new Error("DATABASE_URL is not set");
-}
-
-const client = postgres(connectionString, {
-  max: 1,
-  connect_timeout: 10,
-  idle_timeout: 20,
-  ssl: "require",
-  prepare: false,
-});
-
-export const db = drizzle(client, { schema });
+export const db = drizzle(sql, { schema });
 
 export function getDb() {
   return db;
@@ -61,26 +48,18 @@ export function isConnectionError(error: unknown): boolean {
     combined.includes("ENOTFOUND") ||
     combined.includes("fetch failed") ||
     combined.includes("Connection timeout") ||
-    combined.includes("SocketError") ||
     combined.includes("SSL") ||
     combined.includes("certificate") ||
     combined.includes("pg_hba") ||
     combined.includes("Too many connections") ||
     combined.includes("password authentication failed") ||
     combined.includes("FATAL") ||
-    combined.includes("ErrorEvent") ||
-    combined.includes("CONNECTION_ENDED") ||
-    combined.includes("Connection ended") ||
-    combined.includes("Tenant or user not found")
+    combined.includes("ErrorEvent")
   );
 }
 
 export async function resetPool(): Promise<void> {
-  try {
-    await client.end();
-  } catch {
-    // ignore
-  }
+  // Vercel postgres manages connection pooling internally
 }
 
 export async function withRetry<T>(operation: () => Promise<T>): Promise<T> {
@@ -88,7 +67,6 @@ export async function withRetry<T>(operation: () => Promise<T>): Promise<T> {
     return await operation();
   } catch (error) {
     if (isConnectionError(error)) {
-      await resetPool();
       return operation();
     }
     throw error;
