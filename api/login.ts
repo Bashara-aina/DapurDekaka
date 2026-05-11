@@ -1,8 +1,8 @@
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { error, ok } from "../lib/api-response";
-import { storage } from "../lib/storage";
-import { getSession } from "../lib/session";
+import { error, ok } from "@lib/api-response";
+import { storage } from "@lib/storage";
+import { getSession, withSessionHeaders } from "@lib/session";
 
 export const config = { runtime: "nodejs" };
 
@@ -36,16 +36,17 @@ export default async function handler(request: Request): Promise<Response> {
       return json(error("INVALID_CREDENTIALS", "Invalid credentials", 401), 401);
     }
 
-    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+    const isValidPassword = await bcrypt.compare(password, user.passwordHash ?? "");
     if (!isValidPassword) {
       return json(error("INVALID_CREDENTIALS", "Invalid credentials", 401), 401);
     }
 
-    const response = json(ok({ message: "Logged in successfully" }), 200);
-    const session = await getSession(request, response);
+    const sessionResponse = new Response();
+    const { session, save } = await getSession(request, sessionResponse);
     session.userId = user.id;
-    await session.save();
-    return response;
+    await save();
+
+    return withSessionHeaders(json(ok({ message: "Logged in successfully" }), 200), sessionResponse);
   } catch {
     return json(error("LOGIN_FAILED", "Login failed", 500), 500);
   }

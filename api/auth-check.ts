@@ -1,6 +1,6 @@
-import { error, ok } from "../lib/api-response";
-import { storage } from "../lib/storage";
-import { getSession } from "../lib/session";
+import { error, ok } from "@lib/api-response";
+import { storage } from "@lib/storage";
+import { getSession, withSessionHeaders } from "@lib/session";
 
 export const config = { runtime: "nodejs" };
 
@@ -17,17 +17,17 @@ export default async function handler(request: Request): Promise<Response> {
   }
 
   try {
-    const response = json(ok({ authenticated: false }), 200);
-    const session = await getSession(request, response);
+    const sessionResponse = new Response();
+    const { session, save } = await getSession(request, sessionResponse);
     if (!session.userId) {
-      return response;
+      return json(ok({ authenticated: false }), 200);
     }
 
     const user = await storage.getUser(session.userId);
     if (!user) {
       session.userId = undefined;
-      await session.save();
-      return response;
+      await save();
+      return withSessionHeaders(json(ok({ authenticated: false }), 200), sessionResponse);
     }
 
     return json(ok({ authenticated: true }), 200);

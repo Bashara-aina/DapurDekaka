@@ -1,5 +1,5 @@
-import { error, ok } from "../lib/api-response";
-import { getSession } from "../lib/session";
+import { error, ok } from "@lib/api-response";
+import { getSession, withSessionHeaders } from "@lib/session";
 
 export const config = { runtime: "nodejs" };
 
@@ -16,11 +16,10 @@ export default async function handler(request: Request): Promise<Response> {
   }
 
   try {
-    const response = json(ok({ message: "Logged out successfully" }), 200);
-    const session = await getSession(request, response);
-    session.userId = undefined;
-    await session.destroy();
-    return response;
+    const sessionResponse = new Response();
+    const { session } = await getSession(request, sessionResponse);
+    session.destroy();
+    return withSessionHeaders(json(ok({ message: "Logged out successfully" }), 200), sessionResponse);
   } catch {
     return json(error("LOGOUT_FAILED", "Logout failed", 500), 500);
   }

@@ -1,5 +1,5 @@
-import { error, ok } from "../../../lib/api-response";
-import { storage } from "../../../lib/storage";
+import { error, ok } from "@lib/api-response";
+import { storage } from "@lib/storage";
 
 export const config = {
   runtime: "nodejs",
@@ -38,7 +38,7 @@ export default async function handler(request: Request): Promise<Response> {
       .filter((post) => post.published === 1)
       .map((post) => ({
         url: `/article/${post.id}`,
-        lastmod: post.updatedAt ? new Date(post.updatedAt).toISOString() : new Date(post.createdAt).toISOString(),
+        lastmod: post.updatedAt ? new Date(post.updatedAt).toISOString() : (post.createdAt ? new Date(post.createdAt).toISOString() : new Date().toISOString()),
         priority: "0.7",
         changefreq: "weekly",
       }));

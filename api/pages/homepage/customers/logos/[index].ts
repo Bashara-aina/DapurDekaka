@@ -1,6 +1,6 @@
-import { error, ok } from "../../../../../lib/api-response";
-import { requireAdmin } from "../../../../../lib/auth";
-import { storage } from "../../../../../lib/storage";
+import { error, ok } from "@lib/api-response";
+import { requireAdmin } from "@lib/auth";
+import { storage } from "@lib/storage";
 import { z } from "zod";
 
 export const config = { runtime: "nodejs" };
@@ -48,7 +48,7 @@ export default async function handler(request: Request): Promise<Response> {
   }
 
   const authGate = await requireAdmin(request, new Response());
-  if (authGate) {
+  if (authGate instanceof Response) {
     return authGate;
   }
 

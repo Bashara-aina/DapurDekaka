@@ -1,7 +1,7 @@
-import { error, ok } from "../../../lib/api-response";
-import { requireAdmin } from "../../../lib/auth";
-import { uploadFile } from "../../../lib/blob";
-import { storage } from "../../../lib/storage";
+import { error, ok } from "@lib/api-response";
+import { requireAdmin } from "@lib/auth";
+import { uploadFile } from "@lib/blob";
+import { storage } from "@lib/storage";
 
 export const config = { runtime: "nodejs" };
 
@@ -15,7 +15,7 @@ function json(body: unknown, status: number): Response {
 export default async function handler(request: Request): Promise<Response> {
   if (request.method !== "POST") return json(error("METHOD_NOT_ALLOWED", "Method not allowed", 405), 405);
   const auth = await requireAdmin(request, new Response());
-  if (auth) return auth;
+  if (auth instanceof Response) return auth;
 
   try {
     const formData = await request.formData();

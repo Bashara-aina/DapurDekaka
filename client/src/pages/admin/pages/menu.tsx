@@ -81,8 +81,14 @@ export default function AdminMenuPage() {
         if (!uploadResponse.ok) {
           throw new Error('Failed to upload image');
         }
-        const uploadResult = await uploadResponse.json();
-        imageUrl = uploadResult.imageUrl;
+        const uploadResult = (await uploadResponse.json()) as {
+          success?: boolean;
+          data?: { imageUrl?: string };
+        };
+        if (!uploadResult.success || !uploadResult.data?.imageUrl) {
+          throw new Error("Failed to upload image");
+        }
+        imageUrl = uploadResult.data.imageUrl;
       }
 
       const updateData = {

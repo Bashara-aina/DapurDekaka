@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { error, ok } from "../lib/api-response";
+import { error, ok } from "@lib/api-response";
 
 export const config = { runtime: "nodejs" };
 

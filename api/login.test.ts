@@ -1,15 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const saveMock = vi.fn(async () => undefined);
-const getSessionMock = vi.fn(async () => ({ userId: undefined as number | undefined, save: saveMock }));
+const sessionState: { userId?: number } = {};
+const getSessionMock = vi.fn(async (_request: Request, _sessionResponse: Response) => ({
+  session: sessionState,
+  save: saveMock,
+  sessionResponse: new Response(),
+}));
 const getUserByUsernameMock = vi.fn();
 const compareMock = vi.fn();
 
-vi.mock("../lib/session", () => ({
+vi.mock("@lib/session", () => ({
   getSession: getSessionMock,
+  withSessionHeaders: (response: Response) => response,
 }));
 
-vi.mock("../lib/storage", () => ({
+vi.mock("@lib/storage", () => ({
   storage: {
     getUserByUsername: getUserByUsernameMock,
   },
@@ -24,6 +30,7 @@ vi.mock("bcryptjs", () => ({
 describe("api/login handler", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionState.userId = undefined;
   });
 
   it("returns 401 when credentials are invalid", async () => {

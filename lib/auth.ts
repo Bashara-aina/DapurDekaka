@@ -1,42 +1,63 @@
-import { storage } from "./storage";
-import { getSession } from "./session";
 import { error } from "./api-response";
+import { getSession } from "./session";
+import { storage } from "./storage";
 
-function jsonResponse(body: unknown, status: number): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-export async function requireAuth(request: Request, response: Response): Promise<Response | null> {
-  const session = await getSession(request, response);
+/**
+ * Requires a logged-in user with a valid DB record. Uses the same `sessionResponse`
+ * for iron-session cookie reads/writes as the caller's handler.
+ */
+export async function requireAuth(
+  request: Request,
+  sessionResponse: Response
+): Promise<{ userId: number } | Response> {
+  const { session } = await getSession(request, sessionResponse);
   if (!session.userId) {
-    return jsonResponse(error("UNAUTHORIZED", "Authentication required", 401), 401);
+    return new Response(
+      JSON.stringify(error("UNAUTHORIZED", "Authentication required", 401)),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
   }
 
   const user = await storage.getUser(session.userId);
   if (!user) {
-    return jsonResponse(error("UNAUTHORIZED", "Authentication required", 401), 401);
+    return new Response(
+      JSON.stringify(error("UNAUTHORIZED", "Authentication required", 401)),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
   }
 
-  return null;
+  return { userId: session.userId };
 }
 
-export async function requireAdmin(request: Request, response: Response): Promise<Response | null> {
-  const session = await getSession(request, response);
+/**
+ * Requires an admin user. Session cookie is read/written via `sessionResponse`.
+ */
+export async function requireAdmin(
+  request: Request,
+  sessionResponse: Response
+): Promise<{ userId: number } | Response> {
+  const { session } = await getSession(request, sessionResponse);
   if (!session.userId) {
-    return jsonResponse(error("UNAUTHORIZED", "Authentication required", 401), 401);
+    return new Response(
+      JSON.stringify(error("UNAUTHORIZED", "Authentication required", 401)),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
   }
 
   const user = await storage.getUser(session.userId);
   if (!user) {
-    return jsonResponse(error("UNAUTHORIZED", "Authentication required", 401), 401);
+    return new Response(
+      JSON.stringify(error("UNAUTHORIZED", "Authentication required", 401)),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
   }
 
   if (user.role !== "admin") {
-    return jsonResponse(error("FORBIDDEN", "Admin access required", 403), 403);
+    return new Response(
+      JSON.stringify(error("FORBIDDEN", "Admin access required", 403)),
+      { status: 403, headers: { "Content-Type": "application/json" } }
+    );
   }
 
-  return null;
+  return { userId: session.userId };
 }

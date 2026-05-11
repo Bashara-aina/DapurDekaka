@@ -1,8 +1,8 @@
 import { insertMenuItemSchema } from "@shared/schema";
-import { created, error, ok } from "../../../lib/api-response";
-import { requireAdmin, requireAuth } from "../../../lib/auth";
-import { uploadFile } from "../../../lib/blob";
-import { storage } from "../../../lib/storage";
+import { created, error, ok } from "@lib/api-response";
+import { requireAdmin, requireAuth } from "@lib/auth";
+import { uploadFile } from "@lib/blob";
+import { storage } from "@lib/storage";
 
 export const config = { runtime: "nodejs" };
 
@@ -25,10 +25,10 @@ function getFormString(formData: FormData, key: string): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
-async function ensureAdmin(request: Request): Promise<Response | null> {
+async function ensureAdmin(request: Request): Promise<Response | { userId: number }> {
   const authBridge = createAuthResponseBridge();
   const authError = await requireAuth(request, authBridge);
-  if (authError) return authError;
+  if (authError instanceof Response) return authError;
   return requireAdmin(request, authBridge);
 }
 
@@ -44,7 +44,7 @@ export default async function handler(request: Request): Promise<Response> {
 
   if (request.method === "POST") {
     const adminError = await ensureAdmin(request);
-    if (adminError) return adminError;
+    if (adminError instanceof Response) return adminError;
 
     try {
       const formData = await request.formData();
@@ -56,10 +56,10 @@ export default async function handler(request: Request): Promise<Response> {
 
       const imageUrl = await uploadFile(file, "menu/items");
       const candidate = {
-        name: getFormString(formData, "name"),
-        description: getFormString(formData, "description"),
-        price: getFormString(formData, "price") ?? "0",
-        imageUrl,
+        name: (getFormString(formData, "name") ?? "") as string,
+        description: (getFormString(formData, "description") ?? "") as string,
+        price: (getFormString(formData, "price") ?? "0") as string,
+        imageUrl: imageUrl as string,
       };
 
       const validation = insertMenuItemSchema.safeParse(candidate);
@@ -67,7 +67,12 @@ export default async function handler(request: Request): Promise<Response> {
         return json(error("VALIDATION_FAILED", validation.error.message, 400), 400);
       }
 
-      const menuItem = await storage.createMenuItem(validation.data);
+      const menuItem = await storage.createMenuItem({
+        name: validation.data.name,
+        description: validation.data.description ?? "",
+        price: validation.data.price ?? "0",
+        imageUrl: validation.data.imageUrl,
+      });
       return json(created(menuItem), 201);
     } catch {
       return json(error("CREATE_FAILED", "Failed to create menu item", 500), 500);

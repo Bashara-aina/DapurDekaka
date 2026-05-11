@@ -1,34 +1,31 @@
-import { error, ok } from "../../../lib/api-response";
-import { requireAdmin, requireAuth } from "../../../lib/auth";
-import { storage } from "../../../lib/storage";
+import { error, ok } from "@lib/api-response";
+import { requireAdmin } from "@lib/auth";
+import { storage } from "@lib/storage";
 
-export const config = {
-  runtime: "nodejs",
-};
-
-function json(body: unknown, status: number): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
+export const config = { runtime: "nodejs" };
 
 export default async function handler(request: Request): Promise<Response> {
+  if (request.method !== "GET") {
+    return new Response(JSON.stringify(error("METHOD_NOT_ALLOWED", "Method not allowed", 405)), {
+      status: 405,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const sessionResponse = new Response();
   try {
-    if (request.method !== "GET") {
-      return json(error("METHOD_NOT_ALLOWED", "Method not allowed", 405), 405);
-    }
+    const auth = await requireAdmin(request, sessionResponse);
+    if (auth instanceof Response) return auth;
 
-    const authResponse = new Response(null);
-    const unauthorized = await requireAuth(request, authResponse);
-    if (unauthorized) return unauthorized;
-
-    const forbidden = await requireAdmin(request, authResponse);
-    if (forbidden) return forbidden;
-
-    const posts = await storage.getAllBlogPosts();
-    return json(ok(posts), 200);
+    const allPosts = await storage.getAllBlogPosts();
+    return new Response(JSON.stringify(ok(allPosts)), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   } catch {
-    return json(error("FETCH_FAILED", "Failed to fetch blog posts", 500), 500);
+    return new Response(JSON.stringify(error("FETCH_FAILED", "Failed to fetch all blog posts", 500)), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }

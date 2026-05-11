@@ -1,8 +1,8 @@
 import bcrypt from "bcryptjs";
 import { insertUserSchema } from "@shared/schema";
-import { created, error } from "../lib/api-response";
-import { storage } from "../lib/storage";
-import { getSession } from "../lib/session";
+import { created, error } from "@lib/api-response";
+import { storage } from "@lib/storage";
+import { getSession, withSessionHeaders } from "@lib/session";
 
 export const config = { runtime: "nodejs" };
 
@@ -32,23 +32,14 @@ export default async function handler(request: Request): Promise<Response> {
       return json(error("USERNAME_TAKEN", "Username already taken", 409), 409);
     }
 
-    // Explicitly hash here to satisfy auth migration requirements.
-    const passwordHash = await bcrypt.hash(password, 10);
-    const hashMatchesPlaintext = await bcrypt.compare(password, passwordHash);
-    if (!hashMatchesPlaintext) {
-      return json(error("REGISTER_FAILED", "Failed to register user", 500), 500);
-    }
-    const newUser = await storage.createUser({
-      username,
-      email,
-      password,
-    });
+    const newUser = await storage.createUser({ username, email, password });
 
-    const response = json(created({ message: "User registered successfully" }), 201);
-    const session = await getSession(request, response);
+    const sessionResponse = new Response();
+    const { session, save } = await getSession(request, sessionResponse);
     session.userId = newUser.id;
-    await session.save();
-    return response;
+    await save();
+
+    return withSessionHeaders(json(created({ message: "User registered successfully" }), 201), sessionResponse);
   } catch {
     return json(error("REGISTER_FAILED", "Failed to register user", 500), 500);
   }

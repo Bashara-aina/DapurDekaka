@@ -1,8 +1,8 @@
 import type { PageContent } from "@shared/schema";
 import { z } from "zod";
-import { error, ok } from "../../lib/api-response";
-import { requireAdmin } from "../../lib/auth";
-import { storage } from "../../lib/storage";
+import { error, ok } from "@lib/api-response";
+import { requireAdmin } from "@lib/auth";
+import { storage } from "@lib/storage";
 
 export const config = { runtime: "nodejs" };
 
@@ -78,7 +78,7 @@ export default async function handler(request: Request): Promise<Response> {
 
   if (request.method === "PUT") {
     const auth = await requireAdmin(request, new Response());
-    if (auth) return auth;
+    if (auth instanceof Response) return auth;
     const payload = (await request.json()) as unknown;
     const validated = z.object({ content: contactPageSchema }).safeParse(payload);
     if (!validated.success) return json(error("VALIDATION_FAILED", "Invalid contact page payload", 400), 400);

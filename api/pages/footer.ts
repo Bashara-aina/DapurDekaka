@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { error, ok } from "../../lib/api-response";
-import { requireAdmin } from "../../lib/auth";
-import { uploadFile } from "../../lib/blob";
-import { storage } from "../../lib/storage";
+import { error, ok } from "@lib/api-response";
+import { requireAdmin } from "@lib/auth";
+import { uploadFile } from "@lib/blob";
+import { storage } from "@lib/storage";
 
 export const config = { runtime: "nodejs" };
 
@@ -62,7 +62,7 @@ export default async function handler(request: Request): Promise<Response> {
 
   if (request.method === "PUT") {
     const auth = await requireAdmin(request, new Response());
-    if (auth) return auth;
+    if (auth instanceof Response) return auth;
 
     try {
       const contentType = request.headers.get("content-type") ?? "";

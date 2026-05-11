@@ -13,6 +13,7 @@
     "test:run": "vitest run"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
     "@supabase/supabase-js": "^2.47.0",
     "@vercel/blob": "^1.1.1",
     "@vercel/postgres": "^0.10.0",
