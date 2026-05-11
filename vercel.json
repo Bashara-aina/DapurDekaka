@@ -3,6 +3,12 @@
   "buildCommand": "vite build",
   "outputDirectory": "dist/public",
   "regions": ["sin1"],
+  "functions": {
+    "api/**/*.ts": {
+      "runtime": "nodejs22.x",
+      "includeFiles": "./lib/**"
+    }
+  },
   "rewrites": [
     {
       "source": "/((?!api/|sitemap.xml|favicon\\.ico|assets/|logo/|asset/).*)",
