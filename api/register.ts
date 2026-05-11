@@ -1,8 +1,8 @@
 import bcrypt from "bcryptjs";
 import { insertUserSchema } from "@shared/schema";
-import { created, error } from "@lib/api-response";
-import { storage } from "@lib/storage";
-import { getSession, withSessionHeaders } from "@lib/session";
+import { created, error } from "../lib/api-response";
+import { storage } from "../lib/storage";
+import { getSession, withSessionHeaders } from "../lib/session";
 
 export const config = { runtime: "nodejs" };
 

@@ -1,4 +1,4 @@
-import { ok } from "@lib/api-response";
+import { ok } from "../lib/api-response";
 
 export const config = { runtime: "nodejs" };
 

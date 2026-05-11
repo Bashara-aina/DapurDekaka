@@ -1,7 +1,7 @@
-import { error, ok } from "@lib/api-response";
-import { requireAdmin } from "@lib/auth";
-import { uploadFile } from "@lib/blob";
-import { storage } from "@lib/storage";
+import { error, ok } from "../../../lib/api-response";
+import { requireAdmin } from "../../../lib/auth";
+import { uploadFile } from "../../../lib/blob";
+import { storage } from "../../../lib/storage";
 
 export const config = { runtime: "nodejs" };
 

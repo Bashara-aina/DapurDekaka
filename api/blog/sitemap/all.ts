@@ -1,5 +1,5 @@
-import { error, ok } from "@lib/api-response";
-import { storage } from "@lib/storage";
+import { error, ok } from "../../../lib/api-response";
+import { storage } from "../../../lib/storage";
 
 export const config = {
   runtime: "nodejs",

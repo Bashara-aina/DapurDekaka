@@ -1,8 +1,8 @@
 import { insertSauceSchema } from "@shared/schema";
-import { created, error, ok } from "@lib/api-response";
-import { requireAdmin, requireAuth } from "@lib/auth";
-import { uploadFile } from "@lib/blob";
-import { storage } from "@lib/storage";
+import { created, error, ok } from "../../../lib/api-response";
+import { requireAdmin, requireAuth } from "../../../lib/auth";
+import { uploadFile } from "../../../lib/blob";
+import { storage } from "../../../lib/storage";
 
 export const config = { runtime: "nodejs" };
 

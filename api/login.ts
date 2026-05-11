@@ -1,8 +1,8 @@
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { error, ok } from "@lib/api-response";
-import { storage } from "@lib/storage";
-import { getSession, withSessionHeaders } from "@lib/session";
+import { error, ok } from "../lib/api-response";
+import { storage } from "../lib/storage";
+import { getSession, withSessionHeaders } from "../lib/session";
 
 export const config = { runtime: "nodejs" };
 

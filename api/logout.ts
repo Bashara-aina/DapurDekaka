@@ -1,5 +1,5 @@
-import { error, ok } from "@lib/api-response";
-import { getSession, withSessionHeaders } from "@lib/session";
+import { error, ok } from "../lib/api-response";
+import { getSession, withSessionHeaders } from "../lib/session";
 
 export const config = { runtime: "nodejs" };
 

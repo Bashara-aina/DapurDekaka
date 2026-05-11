@@ -10,12 +10,12 @@ const getSessionMock = vi.fn(async (_request: Request, _sessionResponse: Respons
 const getUserByUsernameMock = vi.fn();
 const compareMock = vi.fn();
 
-vi.mock("@lib/session", () => ({
+vi.mock("../../lib/session", () => ({
   getSession: getSessionMock,
   withSessionHeaders: (response: Response) => response,
 }));
 
-vi.mock("@lib/storage", () => ({
+vi.mock("../../lib/storage", () => ({
   storage: {
     getUserByUsername: getUserByUsernameMock,
   },

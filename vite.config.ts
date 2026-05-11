@@ -13,6 +13,8 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "client", "src"),
       "@shared": path.resolve(__dirname, "shared"),
+      "@lib": path.resolve(__dirname, "lib"),
+      "@lib/*": path.resolve(__dirname, "lib", "*"),
     },
   },
   root: path.resolve(__dirname, "client"),

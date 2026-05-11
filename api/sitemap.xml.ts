@@ -1,4 +1,4 @@
-import { storage } from "@lib/storage";
+import { storage } from "../lib/storage";
 
 export const config = { runtime: "nodejs" };
 
