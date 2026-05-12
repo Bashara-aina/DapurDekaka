@@ -1,52 +1,44 @@
-import 'dotenv/config';
-import { createReadStream, readdirSync } from 'fs';
+import { config } from 'dotenv';
+import { readdirSync } from 'fs';
 import { join, basename } from 'path';
+import cloudinary from 'cloudinary';
+import { setTimeout } from 'timers/promises';
 
-const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dsnhwfuxh';
-const API_KEY = process.env.CLOUDINARY_API_KEY;
-const API_SECRET = process.env.CLOUDINARY_API_SECRET;
+config({ path: join(process.cwd(), '.env.local') });
 
-if (!API_KEY || !API_SECRET) {
-  console.error('Missing CLOUDINARY_API_KEY or CLOUDINARY_API_SECRET');
-  process.exit(1);
-}
+cloudinary.config({
+  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true,
+});
 
-// Upload image to Cloudinary
-async function uploadImage(filePath: string, publicId: string): Promise<void> {
-  const formData = new FormData();
-  formData.append('file', createReadStream(filePath));
-  formData.append('upload_preset', 'ml_default'); // Using unsigned upload
-  formData.append('public_id', publicId);
-  formData.append('folder', 'dapurdekaka/gallery');
-
-  const timestamp = Math.round(Date.now() / 1000);
-  const paramsToSign = `folder=dapurdekaka/gallery&public_id=${publicId}&timestamp=${timestamp}`;
-  
-  // Generate signature manually (simplified for demo)
-  // In production, use cloudinary package
-  
-  const response = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-    {
-      method: 'POST',
-      body: formData,
-    }
-  );
-
-  const result = await response.json();
-  if (result.error) {
-    console.error(`❌ Failed to upload ${publicId}:`, result.error.message);
-  } else {
-    console.log(`✅ Uploaded: ${publicId}`);
+async function uploadImage(filePath: string, publicId: string): Promise<string | null> {
+  try {
+    const result = await cloudinary.v2.uploader.upload(filePath, {
+      folder: 'dapurdekaka/gallery',
+      public_id: publicId,
+      use_filename: false,
+      unique_filename: false,
+      overwrite: true,
+      resource_type: 'image',
+    });
+    return result.secure_url;
+  } catch (error) {
+    console.error(`❌ Failed: ${publicId} - ${(error as Error).message}`);
+    return null;
   }
 }
 
-// Upload all gallery images
 async function main() {
   const galleryDir = join(process.cwd(), 'public/assets/gallery');
-  const files = readdirSync(galleryDir).filter(f => f.endsWith('.jpg') || f.endsWith('.png'));
+  const files = readdirSync(galleryDir).filter(f => f.endsWith('.jpg') || f.endsWith('.png')).sort();
 
   console.log(`Found ${files.length} images in ${galleryDir}`);
+  console.log(`Cloud: ${cloudinary.config().cloud_name}\n`);
+
+  let success = 0;
+  let failed = 0;
 
   for (const file of files) {
     const originalName = basename(file, file.includes('.png') ? '.png' : '.jpg');
@@ -54,11 +46,23 @@ async function main() {
     const publicId = `gallery-${String(num).padStart(2, '0')}`;
     
     const filePath = join(galleryDir, file);
-    console.log(`Uploading ${file} as ${publicId}...`);
-    await uploadImage(filePath, publicId);
+    process.stdout.write(`[${success + failed + 1}/${files.length}] Uploading ${file} as ${publicId}... `);
+    
+    const url = await uploadImage(filePath, publicId);
+    
+    if (url) {
+      console.log(`✅`);
+      success++;
+    } else {
+      console.log(`❌`);
+      failed++;
+    }
+    
+    // Small delay between uploads
+    await setTimeout(300);
   }
 
-  console.log('\n✅ All uploads complete!');
+  console.log(`\n✅ Done! ${success} uploaded, ${failed} failed.`);
 }
 
 main().catch(console.error);
