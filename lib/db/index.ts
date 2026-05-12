@@ -1,39 +1,57 @@
-import type { NeonQueryFunction } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
+import { Pool } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from './schema';
 
-// Singleton pattern - only initialize when actually needed at runtime
+// ─────────────────────────────────────────
+// Supabase connection via direct pg
+// Note: Requires Supabase pgBouncer/Direct access enabled
+// If db.uebtatnblmsuldnyrixv.supabase.co is unreachable from your network,
+// use the Supabase MCP execute_sql tool for all operations instead.
+// ─────────────────────────────────────────
+
 let _db: ReturnType<typeof drizzle> | null = null;
-let _sql: NeonQueryFunction<false, false> | null = null;
+let _pool: Pool | null = null;
+
+function getPool(): Pool {
+  if (!_pool) {
+    const url = process.env.DATABASE_URL;
+    if (!url) {
+      throw new Error('DATABASE_URL environment variable is not set');
+    }
+    _pool = new Pool({
+      connectionString: url,
+      ssl: {
+        rejectUnauthorized: false,
+      },
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000,
+    });
+  }
+  return _pool;
+}
 
 function getDb() {
   if (!_db) {
-    const url = process.env.DATABASE_URL;
-    if (!url) {
-      return null;
-    }
-    // Dynamic require to avoid build-time evaluation
-    const { neon }: { neon: typeof import('@neondatabase/serverless').neon } = 
-      require('@neondatabase/serverless');
-    _sql = neon(url);
-    _db = drizzle(_sql, { schema });
+    _db = drizzle(getPool(), { schema });
   }
   return _db;
 }
 
-// Get database instance, returning null if not yet initialized
-export function getDatabase() {
-  return getDb();
+export function getPoolExporter(): Pool {
+  return getPool();
 }
 
-// Export db as a getter that lazily initializes
-// This prevents build-time failures when DATABASE_URL isn't set
 export const db = new Proxy({} as ReturnType<typeof drizzle>, {
   get(_target, prop) {
-    const database = getDb();
-    if (!database) {
-      return undefined;
-    }
-    return (database as any)[prop];
+    return (getDb() as any)[prop];
   },
 });
+
+export async function closePool() {
+  if (_pool) {
+    await _pool.end();
+    _pool = null;
+    _db = null;
+  }
+}
