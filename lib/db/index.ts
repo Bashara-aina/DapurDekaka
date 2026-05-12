@@ -2,15 +2,12 @@ import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from './schema';
 
-// ─────────────────────────────────────────
-// Supabase connection via direct pg
-// Note: Requires Supabase pgBouncer/Direct access enabled
-// If db.uebtatnblmsuldnyrixv.supabase.co is unreachable from your network,
-// use the Supabase MCP execute_sql tool for all operations instead.
-// ─────────────────────────────────────────
+// Infer the db type from drizzle call
+type DbType = ReturnType<typeof drizzle<typeof schema>>;
 
-let _db: ReturnType<typeof drizzle> | null = null;
+// Singleton pool — initialized on first use
 let _pool: Pool | null = null;
+let _db: DbType | null = null;
 
 function getPool(): Pool {
   if (!_pool) {
@@ -20,9 +17,7 @@ function getPool(): Pool {
     }
     _pool = new Pool({
       connectionString: url,
-      ssl: {
-        rejectUnauthorized: false,
-      },
+      ssl: { rejectUnauthorized: false },
       max: 10,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 5000,
@@ -31,24 +26,23 @@ function getPool(): Pool {
   return _pool;
 }
 
-function getDb() {
+function getDb(): DbType {
   if (!_db) {
     _db = drizzle(getPool(), { schema });
   }
   return _db;
 }
 
+// Named export — use this in API routes and server components
+export const db: DbType = getDb();
+
+// Pool accessor for scripts that need explicit close
 export function getPoolExporter(): Pool {
   return getPool();
 }
 
-export const db = new Proxy({} as ReturnType<typeof drizzle>, {
-  get(_target, prop) {
-    return (getDb() as any)[prop];
-  },
-});
-
-export async function closePool() {
+// For graceful shutdown
+export async function closePool(): Promise<void> {
   if (_pool) {
     await _pool.end();
     _pool = null;

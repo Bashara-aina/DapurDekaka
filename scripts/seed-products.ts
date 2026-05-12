@@ -1,10 +1,10 @@
 import 'dotenv/config';
-import { getPool } from '../lib/db/index';
+import { getPoolExporter } from '../lib/db/index';
 import * as schema from '../lib/db/schema';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { eq } from 'drizzle-orm';
 
-const pool = getPool();
+const pool = getPoolExporter();
 const db = drizzle(pool, { schema });
 
 // Cloudinary base URL helper
