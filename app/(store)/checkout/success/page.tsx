@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import confetti from 'canvas-confetti';
 
-export default function CheckoutSuccessPage() {
+function SuccessContent() {
   const searchParams = useSearchParams();
   const orderNumber = searchParams.get('order');
 
@@ -46,5 +46,27 @@ export default function CheckoutSuccessPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-brand-cream flex items-center justify-center p-4">
+      <div className="text-center">
+        <div className="animate-pulse">
+          <div className="text-6xl mb-6 opacity-50">🎉</div>
+          <div className="h-8 bg-brand-cream-dark rounded w-48 mx-auto mb-4"></div>
+          <div className="h-4 bg-brand-cream-dark rounded w-64 mx-auto"></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <SuccessContent />
+    </Suspense>
   );
 }

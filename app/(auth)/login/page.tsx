@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
@@ -140,5 +140,27 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-brand-cream flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white rounded-card shadow-card p-8">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-brand-cream-dark rounded w-1/2 mx-auto"></div>
+          <div className="h-12 bg-brand-cream-dark rounded"></div>
+          <div className="h-12 bg-brand-cream-dark rounded"></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <LoginForm />
+    </Suspense>
   );
 }

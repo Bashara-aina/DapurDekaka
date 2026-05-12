@@ -376,8 +376,21 @@ async function seed() {
     'pangsit-ayam': { cloudinaryPublicId: 'dapurdekaka/products/pangsit-ayam', altTextId: 'Pangsit Ayam 25 pcs', altTextEn: 'Chicken Pangsit 25 pcs' },
   };
 
-  const productImages = insertedProducts.map((product, index) => {
+  type ProductImageInsert = {
+  productId: string;
+  cloudinaryUrl: string;
+  cloudinaryPublicId: string;
+  altTextId: string;
+  altTextEn: string;
+  sortOrder: number;
+};
+
+const productImages = insertedProducts.map((product, index): ProductImageInsert | null => {
     const imgData = productImageMap[product.slug];
+    if (!imgData) {
+      console.warn(`No image mapping found for product: ${product.slug}`);
+      return null;
+    }
     return {
       productId: product.id,
       cloudinaryUrl: `${CLOUDINARY_PRODUCTS_BASE}/${imgData.cloudinaryPublicId}`,
@@ -386,7 +399,7 @@ async function seed() {
       altTextEn: imgData.altTextEn,
       sortOrder: index + 1,
     };
-  });
+  }).filter((img): img is ProductImageInsert => img !== null);
 
   await db.insert(schema.productImages).values(productImages);
   console.log(`Created ${productImages.length} product images`);

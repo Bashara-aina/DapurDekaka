@@ -15,12 +15,17 @@ export async function rajaOngkirGet<T>(endpoint: string): Promise<T> {
     throw new Error('RAJAONGKIR_API_KEY is not set');
   }
 
-  const res = await fetch(`${RAJAONGKIR_BASE_URL}${endpoint}`, {
-    headers: {
-      key: apiKey,
-    },
-    next: { revalidate: 3600 },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${RAJAONGKIR_BASE_URL}${endpoint}`, {
+      headers: {
+        key: apiKey,
+      },
+      next: { revalidate: 3600 },
+    });
+  } catch (err) {
+    throw new Error(`RajaOngkir network error: ${err instanceof Error ? err.message : String(err)}`);
+  }
 
   if (!res.ok) {
     throw new Error(`RajaOngkir API error: ${res.status}`);
@@ -41,16 +46,21 @@ export async function rajaOngkirPost<T>(endpoint: string, body: Record<string, u
     throw new Error('RAJAONGKIR_API_KEY is not set');
   }
 
-  const res = await fetch(`${RAJAONGKIR_BASE_URL}${endpoint}`, {
-    method: 'POST',
-    headers: {
-      key: apiKey,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams(
-      Object.entries(body).map(([k, v]) => [k, String(v)])
-    ).toString(),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${RAJAONGKIR_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        key: apiKey,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams(
+        Object.entries(body).map(([k, v]) => [k, String(v)])
+      ).toString(),
+    });
+  } catch (err) {
+    throw new Error(`RajaOngkir network error: ${err instanceof Error ? err.message : String(err)}`);
+  }
 
   if (!res.ok) {
     throw new Error(`RajaOngkir API error: ${res.status}`);
