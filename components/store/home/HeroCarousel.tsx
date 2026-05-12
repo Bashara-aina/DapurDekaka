@@ -5,9 +5,12 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dsnhwfuxh';
+const CLOUDINARY_BASE = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/f_webp,q_auto,w_1600`;
+
 interface Slide {
   id: number;
-  image: string;
+  cloudinaryPublicId: string;
   title: string;
   subtitle: string;
   cta?: string;
@@ -17,7 +20,7 @@ interface Slide {
 const slides: Slide[] = [
   {
     id: 1,
-    image: '/assets/gallery/1.jpg',
+    cloudinaryPublicId: 'dapurdekaka/gallery/gallery-01',
     title: 'Cita Rasa Warisan,\nKini di Rumahmu',
     subtitle: 'Dimsum, siomay, dan bakso frozen premium dari Bandung — langsung ke pintu rumah Anda',
     cta: 'Lihat Produk',
@@ -25,7 +28,7 @@ const slides: Slide[] = [
   },
   {
     id: 2,
-    image: '/assets/gallery/2.jpg',
+    cloudinaryPublicId: 'dapurdekaka/gallery/gallery-02',
     title: 'Promo 10% Off',
     subtitle: 'Untuk pembelian pertama kamu dengan kode SELAMATDATANG',
     cta: 'Klaim Sekarang',
@@ -33,7 +36,7 @@ const slides: Slide[] = [
   },
   {
     id: 3,
-    image: '/assets/gallery/3.jpg',
+    cloudinaryPublicId: 'dapurdekaka/gallery/gallery-03',
     title: '100% Halal & Frozen Fresh',
     subtitle: 'Kualitas terjaga sampai tujuan — dikirim ke seluruh Indonesia',
     cta: 'Pelajari Lebih Lanjut',
@@ -55,6 +58,7 @@ export function HeroCarousel() {
 
   const goToSlide = (index: number) => setCurrentSlide(index);
   const activeSlide = slides[currentSlide]!;
+  const imageUrl = `${CLOUDINARY_BASE}/${activeSlide.cloudinaryPublicId}`;
 
   return (
     <section className="relative h-[50vh] md:h-[70vh] bg-brand-red overflow-hidden">
@@ -69,7 +73,7 @@ export function HeroCarousel() {
         >
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent z-10" />
           <Image
-            src={activeSlide.image}
+            src={imageUrl}
             alt={activeSlide.title}
             fill
             className="object-cover"

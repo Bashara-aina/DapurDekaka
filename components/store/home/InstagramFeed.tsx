@@ -1,12 +1,15 @@
 import Image from 'next/image';
 
+const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dsnhwfuxh';
+const CLOUDINARY_BASE = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/f_webp,q_auto,w_600`;
+
 const instagramPosts = [
-  { id: 1, image: '/assets/gallery/1.jpg', alt: 'Dimsum premium' },
-  { id: 2, image: '/assets/gallery/2.jpg', alt: 'Bakso frozen' },
-  { id: 3, image: '/assets/gallery/3.jpg', alt: 'Siomay Bandung' },
-  { id: 4, image: '/assets/gallery/4.jpg', alt: 'Lumpia crispy' },
-  { id: 5, image: '/assets/gallery/5.jpg', alt: 'Pangsit ayam' },
-  { id: 6, image: '/assets/gallery/6.jpg', alt: 'Menu catering' },
+  { id: 1, cloudinaryPublicId: 'dapurdekaka/gallery/gallery-01', alt: 'Dimsum premium' },
+  { id: 2, cloudinaryPublicId: 'dapurdekaka/gallery/gallery-02', alt: 'Bakso frozen' },
+  { id: 3, cloudinaryPublicId: 'dapurdekaka/gallery/gallery-03', alt: 'Siomay Bandung' },
+  { id: 4, cloudinaryPublicId: 'dapurdekaka/gallery/gallery-04', alt: 'Lumpia crispy' },
+  { id: 5, cloudinaryPublicId: 'dapurdekaka/gallery/gallery-05', alt: 'Pangsit ayam' },
+  { id: 6, cloudinaryPublicId: 'dapurdekaka/gallery/gallery-06', alt: 'Menu catering' },
 ];
 
 export function InstagramFeed() {
@@ -31,7 +34,7 @@ export function InstagramFeed() {
               className="aspect-square relative rounded-lg overflow-hidden bg-brand-cream-dark group"
             >
               <Image
-                src={post.image}
+                src={`${CLOUDINARY_BASE}/${post.cloudinaryPublicId}`}
                 alt={post.alt}
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-300"
