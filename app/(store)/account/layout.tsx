@@ -1,0 +1,81 @@
+'use client';
+
+import { ReactNode } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import { cn } from '@/lib/utils/cn';
+import {
+  LayoutDashboard,
+  Package,
+  MapPin,
+  Gift,
+  User,
+  LogOut,
+} from 'lucide-react';
+
+interface AccountLayoutProps {
+  children: ReactNode;
+}
+
+const navItems = [
+  { href: '/account', label: 'Overview', icon: LayoutDashboard },
+  { href: '/account/orders', label: 'Pesanan', icon: Package },
+  { href: '/account/addresses', label: 'Alamat', icon: MapPin },
+  { href: '/account/points', label: 'Poin', icon: Gift },
+  { href: '/account/profile', label: 'Profil', icon: User },
+];
+
+export default function AccountLayout({ children }: AccountLayoutProps) {
+  const pathname = usePathname();
+  const { data: session, status } = useSession();
+
+  return (
+    <div className="min-h-screen bg-brand-cream pb-20 md:pb-0">
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        <div className="flex flex-col md:flex-row gap-6">
+          {/* Desktop Sidebar */}
+          <aside className="hidden md:block w-64 flex-shrink-0">
+            <nav className="bg-white rounded-card shadow-card p-4 sticky top-4">
+              <div className="space-y-1">
+                {navItems.map((item) => {
+                  const isActive = pathname === item.href ||
+                    (item.href !== '/account' && pathname.startsWith(item.href));
+
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+                        isActive
+                          ? 'bg-brand-red text-white'
+                          : 'text-text-secondary hover:bg-brand-cream hover:text-text-primary'
+                      )}
+                    >
+                      <item.icon className="w-5 h-5" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+
+              <div className="mt-6 pt-6 border-t border-brand-cream-dark">
+                <Link
+                  href="/api/auth/signout"
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-text-secondary hover:bg-brand-cream hover:text-text-primary transition-colors"
+                >
+                  <LogOut className="w-5 h-5" />
+                  Keluar
+                </Link>
+              </div>
+            </nav>
+          </aside>
+
+          {/* Main Content */}
+          <main className="flex-1 min-w-0">{children}</main>
+        </div>
+      </div>
+    </div>
+  );
+}

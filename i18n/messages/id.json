@@ -1,0 +1,37 @@
+{
+  "common": {
+    "brandName": "Dapur Dekaka",
+    "tagline": "Cita Rasa Warisan, Kini di Rumahmu"
+  },
+  "nav": {
+    "home": "Beranda",
+    "products": "Produk",
+    "cart": "Keranjang",
+    "account": "Akun",
+    "blog": "Blog"
+  },
+  "product": {
+    "addToCart": "Tambah ke Keranjang",
+    "outOfStock": "Habis",
+    "remainingStock": "Tersisa {count} pcs",
+    "selectVariant": "Pilih Varian",
+    "halal": "HALAL"
+  },
+  "cart": {
+    "empty": "Keranjangmu masih kosong",
+    "emptySubtitle": "Yuk, temukan dimsum favoritmu!",
+    "startShopping": "Mulai Belanja",
+    "total": "Total",
+    "checkout": "Checkout"
+  },
+  "checkout": {
+    "title": "Checkout",
+    "delivery": "Pengiriman",
+    "pickup": "Ambil di Toko",
+    "payNow": "Bayar Sekarang",
+    "identity": "Identitas",
+    "address": "Alamat Pengiriman",
+    "courier": "Pilih Kurir",
+    "payment": "Pembayaran"
+  }
+}

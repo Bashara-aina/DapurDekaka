@@ -1,0 +1,37 @@
+{
+  "common": {
+    "brandName": "Dapur Dekaka",
+    "tagline": "Heritage Flavors, Now at Your Home"
+  },
+  "nav": {
+    "home": "Home",
+    "products": "Products",
+    "cart": "Cart",
+    "account": "Account",
+    "blog": "Blog"
+  },
+  "product": {
+    "addToCart": "Add to Cart",
+    "outOfStock": "Out of Stock",
+    "remainingStock": "Only {count} pcs left",
+    "selectVariant": "Select Variant",
+    "halal": "HALAL"
+  },
+  "cart": {
+    "empty": "Your cart is empty",
+    "emptySubtitle": "Let's find your favorite dimsum!",
+    "startShopping": "Start Shopping",
+    "total": "Total",
+    "checkout": "Checkout"
+  },
+  "checkout": {
+    "title": "Checkout",
+    "delivery": "Delivery",
+    "pickup": "Self Pickup",
+    "payNow": "Pay Now",
+    "identity": "Identity",
+    "address": "Delivery Address",
+    "courier": "Select Courier",
+    "payment": "Payment"
+  }
+}
