@@ -1,8 +1,7 @@
 import { config } from 'dotenv';
 import { readdirSync } from 'fs';
 import { join, basename } from 'path';
-import cloudinary from 'cloudinary';
-import { setTimeout } from 'timers/promises';
+import { v2 as cloudinary } from 'cloudinary';
 
 config({ path: join(process.cwd(), '.env.local') });
 
@@ -15,7 +14,7 @@ cloudinary.config({
 
 async function uploadImage(filePath: string, publicId: string): Promise<string | null> {
   try {
-    const result = await cloudinary.v2.uploader.upload(filePath, {
+    const result = await cloudinary.uploader.upload(filePath, {
       folder: 'dapurdekaka/gallery',
       public_id: publicId,
       use_filename: false,
@@ -59,7 +58,7 @@ async function main() {
     }
     
     // Small delay between uploads
-    await setTimeout(300);
+    await new Promise(resolve => setTimeout(resolve, 300));
   }
 
   console.log(`\n✅ Done! ${success} uploaded, ${failed} failed.`);
