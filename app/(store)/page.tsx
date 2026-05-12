@@ -11,6 +11,8 @@ import { products, productVariants, productImages, categories } from '@/lib/db/s
 import { eq, and, desc, isNull } from 'drizzle-orm';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: { absolute: 'Dapur Dekaka | Frozen Food Premium dari Bandung' },
   description: 'Cita rasa warisan Chinese-Indonesia, kini di rumahmu. Dimsum, siomay, bakso frozen premium dari Bandung. Pesan online, kirim ke seluruh Indonesia.',

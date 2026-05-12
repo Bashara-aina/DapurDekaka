@@ -1,21 +1,39 @@
-import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { getToken } from '@auth/core/jwt';
 
-export default auth((req: NextRequest & { auth: any }) => {
+const AUTH_SECRET = process.env.AUTH_SECRET!;
+
+async function getSessionFromRequest(req: NextRequest): Promise<{
+  id?: string;
+  role?: string;
+} | null> {
+  const token = await getToken({
+    req,
+    secret: AUTH_SECRET,
+    cookieName: 'authjs.session-token',
+  });
+
+  if (!token?.sub) return null;
+
+  return {
+    id: token.sub,
+    role: (token.role as string) || 'customer',
+  };
+}
+
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  const session = req.auth;
+  const session = await getSessionFromRequest(req);
 
   if (pathname.startsWith('/admin')) {
-    if (!session) {
+    if (!session?.id) {
       return NextResponse.redirect(new URL('/login', req.url));
     }
-
-    const role = session.user?.role;
-    if (!['superadmin', 'owner', 'warehouse'].includes(role)) {
+    const role = session.role;
+    if (!role || !['superadmin', 'owner', 'warehouse'].includes(role)) {
       return NextResponse.redirect(new URL('/', req.url));
     }
-
     if (role === 'warehouse') {
       const allowed = ['/admin/inventory', '/admin/shipments'];
       if (!allowed.some(p => pathname.startsWith(p))) {
@@ -25,22 +43,22 @@ export default auth((req: NextRequest & { auth: any }) => {
   }
 
   if (pathname.startsWith('/account')) {
-    if (!session) {
+    if (!session?.id) {
       return NextResponse.redirect(new URL('/login', req.url));
     }
   }
 
   if (pathname.startsWith('/b2b/account')) {
-    if (!session) {
+    if (!session?.id) {
       return NextResponse.redirect(new URL('/login', req.url));
     }
-    if (session.user?.role !== 'b2b' && session.user?.role !== 'superadmin') {
+    if (session.role !== 'b2b' && session.role !== 'superadmin') {
       return NextResponse.redirect(new URL('/b2b', req.url));
     }
   }
 
   return NextResponse.next();
-});
+}
 
 export const config = {
   matcher: ['/admin/:path*', '/account/:path*', '/b2b/account/:path*'],

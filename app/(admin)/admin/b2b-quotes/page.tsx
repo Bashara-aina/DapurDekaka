@@ -3,6 +3,8 @@ import { db } from '@/lib/db';
 import { b2bQuotes, b2bProfiles, users } from '@/lib/db/schema';
 import { desc, eq } from 'drizzle-orm';
 
+export const dynamic = 'force-dynamic';
+
 async function getQuotes() {
   return await db.query.b2bQuotes.findMany({
     with: {

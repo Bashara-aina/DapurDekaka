@@ -1,15 +1,27 @@
 import 'dotenv/config';
-import { getPoolExporter } from '../lib/db/index';
+import { db } from '../lib/db/index';
 import * as schema from '../lib/db/schema';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import { eq } from 'drizzle-orm';
 
-const pool = getPoolExporter();
-const db = drizzle(pool, { schema });
-
-// Cloudinary base URL helper
-const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'demo';
+const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dsnhwfuxh';
 const CLOUDINARY_BASE = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/f_webp,q_auto,w_800`;
+
+const CLOUDINARY_URL_BY_PUBLIC_ID: Record<string, string> = {
+  'dapurdekaka/products/dimsum-crabstick': `${CLOUDINARY_BASE}/dapurdekaka/products/dimsum-crabstick`,
+  'dapurdekaka/products/dimsum-jamur': `${CLOUDINARY_BASE}/dapurdekaka/products/dimsum-jamur`,
+  'dapurdekaka/products/dimsum-mozarella': `${CLOUDINARY_BASE}/dapurdekaka/products/dimsum-mozarella`,
+  'dapurdekaka/products/dimsum-tuna': `${CLOUDINARY_BASE}/dapurdekaka/products/dimsum-tuna`,
+  'dapurdekaka/products/dimsum-golden': `${CLOUDINARY_BASE}/dapurdekaka/products/dimsum-golden`,
+  'dapurdekaka/products/dimsum-pedas': `${CLOUDINARY_BASE}/dapurdekaka/products/dimsum-pedas`,
+  'dapurdekaka/products/lumpia-kulit-tahu': `${CLOUDINARY_BASE}/dapurdekaka/products/lumpia-kulit-tahu`,
+  'dapurdekaka/products/dimsum-nori': `${CLOUDINARY_BASE}/dapurdekaka/products/dimsum-nori`,
+  'dapurdekaka/products/dimsum-rambutan': `${CLOUDINARY_BASE}/dapurdekaka/products/dimsum-rambutan`,
+  'dapurdekaka/products/ekado': `${CLOUDINARY_BASE}/dapurdekaka/products/ekado`,
+  'dapurdekaka/products/pangsit-ayam': `${CLOUDINARY_BASE}/dapurdekaka/products/pangsit-ayam`,
+  'dapurdekaka/sauces/chilli-oil': `${CLOUDINARY_BASE}/dapurdekaka/sauces/chilli-oil`,
+  'dapurdekaka/sauces/saos-mentai-mayo': `${CLOUDINARY_BASE}/dapurdekaka/sauces/saos-mentai-mayo`,
+  'dapurdekaka/sauces/saos-tartar': `${CLOUDINARY_BASE}/dapurdekaka/sauces/saos-tartar`,
+};
 
 // ─────────────────────────────────────────
 // PRODUCT CATALOG — from Shopee data
@@ -102,13 +114,16 @@ async function upsertProductVariant(productId: string, variant: ProductInput['va
 
 async function upsertProductImage(productId: string, item: ProductInput, sortOrder: number) {
   const [existingImg] = await db.select().from(schema.productImages).where(eq(schema.productImages.productId, productId)).limit(1);
-  const cloudinaryUrl = `${CLOUDINARY_BASE}/${item.cloudinaryPublicId}`;
+  const cloudinaryUrl = CLOUDINARY_URL_BY_PUBLIC_ID[item.cloudinaryPublicId];
+  if (!cloudinaryUrl) {
+    throw new Error(`Missing cloudinary URL mapping for ${item.cloudinaryPublicId}`);
+  }
   if (existingImg) {
     await db.update(schema.productImages).set({ cloudinaryUrl, cloudinaryPublicId: item.cloudinaryPublicId, altTextId: item.altTextId, altTextEn: item.altTextEn }).where(eq(schema.productImages.id, existingImg.id));
-    console.log(`  → Updated image for ${item.slug}`);
+    console.log(`  → Updated image for ${item.slug} with URL: ${cloudinaryUrl}`);
   } else {
     await db.insert(schema.productImages).values({ productId, cloudinaryUrl, cloudinaryPublicId: item.cloudinaryPublicId, altTextId: item.altTextId, altTextEn: item.altTextEn, sortOrder });
-    console.log(`  → Created image for ${item.slug}`);
+    console.log(`  → Created image for ${item.slug} with URL: ${cloudinaryUrl}`);
   }
 }
 
@@ -117,7 +132,7 @@ async function upsertProductImage(productId: string, item: ProductInput, sortOrd
 // ─────────────────────────────────────────
 
 async function seedProducts() {
-  console.log('Starting products seed (Supabase via pg)...\n');
+  console.log('Starting products seed...\n');
   let createdProducts = 0;
   let updatedProducts = 0;
 
@@ -158,12 +173,9 @@ async function seedProducts() {
   console.log(`   Created: ${createdProducts} products`);
   console.log(`   Updated: ${updatedProducts} products`);
   console.log(`   Total items in catalog: ${CATALOG.length}`);
-
-  await pool.end();
 }
 
-seedProducts().catch(async (err) => {
+seedProducts().catch((err) => {
   console.error('Seed failed:', err);
-  await pool.end();
   process.exit(1);
 });

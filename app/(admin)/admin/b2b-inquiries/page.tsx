@@ -2,7 +2,8 @@ import { db } from '@/lib/db';
 import { b2bInquiries } from '@/lib/db/schema';
 import { desc, eq } from 'drizzle-orm';
 import Link from 'next/link';
-import { formatIDR } from '@/lib/utils/format-currency';
+
+export const dynamic = 'force-dynamic';
 
 async function getInquiries() {
   return await db.query.b2bInquiries.findMany({
