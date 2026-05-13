@@ -1,0 +1,25 @@
+{
+  "framework": "nextjs",
+  "crons": [
+    {
+      "path": "/api/cron/cancel-expired-orders",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/expire-points",
+      "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/cron/points-expiry-warning",
+      "schedule": "0 2 * * *"
+    }
+  ],
+  "functions": {
+    "app/api/webhooks/midtrans/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/checkout/initiate/route.ts": {
+      "maxDuration": 30
+    }
+  }
+}

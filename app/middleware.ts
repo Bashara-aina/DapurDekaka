@@ -36,7 +36,7 @@ export async function middleware(req: NextRequest) {
     }
     if (role === 'warehouse') {
       const allowed = ['/admin/inventory', '/admin/shipments'];
-      if (!allowed.some(p => pathname.startsWith(p))) {
+      if (!allowed.some((p) => pathname.startsWith(p))) {
         return NextResponse.redirect(new URL('/admin/inventory', req.url));
       }
     }
