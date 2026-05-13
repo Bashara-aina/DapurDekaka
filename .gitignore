@@ -36,10 +36,8 @@ next-env.d.ts
 # drizzle
 /drizzle
 
-# uploads
-/public/assets/menu-items/
-/public/assets/sauces/
-/public/assets/gallery/
+# uploads (source assets, not deployed)
+assets-source/
 
 # env files (contain secrets)
 .env
