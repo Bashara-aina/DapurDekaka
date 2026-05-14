@@ -1,7 +1,7 @@
 'use client';
 
 import { useCartStore } from '@/store/cart.store';
-import { CartItemComponent } from '@/components/store/cart/CartItem';
+import { CartItem } from '@/components/store/cart/CartItem';
 import { CartSummary } from '@/components/store/cart/CartSummary';
 import { EmptyCart } from '@/components/store/cart/EmptyCart';
 
@@ -32,7 +32,7 @@ export default function CartPage() {
           {/* Cart Items */}
           <div className="lg:col-span-2 space-y-4">
             {items.map((item) => (
-              <CartItemComponent key={item.variantId} item={item} />
+              <CartItem key={item.variantId} item={item} />
             ))}
           </div>
 

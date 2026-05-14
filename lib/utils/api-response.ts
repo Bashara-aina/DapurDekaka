@@ -56,3 +56,10 @@ export function serverError(error: unknown) {
     { status: 500 }
   );
 }
+
+export function badRequest(message: string, details?: unknown) {
+  return NextResponse.json(
+    { success: false, error: message, code: 'BAD_REQUEST', details },
+    { status: 400 }
+  );
+}

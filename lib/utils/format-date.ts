@@ -1,20 +1,66 @@
-import { format } from 'date-fns';
-import { id } from 'date-fns/locale';
-import { toZonedTime } from 'date-fns-tz';
-
 /**
- * Format a UTC timestamp to WIB display format
- * @example formatWIB(new Date()) → "12 Mei 2026, 01:30 WIB"
+ * Format a date in WIB (Asia/Jakarta), locale-aware
  */
-export function formatWIB(date: Date): string {
-  const zonedDate = toZonedTime(date, 'Asia/Jakarta');
-  return format(zonedDate, "d MMMM yyyy, HH:mm 'WIB'", { locale: id });
+export function formatDate(date: Date | string, locale: 'id' | 'en' = 'id'): string {
+  return new Intl.DateTimeFormat(locale === 'id' ? 'id-ID' : 'en-US', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(date));
 }
 
 /**
- * Format a date for order number generation
- * @example formatDateForOrder(new Date()) → "20260512"
+ * Format datetime with time in WIB
+ */
+export function formatDatetime(date: Date | string): string {
+  return new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Jakarta',
+  }).format(new Date(date));
+}
+
+/**
+ * Format order date for display
+ */
+export function formatOrderDate(date: Date | string): string {
+  return new Intl.DateTimeFormat('id-ID', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Jakarta',
+  }).format(new Date(date));
+}
+
+/**
+ * Convert JS Date to WIB equivalent
+ */
+export function toWIB(date: Date): Date {
+  return new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+}
+
+/**
+ * Format date for order number: YYYYMMDD
  */
 export function formatDateForOrder(date: Date): string {
-  return format(date, 'yyyyMMdd');
+  return date.toISOString().slice(0, 10).replace(/-/g, '');
+}
+
+/**
+ * Format WIB datetime with timezone — shorthand for formatDatetime
+ */
+export function formatWIB(date: Date | string): string {
+  return new Intl.DateTimeFormat('id-ID', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Jakarta',
+  }).format(new Date(date));
 }

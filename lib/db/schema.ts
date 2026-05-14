@@ -520,6 +520,12 @@ export const adminActivityLogs = pgTable('admin_activity_logs', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const orderSequences = pgTable('order_sequences', {
+  dateKey: varchar('date_key', { length: 8 }).primaryKey(),
+  lastSeq: integer('last_seq').notNull().default(0),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ─────────────────────────────────────────
 // RELATIONS
 // ─────────────────────────────────────────

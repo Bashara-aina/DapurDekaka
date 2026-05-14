@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, Package, ShoppingCart, Users, Tag, 
-  MessageSquare, Image, Settings, Box, Truck, FileText, Bot
+  MessageSquare, Image, Settings, Box, Truck, FileText, Bot, ClipboardList
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -21,6 +21,7 @@ const NAV_ITEMS = [
   { href: '/admin/b2b-inquiries', label: 'B2B', icon: MessageSquare },
   { href: '/admin/ai-content', label: 'AI Content', icon: Bot },
   { href: '/admin/settings', label: 'Pengaturan', icon: Settings },
+  { href: '/admin/field', label: 'Gudang', icon: ClipboardList },
 ];
 
 export function AdminSidebar() {

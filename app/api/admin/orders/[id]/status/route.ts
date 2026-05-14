@@ -1,28 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { orders } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
-import { success, serverError, notFound, forbidden, conflict } from '@/lib/utils/api-response';
+import { NextRequest } from 'next/server';
 import { auth } from '@/lib/auth';
+import { db } from '@/lib/db';
+import { orders, orderStatusHistory, orderItems, productVariants, users, coupons } from '@/lib/db/schema';
+import { eq, sql } from 'drizzle-orm';
+import { success, unauthorized, forbidden, notFound, conflict, serverError } from '@/lib/utils/api-response';
+import { isValidStatusTransition } from '@/lib/services/order.service';
+import { restoreStock } from '@/lib/services/inventory.service';
+import { earnPoints } from '@/lib/services/points.service';
 import { z } from 'zod';
-import { sendEmail } from '@/lib/resend/send-email';
-import { OrderShippedEmail } from '@/lib/resend/templates/OrderShipped';
-import { OrderDeliveredEmail } from '@/lib/resend/templates/OrderDelivered';
-import { formatWIB } from '@/lib/utils/format-date';
 
-const statusUpdateSchema = z.object({
-  status: z.enum(['shipped', 'delivered']),
+const UpdateStatusSchema = z.object({
+  status: z.enum(['processing', 'packed', 'shipped', 'delivered', 'cancelled', 'refunded']),
+  note: z.string().max(500).optional(),
   trackingNumber: z.string().optional(),
-  trackingUrl: z.string().optional(),
+  trackingUrl: z.string().url().optional(),
   estimatedDays: z.string().optional(),
 });
-
-const VALID_TRANSITIONS: Record<string, string[]> = {
-  paid: ['processing'],
-  processing: ['packed'],
-  packed: ['shipped'],
-  shipped: ['delivered'],
-};
 
 export async function PATCH(
   req: NextRequest,
@@ -31,117 +24,112 @@ export async function PATCH(
   try {
     const session = await auth();
     if (!session?.user) {
-      return forbidden('Anda harus login');
+      return unauthorized();
     }
 
     const { id: orderId } = await params;
     const body = await req.json();
-    const parsed = statusUpdateSchema.safeParse(body);
+    const parsed = UpdateStatusSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Validasi gagal',
-          code: 'VALIDATION_ERROR',
-          details: parsed.error.flatten().fieldErrors,
-        },
-        { status: 422 }
+      return conflict('Data tidak valid');
+    }
+
+    const { status: newStatus, note, trackingNumber, trackingUrl, estimatedDays } = parsed.data;
+
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1);
+
+    if (!order) {
+      return notFound('Pesanan tidak ditemukan');
+    }
+
+    if (!isValidStatusTransition(order.status, newStatus)) {
+      return conflict(
+        `Status tidak dapat diubah dari "${order.status}" ke "${newStatus}"`
       );
     }
 
-    const { status: newStatus, trackingNumber, trackingUrl, estimatedDays } = parsed.data;
+    await db.transaction(async (tx) => {
+      const updateData: Record<string, unknown> = {
+        status: newStatus,
+        updatedAt: new Date(),
+      };
 
-    const order = await db.query.orders.findFirst({
-      where: eq(orders.id, orderId),
-      with: { items: true },
+      if (newStatus === 'shipped') {
+        updateData.shippedAt = new Date();
+        if (trackingNumber) {
+          updateData.trackingNumber = trackingNumber;
+          updateData.trackingUrl = trackingUrl;
+        }
+        if (estimatedDays) {
+          updateData.estimatedDays = estimatedDays;
+        }
+      } else if (newStatus === 'delivered') {
+        updateData.deliveredAt = new Date();
+      } else if (newStatus === 'cancelled') {
+        updateData.cancelledAt = new Date();
+      }
+
+      await tx.update(orders).set(updateData).where(eq(orders.id, orderId));
+
+      await tx.insert(orderStatusHistory).values({
+        orderId,
+        fromStatus: order.status as any,
+        toStatus: newStatus as any,
+        changedByUserId: session.user.id,
+        changedByType: 'admin',
+        note: note ?? null,
+      });
+
+      if (newStatus === 'cancelled' && order.status === 'paid') {
+        const items = await tx
+          .select()
+          .from(orderItems)
+          .where(eq(orderItems.orderId, orderId));
+
+        for (const item of items) {
+          await tx
+            .update(productVariants)
+            .set({
+              stock: sql`stock + ${item.quantity}`,
+            })
+            .where(eq(productVariants.id, item.variantId));
+        }
+
+        if (order.pointsUsed && order.pointsUsed > 0 && order.userId) {
+          await tx
+            .update(users)
+            .set({ pointsBalance: sql`points_balance + ${order.pointsUsed}` })
+            .where(eq(users.id, order.userId));
+        }
+
+        if (order.couponId) {
+          await tx
+            .update(coupons)
+            .set({ usedCount: sql`GREATEST(used_count - 1, 0)` })
+            .where(eq(coupons.id, order.couponId));
+        }
+      }
     });
 
-    if (!order) {
-      return notFound('Order tidak ditemukan');
-    }
-
-    const currentStatus = order.status;
-    const allowedTransitions = VALID_TRANSITIONS[currentStatus];
-
-    if (!allowedTransitions?.includes(newStatus)) {
-      return conflict(`Tidak dapat mengubah status dari ${currentStatus} ke ${newStatus}`);
-    }
-
-    const updateData: Record<string, unknown> = {
-      status: newStatus,
-      updatedAt: new Date(),
-    };
-
-    if (newStatus === 'shipped') {
-      updateData.shippedAt = new Date();
-      if (trackingNumber) updateData.trackingNumber = trackingNumber;
-      if (trackingUrl) updateData.trackingUrl = trackingUrl;
-      if (estimatedDays) updateData.estimatedDays = estimatedDays;
-    } else if (newStatus === 'delivered') {
-      updateData.deliveredAt = new Date();
-    }
-
-    await db.update(orders).set(updateData).where(eq(orders.id, orderId));
-
-    if (newStatus === 'shipped' && trackingNumber) {
-      try {
-        const emailHtml = OrderShippedEmail({
-          orderNumber: order.orderNumber,
-          customerName: order.recipientName,
-          courierName: order.courierName ?? 'Pengiriman',
-          trackingNumber,
-          trackingUrl: trackingUrl ?? '',
-          estimatedDays: estimatedDays ?? '',
-          items: order.items.map((item) => ({
-            name: item.productNameId,
-            variant: item.variantNameId,
-            quantity: item.quantity,
-          })),
-          totalAmount: order.totalAmount,
-        });
-
-        await sendEmail({
-          to: order.recipientEmail,
-          subject: `Pesanan ${order.orderNumber} sudah dikirim!`,
-          react: emailHtml,
-        });
-      } catch (emailError) {
-        console.error('[Status Update] Failed to send shipped email:', emailError);
-      }
-    }
-
-    if (newStatus === 'delivered') {
-      try {
-        const emailHtml = OrderDeliveredEmail({
-          orderNumber: order.orderNumber,
-          customerName: order.recipientName,
-          pointsEarned: order.pointsEarned ?? 0,
-          items: order.items.map((item) => ({
-            name: item.productNameId,
-            variant: item.variantNameId,
-            quantity: item.quantity,
-          })),
-          totalAmount: order.totalAmount,
-          deliveredAt: formatWIB(new Date()),
-        });
-
-        await sendEmail({
-          to: order.recipientEmail,
-          subject: `Pesanan ${order.orderNumber} sudah diterima! Terima kasih — Dapur Dekaka`,
-          react: emailHtml,
-        });
-      } catch (emailError) {
-        console.error('[Status Update] Failed to send delivered email:', emailError);
-      }
-    }
+    const updatedOrder = await db
+      .select({ status: orders.status, shippedAt: orders.shippedAt, deliveredAt: orders.deliveredAt, cancelledAt: orders.cancelledAt })
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1);
 
     return success({
-      orderId: order.id,
+      orderId,
       orderNumber: order.orderNumber,
-      status: newStatus,
-      shippedAt: newStatus === 'shipped' ? new Date() : null,
-      deliveredAt: newStatus === 'delivered' ? new Date() : null,
+      status: updatedOrder[0]?.status ?? newStatus,
+      shippedAt: updatedOrder[0]?.shippedAt ?? null,
+      deliveredAt: updatedOrder[0]?.deliveredAt ?? null,
+      cancelledAt: updatedOrder[0]?.cancelledAt ?? null,
+      message: `Status pesanan berhasil diperbarui ke "${newStatus}"`,
     });
   } catch (error) {
     console.error('[admin/orders/status]', error);

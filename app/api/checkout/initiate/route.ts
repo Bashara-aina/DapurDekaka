@@ -1,224 +1,211 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import {
-  orders,
-  orderItems,
-  coupons,
-  users,
-  productVariants,
-  addresses,
-} from '@/lib/db/schema';
-import { eq, and, inArray, sql } from 'drizzle-orm';
+import { orders, orderItems, orderStatusHistory, productVariants, products, users, coupons, couponUsages } from '@/lib/db/schema';
+import { eq, inArray, and, sql } from 'drizzle-orm';
 import { success, serverError, validationError, conflict, unauthorized } from '@/lib/utils/api-response';
-import { z } from 'zod';
-import { generateOrderNumber } from '@/lib/utils/generate-order-number';
+import { CheckoutSchema } from '@/lib/validations/checkout.schema';
 import { createMidtransTransaction } from '@/lib/midtrans/create-transaction';
+import { validateCoupon } from '@/lib/services/coupon.service';
+import { validatePointsRedemption, pointsToIDR, redeemPoints } from '@/lib/services/points.service';
+import { calculateShippingCost } from '@/lib/services/shipping.service';
+import { generateOrderNumber } from '@/lib/services/order.service';
 import { POINTS_EARN_RATE } from '@/lib/constants/points';
+import { Resend } from 'resend';
 
-const initiateSchema = z.object({
-  items: z
-    .array(
-      z.object({
-        variantId: z.string().uuid(),
-        productId: z.string().uuid(),
-        productNameId: z.string(),
-        productNameEn: z.string(),
-        variantNameId: z.string(),
-        variantNameEn: z.string(),
-        sku: z.string(),
-        imageUrl: z.string().optional(),
-        unitPrice: z.number().int().positive(),
-        quantity: z.number().int().min(1).max(99),
-        weightGram: z.number().int().positive(),
-      })
-    ),
-  deliveryMethod: z.enum(['delivery', 'pickup']),
-  recipientName: z.string().min(2),
-  recipientEmail: z.string().email(),
-  recipientPhone: z.string().min(8),
-  addressLine: z.string().optional(),
-  district: z.string().optional(),
-  city: z.string().optional(),
-  cityId: z.string().optional(),
-  province: z.string().optional(),
-  provinceId: z.string().optional(),
-  postalCode: z.string().optional(),
-  courierCode: z.string().optional(),
-  courierService: z.string().optional(),
-  courierName: z.string().optional(),
-  shippingCost: z.number().int().min(0).optional(),
-  couponCode: z.string().optional(),
-  pointsUsed: z.number().int().min(0).optional(),
-  customerNote: z.string().optional(),
-  subtotal: z.number().int().positive(),
-  discountAmount: z.number().int().min(0).optional(),
-  pointsDiscount: z.number().int().min(0).optional(),
-});
+const resend = new Resend(process.env.RESEND_API_KEY!);
+
+async function sendOrderConfirmationEmail(orderId: string): Promise<void> {
+  const [order] = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+
+  if (!order) return;
+
+  const [user] = order.userId
+    ? await db.select({ name: users.name, email: users.email }).from(users).where(eq(users.id, order.userId)).limit(1)
+    : [{ name: order.recipientName, email: order.recipientEmail }];
+
+  const items = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+
+  const firstName = user?.name?.split(' ')[0] ?? order.recipientName;
+
+  await resend.emails.send({
+    from: 'Dapur Dekaka <pesanan@dapurdekaka.com>',
+    to: user?.email ?? order.recipientEmail,
+    subject: `Pesanan ${order.orderNumber} Dikonfirmasi`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #C8102E; padding: 24px; text-align: center; border-radius: 12px 12px 0 0;">
+          <h1 style="color: #F0EAD6; margin: 0; font-size: 24px;">Dapur Dekaka</h1>
+        </div>
+        <div style="background: #fff; padding: 32px; border-radius: 0 0 12px 12px;">
+          <p style="font-size: 16px;">Hai <strong>${firstName}</strong></p>
+          <p style="color: #6B6B6B;">Pesanan kamu sudah kami terima dan sedang kami proses dengan penuh cinta.</p>
+          <p style="font-size: 14px; color: #6B6B6B;">Detail pesanan: <strong>${order.orderNumber}</strong></p>
+          <p style="font-size: 14px;">Total: <strong style="color: #C8102E;">Rp ${order.totalAmount.toLocaleString('id-ID')}</strong></p>
+          <p style="color: #6B6B6B; font-size: 12px;">Waktu: ${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })} WIB</p>
+        </div>
+      </div>
+    `,
+  });
+}
 
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
+    if (!session?.user?.id) {
+      return unauthorized();
+    }
+
     const body = await req.json();
-    const parsed = initiateSchema.safeParse(body);
+    const parsed = CheckoutSchema.safeParse(body);
 
     if (!parsed.success) {
       return validationError(parsed.error);
     }
 
-    const {
-      items,
-      deliveryMethod,
-      recipientName,
-      recipientEmail,
-      recipientPhone,
-      couponCode,
-      pointsUsed,
-      ...addressData
-    } = parsed.data;
+    const { items, shippingAddress, courierCode, courierService, couponCode, pointsToRedeem, notes } = parsed.data;
 
-    // ── Step 1: Validate stock + prices from DB ──────────────────────────
     const variantIds = items.map((i) => i.variantId);
-    const dbVariants = await db.query.productVariants.findMany({
-      where: inArray(productVariants.id, variantIds),
-    });
-
-    let subtotal = 0;
-    const orderItemsData = [];
+    const dbVariants = await db
+      .select({
+        id: productVariants.id,
+        productId: productVariants.productId,
+        nameId: productVariants.nameId,
+        nameEn: productVariants.nameEn,
+        sku: productVariants.sku,
+        price: productVariants.price,
+        stock: productVariants.stock,
+        weightGram: productVariants.weightGram,
+        isActive: productVariants.isActive,
+        productNameId: products.nameId,
+        productNameEn: products.nameEn,
+        productSlug: products.slug,
+      })
+      .from(productVariants)
+      .leftJoin(products, eq(productVariants.productId, products.id))
+      .where(inArray(productVariants.id, variantIds));
 
     for (const item of items) {
       const variant = dbVariants.find((v) => v.id === item.variantId);
-      if (!variant) {
-        return conflict(`Variant tidak ditemukan`);
+      if (!variant || !variant.isActive) {
+        return conflict('Produk tidak tersedia');
       }
-      if (variant.stock < item.quantity) {
+      if ((variant.stock ?? 0) < item.quantity) {
         return conflict(
-          `Stok tidak mencukupi untuk ${item.variantNameId} (tersisa ${variant.stock})`
+          `Stok tidak mencukupi untuk ${variant.productNameId} — ${variant.nameId} (tersisa ${variant.stock})`
         );
       }
-
-      const itemSubtotal = variant.price * item.quantity;
-      subtotal += itemSubtotal;
-
-      orderItemsData.push({
-        orderId: '', // set after order creation
-        variantId: variant.id,
-        productId: variant.productId,
-        productNameId: item.productNameId,
-        productNameEn: item.productNameEn,
-        variantNameId: item.variantNameId,
-        variantNameEn: item.variantNameEn,
-        sku: item.sku,
-        productImageUrl: item.imageUrl,
-        unitPrice: variant.price,
-        quantity: item.quantity,
-        subtotal: itemSubtotal,
-        weightGram: item.weightGram,
-      });
     }
 
-    // ── Step 2: Validate coupon ───────────────────────────────────────────
-    let discountAmount = parsed.data.discountAmount ?? 0;
+    const subtotalIDR = items.reduce((sum, item) => {
+      const variant = dbVariants.find((v) => v.id === item.variantId)!;
+      return sum + (variant.price ?? 0) * item.quantity;
+    }, 0);
+
+    const totalWeightGram = items.reduce((sum, item) => {
+      const variant = dbVariants.find((v) => v.id === item.variantId)!;
+      return sum + (variant.weightGram ?? 0) * item.quantity;
+    }, 0);
+
+    const originCityId = process.env.RAJAONGKIR_ORIGIN_CITY_ID ?? '23';
+    const shippingOptions = await calculateShippingCost({
+      originCityId,
+      destinationCityId: shippingAddress.cityId,
+      weightGram: totalWeightGram,
+    });
+
+    const selectedShipping = shippingOptions.find(
+      (s) => s.courier === courierCode && s.service === courierService
+    );
+
+    if (!selectedShipping) {
+      return conflict('Opsi pengiriman tidak valid. Silakan pilih ulang.');
+    }
+
+    const shippingCostIDR = selectedShipping.costIDR;
+
+    let couponDiscountIDR = 0;
     let couponId: string | null = null;
 
     if (couponCode) {
-      const coupon = await db.query.coupons.findFirst({
-        where: and(
-          eq(coupons.code, couponCode.toUpperCase()),
-          eq(coupons.isActive, true)
-        ),
+      const couponResult = await validateCoupon({
+        code: couponCode,
+        userId: session.user.id,
+        subtotalIDR,
+        shippingCostIDR,
       });
 
-      if (!coupon) {
-        return conflict('Kupon tidak ditemukan atau sudah tidak berlaku');
+      if (!couponResult.valid) {
+        return conflict(couponResult.error ?? 'Kupon tidak valid');
       }
 
-      if (coupon.minOrderAmount && subtotal < coupon.minOrderAmount) {
-        return conflict(
-          `Minimal pembelian ${coupon.minOrderAmount.toLocaleString('id-ID')} untuk kupon ini`
-        );
-      }
-
-      if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) {
-        return conflict('Kupon sudah expired');
-      }
-
-      if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
-        return conflict('Kupon sudah mencapai batas penggunaan');
-      }
-
-      couponId = coupon.id;
-
-      if (coupon.type === 'percentage') {
-        discountAmount = Math.floor((coupon.discountValue! / 100) * subtotal);
-        if (coupon.maxDiscountAmount && discountAmount > coupon.maxDiscountAmount) {
-          discountAmount = coupon.maxDiscountAmount;
-        }
-      } else if (coupon.type === 'fixed') {
-        discountAmount = coupon.discountValue!;
-      }
+      couponDiscountIDR = couponResult.discountIDR ?? 0;
+      couponId = couponResult.coupon?.id ?? null;
     }
 
-    // ── Step 3: Validate + deduct points ─────────────────────────────────
-    const pointsDiscount = parsed.data.pointsDiscount ?? 0;
+    let pointsDiscountIDR = 0;
 
-    if (session?.user && pointsUsed && pointsUsed > 0) {
-      const user = await db.query.users.findFirst({
-        where: eq(users.id, session.user.id),
-      });
+    if (pointsToRedeem > 0) {
+      const [userData] = await db
+        .select({ pointsBalance: users.pointsBalance })
+        .from(users)
+        .where(eq(users.id, session.user.id))
+        .limit(1);
 
-      if (!user || user.pointsBalance < pointsUsed) {
-        return conflict('Saldo poin tidak mencukupi');
+      const pointsValidation = validatePointsRedemption(
+        userData?.pointsBalance ?? 0,
+        pointsToRedeem,
+        subtotalIDR
+      );
+
+      if (!pointsValidation.valid) {
+        return conflict(pointsValidation.error ?? 'Penukaran poin tidak valid');
       }
 
-      // Deduct points immediately (tentative — reversed on payment failure)
-      await db
-        .update(users)
-        .set({ pointsBalance: sql`points_balance - ${pointsUsed}` })
-        .where(eq(users.id, session.user.id));
+      pointsDiscountIDR = pointsToIDR(pointsToRedeem);
     }
 
-    // ── Step 4: Calculate totals ────────────────────────────────────────
-    const shippingCost = deliveryMethod === 'pickup' ? 0 : (addressData.courierCode ? (parsed.data.shippingCost ?? 0) : 0);
-    const totalAmount = subtotal - discountAmount - pointsDiscount + shippingCost;
-    const pointsEarned = Math.floor(subtotal / 1000) * POINTS_EARN_RATE;
+    const totalDiscountIDR = couponDiscountIDR + pointsDiscountIDR;
+    const totalAmountIDR = Math.max(subtotalIDR + shippingCostIDR - totalDiscountIDR, 1000);
+    const pointsEarned = Math.floor(subtotalIDR / 1000) * POINTS_EARN_RATE;
 
-    // ── Step 5: Generate order number ───────────────────────────────────
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const randomSeq = Math.floor(1000 + Math.random() * 9000);
-    const orderNumber = generateOrderNumber(randomSeq);
+    const orderNumber = await generateOrderNumber();
 
-    // ── Step 6: Create order ──────────────────────────────────────────────
     const [newOrder] = await db
       .insert(orders)
       .values({
         orderNumber,
-        userId: session?.user?.id ?? null,
+        userId: session.user.id,
         status: 'pending_payment',
-        deliveryMethod,
-        recipientName,
-        recipientEmail,
-        recipientPhone,
-        addressLine: addressData.addressLine,
-        district: addressData.district,
-        city: addressData.city,
-        cityId: addressData.cityId,
-        province: addressData.province,
-        provinceId: addressData.provinceId,
-        postalCode: addressData.postalCode,
-        courierCode: addressData.courierCode,
-        courierService: addressData.courierService,
-        courierName: addressData.courierName,
-        shippingCost,
-        subtotal,
-        discountAmount,
-        pointsDiscount,
-        totalAmount,
+        deliveryMethod: 'delivery',
+        recipientName: shippingAddress.recipientName,
+        recipientEmail: session.user.email ?? '',
+        recipientPhone: shippingAddress.phone,
+        addressLine: shippingAddress.fullAddress,
+        district: shippingAddress.district,
+        city: shippingAddress.city,
+        cityId: shippingAddress.cityId,
+        province: shippingAddress.province,
+        provinceId: shippingAddress.provinceId,
+        postalCode: shippingAddress.postalCode,
+        courierCode,
+        courierService,
+        courierName: selectedShipping.name,
+        shippingCost: shippingCostIDR,
+        estimatedDays: selectedShipping.estimatedDays,
+        subtotal: subtotalIDR,
+        discountAmount: totalDiscountIDR,
+        pointsDiscount: pointsDiscountIDR,
+        totalAmount: totalAmountIDR,
         couponId,
-        couponCode: couponCode?.toUpperCase(),
-        pointsUsed: pointsUsed ?? 0,
+        couponCode: couponCode?.toUpperCase() ?? null,
+        pointsUsed: pointsToRedeem ?? 0,
         pointsEarned,
-        customerNote: parsed.data.customerNote,
+        customerNote: notes ?? null,
         paymentExpiresAt: new Date(Date.now() + 15 * 60 * 1000),
         paymentRetryCount: 0,
       })
@@ -228,63 +215,107 @@ export async function POST(req: NextRequest) {
       throw new Error('Failed to create order');
     }
 
-    // ── Step 7: Create order items ───────────────────────────────────────
-    const itemsWithOrderId = orderItemsData.map((item) => ({
-      ...item,
-      orderId: newOrder.id,
-    }));
+    const newOrderId = newOrder.id;
 
-    await db.insert(orderItems).values(itemsWithOrderId);
+    await db.insert(orderItems).values(
+      items.map((item) => {
+        const variant = dbVariants.find((v) => v.id === item.variantId)!;
+        return {
+          orderId: newOrderId,
+          variantId: item.variantId,
+          productId: variant.productId,
+          productNameId: variant.productNameId ?? '',
+          productNameEn: variant.productNameEn ?? '',
+          variantNameId: variant.nameId,
+          variantNameEn: variant.nameEn,
+          sku: variant.sku,
+          productImageUrl: null,
+          unitPrice: variant.price ?? 0,
+          quantity: item.quantity,
+          subtotal: (variant.price ?? 0) * item.quantity,
+          weightGram: variant.weightGram ?? 0,
+        };
+      })
+    );
 
-    // ── Step 8: Create Midtrans transaction ─────────────────────────────
-    const itemDetails = items.map((item) => ({
-      id: item.variantId,
-      price: item.unitPrice,
-      quantity: item.quantity,
-      name: `${item.productNameId.substring(0, 45)} - ${item.variantNameId}`.substring(0, 50),
-    }));
+    await db.insert(orderStatusHistory).values({
+      orderId: newOrderId,
+      toStatus: 'pending_payment',
+      changedByType: 'system',
+      note: 'Pesanan dibuat, menunggu pembayaran',
+    });
 
-    if (shippingCost > 0) {
-      itemDetails.push({
-        id: 'shipping',
-        price: shippingCost,
-        quantity: 1,
-        name: `Ongkir ${addressData.courierName ?? ''}`.substring(0, 50),
+    if (pointsToRedeem > 0) {
+      await db.transaction(async (tx) => {
+        await redeemPoints(
+          session.user.id,
+          newOrderId,
+          pointsToRedeem,
+          `Penukaran poin untuk diskon Rp ${pointsDiscountIDR.toLocaleString('id-ID')}`,
+          tx
+        );
       });
     }
 
-    if (discountAmount + pointsDiscount > 0) {
+    if (couponId) {
+      await db
+        .update(coupons)
+        .set({ usedCount: sql`used_count + 1` })
+        .where(eq(coupons.id, couponId));
+
+      await db.insert(couponUsages).values({
+        couponId,
+        orderId: newOrderId,
+        userId: session.user.id,
+        discountApplied: couponDiscountIDR,
+      });
+    }
+
+    const itemDetails = items.map((item) => {
+      const variant = dbVariants.find((v) => v.id === item.variantId)!;
+      return {
+        id: variant.id,
+        price: variant.price ?? 0,
+        quantity: item.quantity,
+        name: `${(variant.productNameId ?? '').substring(0, 40)} - ${variant.nameId}`.substring(0, 50),
+      };
+    });
+
+    itemDetails.push({
+      id: `SHIPPING-${courierCode.toUpperCase()}`,
+      price: shippingCostIDR,
+      quantity: 1,
+      name: `Ongkir ${selectedShipping.name}`.substring(0, 50),
+    });
+
+    if (totalDiscountIDR > 0) {
       itemDetails.push({
-        id: 'discount',
-        price: -(discountAmount + pointsDiscount),
+        id: 'DISCOUNT',
+        price: -totalDiscountIDR,
         quantity: 1,
-        name: 'Diskon & Poin',
+        name: 'Diskon (Kupon + Poin)',
       });
     }
 
     const { snapToken, midtransOrderId } = await createMidtransTransaction({
       orderNumber,
       retryCount: 0,
-      grossAmount: totalAmount,
-      customerName: recipientName,
-      customerEmail: recipientEmail,
-      customerPhone: recipientPhone,
+      grossAmount: totalAmountIDR,
+      customerName: shippingAddress.recipientName,
+      customerEmail: session.user.email ?? '',
+      customerPhone: shippingAddress.phone,
       items: itemDetails,
     });
 
-    // ── Step 9: Update order with Midtrans IDs ───────────────────────────
     await db
       .update(orders)
-      .set({
-        midtransOrderId,
-        midtransSnapToken: snapToken,
-      })
-      .where(eq(orders.id, newOrder.id));
+      .set({ midtransSnapToken: snapToken, midtransOrderId })
+      .where(eq(orders.id, newOrderId));
 
     return success({
-      orderId: newOrder.id,
-      orderNumber: newOrder.orderNumber,
-      totalAmount: newOrder.totalAmount,
+      orderId: newOrderId,
+      orderNumber,
+      totalAmount: totalAmountIDR,
       snapToken,
     });
   } catch (error) {
