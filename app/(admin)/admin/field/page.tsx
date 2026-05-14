@@ -1,842 +1,1140 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState, useEffect } from 'react';
-import { Package, Truck, ClipboardList, CheckCircle2, ChevronLeft, Search, Minus, Plus, X, Camera, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils/cn';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Package, Truck, Warehouse, CheckCircle, RefreshCw, Plus,
+  ClipboardList, AlertTriangle, ShoppingBag
+} from 'lucide-react';
 import { formatWIB } from '@/lib/utils/format-date';
+import { cn } from '@/lib/utils/cn';
+
+// ── Types ────────────────────────────────────────────────────────────────────
 
 interface OrderItem {
   productNameId: string;
   variantNameId: string;
   quantity: number;
-  sku: string;
   weightGram: number;
+  sku?: string;
 }
 
-interface PackingOrder {
+interface Order {
   id: string;
   orderNumber: string;
-  paidAt: string | null;
+  paidAt: Date | null;
+  recipientName: string;
   items: OrderItem[];
-  totalWeight: number;
   courierCode: string | null;
   courierService: string | null;
-  courierName: string | null;
   district: string | null;
-  city: string | null;
-  province: string | null;
-  addressLine: string | null;
   customerNote: string | null;
   deliveryMethod: string;
-  requiresColdChain: boolean;
-  recipientName: string;
-  pickupCode: string | null;
-}
-
-interface TrackingOrder {
-  id: string;
-  orderNumber: string;
-  packedAt: string | null;
-  items: Pick<OrderItem, 'productNameId' | 'variantNameId' | 'quantity'>[];
-  totalWeight: number;
-  courierCode: string | null;
-  courierService: string | null;
-  courierName: string | null;
-  district: string | null;
-  city: string | null;
-  recipientName: string;
-  deliveryMethod: string;
-}
-
-interface PickupOrder {
-  id: string;
-  orderNumber: string;
-  pickupCode: string | null;
-  status: string;
-  createdAt: string;
-  items: Pick<OrderItem, 'productNameId' | 'variantNameId' | 'quantity'>[];
-  recipientName: string;
+  pickupCode?: string | null;
 }
 
 interface InventoryItem {
   id: string;
-  nameId: string;
+  productNameId: string;
+  variantNameId: string;
   sku: string;
   stock: number;
+  stockLevel: 'out' | 'low' | 'healthy';
   weightGram: number;
-  productNameId: string | null;
+  isActive: boolean;
 }
 
-interface WorkerSummary {
-  packedToday: number;
-  shippedToday: number;
-  deliveredPickupToday: number;
-  workerPackedCount: number;
-  inventoryUpdatesToday: number;
-  recentActivity: {
-    orderNumber: string;
-    status: string;
-    updatedAt: string;
-    courierCode: string | null;
-    courierName: string | null;
-    trackingNumber: string | null;
-    deliveryMethod: string;
-  }[];
+interface TodaySummary {
+  packedCount: number;
+  trackingCount: number;
+  pickupCount: number;
+  inventoryUpdateCount: number;
+  date: string;
 }
 
-type Tab = 'packing' | 'tracking' | 'inventory' | 'completed';
-
-const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: 'packing', label: 'Packing', icon: <Package className="w-4 h-4" /> },
-  { id: 'tracking', label: 'Pengiriman', icon: <Truck className="w-4 h-4" /> },
-  { id: 'inventory', label: 'Inventori', icon: <ClipboardList className="w-4 h-4" /> },
-  { id: 'completed', label: 'Selesai', icon: <CheckCircle2 className="w-4 h-4" /> },
-];
-
-function formatRelativeTime(date: string | null): string {
-  if (!date) return '-';
-  const diff = Date.now() - new Date(date).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 60) return `${minutes}m lalu`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}j ${minutes % 60}m lalu`;
-  return `${Math.floor(hours / 24)}d lalu`;
+interface WorkerActivity {
+  orderActivity: Array<{
+    id: string;
+    orderId: string;
+    orderNumber?: string;
+    fromStatus: string | null;
+    toStatus: string;
+    changedByUserId: string | null;
+    changedByType: string;
+    note: string | null;
+    createdAt: Date;
+  }>;
+  inventoryActivity: Array<{
+    id: string;
+    variantId: string;
+    variantName?: string;
+    changedByUserId: string | null;
+    changeType: string;
+    quantityBefore: number;
+    quantityAfter: number;
+    quantityDelta: number;
+    note: string | null;
+    createdAt: Date;
+  }>;
+  date: string;
 }
 
-export default function FieldWorkerDashboard() {
-  const [activeTab, setActiveTab] = useState<Tab>('packing');
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedOrder, setSelectedOrder] = useState<PackingOrder | TrackingOrder | null>(null);
-  const [showRestockModal, setShowRestockModal] = useState(false);
-  const [showAdjustModal, setShowAdjustModal] = useState(false);
-  const [selectedInventoryItem, setSelectedInventoryItem] = useState<InventoryItem | null>(null);
+// ── API helpers ──────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
-    return () => clearInterval(timer);
-  }, []);
+async function fetchPackingQueue(): Promise<Order[]> {
+  const res = await fetch('/api/admin/field/packing-queue');
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
 
-  const { data: packingData, isLoading: packingLoading } = useQuery({
-    queryKey: ['packing-queue'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/field/packing-queue');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data as PackingOrder[];
-    },
+async function fetchTrackingQueue(): Promise<Order[]> {
+  const res = await fetch('/api/admin/field/tracking-queue');
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
+
+async function fetchPickupQueue(): Promise<Order[]> {
+  const res = await fetch('/api/admin/field/pickup-queue');
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
+
+async function fetchTodaySummary(): Promise<TodaySummary> {
+  const res = await fetch('/api/admin/field/today-summary');
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
+
+async function fetchWorkerActivity(): Promise<WorkerActivity> {
+  const res = await fetch('/api/admin/field/worker-activity');
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
+
+async function fetchInventory(): Promise<InventoryItem[]> {
+  const res = await fetch('/api/admin/field/inventory');
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
+
+async function packOrder(orderId: string, data: { status: string; note?: string; coldChainCondition?: string }) {
+  const res = await fetch(`/api/admin/field/orders/${orderId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
+
+async function addTracking(orderId: string, data: { trackingNumber: string; courierCode?: string }) {
+  const res = await fetch(`/api/admin/field/orders/${orderId}/tracking`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
+
+async function deliverPickup(orderId: string) {
+  const res = await fetch(`/api/admin/field/orders/${orderId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: 'delivered' }),
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
+
+async function restockInventory(data: { variantId: string; quantityAdded: number; note?: string }) {
+  const res = await fetch('/api/admin/field/inventory/restock', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
+
+async function adjustInventory(data: { variantId: string; newQuantity: number; reason: string }) {
+  const res = await fetch('/api/admin/field/inventory/adjust', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function getTimeSince(dateStr: string | Date | null) {
+  if (!dateStr) return '—';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 60) return `${m} menit lalu`;
+  const h = Math.floor(m / 60);
+  return `${h} jam ${m % 60} menit lalu`;
+}
+
+function totalWeight(items: OrderItem[]) {
+  return items.reduce((s, i) => s + i.weightGram * i.quantity, 0);
+}
+
+// ── Order Card ───────────────────────────────────────────────────────────────
+
+function OrderCard({
+  order,
+  onAction,
+  actionLabel,
+  actionIcon: ActionIcon,
+  actionVariant = 'default',
+}: {
+  order: Order;
+  onAction?: (order: Order) => void;
+  actionLabel?: string;
+  actionIcon?: React.ComponentType<{ className?: string }>;
+  actionVariant?: 'default' | 'destructive' | 'outline';
+}) {
+  const isPickup = order.deliveryMethod === 'pickup';
+  const paidAt = order.paidAt ? new Date(order.paidAt) : null;
+  const ageMs = paidAt ? Date.now() - paidAt.getTime() : 0;
+  const ageHours = ageMs / 3600000;
+
+  return (
+    <Card className={cn(
+      'border',
+      ageHours > 8 ? 'border-red-200' : ageHours > 4 ? 'border-amber-200' : 'border-gray-200'
+    )}>
+      <CardContent className="p-4 space-y-3">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-base font-bold text-[#1A1A1A]">{order.orderNumber}</p>
+            {paidAt && (
+              <p className={cn(
+                'text-xs mt-0.5',
+                ageHours > 8 ? 'text-red-500 font-medium' : ageHours > 4 ? 'text-amber-500' : 'text-gray-400'
+              )}>
+                {ageHours > 4 && '⚠ '}Bayar {getTimeSince(order.paidAt as Date)}
+              </p>
+            )}
+          </div>
+          <Badge variant="outline" className="text-xs shrink-0">
+            {isPickup ? '🏠 Ambil Sendiri' : '🚚 Delivery'}
+          </Badge>
+        </div>
+
+        {/* Item list */}
+        <div className="space-y-1 border-y border-gray-100 py-2">
+          {order.items.map((item, idx) => (
+            <div key={idx} className="flex justify-between text-sm">
+              <span className="text-gray-700">
+                {item.productNameId} <span className="text-gray-400">({item.variantNameId})</span>
+              </span>
+              <span className="font-semibold text-[#1A1A1A]">×{item.quantity}</span>
+            </div>
+          ))}
+          <p className="text-xs text-gray-400 pt-1">Total berat: ~{totalWeight(order.items).toLocaleString()}g</p>
+        </div>
+
+        {/* Delivery info */}
+        {!isPickup && (
+          <div className="text-xs space-y-0.5">
+            {(order.courierCode || order.courierService) && (
+              <p className="text-gray-600 font-medium">🚚 {[order.courierCode, order.courierService].filter(Boolean).join(' ')}</p>
+            )}
+            {order.district && <p className="text-gray-500">📍 {order.district}</p>}
+          </div>
+        )}
+        {isPickup && order.pickupCode && (
+          <p className="text-xs text-blue-600 font-medium">🏷 Kode Ambil: <span className="font-mono">{order.pickupCode}</span></p>
+        )}
+
+        {/* Customer note */}
+        {order.customerNote && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2">
+            <p className="text-xs text-yellow-800">📝 {order.customerNote}</p>
+          </div>
+        )}
+
+        {/* Action */}
+        {onAction && actionLabel && (
+          <Button
+            variant={actionVariant}
+            className="w-full min-h-[48px] font-semibold"
+            onClick={() => onAction(order)}
+          >
+            {ActionIcon && <ActionIcon className="w-4 h-4 mr-2" />}
+            {actionLabel}
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Bottom Sheet / Dialog (custom minimal) ────────────────────────────────────
+
+function BottomSheet({ open, onClose, title, children }: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col justify-end lg:items-center lg:justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white rounded-t-2xl lg:rounded-2xl p-5 max-w-md w-full mx-auto shadow-xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-[#1A1A1A]">{title}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ── Packing Tab ───────────────────────────────────────────────────────────────
+
+function PackingTab() {
+  const { data: orders, isLoading, refetch } = useQuery({
+    queryKey: ['field', 'packing-queue'],
+    queryFn: fetchPackingQueue,
     refetchInterval: 30000,
   });
 
-  const { data: trackingData, isLoading: trackingLoading } = useQuery({
-    queryKey: ['tracking-queue'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/field/tracking-queue');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data as TrackingOrder[];
-    },
+  const { mutateAsync: packMutate, isPending: isPacking } = useMutation({
+    mutationFn: ({ orderId, note, coldChain }: { orderId: string; note?: string; coldChain?: string }) =>
+      packOrder(orderId, { status: 'packed', note, coldChainCondition: coldChain }),
+    onSuccess: () => refetch(),
+  });
+
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [note, setNote] = useState('');
+  const [coldChain, setColdChain] = useState('baik');
+  const [checkedItems, setCheckedItems] = useState<Set<number>>(new Set());
+
+  const openModal = (order: Order) => {
+    setSelectedOrder(order);
+    setNote('');
+    setColdChain('baik');
+    setCheckedItems(new Set());
+  };
+
+  const allChecked = selectedOrder ? checkedItems.size === selectedOrder.items.length : false;
+
+  const handlePack = async () => {
+    if (!selectedOrder) return;
+    await packMutate({ orderId: selectedOrder.id, note, coldChain });
+    setSelectedOrder(null);
+  };
+
+  const toggleItem = (idx: number) => {
+    setCheckedItems(prev => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  };
+
+  if (isLoading) {
+    return <div className="space-y-4">{[1,2,3].map(i => <Skeleton key={i} className="h-48 w-full" />)}</div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-semibold">Antrian Packing
+          <span className="ml-2 text-sm font-normal text-gray-500">({orders?.length ?? 0} pesanan)</span>
+        </h2>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>
+          <RefreshCw className="w-4 h-4 mr-1" /> Refresh
+        </Button>
+      </div>
+
+      {!orders || orders.length === 0 ? (
+        <Card>
+          <CardContent className="py-10 text-center">
+            <CheckCircle className="w-12 h-12 mx-auto mb-3 text-green-400" />
+            <p className="font-medium text-gray-600">Semua pesanan sudah dikemas!</p>
+            <p className="text-sm text-gray-400 mt-1">Kamu bisa cek inventori atau istirahat dulu ☕</p>
+          </CardContent>
+        </Card>
+      ) : (
+        orders.map(order => (
+          <OrderCard
+            key={order.id}
+            order={order}
+            actionLabel="✅ Tandai Selesai Dikemas"
+            actionIcon={CheckCircle}
+            onAction={openModal}
+          />
+        ))
+      )}
+
+      <BottomSheet
+        open={!!selectedOrder}
+        onClose={() => setSelectedOrder(null)}
+        title={`Kemas ${selectedOrder?.orderNumber}`}
+      >
+        <div className="space-y-4">
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Checklist Item</p>
+            <div className="space-y-2">
+              {selectedOrder?.items.map((item, idx) => (
+                <label key={idx} className="flex items-center gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={checkedItems.has(idx)}
+                    onChange={() => toggleItem(idx)}
+                    className="w-5 h-5 accent-green-500"
+                  />
+                  <span className={cn('text-sm', checkedItems.has(idx) && 'line-through text-gray-400')}>
+                    {item.productNameId} ({item.variantNameId}) ×{item.quantity}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="coldChain" className="text-xs font-semibold text-gray-500 uppercase">Kondisi Cold Chain</Label>
+            <select
+              id="coldChain"
+              value={coldChain}
+              onChange={e => setColdChain(e.target.value)}
+              className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="baik">Baik</option>
+              <option value="perlu_tambah_es">Perlu Tambah Es</option>
+              <option value="rusak">Rusak (laporkan ke admin)</option>
+            </select>
+          </div>
+
+          <div>
+            <Label htmlFor="note" className="text-xs font-semibold text-gray-500 uppercase">Catatan (opsional)</Label>
+            <Input
+              id="note"
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              placeholder="Kondisi kemasan, catatan khusus..."
+              className="mt-1"
+            />
+          </div>
+
+          {!allChecked && (
+            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-2">
+              ⚠ Centang semua item sebelum konfirmasi
+            </p>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" className="flex-1" onClick={() => setSelectedOrder(null)}>
+              Batal
+            </Button>
+            <Button
+              className="flex-1 min-h-[48px] font-semibold"
+              onClick={handlePack}
+              disabled={isPacking || !allChecked}
+            >
+              {isPacking ? 'Menyimpan…' : '✅ Konfirmasi Kemas'}
+            </Button>
+          </div>
+        </div>
+      </BottomSheet>
+    </div>
+  );
+}
+
+// ── Tracking Tab ──────────────────────────────────────────────────────────────
+
+function TrackingTab() {
+  const { data: orders, isLoading, refetch } = useQuery({
+    queryKey: ['field', 'tracking-queue'],
+    queryFn: fetchTrackingQueue,
     refetchInterval: 30000,
   });
 
-  const { data: pickupData, isLoading: pickupLoading } = useQuery({
-    queryKey: ['pickup-queue'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/field/pickup-queue');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data as PickupOrder[];
-    },
+  const { mutateAsync: trackingMutate, isPending: isTracking } = useMutation({
+    mutationFn: ({ orderId, trackingNumber, courierCode }: { orderId: string; trackingNumber: string; courierCode?: string }) =>
+      addTracking(orderId, { trackingNumber, courierCode }),
+    onSuccess: () => refetch(),
+  });
+
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [trackingNumber, setTrackingNumber] = useState('');
+  const [courierCode, setCourierCode] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = async () => {
+    setError('');
+    const trimmed = trackingNumber.trim().toUpperCase();
+    if (trimmed.length < 8) {
+      setError('Nomor resi minimal 8 karakter');
+      return;
+    }
+    if (!selectedOrder) return;
+    await trackingMutate({
+      orderId: selectedOrder.id,
+      trackingNumber: trimmed,
+      courierCode: courierCode || undefined,
+    });
+    setSelectedOrder(null);
+    setTrackingNumber('');
+    setCourierCode('');
+  };
+
+  if (isLoading) {
+    return <div className="space-y-4">{[1,2,3].map(i => <Skeleton key={i} className="h-44 w-full" />)}</div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-semibold">Perlu Nomor Resi
+          <span className="ml-2 text-sm font-normal text-gray-500">({orders?.length ?? 0} pesanan)</span>
+        </h2>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>
+          <RefreshCw className="w-4 h-4 mr-1" /> Refresh
+        </Button>
+      </div>
+
+      {!orders || orders.length === 0 ? (
+        <Card>
+          <CardContent className="py-10 text-center">
+            <Truck className="w-12 h-12 mx-auto mb-3 text-green-400" />
+            <p className="font-medium text-gray-600">Semua pesanan sudah ada resi!</p>
+          </CardContent>
+        </Card>
+      ) : (
+        orders.map(order => (
+          <OrderCard
+            key={order.id}
+            order={order}
+            actionLabel="📦 Input Nomor Resi"
+            actionIcon={Truck}
+            onAction={o => { setSelectedOrder(o); setTrackingNumber(''); setCourierCode(''); setError(''); }}
+          />
+        ))
+      )}
+
+      <BottomSheet
+        open={!!selectedOrder}
+        onClose={() => setSelectedOrder(null)}
+        title={`Input Resi ${selectedOrder?.orderNumber}`}
+      >
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm text-gray-600">
+              Kurir: <span className="font-medium">{[selectedOrder?.courierCode, selectedOrder?.courierService].filter(Boolean).join(' ') || '—'}</span>
+            </p>
+          </div>
+          <div>
+            <Label htmlFor="tracking" className="text-xs font-semibold text-gray-500 uppercase">Nomor Resi *</Label>
+            <Input
+              id="tracking"
+              value={trackingNumber}
+              onChange={e => setTrackingNumber(e.target.value.toUpperCase())}
+              placeholder="Ketik atau scan resi..."
+              className="mt-1 font-mono text-base"
+              inputMode="text"
+              autoComplete="off"
+            />
+            {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+          </div>
+          <div>
+            <Label htmlFor="courier" className="text-xs font-semibold text-gray-500 uppercase">Override Kurir (opsional)</Label>
+            <Input
+              id="courier"
+              value={courierCode}
+              onChange={e => setCourierCode(e.target.value)}
+              placeholder="Contoh: JNE, J&T, SiCepat"
+              className="mt-1"
+            />
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" className="flex-1" onClick={() => setSelectedOrder(null)}>
+              Batal
+            </Button>
+            <Button
+              className="flex-1 min-h-[48px] font-semibold"
+              onClick={handleSubmit}
+              disabled={isTracking || !trackingNumber.trim()}
+            >
+              {isTracking ? 'Menyimpan…' : '✅ Simpan Resi'}
+            </Button>
+          </div>
+        </div>
+      </BottomSheet>
+    </div>
+  );
+}
+
+// ── Pickup Tab ────────────────────────────────────────────────────────────────
+
+function PickupTab() {
+  const { data: orders, isLoading, refetch } = useQuery({
+    queryKey: ['field', 'pickup-queue'],
+    queryFn: fetchPickupQueue,
     refetchInterval: 30000,
   });
 
-  const { data: inventoryData, isLoading: inventoryLoading } = useQuery({
-    queryKey: ['field-inventory'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/field/inventory');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data as InventoryItem[];
-    },
-    refetchInterval: 60000,
+  const { mutateAsync: deliverMutate, isPending: isDelivering } = useMutation({
+    mutationFn: (orderId: string) => deliverPickup(orderId),
+    onSuccess: () => refetch(),
   });
 
-  const { data: summaryData } = useQuery({
-    queryKey: ['today-summary'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/field/today-summary');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data as WorkerSummary;
-    },
-    refetchInterval: 60000,
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [inputCode, setInputCode] = useState('');
+  const [codeError, setCodeError] = useState('');
+
+  const handleDeliver = async () => {
+    if (!selectedOrder) return;
+    if (selectedOrder.pickupCode && inputCode.trim().toUpperCase() !== selectedOrder.pickupCode.toUpperCase()) {
+      setCodeError('Kode tidak cocok. Minta pelanggan tunjukkan kode yang benar.');
+      return;
+    }
+    await deliverMutate(selectedOrder.id);
+    setSelectedOrder(null);
+    setInputCode('');
+    setCodeError('');
+  };
+
+  if (isLoading) {
+    return <div className="space-y-4">{[1,2].map(i => <Skeleton key={i} className="h-40 w-full" />)}</div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-semibold">Pesanan Ambil Sendiri
+          <span className="ml-2 text-sm font-normal text-gray-500">({orders?.length ?? 0} pesanan)</span>
+        </h2>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>
+          <RefreshCw className="w-4 h-4 mr-1" /> Refresh
+        </Button>
+      </div>
+
+      {!orders || orders.length === 0 ? (
+        <Card>
+          <CardContent className="py-10 text-center">
+            <ShoppingBag className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+            <p className="font-medium text-gray-600">Tidak ada pesanan pickup saat ini</p>
+          </CardContent>
+        </Card>
+      ) : (
+        orders.map(order => (
+          <OrderCard
+            key={order.id}
+            order={order}
+            actionLabel="✅ Serahkan ke Pelanggan"
+            onAction={o => { setSelectedOrder(o); setInputCode(''); setCodeError(''); }}
+          />
+        ))
+      )}
+
+      <BottomSheet
+        open={!!selectedOrder}
+        onClose={() => setSelectedOrder(null)}
+        title={`Serahkan ${selectedOrder?.orderNumber}`}
+      >
+        <div className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-sm text-blue-700">
+              Minta pelanggan menunjukkan kode ambil mereka, lalu masukkan di bawah.
+            </p>
+          </div>
+          {selectedOrder?.pickupCode && (
+            <div>
+              <Label htmlFor="pickupCode" className="text-xs font-semibold text-gray-500 uppercase">Kode Ambil Pelanggan</Label>
+              <Input
+                id="pickupCode"
+                value={inputCode}
+                onChange={e => { setInputCode(e.target.value); setCodeError(''); }}
+                placeholder="Masukkan kode dari pelanggan"
+                className="mt-1 font-mono text-base uppercase"
+              />
+              {codeError && (
+                <div className="flex items-center gap-2 mt-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  {codeError}
+                </div>
+              )}
+            </div>
+          )}
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" className="flex-1" onClick={() => setSelectedOrder(null)}>
+              Batal
+            </Button>
+            <Button
+              className="flex-1 min-h-[48px] font-semibold"
+              onClick={handleDeliver}
+              disabled={isDelivering}
+            >
+              {isDelivering ? 'Menyimpan…' : '✅ Konfirmasi Serahkan'}
+            </Button>
+          </div>
+        </div>
+      </BottomSheet>
+    </div>
+  );
+}
+
+// ── Inventory Tab ─────────────────────────────────────────────────────────────
+
+function InventoryTab() {
+  const { data: inventory, isLoading, refetch } = useQuery({
+    queryKey: ['field', 'inventory'],
+    queryFn: fetchInventory,
   });
 
   const queryClient = useQueryClient();
 
-  const markPackedMutation = useMutation({
-    mutationFn: async (orderId: string) => {
-      const res = await fetch(`/api/admin/orders/${orderId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'packed' }),
-      });
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data;
-    },
+  const { mutateAsync: restockMutate, isPending: isRestocking } = useMutation({
+    mutationFn: restockInventory,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['packing-queue'] });
-      queryClient.invalidateQueries({ queryKey: ['today-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['tracking-queue'] });
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['field', 'today-summary'] });
     },
   });
 
-  const confirmPickupMutation = useMutation({
-    mutationFn: async (orderId: string) => {
-      const res = await fetch(`/api/admin/orders/${orderId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'delivered' }),
-      });
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data;
-    },
+  const { mutateAsync: adjustMutate, isPending: isAdjusting } = useMutation({
+    mutationFn: adjustInventory,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pickup-queue'] });
-      queryClient.invalidateQueries({ queryKey: ['today-summary'] });
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['field', 'today-summary'] });
     },
   });
 
-  const saveTrackingMutation = useMutation({
-    mutationFn: async ({ orderId, trackingNumber, courierCode }: { orderId: string; trackingNumber: string; courierCode?: string }) => {
-      const res = await fetch(`/api/admin/field/orders/${orderId}/tracking`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trackingNumber, courierCode }),
-      });
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tracking-queue'] });
-      queryClient.invalidateQueries({ queryKey: ['today-summary'] });
-    },
-  });
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [actionType, setActionType] = useState<'restock' | 'adjust' | null>(null);
+  const [quantity, setQuantity] = useState('');
+  const [reason, setReason] = useState('');
+  const [filterLevel, setFilterLevel] = useState<'all' | 'out' | 'low'>('all');
 
-  const restockMutation = useMutation({
-    mutationFn: async ({ variantId, quantityAdded, note }: { variantId: string; quantityAdded: number; note?: string }) => {
-      const res = await fetch('/api/admin/field/inventory/restock', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ variantId, quantityAdded, note }),
-      });
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['field-inventory'] });
-      queryClient.invalidateQueries({ queryKey: ['today-summary'] });
-      setShowRestockModal(false);
-      setSelectedInventoryItem(null);
-    },
-  });
-
-  const adjustMutation = useMutation({
-    mutationFn: async ({ variantId, newQuantity, reason }: { variantId: string; newQuantity: number; reason: string }) => {
-      const res = await fetch('/api/admin/field/inventory/adjust', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ variantId, newQuantity, reason }),
-      });
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['field-inventory'] });
-      queryClient.invalidateQueries({ queryKey: ['today-summary'] });
-      setShowAdjustModal(false);
-      setSelectedInventoryItem(null);
-    },
-  });
-
-  const packingCount = summaryData?.packedToday ?? 0;
-  const trackingCount = (trackingData?.length ?? 0) + (pickupData?.length ?? 0);
-  const inventoryAlerts = inventoryData?.filter(i => i.stock === 0 || i.stock < 10).length ?? 0;
-
-  const filteredPackingOrders = packingData?.filter(o => 
-    o.orderNumber.toLowerCase().includes(searchQuery.toLowerCase())
-  ) ?? [];
-
-  const filteredTrackingOrders = trackingData?.filter(o =>
-    o.orderNumber.toLowerCase().includes(searchQuery.toLowerCase())
-  ) ?? [];
-
-  return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-20">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-20">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">🍜</span>
-            <span className="font-bold text-[#1A1A1A]">DapurDekaka — Gudang</span>
-          </div>
-          <button className="relative p-2">
-            <Bell className="w-5 h-5 text-gray-600" />
-            {packingCount > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-brand-red rounded-full" />
-            )}
-          </button>
-        </div>
-        <div className="flex items-center justify-between text-sm text-gray-500">
-          <span>Halo, Worker 👋</span>
-          <span>{currentTime.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · {currentTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
-        </div>
-      </div>
-
-      {/* Today's Summary */}
-      <div className="bg-white mx-4 mt-4 rounded-xl p-4 shadow-sm border border-gray-100">
-        <h2 className="font-semibold text-sm text-gray-500 mb-3">TUGAS HARI INI</h2>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="text-center">
-            <p className="text-2xl font-bold text-brand-red">{packingCount}</p>
-            <p className="text-xs text-gray-500 mt-1">Perlu Dikemas</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-amber-500">{trackingCount}</p>
-            <p className="text-xs text-gray-500 mt-1">Perlu Resi</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-green-600">{summaryData?.workerPackedCount ?? 0}</p>
-            <p className="text-xs text-gray-500 mt-1">Selesai</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Tab Navigation */}
-      <div className="flex gap-1 px-4 mt-4 overflow-x-auto">
-        {TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
-              activeTab === tab.id
-                ? 'bg-brand-red text-white'
-                : 'bg-white text-gray-600 border border-gray-200'
-            )}
-          >
-            {tab.icon}
-            {tab.label}
-            {tab.id === 'packing' && packingCount > 0 && (
-              <span className="bg-white/20 text-xs px-1.5 py-0.5 rounded-full">{packingCount}</span>
-            )}
-            {tab.id === 'tracking' && trackingCount > 0 && (
-              <span className="bg-amber-500 text-white text-xs px-1.5 py-0.5 rounded-full">{trackingCount}</span>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {/* Search Bar */}
-      <div className="px-4 mt-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Cari nomor pesanan..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-red/20"
-          />
-        </div>
-      </div>
-
-      {/* Tab Content */}
-      <div className="px-4 mt-4 space-y-4">
-        {activeTab === 'packing' && (
-          <>
-            {packingLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="bg-white rounded-xl p-4 animate-pulse">
-                    <div className="h-4 bg-gray-200 rounded w-1/3 mb-3" />
-                    <div className="h-3 bg-gray-200 rounded w-2/3 mb-2" />
-                    <div className="h-3 bg-gray-200 rounded w-1/2" />
-                  </div>
-                ))}
-              </div>
-            ) : filteredPackingOrders.length === 0 ? (
-              <div className="bg-white rounded-xl p-8 text-center">
-                <span className="text-4xl">📭</span>
-                <p className="mt-3 font-medium text-gray-600">Tidak ada pesanan yang perlu dikemas</p>
-                <p className="text-sm text-gray-400 mt-1">Semua pesanan sudah diproses!</p>
-              </div>
-            ) : (
-              filteredPackingOrders.map(order => (
-                <OrderCard
-                  key={order.id}
-                  order={order}
-                  onMarkPacked={() => markPackedMutation.mutate(order.id)}
-                  isPacking
-                />
-              ))
-            )}
-          </>
-        )}
-
-        {activeTab === 'tracking' && (
-          <>
-            {pickupData && pickupData.length > 0 && (
-              <div className="mb-4">
-                <h3 className="text-sm font-semibold text-gray-500 mb-3">PESANAN AMBIL SENDIRI</h3>
-                {pickupData.map(order => (
-                  <PickupOrderCard
-                    key={order.id}
-                    order={order}
-                    onConfirm={() => confirmPickupMutation.mutate(order.id)}
-                  />
-                ))}
-              </div>
-            )}
-            {trackingLoading ? (
-              <div className="space-y-3">
-                {[1, 2].map(i => (
-                  <div key={i} className="bg-white rounded-xl p-4 animate-pulse">
-                    <div className="h-4 bg-gray-200 rounded w-1/3 mb-3" />
-                    <div className="h-3 bg-gray-200 rounded w-1/2" />
-                  </div>
-                ))}
-              </div>
-            ) : filteredTrackingOrders.length === 0 && pickupData?.length === 0 ? (
-              <div className="bg-white rounded-xl p-8 text-center">
-                <span className="text-4xl">📭</span>
-                <p className="mt-3 font-medium text-gray-600">Tidak ada pesanan yang perlu resi</p>
-              </div>
-            ) : (
-              filteredTrackingOrders.map(order => (
-                <TrackingOrderCard
-                  key={order.id}
-                  order={order}
-                  onSaveTracking={(tn, cc) => saveTrackingMutation.mutate({ orderId: order.id, trackingNumber: tn, courierCode: cc })}
-                />
-              ))
-            )}
-          </>
-        )}
-
-        {activeTab === 'inventory' && (
-          <>
-            {inventoryLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3, 4, 5].map(i => (
-                  <div key={i} className="bg-white rounded-xl p-4 animate-pulse">
-                    <div className="h-4 bg-gray-200 rounded w-2/3 mb-2" />
-                    <div className="h-3 bg-gray-200 rounded w-1/3" />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <InventoryList
-                items={inventoryData ?? []}
-                onRestock={(item) => {
-                  setSelectedInventoryItem(item);
-                  setShowRestockModal(true);
-                }}
-                onAdjust={(item) => {
-                  setSelectedInventoryItem(item);
-                  setShowAdjustModal(true);
-                }}
-              />
-            )}
-          </>
-        )}
-
-        {activeTab === 'completed' && (
-          <CompletedSection data={summaryData} />
-        )}
-      </div>
-
-      {/* Restock Modal */}
-      {showRestockModal && selectedInventoryItem && (
-        <RestockModal
-          item={selectedInventoryItem}
-          onClose={() => {
-            setShowRestockModal(false);
-            setSelectedInventoryItem(null);
-          }}
-          onConfirm={(quantity, note) => {
-            restockMutation.mutate({ variantId: selectedInventoryItem.id, quantityAdded: quantity, note });
-          }}
-          isLoading={restockMutation.isPending}
-        />
-      )}
-
-      {/* Adjust Modal */}
-      {showAdjustModal && selectedInventoryItem && (
-        <AdjustModal
-          item={selectedInventoryItem}
-          onClose={() => {
-            setShowAdjustModal(false);
-            setSelectedInventoryItem(null);
-          }}
-          onConfirm={(newQuantity, reason) => {
-            adjustMutation.mutate({ variantId: selectedInventoryItem.id, newQuantity, reason });
-          }}
-          isLoading={adjustMutation.isPending}
-        />
-      )}
-    </div>
-  );
-}
-
-function OrderCard({ order, onMarkPacked, isPacking }: { order: PackingOrder; onMarkPacked: () => void; isPacking?: boolean }) {
-  return (
-    <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-      <div className="flex items-center justify-between mb-2">
-        <span className="font-bold text-[#1A1A1A]">{order.orderNumber}</span>
-        <span className="text-xs text-gray-400">{formatRelativeTime(order.paidAt)}</span>
-      </div>
-      
-      <div className="space-y-1 mb-3">
-        {order.items.map((item, idx) => (
-          <p key={idx} className="text-sm text-gray-600">
-            {item.quantity}× {item.productNameId} ({item.variantNameId})
-          </p>
-        ))}
-      </div>
-
-      <div className="text-xs text-gray-400 mb-2">
-        📦 {order.totalWeight.toLocaleString('id-ID')} gram
-        {order.courierName && <span className="ml-2">🚚 {order.courierName}</span>}
-        {order.district && <span className="ml-2">— {order.district}</span>}
-      </div>
-
-      {order.requiresColdChain && (
-        <div className="bg-blue-50 text-blue-600 text-xs px-3 py-2 rounded-lg mb-3 flex items-center gap-2">
-          ❄️ PERLU DRY ICE (zona: luar kota)
-        </div>
-      )}
-
-      {order.customerNote && (
-        <p className="text-xs text-gray-500 italic mb-3">📝 {order.customerNote}</p>
-      )}
-
-      {isPacking && (
-        <Button
-          onClick={onMarkPacked}
-          className="w-full bg-green-600 hover:bg-green-700 text-white"
-        >
-          ✅ TANDAI SELESAI DIKEMAS
-        </Button>
-      )}
-    </div>
-  );
-}
-
-function TrackingOrderCard({ order, onSaveTracking }: { order: TrackingOrder; onSaveTracking: (tn: string, cc?: string) => void }) {
-  const [trackingNumber, setTrackingNumber] = useState('');
-
-  const handleSubmit = () => {
-    if (trackingNumber.length >= 8) {
-      onSaveTracking(trackingNumber, order.courierCode ?? undefined);
+  const handleSubmit = async () => {
+    if (!selectedItem || !quantity) return;
+    if (actionType === 'restock') {
+      await restockMutate({ variantId: selectedItem.id, quantityAdded: parseInt(quantity), note: reason || undefined });
+    } else if (actionType === 'adjust') {
+      if (!reason) return;
+      await adjustMutate({ variantId: selectedItem.id, newQuantity: parseInt(quantity), reason });
     }
+    setSelectedItem(null);
+    setActionType(null);
+    setQuantity('');
+    setReason('');
   };
 
-  return (
-    <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-      <div className="flex items-center justify-between mb-2">
-        <span className="font-bold text-[#1A1A1A]">{order.orderNumber}</span>
-        <span className="text-xs text-gray-400">{formatRelativeTime(order.packedAt)}</span>
-      </div>
+  const filteredInventory = inventory?.filter(item => {
+    if (filterLevel === 'out') return item.stockLevel === 'out';
+    if (filterLevel === 'low') return item.stockLevel === 'low';
+    return true;
+  });
 
-      <div className="text-sm text-gray-600 mb-3">
-        {order.items.map((item, idx) => (
-          <span key={idx}>{item.quantity}× {item.productNameId}{idx < order.items.length - 1 ? ', ' : ''}</span>
-        ))}
-      </div>
-
-      <div className="text-xs text-gray-400 mb-3">
-        🚚 {order.courierName ?? order.courierCode ?? '-'} → {order.district ?? order.city ?? '-'}
-      </div>
-
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={trackingNumber}
-          onChange={(e) => setTrackingNumber(e.target.value.toUpperCase())}
-          placeholder="Ketik nomor resi..."
-          className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-red/20"
-        />
-        <Button size="sm" variant="outline" className="px-3">
-          <Camera className="w-4 h-4" />
-        </Button>
-        <Button
-          size="sm"
-          onClick={handleSubmit}
-          disabled={trackingNumber.length < 8}
-          className="bg-green-600 hover:bg-green-700 text-white"
-        >
-          ✅
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function PickupOrderCard({ order, onConfirm }: { order: PickupOrder; onConfirm: () => void }) {
-  return (
-    <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm mb-3">
-      <div className="flex items-center justify-between mb-2">
-        <span className="font-bold text-[#1A1A1A]">{order.orderNumber}</span>
-        <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">Pickup</span>
-      </div>
-
-      <div className="text-sm text-gray-600 mb-2">
-        {order.items.map((item, idx) => (
-          <span key={idx}>{item.quantity}× {item.productNameId}{idx < order.items.length - 1 ? ', ' : ''}</span>
-        ))}
-      </div>
-
-      <div className="bg-amber-50 text-amber-700 text-sm px-3 py-2 rounded-lg mb-3">
-        Kode Ambbil: <span className="font-bold">{order.pickupCode}</span>
-      </div>
-
-      <Button
-        onClick={onConfirm}
-        className="w-full bg-green-600 hover:bg-green-700 text-white"
-      >
-        ✅ SERAHKAN KE PELANGGAN
-      </Button>
-    </div>
-  );
-}
-
-function InventoryList({ items, onRestock, onAdjust }: { items: InventoryItem[]; onRestock: (item: InventoryItem) => void; onAdjust: (item: InventoryItem) => void }) {
-  return (
-    <div className="space-y-2">
-      {items.length === 0 ? (
-        <div className="bg-white rounded-xl p-8 text-center">
-          <span className="text-4xl">✅</span>
-          <p className="mt-3 font-medium text-gray-600">Semua stok dalam kondisi sehat</p>
-        </div>
-      ) : (
-        items.map(item => (
-          <div key={item.id} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-[#1A1A1A]">{item.nameId}</p>
-                <p className="text-xs text-gray-400">{item.productNameId} · {item.sku}</p>
-              </div>
-              <div className="text-right">
-                <p className={cn(
-                  'text-lg font-bold',
-                  item.stock === 0 ? 'text-red-500' : item.stock < 10 ? 'text-amber-500' : 'text-green-600'
-                )}>
-                  {item.stock} unit
-                </p>
-                <p className="text-xs text-gray-400">{item.weightGram}g</p>
-              </div>
-            </div>
-            <div className="flex gap-2 mt-3">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onRestock(item)}
-                className="flex-1"
-              >
-                + Restock
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onAdjust(item)}
-                className="flex-1"
-              >
-                Koreksi
-              </Button>
-            </div>
-          </div>
-        ))
-      )}
-    </div>
-  );
-}
-
-function RestockModal({ item, onClose, onConfirm, isLoading }: { item: InventoryItem; onClose: () => void; onConfirm: (quantity: number, note?: string) => void; isLoading: boolean }) {
-  const [quantity, setQuantity] = useState(1);
-  const [note, setNote] = useState('');
-
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
-      <div className="bg-white w-full max-w-md rounded-t-2xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-lg">Tambah Stok</h3>
-          <button onClick={onClose}><X className="w-5 h-5" /></button>
-        </div>
-
-        <p className="text-sm text-gray-500 mb-1">{item.productNameId}</p>
-        <p className="font-medium mb-4">{item.nameId}</p>
-        <p className="text-sm text-gray-500 mb-4">Stok saat ini: <span className="font-bold text-[#1A1A1A]">{item.stock} unit</span></p>
-
-        <div className="flex items-center justify-center gap-4 mb-4">
-          <button
-            onClick={() => setQuantity(Math.max(1, quantity - 1))}
-            className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-xl font-bold"
-          >
-            <Minus className="w-5 h-5" />
-          </button>
-          <span className="text-3xl font-bold w-20 text-center">{quantity}</span>
-          <button
-            onClick={() => setQuantity(quantity + 1)}
-            className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-xl font-bold"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
-        </div>
-
-        <p className="text-sm text-gray-500 mb-4 text-center">
-          Stok setelah update: <span className="font-bold text-green-600">{item.stock + quantity}</span> unit
-        </p>
-
-        <input
-          type="text"
-          placeholder="Catatan (opsional)"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm mb-4"
-        />
-
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={onClose} className="flex-1">BATAL</Button>
-          <Button
-            onClick={() => onConfirm(quantity, note)}
-            disabled={isLoading}
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-          >
-            {isLoading ? 'Menyimpan...' : '✅ SIMPAN RESTOCK'}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AdjustModal({ item, onClose, onConfirm, isLoading }: { item: InventoryItem; onClose: () => void; onConfirm: (newQuantity: number, reason: string) => void; isLoading: boolean }) {
-  const [newQuantity, setNewQuantity] = useState(item.stock);
-  const [reason, setReason] = useState('');
-
-  const diff = newQuantity - item.stock;
-
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
-      <div className="bg-white w-full max-w-md rounded-t-2xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-lg">Koreksi Stok</h3>
-          <button onClick={onClose}><X className="w-5 h-5" /></button>
-        </div>
-
-        <p className="text-sm text-gray-500 mb-1">{item.productNameId}</p>
-        <p className="font-medium mb-4">{item.nameId}</p>
-        <p className="text-sm text-gray-500 mb-4">Stok sistem: <span className="font-bold text-[#1A1A1A]">{item.stock} unit</span></p>
-
-        <div className="flex items-center justify-center gap-4 mb-4">
-          <button
-            onClick={() => setNewQuantity(Math.max(0, newQuantity - 1))}
-            className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-xl font-bold"
-          >
-            <Minus className="w-5 h-5" />
-          </button>
-          <span className="text-3xl font-bold w-20 text-center">{newQuantity}</span>
-          <button
-            onClick={() => setNewQuantity(newQuantity + 1)}
-            className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-xl font-bold"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
-        </div>
-
-        <p className={cn(
-          'text-sm mb-4 text-center',
-          diff > 0 ? 'text-green-600' : diff < 0 ? 'text-red-500' : 'text-gray-500'
-        )}>
-          Selisih: {diff > 0 ? '+' : ''}{diff} unit
-        </p>
-
-        <input
-          type="text"
-          placeholder="Alasan koreksi (wajib diisi)"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm mb-4"
-        />
-
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={onClose} className="flex-1">BATAL</Button>
-          <Button
-            onClick={() => onConfirm(newQuantity, reason)}
-            disabled={isLoading || !reason}
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-          >
-            {isLoading ? 'Menyimpan...' : '✅ SIMPAN KOREKSI'}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CompletedSection({ data }: { data: WorkerSummary | undefined }) {
-  const today = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  if (isLoading) {
+    return <div className="space-y-3">{[1,2,3,4].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>;
+  }
 
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-xl p-4">
-        <h3 className="font-semibold text-gray-500 mb-3">SELESAI HARI INI — {today}</h3>
-        <div className="grid grid-cols-3 gap-4 mb-4">
-          <div className="text-center">
-            <p className="text-2xl font-bold text-green-600">{data?.packedToday ?? 0}</p>
-            <p className="text-xs text-gray-500">Dikemas</p>
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-semibold">Stok Produk</h2>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>
+          <RefreshCw className="w-4 h-4 mr-1" /> Refresh
+        </Button>
+      </div>
+
+      {/* Filter chips */}
+      <div className="flex gap-2">
+        {[
+          { key: 'all', label: 'Semua' },
+          { key: 'out', label: '🔴 Habis' },
+          { key: 'low', label: '🟡 Menipis' },
+        ].map(f => (
+          <button
+            key={f.key}
+            onClick={() => setFilterLevel(f.key as 'all' | 'out' | 'low')}
+            className={cn(
+              'px-3 py-1 rounded-full text-xs font-medium transition-colors',
+              filterLevel === f.key ? 'bg-[#0F172A] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            )}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-2">
+        {filteredInventory?.map(item => (
+          <Card key={item.id}>
+            <CardContent className="p-3">
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{item.productNameId}</p>
+                  <p className="text-xs text-gray-400">{item.variantNameId} · {item.sku}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="text-right mr-1">
+                    <p className={cn('text-lg font-bold',
+                      item.stockLevel === 'out' ? 'text-red-600' :
+                      item.stockLevel === 'low' ? 'text-amber-600' : 'text-green-600'
+                    )}>
+                      {item.stock}
+                    </p>
+                    <p className="text-xs text-gray-400">unit</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="min-h-[44px] min-w-[44px] text-green-600 border-green-200 hover:bg-green-50"
+                    onClick={() => { setSelectedItem(item); setActionType('restock'); setQuantity(''); setReason(''); }}
+                    title="Tambah stok"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="min-h-[44px] min-w-[44px] text-amber-600 border-amber-200 hover:bg-amber-50"
+                    onClick={() => { setSelectedItem(item); setActionType('adjust'); setQuantity(item.stock.toString()); setReason(''); }}
+                    title="Koreksi stok"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+        {filteredInventory?.length === 0 && (
+          <Card>
+            <CardContent className="py-8 text-center text-gray-400">
+              <p className="text-sm">Tidak ada produk di kategori ini</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      <BottomSheet
+        open={!!selectedItem && !!actionType}
+        onClose={() => { setSelectedItem(null); setActionType(null); setQuantity(''); setReason(''); }}
+        title={actionType === 'restock' ? 'Tambah Stok' : 'Koreksi Stok'}
+      >
+        <div className="space-y-4">
+          <div className="bg-gray-50 rounded-lg p-3">
+            <p className="font-medium text-sm">{selectedItem?.productNameId}</p>
+            <p className="text-xs text-gray-500">{selectedItem?.variantNameId} · Stok saat ini: <span className="font-bold">{selectedItem?.stock} unit</span></p>
           </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-blue-600">{data?.shippedToday ?? 0}</p>
-            <p className="text-xs text-gray-500">Resi masuk</p>
+
+          <div>
+            <Label htmlFor="qty" className="text-xs font-semibold text-gray-500 uppercase">
+              {actionType === 'restock' ? 'Jumlah Ditambahkan' : 'Stok Aktual (setelah hitung ulang)'}
+            </Label>
+            <div className="flex items-center gap-2 mt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-h-[44px] min-w-[44px]"
+                onClick={() => setQuantity(q => Math.max(0, (parseInt(q) || 0) - 1).toString())}
+              >−</Button>
+              <Input
+                id="qty"
+                type="number"
+                min="0"
+                value={quantity}
+                onChange={e => setQuantity(e.target.value)}
+                className="text-center font-bold text-lg"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-h-[44px] min-w-[44px]"
+                onClick={() => setQuantity(q => ((parseInt(q) || 0) + 1).toString())}
+              >+</Button>
+            </div>
+            {actionType === 'restock' && quantity && (
+              <p className="text-xs text-gray-500 mt-1 text-center">
+                Stok setelah update: <span className="font-bold text-green-600">{(selectedItem?.stock ?? 0) + parseInt(quantity || '0')} unit</span>
+              </p>
+            )}
+            {actionType === 'adjust' && quantity && parseInt(quantity) !== selectedItem?.stock && (
+              <p className="text-xs text-gray-500 mt-1 text-center">
+                Selisih: <span className={cn('font-bold', parseInt(quantity) < (selectedItem?.stock ?? 0) ? 'text-red-500' : 'text-green-600')}>
+                  {parseInt(quantity) - (selectedItem?.stock ?? 0)} unit
+                </span>
+              </p>
+            )}
           </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-purple-600">{data?.deliveredPickupToday ?? 0}</p>
-            <p className="text-xs text-gray-500">Diserahkan</p>
+
+          <div>
+            <Label htmlFor="reason" className="text-xs font-semibold text-gray-500 uppercase">
+              {actionType === 'adjust' ? 'Alasan Koreksi *' : 'Catatan (opsional)'}
+            </Label>
+            <Input
+              id="reason"
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              placeholder={actionType === 'adjust' ? 'Contoh: Rusak/tidak layak jual' : 'Contoh: Kiriman supplier 14 Mei'}
+              className="mt-1"
+            />
           </div>
+
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" className="flex-1" onClick={() => { setSelectedItem(null); setActionType(null); }}>
+              Batal
+            </Button>
+            <Button
+              className="flex-1 min-h-[48px] font-semibold"
+              onClick={handleSubmit}
+              disabled={isRestocking || isAdjusting || !quantity || (actionType === 'adjust' && !reason)}
+            >
+              {isRestocking || isAdjusting ? 'Menyimpan…' : '✅ Simpan'}
+            </Button>
+          </div>
+        </div>
+      </BottomSheet>
+    </div>
+  );
+}
+
+// ── Completed Tab ─────────────────────────────────────────────────────────────
+
+function CompletedTab() {
+  const { data: summary, isLoading: summaryLoading } = useQuery({
+    queryKey: ['field', 'today-summary'],
+    queryFn: fetchTodaySummary,
+  });
+
+  const { data: activity, isLoading: activityLoading } = useQuery({
+    queryKey: ['field', 'worker-activity'],
+    queryFn: fetchWorkerActivity,
+  });
+
+  if (summaryLoading || activityLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-48 w-full" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <h2 className="text-base font-semibold">Rekap Hari Ini</h2>
+
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          { icon: Package, label: 'Dikemas', value: summary?.packedCount ?? 0, color: 'text-blue-500' },
+          { icon: Truck, label: 'Diresi', value: summary?.trackingCount ?? 0, color: 'text-green-500' },
+          { icon: CheckCircle, label: 'Pickup Selesai', value: summary?.pickupCount ?? 0, color: 'text-emerald-500' },
+          { icon: Warehouse, label: 'Update Stok', value: summary?.inventoryUpdateCount ?? 0, color: 'text-purple-500' },
+        ].map(({ icon: Icon, label, value, color }) => (
+          <Card key={label}>
+            <CardContent className="p-4 text-center">
+              <Icon className={cn('w-8 h-8 mx-auto mb-2', color)} />
+              <p className="text-2xl font-bold">{value}</p>
+              <p className="text-xs text-gray-500">{label}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div>
+        <h3 className="text-sm font-semibold text-gray-600 mb-3">Aktivitas Terakhir</h3>
+        <Card>
+          <CardContent className="p-4">
+            {activity?.orderActivity.length === 0 && activity?.inventoryActivity.length === 0 ? (
+              <p className="text-center text-gray-400 py-4 text-sm">Belum ada aktivitas hari ini</p>
+            ) : (
+              <div className="space-y-3">
+                {activity?.orderActivity.map(item => (
+                  <div key={item.id} className="flex items-start gap-3 text-sm">
+                    <div className="mt-0.5 shrink-0">
+                      {item.toStatus === 'packed' ? (
+                        <Package className="w-4 h-4 text-blue-500" />
+                      ) : (
+                        <Truck className="w-4 h-4 text-green-500" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-gray-700">
+                        {item.orderNumber && <span className="font-mono font-semibold text-xs text-gray-500">{item.orderNumber} — </span>}
+                        Status → <span className="font-medium">{item.toStatus}</span>
+                      </p>
+                      <p className="text-xs text-gray-400">{formatWIB(new Date(item.createdAt))}</p>
+                    </div>
+                  </div>
+                ))}
+                {activity?.inventoryActivity.map(item => (
+                  <div key={item.id} className="flex items-start gap-3 text-sm">
+                    <div className="mt-0.5 shrink-0">
+                      <Warehouse className="w-4 h-4 text-purple-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-gray-700">
+                        {item.variantName && <span className="font-medium">{item.variantName} — </span>}
+                        Stok {item.changeType}: {item.quantityBefore} → {item.quantityAfter}
+                        {item.note && <span className="text-gray-400"> ({item.note})</span>}
+                      </p>
+                      <p className="text-xs text-gray-400">{formatWIB(new Date(item.createdAt))}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+
+const TABS = [
+  { key: 'packing', label: 'Packing', icon: Package, summaryKey: 'packedQueue' },
+  { key: 'tracking', label: 'Kirim', icon: Truck, summaryKey: 'trackingQueue' },
+  { key: 'pickup', label: 'Pickup', icon: ShoppingBag, summaryKey: 'pickupQueue' },
+  { key: 'inventory', label: 'Stok', icon: Warehouse },
+  { key: 'completed', label: 'Selesai', icon: CheckCircle },
+];
+
+export default function FieldDashboardPage() {
+  const [activeTab, setActiveTab] = useState('packing');
+
+  const { data: summary } = useQuery({
+    queryKey: ['field', 'today-summary'],
+    queryFn: fetchTodaySummary,
+    refetchInterval: 60000,
+  });
+
+  const { data: packingQueue } = useQuery({
+    queryKey: ['field', 'packing-queue'],
+    queryFn: fetchPackingQueue,
+    refetchInterval: 30000,
+  });
+
+  const { data: trackingQueue } = useQuery({
+    queryKey: ['field', 'tracking-queue'],
+    queryFn: fetchTrackingQueue,
+    refetchInterval: 30000,
+  });
+
+  const { data: pickupQueue } = useQuery({
+    queryKey: ['field', 'pickup-queue'],
+    queryFn: fetchPickupQueue,
+    refetchInterval: 30000,
+  });
+
+  const today = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  return (
+    <div className="space-y-4 max-w-xl mx-auto pb-24">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-[#1A1A1A]">🍜 Dashboard Gudang</h1>
+          <p className="text-xs text-gray-500">{today}</p>
         </div>
       </div>
 
-      {data?.recentActivity && data.recentActivity.length > 0 && (
-        <div className="bg-white rounded-xl p-4">
-          <h4 className="text-sm font-semibold text-gray-500 mb-3">Aktivitas Terkini</h4>
-          <div className="space-y-2">
-            {data.recentActivity.map((activity, idx) => (
-              <div key={idx} className="flex items-center gap-3 text-sm py-2 border-b border-gray-100 last:border-0">
-                <CheckCircle2 className="w-4 h-4 text-green-500" />
-                <span className="font-medium">{activity.orderNumber}</span>
-                <span className="text-gray-400">•</span>
-                <span className="text-gray-500">{activity.status}</span>
-                {activity.courierCode && (
-                  <>
-                    <span className="text-gray-400">•</span>
-                    <span className="text-gray-500">{activity.courierCode}</span>
-                  </>
-                )}
-              </div>
-            ))}
+      {/* Tugas Hari Ini Summary Card */}
+      <Card className="border-blue-100 bg-blue-50">
+        <CardContent className="p-4">
+          <p className="text-xs font-semibold text-blue-600 uppercase mb-3">Tugas Hari Ini</p>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <button
+              onClick={() => setActiveTab('packing')}
+              className="hover:opacity-80 transition-opacity"
+            >
+              <p className="text-2xl font-bold text-blue-700">{packingQueue?.length ?? 0}</p>
+              <p className="text-xs text-blue-600">📦 Perlu Dikemas</p>
+            </button>
+            <button
+              onClick={() => setActiveTab('tracking')}
+              className="hover:opacity-80 transition-opacity"
+            >
+              <p className="text-2xl font-bold text-indigo-700">{trackingQueue?.length ?? 0}</p>
+              <p className="text-xs text-indigo-600">🚚 Perlu Resi</p>
+            </button>
+            <button
+              onClick={() => setActiveTab('completed')}
+              className="hover:opacity-80 transition-opacity"
+            >
+              <p className="text-2xl font-bold text-green-700">{summary?.packedCount ?? 0}</p>
+              <p className="text-xs text-green-600">✅ Selesai</p>
+            </button>
           </div>
-        </div>
-      )}
+          {(packingQueue?.length ?? 0) > 0 && (
+            <p className="text-xs text-blue-500 text-center mt-3 border-t border-blue-200 pt-2">
+              Est. waktu packing: ~{((packingQueue?.length ?? 0) * 10)} menit
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Tab Navigation */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+        {TABS.map(tab => {
+          const Icon = tab.icon;
+          const badge = tab.key === 'packing' ? packingQueue?.length :
+                        tab.key === 'tracking' ? trackingQueue?.length :
+                        tab.key === 'pickup' ? pickupQueue?.length : undefined;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={cn(
+                'flex-1 flex flex-col items-center gap-0.5 py-2 px-1 rounded-lg text-xs font-medium transition-all relative min-h-[52px]',
+                activeTab === tab.key
+                  ? 'bg-white text-[#0F172A] shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              )}
+            >
+              <Icon className="w-4 h-4" />
+              {tab.label}
+              {badge !== undefined && badge > 0 && (
+                <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-brand-red text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                  {badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab Content */}
+      <div>
+        {activeTab === 'packing' && <PackingTab />}
+        {activeTab === 'tracking' && <TrackingTab />}
+        {activeTab === 'pickup' && <PickupTab />}
+        {activeTab === 'inventory' && <InventoryTab />}
+        {activeTab === 'completed' && <CompletedTab />}
+      </div>
     </div>
   );
 }
