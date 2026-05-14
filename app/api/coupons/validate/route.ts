@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db';
-import { coupons, couponUsages } from '@/lib/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { coupons } from '@/lib/db/schema';
+import { eq, and } from 'drizzle-orm';
 
 const ValidateCouponSchema = z.object({
   code: z.string().min(1),
