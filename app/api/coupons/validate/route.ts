@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db';
-import { coupons } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { coupons, couponUsages } from '@/lib/db/schema';
+import { eq, and, sql } from 'drizzle-orm';
 
 const ValidateCouponSchema = z.object({
   code: z.string().min(1),
@@ -74,11 +74,14 @@ export async function POST(req: NextRequest) {
 
     if (userId && coupon.maxUsesPerUser) {
       const usageCount = await db
-        .select({ count: coupons.usedCount })
-        .from(coupons)
-        .where(eq(coupons.id, coupon.id));
-      
-      if (usageCount[0] && usageCount[0].count >= coupon.maxUsesPerUser) {
+        .select({ count: sql<number>`count(*)` })
+        .from(couponUsages)
+        .where(and(
+          eq(couponUsages.couponId, coupon.id),
+          eq(couponUsages.userId, userId)
+        ));
+
+      if (usageCount[0] && Number(usageCount[0].count) >= coupon.maxUsesPerUser) {
         return NextResponse.json(
           { success: false, error: 'Anda sudah menggunakan kupon ini sebelumnya', code: 'COUPON_USER_LIMIT' },
           { status: 400 }
