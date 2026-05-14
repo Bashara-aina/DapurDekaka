@@ -2,6 +2,7 @@ import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { desc, eq } from 'drizzle-orm';
 import { formatWIB } from '@/lib/utils/format-date';
+import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +36,9 @@ export default async function CustomersPage() {
               {allUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-admin-content">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="font-medium text-sm">{user.name || '-'}</span>
+                    <Link href={`/admin/customers/${user.id}`} className="font-medium text-sm hover:text-brand-red hover:underline">
+                      {user.name || '-'}
+                    </Link>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-amber-600">

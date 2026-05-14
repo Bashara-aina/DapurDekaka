@@ -7,8 +7,8 @@ import { WhyDapurDekaka } from '@/components/store/home/WhyDapurDekaka';
 import { InstagramFeed } from '@/components/store/home/InstagramFeed';
 import { Testimonials } from '@/components/store/home/Testimonials';
 import { db } from '@/lib/db';
-import { products, productVariants, productImages, categories } from '@/lib/db/schema';
-import { eq, and, desc, isNull } from 'drizzle-orm';
+import { products, productVariants, productImages, categories, carouselSlides } from '@/lib/db/schema';
+import { eq, and, desc, isNull, lte, gte, isNull as isNullCond } from 'drizzle-orm';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -70,32 +70,83 @@ async function getFeaturedProducts() {
 }
 
 async function getCategories() {
-  // Get all active products grouped by category to find which categories have products
-  const allProducts = await db.query.products.findMany({
-    where: and(eq(products.isActive, true), isNull(products.deletedAt)),
-    columns: { categoryId: true },
-  });
-
-  // Get all active categories
-  const allCategories = await db.query.categories.findMany({
-    where: eq(categories.isActive, true),
-    orderBy: [categories.sortOrder],
-  });
+  // Single query with LEFT JOIN + GROUP BY to get categories with active products
+  const categoriesWithProducts = await db
+    .select({
+      id: categories.id,
+      nameId: categories.nameId,
+      slug: categories.slug,
+      sortOrder: categories.sortOrder,
+    })
+    .from(categories)
+    .leftJoin(products, and(
+      eq(categories.id, products.categoryId),
+      eq(products.isActive, true),
+      isNull(products.deletedAt)
+    ))
+    .where(eq(categories.isActive, true))
+    .groupBy(categories.id)
+    .orderBy(categories.sortOrder);
 
   // Filter to only categories that have at least one active product
-  const categoryIdsWithProducts = new Set(allProducts.map(p => p.categoryId));
-  return allCategories.filter(cat => categoryIdsWithProducts.has(cat.id));
+  return categoriesWithProducts.filter(cat => cat.id !== null);
+}
+
+async function getActiveCarouselSlides() {
+  const now = new Date();
+  return db.query.carouselSlides.findMany({
+    where: and(
+      eq(carouselSlides.isActive, true),
+    ),
+    orderBy: [carouselSlides.sortOrder],
+  }).then(slides => slides.filter(slide => {
+    const startOk = !slide.startsAt || slide.startsAt <= now;
+    const endOk = !slide.endsAt || slide.endsAt >= now;
+    return startOk && endOk;
+  }));
 }
 
 export default async function HomePage() {
-  const [featuredProducts, allCategories] = await Promise.all([
+  const [featuredProducts, allCategories, activeSlides] = await Promise.all([
     getFeaturedProducts(),
     getCategories(),
+    getActiveCarouselSlides(),
   ]);
+
+  const organizationJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'Dapur Dekaka',
+    alternateName: '德卡',
+    url: 'https://dapurdekaka.com',
+    logo: 'https://dapurdekaka.com/assets/logo/logo.png',
+    description: 'Premium Chinese-Indonesian frozen food from Bandung. Dimsum, siomay, bakso, lumpia. 100% halal.',
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: 'Jl. Sinom V No. 7, Turangga',
+      addressLocality: 'Bandung',
+      addressRegion: 'West Java',
+      postalCode: '40261',
+      addressCountry: 'ID',
+    },
+    contactPoint: {
+      '@type': 'ContactPoint',
+      contactType: 'customer service',
+      availableLanguage: ['Indonesian', 'English', 'Chinese'],
+      url: `https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER}`,
+    },
+    sameAs: [
+      'https://instagram.com/dapurdekaka',
+    ],
+  };
 
   return (
     <div className="bg-brand-cream">
-      <HeroCarousel />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+      />
+      <HeroCarousel slides={activeSlides} />
 
       <CategoryChips categories={allCategories} />
 

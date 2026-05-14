@@ -42,4 +42,4 @@ assets-source/
 # env files (contain secrets)
 .env
 .env.local
-.env.*.local
+.claude/worktrees/

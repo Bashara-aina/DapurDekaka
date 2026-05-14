@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { addresses } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
-import { success, created, unauthorized, validationError, serverError, notFound } from '@/lib/utils/api-response';
+import { success, created, unauthorized, badRequest, serverError, notFound, validationError } from '@/lib/utils/api-response';
 import { z } from 'zod';
 
 const addressSchema = z.object({
@@ -19,6 +19,26 @@ const addressSchema = z.object({
   postalCode: z.string().min(5, 'Kode pos tidak valid'),
   isDefault: z.boolean().optional(),
 });
+
+export async function GET(req: NextRequest) {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return unauthorized('Silakan masuk terlebih dahulu');
+    }
+
+    const userAddresses = await db.query.addresses.findMany({
+      where: eq(addresses.userId, session.user.id),
+      orderBy: [desc(addresses.isDefault), desc(addresses.createdAt)],
+    });
+
+    return success(userAddresses);
+  } catch (error) {
+    console.error('[account/addresses GET]', error);
+    return serverError(error);
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -78,7 +98,7 @@ export async function PUT(req: NextRequest) {
     const { id, ...updateData } = body;
 
     if (!id) {
-      return validationError({ error: { id: ['ID harus diisi'] } } as any);
+      return badRequest('ID harus diisi');
     }
 
     const parsed = addressSchema.omit({ isDefault: true }).safeParse(updateData);

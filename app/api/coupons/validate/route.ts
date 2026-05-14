@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { coupons, couponUsages } from '@/lib/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
+import { withRateLimit } from '@/lib/utils/rate-limit';
+import { success, serverError, validationError, notFound, conflict, badRequest } from '@/lib/utils/api-response';
 
 const ValidateCouponSchema = z.object({
   code: z.string().min(1),
@@ -10,103 +12,86 @@ const ValidateCouponSchema = z.object({
   userId: z.string().uuid().optional().nullable(),
 });
 
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const parsed = ValidateCouponSchema.safeParse(body);
-    
-    if (!parsed.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid request', code: 'VALIDATION_ERROR' },
-        { status: 422 }
-      );
-    }
+export const POST = withRateLimit(
+  async (req: NextRequest) => {
+    try {
+      const body = await req.json();
+      const parsed = ValidateCouponSchema.safeParse(body);
 
-    const { code, subtotal, userId } = parsed.data;
-    const normalizedCode = code.toUpperCase().trim();
+      if (!parsed.success) {
+        return validationError(parsed.error);
+      }
 
-    const coupon = await db.query.coupons.findFirst({
-      where: and(
-        eq(coupons.code, normalizedCode),
-        eq(coupons.isActive, true)
-      ),
-    });
+      const { code, subtotal, userId } = parsed.data;
+      const normalizedCode = code.toUpperCase().trim();
 
-    if (!coupon) {
-      return NextResponse.json(
-        { success: false, error: 'Kupon tidak ditemukan atau sudah tidak berlaku', code: 'COUPON_NOT_FOUND' },
-        { status: 404 }
-      );
-    }
+      const coupon = await db.query.coupons.findFirst({
+        where: and(
+          eq(coupons.code, normalizedCode),
+          eq(coupons.isActive, true)
+        ),
+      });
 
-    const now = new Date();
-    if (coupon.expiresAt && coupon.expiresAt < now) {
-      return NextResponse.json(
-        { success: false, error: 'Kupon sudah kedaluwarsa', code: 'COUPON_EXPIRED' },
-        { status: 400 }
-      );
-    }
+      if (!coupon) {
+        return notFound('Kupon tidak ditemukan atau sudah tidak berlaku');
+      }
 
-    if (coupon.startsAt && coupon.startsAt > now) {
-      return NextResponse.json(
-        { success: false, error: 'Kupon belum berlaku', code: 'COUPON_NOT_STARTED' },
-        { status: 400 }
-      );
-    }
+      const now = new Date();
+      if (coupon.expiresAt && coupon.expiresAt < now) {
+        return badRequest('Kupon sudah kedaluwarsa');
+      }
 
-    if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
-      return NextResponse.json(
-        { success: false, error: 'Kupon sudah mencapai batas penggunaan', code: 'COUPON_MAXED' },
-        { status: 400 }
-      );
-    }
+      if (coupon.startsAt && coupon.startsAt > now) {
+        return badRequest('Kupon belum berlaku');
+      }
 
-    if (subtotal < coupon.minOrderAmount) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: `Minimal pembelian Rp ${coupon.minOrderAmount.toLocaleString('id-ID')} untuk menggunakan kupon ini`, 
-          code: 'MIN_ORDER_NOT_MET' 
-        },
-        { status: 400 }
-      );
-    }
+      if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
+        return conflict('Kupon sudah mencapai batas penggunaan');
+      }
 
-    if (userId && coupon.maxUsesPerUser) {
-      const usageCount = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(couponUsages)
-        .where(and(
-          eq(couponUsages.couponId, coupon.id),
-          eq(couponUsages.userId, userId)
-        ));
-
-      if (usageCount[0] && Number(usageCount[0].count) >= coupon.maxUsesPerUser) {
-        return NextResponse.json(
-          { success: false, error: 'Anda sudah menggunakan kupon ini sebelumnya', code: 'COUPON_USER_LIMIT' },
-          { status: 400 }
+      if (subtotal < coupon.minOrderAmount) {
+        return badRequest(
+          `Minimal pembelian Rp ${coupon.minOrderAmount.toLocaleString('id-ID')} untuk menggunakan kupon ini`
         );
       }
-    }
 
-    let discountAmount = 0;
-    let maxDiscount = coupon.maxDiscountAmount ?? null;
+      if (userId && coupon.maxUsesPerUser) {
+        const usageCount = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(couponUsages)
+          .where(and(
+            eq(couponUsages.couponId, coupon.id),
+            eq(couponUsages.userId, userId)
+          ));
 
-    if (coupon.type === 'percentage') {
-      discountAmount = Math.floor(subtotal * (coupon.discountValue ?? 0) / 100);
-      if (maxDiscount !== null && discountAmount > maxDiscount) {
-        discountAmount = maxDiscount;
+        if (usageCount[0] && Number(usageCount[0].count) >= coupon.maxUsesPerUser) {
+          return conflict('Anda sudah menggunakan kupon ini sebelumnya');
+        }
       }
-    } else if (coupon.type === 'fixed') {
-      discountAmount = coupon.discountValue ?? 0;
-      if (discountAmount > subtotal) {
-        discountAmount = subtotal;
-      }
-    }
 
-    return NextResponse.json({
-      success: true,
-      data: {
+      let discountAmount = 0;
+      let maxDiscount = coupon.maxDiscountAmount ?? null;
+      let buyXgetY: { buyQuantity: number; getQuantity: number } | null = null;
+
+      if (coupon.type === 'percentage') {
+        discountAmount = Math.floor(subtotal * (coupon.discountValue ?? 0) / 100);
+        if (maxDiscount !== null && discountAmount > maxDiscount) {
+          discountAmount = maxDiscount;
+        }
+      } else if (coupon.type === 'fixed') {
+        discountAmount = coupon.discountValue ?? 0;
+        if (discountAmount > subtotal) {
+          discountAmount = subtotal;
+        }
+      } else if (coupon.type === 'buy_x_get_y') {
+        discountAmount = 0;
+        buyXgetY = {
+          buyQuantity: coupon.buyQuantity ?? 1,
+          getQuantity: coupon.getQuantity ?? 1,
+        };
+      }
+
+      return success({
         code: coupon.code,
         type: coupon.type,
         discountValue: coupon.discountValue,
@@ -115,13 +100,12 @@ export async function POST(req: NextRequest) {
         freeShipping: coupon.freeShipping,
         nameId: coupon.nameId,
         nameEn: coupon.nameEn,
-      },
-    });
-  } catch (error) {
-    console.error('[Coupon Validate]', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    );
-  }
-}
+        buyXgetY,
+      });
+    } catch (error) {
+      console.error('[Coupon Validate]', error);
+      return serverError(error);
+    }
+  },
+  { windowMs: 60000, maxRequests: 20 }
+);

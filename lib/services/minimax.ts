@@ -3,6 +3,8 @@
  * Used for superadmin-only AI content features
  */
 
+import { withRetry } from '@/lib/utils/integration-helpers';
+
 const MINIMAX_API_URL = 'https://api.minimax.chat/v1';
 
 interface MinimaxStreamResponse {
@@ -114,39 +116,58 @@ export async function generateProductCaption(
   const systemPrompt = buildCaptionSystemPrompt(language);
   const userPrompt = `Nama Produk: ${productName}\nDeskripsi: ${productDescription}\nTone: ${tone}`;
 
-  const response = await fetch(`${MINIMAX_API_URL}/text/chatcompletion_pro`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${getMinimaxApiKey()}`,
-    },
-    body: JSON.stringify({
-      model: 'abab6.5s-chat',
-      stream: false,
-      tokens_to_generate: 512,
-      temperature: 0.7,
-      top_p: 0.95,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-    }),
+  const makeRequest = (): Promise<string> =>
+    (async () => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 30_000);
+      let response: Response;
+      try {
+        response = await fetch(`${MINIMAX_API_URL}/text/chatcompletion_pro`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${getMinimaxApiKey()}`,
+          },
+          body: JSON.stringify({
+            model: 'abab6.5s-chat',
+            stream: false,
+            tokens_to_generate: 512,
+            temperature: 0.7,
+            top_p: 0.95,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt },
+            ],
+          }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timer);
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[Minimax API Error]', response.status, errorText);
+        throw new Error(`Minimax API error: ${response.status}`);
+      }
+
+      const data: MinimaxStreamResponse = await response.json();
+      const content = data.choices?.[0]?.delta?.content;
+
+      if (!content) {
+        throw new Error('No content generated from Minimax');
+      }
+
+      return content.trim();
+    })();
+
+  const result = await withRetry(makeRequest, {
+    maxRetries: 2,
+    retryableStatuses: [429, 500, 502, 503, 504],
+    context: 'Minimax.generateProductCaption',
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[Minimax API Error]', response.status, errorText);
-    throw new Error(`Minimax API error: ${response.status}`);
-  }
-
-  const data: MinimaxStreamResponse = await response.json();
-  const content = data.choices?.[0]?.delta?.content;
-
-  if (!content) {
-    throw new Error('No content generated from Minimax');
-  }
-
-  return content.trim();
+  return result;
 }
 
 export async function generateBlogContent(
@@ -157,54 +178,73 @@ export async function generateBlogContent(
   const systemPrompt = buildBlogSystemPrompt(language).replace('${400}', String(wordCount));
   const userPrompt = `Topik: ${topic}\nAudiens: ${targetAudience}\nTone: ${tone}`;
 
-  const response = await fetch(`${MINIMAX_API_URL}/text/chatcompletion_pro`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${getMinimaxApiKey()}`,
-    },
-    body: JSON.stringify({
-      model: 'abab6.5s-chat',
-      stream: false,
-      tokens_to_generate: 1024,
-      temperature: 0.7,
-      top_p: 0.95,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-    }),
+  const makeRequest = (): Promise<{ title: string; content: string; excerpt: string }> =>
+    (async () => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 30_000);
+      let response: Response;
+      try {
+        response = await fetch(`${MINIMAX_API_URL}/text/chatcompletion_pro`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${getMinimaxApiKey()}`,
+          },
+          body: JSON.stringify({
+            model: 'abab6.5s-chat',
+            stream: false,
+            tokens_to_generate: 1024,
+            temperature: 0.7,
+            top_p: 0.95,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt },
+            ],
+          }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timer);
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[Minimax API Error]', response.status, errorText);
+        throw new Error(`Minimax API error: ${response.status}`);
+      }
+
+      const data: MinimaxStreamResponse = await response.json();
+      const rawContent = data.choices?.[0]?.delta?.content;
+
+      if (!rawContent) {
+        throw new Error('No content generated from Minimax');
+      }
+
+      const content = rawContent.trim();
+
+      // Extract title from first line (assuming it's H1 or bold)
+      const lines = content.split('\n');
+      const titleLine = lines.find((l) => l.startsWith('# ') || l.startsWith('**'));
+      const title = titleLine
+        ? titleLine.replace(/^#\s*/, '').replace(/\*\*/g, '')
+        : topic;
+
+      // Remove title from content and create excerpt
+      const contentWithoutTitle = lines
+        .filter((l) => !l.startsWith('# ') && !l.startsWith('**'))
+        .join('\n')
+        .trim();
+
+      const excerpt = contentWithoutTitle.slice(0, 200) + (contentWithoutTitle.length > 200 ? '...' : '');
+
+      return { title, content: contentWithoutTitle, excerpt };
+    })();
+
+  const result = await withRetry(makeRequest, {
+    maxRetries: 2,
+    retryableStatuses: [429, 500, 502, 503, 504],
+    context: 'Minimax.generateBlogContent',
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[Minimax API Error]', response.status, errorText);
-    throw new Error(`Minimax API error: ${response.status}`);
-  }
-
-  const data: MinimaxStreamResponse = await response.json();
-  const rawContent = data.choices?.[0]?.delta?.content;
-
-  if (!rawContent) {
-    throw new Error('No content generated from Minimax');
-  }
-
-  const content = rawContent.trim();
-  
-  // Extract title from first line (assuming it's H1 or bold)
-  const lines = content.split('\n');
-  const titleLine = lines.find((l) => l.startsWith('# ') || l.startsWith('**'));
-  const title = titleLine
-    ? titleLine.replace(/^#\s*/, '').replace(/\*\*/g, '')
-    : topic;
-  
-  // Remove title from content and create excerpt
-  const contentWithoutTitle = lines
-    .filter((l) => !l.startsWith('# ') && !l.startsWith('**'))
-    .join('\n')
-    .trim();
-  
-  const excerpt = contentWithoutTitle.slice(0, 200) + (contentWithoutTitle.length > 200 ? '...' : '');
-
-  return { title, content: contentWithoutTitle, excerpt };
+  return result;
 }

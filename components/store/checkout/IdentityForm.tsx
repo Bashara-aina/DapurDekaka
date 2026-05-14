@@ -3,7 +3,6 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils/cn';
@@ -15,6 +14,7 @@ const identitySchema = z.object({
     .string()
     .min(8, 'Nomor HP minimal 8 digit')
     .regex(/^(\+62|62|0)[0-9]{8,13}$/, 'Format nomor HP tidak valid (contoh: 08123456789)'),
+  customerNote: z.string().max(500, 'Catatan maksimal 500 karakter').optional(),
 });
 
 export type IdentityFormData = z.infer<typeof identitySchema>;
@@ -81,6 +81,19 @@ export function IdentityForm({
           <p className="text-xs text-text-secondary mt-1">
             Contoh: 081234567890 atau +6281234567890
           </p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Catatan Pesanan (opsional)</label>
+          <textarea
+            {...register('customerNote')}
+            rows={2}
+            className="w-full px-3 py-2 border border-brand-cream-dark rounded-lg focus:border-brand-red focus:ring-2 focus:ring-brand-red/10 outline-none text-sm"
+            placeholder="Contoh: Tanpa sambal, pisahkan dengan kuah"
+          />
+          {errors.customerNote && (
+            <p className="text-error text-xs mt-1">{errors.customerNote.message}</p>
+          )}
         </div>
       </div>
 

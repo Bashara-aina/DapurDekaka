@@ -1,106 +1,230 @@
-import Image from 'next/image';
-import { db } from '@/lib/db';
-import { products, productVariants, productImages } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
-import { notFound } from 'next/navigation';
-import { formatIDR } from '@/lib/utils/format-currency';
+'use client';
 
-export const dynamic = 'force-dynamic';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { ProductForm } from '@/components/admin/products/ProductForm';
+import type { ProductFormData } from '@/components/admin/products/ProductForm';
+import { ChevronLeft, Trash2 } from 'lucide-react';
 
-interface Props {
-  params: { id: string };
+interface ProductDetail {
+  id: string;
+  categoryId: string;
+  nameId: string;
+  nameEn: string;
+  slug: string;
+  descriptionId: string | null;
+  descriptionEn: string | null;
+  shortDescriptionId: string | null;
+  shortDescriptionEn: string | null;
+  weightGram: number;
+  isHalal: boolean;
+  isActive: boolean;
+  isFeatured: boolean;
+  isB2bAvailable: boolean;
+  isPreOrder: boolean;
+  sortOrder: number;
+  metaTitleId: string | null;
+  metaTitleEn: string | null;
+  metaDescriptionId: string | null;
+  metaDescriptionEn: string | null;
+  shopeeUrl: string | null;
+  variants: {
+    id: string;
+    nameId: string;
+    nameEn: string;
+    sku: string;
+    price: number;
+    b2bPrice: number;
+    stock: number;
+    weightGram: number;
+    isActive: boolean;
+  }[];
+  images: {
+    id: string;
+    cloudinaryUrl: string;
+    cloudinaryPublicId: string;
+    altTextId: string | null;
+    altTextEn: string | null;
+    sortOrder: number;
+  }[];
+  category: { id: string; nameId: string } | null;
 }
 
-export default async function ProductDetailPage({ params }: Props) {
-  const product = await db.query.products.findFirst({
-    where: eq(products.id, params.id),
-    with: {
-      variants: true,
-      images: true,
-      category: true,
-    },
-  });
+export default function ProductEditPage({ params }: { params: Promise<{ id: string }> }) {
+  const [productId, setProductId] = useState<string>('');
+  const [isClientReady, setIsClientReady] = useState(false);
+  const [product, setProduct] = useState<ProductDetail | null>(null);
+  const [categories, setCategories] = useState<{ id: string; nameId: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
 
-  if (!product) notFound();
+  useEffect(() => {
+    params.then(p => {
+      setProductId(p.id);
+      setIsClientReady(true);
+    });
+  }, [params]);
+
+  useEffect(() => {
+    if (!productId) return;
+
+    async function fetchData() {
+      try {
+        const [productRes, categoriesRes] = await Promise.all([
+          fetch(`/api/admin/products/${productId}`),
+          fetch('/api/admin/categories').catch(() => ({ ok: false, json: async () => ({ data: [] }) })),
+        ]);
+
+        if (!productRes.ok) {
+          throw new Error('Failed to fetch product');
+        }
+
+        const productData = await productRes.json();
+        const categoriesData = categoriesRes.ok ? await categoriesRes.json() : { data: [] };
+
+        setProduct(productData.data);
+        setCategories(categoriesData.data ?? []);
+      } catch {
+        setError('Gagal memuat data produk');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, [productId]);
+
+  async function handleSubmit(data: ProductFormData) {
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/admin/products/${productId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Gagal mengupdate produk');
+      }
+
+      router.push('/admin/products');
+      router.refresh();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Gagal mengupdate produk');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirm('Yakin ingin menghapus produk ini? Tindakan ini tidak dapat dibatalkan.')) return;
+
+    try {
+      const res = await fetch(`/api/admin/products/${productId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Gagal menghapus produk');
+      }
+      router.push('/admin/products');
+      router.refresh();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Gagal menghapus produk');
+    }
+  }
+
+  if (!isClientReady) {
+    return <div className="p-6 text-gray-500">Memuat...</div>;
+  }
+
+  if (loading) {
+    return <div className="p-6 text-gray-500">Memuat data produk...</div>;
+  }
+
+  if (error || !product) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Link href="/admin/products" className="p-2 hover:bg-admin-content rounded-lg">
+            <ChevronLeft className="w-5 h-5" />
+          </Link>
+          <h1 className="text-2xl font-bold">Edit Produk</h1>
+        </div>
+        <div className="bg-white rounded-lg border border-admin-border p-6 text-center text-red-500">
+          {error ?? 'Produk tidak ditemukan'}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{product.nameId}</h1>
-        <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded ${product.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-          {product.isActive ? 'Aktif' : 'Nonaktif'}
-        </span>
+        <div className="flex items-center gap-4">
+          <Link href="/admin/products" className="p-2 hover:bg-admin-content rounded-lg">
+            <ChevronLeft className="w-5 h-5" />
+          </Link>
+          <h1 className="text-2xl font-bold">Edit: {product.nameId}</h1>
+        </div>
+        <button
+          onClick={handleDelete}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+        >
+          <Trash2 className="w-4 h-4" />
+          Hapus Produk
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg border border-admin-border p-6 space-y-4">
-          <h2 className="font-semibold text-gray-700">Info Produk</h2>
-          <dl className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Nama (ID)</dt>
-              <dd className="font-medium">{product.nameId}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Nama (EN)</dt>
-              <dd className="font-medium">{product.nameEn}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Slug</dt>
-              <dd className="font-mono text-xs">{product.slug}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Kategori</dt>
-              <dd className="font-medium">{product.category?.nameId ?? '-'}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Unggulan</dt>
-              <dd className="font-medium">{product.isFeatured ? 'Ya' : 'Tidak'}</dd>
-            </div>
-          </dl>
-          {product.descriptionId && (
-            <div>
-              <p className="text-sm text-gray-500 mb-1">Deskripsi</p>
-              <p className="text-sm">{product.descriptionId}</p>
-            </div>
-          )}
-        </div>
-
-        <div className="bg-white rounded-lg border border-admin-border p-6 space-y-4">
-          <h2 className="font-semibold text-gray-700">Varian & Stok</h2>
-          <div className="space-y-3">
-            {product.variants.map((variant) => (
-              <div key={variant.id} className="flex items-center justify-between py-2 border-b border-gray-100">
-                <div>
-                  <p className="text-sm font-medium">{variant.nameId}</p>
-                  <p className="text-xs text-gray-500 font-mono">{variant.sku}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-brand-red">{formatIDR(variant.price)}</p>
-                  <p className={`text-xs font-medium ${variant.stock === 0 ? 'text-red-600' : variant.stock < 10 ? 'text-amber-600' : 'text-green-600'}`}>
-                    Stok: {variant.stock}
-                  </p>
-                </div>
-              </div>
-            ))}
-            {product.variants.length === 0 && (
-              <p className="text-sm text-gray-500">Belum ada varian</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {product.images.length > 0 && (
-        <div className="bg-white rounded-lg border border-admin-border p-6">
-          <h2 className="font-semibold text-gray-700 mb-4">Gambar Produk</h2>
-          <div className="flex gap-3 flex-wrap">
-            {product.images.map((img) => (
-              <div key={img.id} className="w-24 h-24 rounded-lg bg-brand-cream overflow-hidden">
-                <Image src={img.cloudinaryUrl} alt="" width={96} height={96} className="w-full h-full object-cover" />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <ProductForm
+        initialData={{
+          id: product.id,
+          categoryId: product.categoryId,
+          nameId: product.nameId,
+          nameEn: product.nameEn,
+          slug: product.slug,
+          descriptionId: product.descriptionId ?? undefined,
+          descriptionEn: product.descriptionEn ?? undefined,
+          shortDescriptionId: product.shortDescriptionId ?? undefined,
+          shortDescriptionEn: product.shortDescriptionEn ?? undefined,
+          weightGram: product.weightGram,
+          isHalal: product.isHalal,
+          isActive: product.isActive,
+          isFeatured: product.isFeatured,
+          isB2bAvailable: product.isB2bAvailable,
+          isPreOrder: product.isPreOrder,
+          sortOrder: product.sortOrder,
+          metaTitleId: product.metaTitleId ?? undefined,
+          metaTitleEn: product.metaTitleEn ?? undefined,
+          metaDescriptionId: product.metaDescriptionId ?? undefined,
+          metaDescriptionEn: product.metaDescriptionEn ?? undefined,
+          shopeeUrl: product.shopeeUrl ?? undefined,
+          variants: product.variants.map(v => ({
+            id: v.id,
+            nameId: v.nameId,
+            nameEn: v.nameEn,
+            sku: v.sku,
+            price: v.price,
+            b2bPrice: v.b2bPrice,
+            stock: v.stock,
+            weightGram: v.weightGram,
+            isActive: v.isActive,
+          })),
+          images: product.images.map(img => ({
+            id: img.id,
+            cloudinaryUrl: img.cloudinaryUrl,
+            cloudinaryPublicId: img.cloudinaryPublicId,
+            altTextId: img.altTextId ?? undefined,
+            altTextEn: img.altTextEn ?? undefined,
+            sortOrder: img.sortOrder,
+          })),
+        }}
+        categories={categories.length > 0 ? categories : (product.category ? [{ id: product.category.id, nameId: product.category.nameId }] : [])}
+        onSubmit={handleSubmit}
+        isSubmitting={isSubmitting}
+      />
     </div>
   );
 }

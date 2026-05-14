@@ -3,13 +3,24 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { b2bInquiries } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { success, notFound, serverError } from '@/lib/utils/api-response';
+import { success, notFound, serverError, unauthorized, forbidden } from '@/lib/utils/api-response';
+import { auth } from '@/lib/auth';
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return unauthorized('Silakan login terlebih dahulu');
+    }
+
+    const role = session.user.role;
+    if (!['superadmin', 'owner'].includes(role as string)) {
+      return forbidden('Anda tidak memiliki akses');
+    }
+
     const { id } = await params;
     const inquiry = await db.query.b2bInquiries.findFirst({
       where: eq(b2bInquiries.id, id),
@@ -35,6 +46,16 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return unauthorized('Silakan login terlebih dahulu');
+    }
+
+    const role = session.user.role;
+    if (!['superadmin', 'owner'].includes(role as string)) {
+      return forbidden('Anda tidak memiliki akses');
+    }
+
     const { id } = await params;
     const body = await req.json();
     const parsed = UpdateSchema.safeParse(body);

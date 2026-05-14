@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { generateProductCaption } from '@/lib/services/minimax';
+import { IntegrationError } from '@/lib/utils/integration-helpers';
 import { z } from 'zod';
 
 export async function POST(req: NextRequest) {
@@ -44,6 +45,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, data: { caption } });
   } catch (error) {
     console.error('[AI Caption POST]', error);
+    if (error instanceof IntegrationError || (error as Error).message.includes('Minimax')) {
+      return NextResponse.json(
+        { success: false, error: 'AI service unavailable, please try again later', code: 'AI_SERVICE_ERROR' },
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
       { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
       { status: 500 }

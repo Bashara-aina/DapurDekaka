@@ -26,6 +26,8 @@ export interface SignedUploadResult {
   apiKey: string;
   folder: string;
   publicId?: string;
+  maxFileSize?: number;
+  allowedFormats?: string[];
 }
 
 export interface ServerUploadResult {
@@ -39,16 +41,22 @@ export interface ServerUploadResult {
 export function generateSignedUploadParams({
   folder,
   publicId,
+  maxFileSize = 5 * 1024 * 1024, // 5MB default
+  allowedFormats = ['jpg', 'jpeg', 'png', 'webp'],
 }: {
   folder: CloudinaryFolder;
   publicId?: string;
+  maxFileSize?: number;
+  allowedFormats?: string[];
 }): SignedUploadResult {
   const folderPath = CLOUDINARY_FOLDERS[folder];
   const timestamp = Math.round(Date.now() / 1000);
 
-  const params: Record<string, string | number> = {
+  const params: Record<string, string | number | boolean> = {
     timestamp,
     folder: folderPath,
+    max_file_size: maxFileSize,
+    allowed_formats: allowedFormats.join(','),
   };
 
   if (publicId) {
@@ -67,6 +75,8 @@ export function generateSignedUploadParams({
     apiKey: process.env.CLOUDINARY_API_KEY!,
     folder: folderPath,
     publicId,
+    maxFileSize,
+    allowedFormats,
   };
 }
 

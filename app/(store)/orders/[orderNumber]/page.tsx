@@ -48,7 +48,34 @@ export default async function OrderTrackingPage({ params }: Props) {
   const order = await db.query.orders.findFirst({
     where: eq(orders.orderNumber, orderNumber),
     with: { items: true },
-  });
+  }) as {
+    orderNumber: string;
+    status: string;
+    items: Array<{
+      productNameId: string;
+      variantNameId: string;
+      quantity: number;
+      unitPrice: number;
+      subtotal: number;
+      productImageUrl: string | null;
+    }>;
+    subtotal: number;
+    discountAmount: number;
+    pointsDiscount: number;
+    shippingCost: number;
+    totalAmount: number;
+    recipientName: string;
+    recipientPhone: string;
+    deliveryMethod: string;
+    addressLine: string | null;
+    district: string | null;
+    city: string | null;
+    province: string | null;
+    courierName: string | null;
+    trackingNumber: string | null;
+    trackingUrl: string | null;
+    paymentExpiresAt: Date | null;
+  } | null;
 
   if (!order) {
     notFound();

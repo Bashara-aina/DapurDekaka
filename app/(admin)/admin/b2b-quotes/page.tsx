@@ -27,7 +27,14 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
 };
 
 export default async function B2BQuotesPage() {
-  const quotes = await getQuotes();
+  const quotes = await getQuotes() as Array<{
+    id: string;
+    quoteNumber: string;
+    status: string;
+    totalAmount: number;
+    validUntil: Date | null;
+    b2bProfile: { companyName: string; picName: string } | null;
+  }>;
 
   return (
     <div>

@@ -1,7 +1,7 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils/cn';
+import { useEffect, useState } from 'react';
 
 interface EmptyStateProps {
   variant?: 'cart' | 'search' | 'orders' | 'error' | 'surprised' | 'blog';
@@ -79,17 +79,50 @@ export function EmptyState({
   action,
   className,
 }: EmptyStateProps) {
+  const [MotionComp, setMotionComp] = useState<typeof import('framer-motion') | null>(null);
+
+  useEffect(() => {
+    import('framer-motion').then((m) => setMotionComp(m));
+  }, []);
+
   const shouldShowSadDimsum = ['cart', 'orders', 'search', 'blog'].includes(variant);
 
+  if (!MotionComp) {
+    return (
+      <div className={cn('flex flex-col items-center justify-center py-12 px-4 text-center', className)}>
+        {shouldShowSadDimsum ? (
+          <SadDimsumBowl />
+        ) : (
+          <div className="text-6xl mb-4">😢</div>
+        )}
+        <h3 className="font-display text-xl font-semibold text-text-primary mb-2">{title}</h3>
+        {description && (
+          <p className="text-text-secondary mb-6 max-w-sm">{description}</p>
+        )}
+        {action && (
+          <a
+            href={action.href}
+            onClick={action.onClick}
+            className="inline-flex items-center justify-center h-12 px-6 bg-brand-red text-white font-semibold rounded-button shadow-button hover:shadow-button-hover transition-shadow"
+          >
+            {action.label}
+          </a>
+        )}
+      </div>
+    );
+  }
+
+  const { motion: MotionFn } = MotionComp;
+
   return (
-    <motion.div
+    <MotionFn.div
       initial="hidden"
       animate="visible"
       variants={animationVariants}
       className={cn('flex flex-col items-center justify-center py-12 px-4 text-center', className)}
     >
       {shouldShowSadDimsum ? (
-        <motion.div
+        <MotionFn.div
           initial={{ rotate: -5 }}
           animate={{ rotate: 5 }}
           transition={{
@@ -100,7 +133,7 @@ export function EmptyState({
           }}
         >
           <SadDimsumBowl />
-        </motion.div>
+        </MotionFn.div>
       ) : (
         <div className="text-6xl mb-4">😢</div>
       )}
@@ -117,6 +150,6 @@ export function EmptyState({
           {action.label}
         </a>
       )}
-    </motion.div>
+    </MotionFn.div>
   );
 }

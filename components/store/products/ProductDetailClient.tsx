@@ -12,10 +12,31 @@ import type { Product, ProductVariant } from '@/lib/db/schema';
 import { productImages } from '@/lib/db/schema';
 
 interface ProductDetailClientProps {
-  product: Product & {
-    variants: ProductVariant[];
-    images: typeof productImages.$inferSelect[];
+  product: {
+    id: string;
+    nameId: string;
+    nameEn: string;
+    descriptionId: string | null;
+    shortDescriptionId: string | null;
+    isHalal: boolean;
+    isActive: boolean;
     category: { id: string; nameId: string; slug: string } | null;
+    variants: Array<{
+      id: string;
+      nameId: string;
+      nameEn: string;
+      price: number;
+      stock: number;
+      isActive: boolean;
+      sortOrder: number;
+      sku: string;
+      weightGram: number;
+    }>;
+    images: Array<{
+      id: string;
+      cloudinaryUrl: string;
+      sortOrder: number;
+    }>;
   };
 }
 
@@ -57,7 +78,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
             fill
             className="object-cover"
             priority
-            sizes="(max-width: 768px) 100vw, 50vw"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 60vw, 800px"
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -76,6 +97,11 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
         {/* Badges */}
         <div className="absolute top-4 right-4 flex flex-col gap-2">
           {product.isHalal && <HalalBadge />}
+          {product.isHalal && (
+            <span className="text-[10px] text-text-muted bg-white/60 px-1 rounded">
+              MUI 001/2020
+            </span>
+          )}
         </div>
       </div>
 
@@ -89,8 +115,9 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                 'w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden border-2',
                 i === 0 ? 'border-brand-red' : 'border-transparent'
               )}
+              aria-label={`Lihat foto ${i + 1} ${product.nameId}`}
             >
-              <Image src={img.cloudinaryUrl} alt="" width={64} height={64} className="object-cover" />
+              <Image src={img.cloudinaryUrl} alt={`${product.nameId} - foto ${i + 1}`} width={64} height={64} className="object-cover" />
             </button>
           ))}
         </div>
@@ -164,16 +191,18 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
           <div className="flex items-center border border-brand-cream-dark rounded-button">
             <button
               onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="w-10 h-10 flex items-center justify-center text-brand-red"
+              className="w-11 h-11 flex items-center justify-center text-brand-red"
               disabled={quantity <= 1}
+              aria-label="Kurangi jumlah"
             >
               <Minus className="w-4 h-4" />
             </button>
             <span className="w-12 text-center font-bold">{quantity}</span>
             <button
               onClick={() => setQuantity(Math.min(99, quantity + 1))}
-              className="w-10 h-10 flex items-center justify-center text-brand-red"
+              className="w-11 h-11 flex items-center justify-center text-brand-red"
               disabled={quantity >= 99}
+              aria-label="Tambah jumlah"
             >
               <Plus className="w-4 h-4" />
             </button>

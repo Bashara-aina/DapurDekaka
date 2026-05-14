@@ -1,24 +1,47 @@
 'use client';
 
 import Image from 'next/image';
-import { Minus, Plus, Trash2 } from 'lucide-react';
+import { Minus, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { useCartStore } from '@/store/cart.store';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { cn } from '@/lib/utils/cn';
 import type { CartItem } from '@/store/cart.store';
 
-interface CartItemProps {
-  item: CartItem;
+interface StockValidation {
+  variantId: string;
+  cartQty: number;
+  availableStock: number;
+  available: boolean;
 }
 
-export function CartItemComponent({ item }: CartItemProps) {
+interface CartItemProps {
+  item: CartItem;
+  stockValidation?: StockValidation;
+}
+
+export function CartItemComponent({ item, stockValidation }: CartItemProps) {
   const updateQuantity = useCartStore((s) => s.updateQuantity);
   const removeItem = useCartStore((s) => s.removeItem);
 
-  const maxQty = Math.min(99, item.stock);
+  const hasStockIssue = stockValidation && !stockValidation.available;
+  const availableStock = stockValidation?.availableStock ?? item.stock;
+  const maxQty = Math.min(99, availableStock);
 
   return (
-    <div className="bg-white rounded-card shadow-card overflow-hidden">
+    <div className={cn(
+      'bg-white rounded-card shadow-card overflow-hidden',
+      hasStockIssue && 'border-2 border-warning'
+    )}>
+      {/* Stock Warning Banner */}
+      {hasStockIssue && (
+        <div className="bg-warning-light px-4 py-2 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0" />
+          <p className="text-xs font-medium text-warning">
+            Stok tidak mencukupi. Tersedia hanya {availableStock} pcs.
+          </p>
+        </div>
+      )}
+
       <div className="flex gap-3 p-3 md:p-4">
         {/* Image */}
         <div className="w-16 h-16 md:w-20 md:h-20 flex-shrink-0 bg-brand-cream rounded-lg overflow-hidden">
@@ -53,10 +76,13 @@ export function CartItemComponent({ item }: CartItemProps) {
           </button>
 
           {/* Quantity stepper */}
-          <div className="flex items-center border border-brand-cream-dark rounded-button">
+          <div className={cn(
+            'flex items-center border rounded-button',
+            hasStockIssue ? 'border-warning' : 'border-brand-cream-dark'
+          )}>
             <button
               onClick={() => updateQuantity(item.variantId, item.quantity - 1)}
-              className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center text-brand-red hover:bg-brand-cream transition-colors"
+              className="w-11 h-11 flex items-center justify-center text-brand-red hover:bg-brand-cream transition-colors"
               aria-label="Kurangi jumlah"
             >
               <Minus className="w-3 h-3" />
@@ -66,7 +92,7 @@ export function CartItemComponent({ item }: CartItemProps) {
             </span>
             <button
               onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
-              className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center text-brand-red hover:bg-brand-cream transition-colors disabled:opacity-40"
+              className="w-11 h-11 flex items-center justify-center text-brand-red hover:bg-brand-cream transition-colors disabled:opacity-40"
               disabled={item.quantity >= maxQty}
               aria-label="Tambah jumlah"
             >

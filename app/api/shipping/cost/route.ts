@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ALLOWED_COURIERS, ORIGIN_CITY_ID, MIN_WEIGHT_GRAM } from '@/lib/constants/couriers';
+import { ALLOWED_COURIERS, MIN_WEIGHT_GRAM } from '@/lib/constants/couriers';
 import { success, serverError, validationError } from '@/lib/utils/api-response';
 import { z } from 'zod';
+import { getSetting } from '@/lib/settings/get-settings';
 
 const costSchema = z.object({
   destination: z.string(),
@@ -21,7 +22,12 @@ export async function POST(req: NextRequest) {
     const billableWeight = Math.max(weight, MIN_WEIGHT_GRAM);
     const weightInKg = Math.ceil(billableWeight / 100) * 100;
 
-    const apiKey = process.env.RAJAONGKIR_API_KEY;
+    const [apiKey, originCityId, whatsappNumber] = await Promise.all([
+      Promise.resolve(process.env.RAJAONGKIR_API_KEY),
+      getSetting('rajaongkir_origin_city_id'),
+      getSetting('store_whatsapp_number'),
+    ]);
+
     if (!apiKey) {
       return NextResponse.json({
         success: false,
@@ -29,6 +35,9 @@ export async function POST(req: NextRequest) {
         code: 'CONFIG_ERROR',
       }, { status: 500 });
     }
+
+    const origin = originCityId ?? '23';
+    const waNumber = whatsappNumber ?? process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '6281234567890';
 
     const results = [];
 
@@ -41,7 +50,7 @@ export async function POST(req: NextRequest) {
             'content-type': 'application/json',
           },
           body: JSON.stringify({
-            origin: ORIGIN_CITY_ID,
+            origin,
             destination,
             weight: weightInKg,
             courier: courier.code,
@@ -76,7 +85,7 @@ export async function POST(req: NextRequest) {
         success: false,
         error: 'Mohon maaf, layanan pengiriman frozen ke daerah Anda belum tersedia. Silakan hubungi kami via WhatsApp untuk solusi pengiriman khusus.',
         code: 'NO_SERVICE',
-        whatsappUrl: `https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER}`,
+        whatsappUrl: `https://wa.me/${waNumber}`,
       }, { status: 200 });
     }
 

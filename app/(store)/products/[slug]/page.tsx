@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { products, productVariants, productImages } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
+import { ProductDetailClient } from '@/components/store/products/ProductDetailClient';
 
 interface ProductDetailPageProps {
   params: Promise<{ slug: string }>;
@@ -17,7 +18,16 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
       category: true,
       images: { limit: 1 },
     },
-  });
+  }) as ({
+    nameId: string;
+    nameEn: string;
+    slug: string;
+    category: { id: string; nameId: string; slug: string } | null;
+    metaTitleId: string | null;
+    metaDescriptionId: string | null;
+    shortDescriptionId: string | null;
+    images: Array<{ id: string; cloudinaryUrl: string }>;
+  } | null);
 
   if (!product) {
     return {
@@ -81,20 +91,55 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
       images: { orderBy: (images, { asc }) => [asc(images.sortOrder)] },
       category: true,
     },
-  });
+  }) as {
+    id: string;
+    nameId: string;
+    nameEn: string;
+    slug: string;
+    descriptionId: string | null;
+    shortDescriptionId: string | null;
+    isHalal: boolean;
+    isActive: boolean;
+    category: { id: string; nameId: string; slug: string } | null;
+    variants: Array<{ id: string; nameId: string; nameEn: string; sku: string; price: number; stock: number; weightGram: number; isActive: boolean; sortOrder: number }>;
+    images: Array<{ id: string; cloudinaryUrl: string; sortOrder: number }>;
+  } | null;
 
   if (!product) {
     notFound();
   }
 
-  // This is a placeholder - actual product detail page would render here
-  // For now just showing basic structure
+  const selectedVariant = product.variants.find(v => v.isActive) ?? product.variants[0];
+  const primaryImage = product.images[0];
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.nameId,
+    description: product.shortDescriptionId || product.descriptionId || `${product.nameId} - frozen food premium dari Dapur Dekaka Bandung`,
+    image: primaryImage?.cloudinaryUrl,
+    offers: {
+      '@type': 'Offer',
+      price: selectedVariant?.price?.toString() ?? '0',
+      priceCurrency: 'IDR',
+      availability: (selectedVariant?.stock ?? 0) > 0
+        ? 'https://schema.org/InStock'
+        : 'https://schema.org/OutOfStock',
+    },
+    brand: {
+      '@type': 'Brand',
+      name: 'Dapur Dekaka',
+    },
+    category: product.category?.nameId,
+  };
+
   return (
-    <div className="bg-brand-cream min-h-screen pb-20">
-      {/* Product detail implementation would go here */}
-      <div className="container mx-auto py-8">
-        <h1 className="font-display text-2xl font-bold">{product.nameId}</h1>
-      </div>
-    </div>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <ProductDetailClient product={product} />
+    </>
   );
 }

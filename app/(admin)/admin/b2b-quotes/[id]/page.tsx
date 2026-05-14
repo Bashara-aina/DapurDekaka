@@ -41,7 +41,7 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
 
 export default async function B2BQuoteDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const quote = await getQuote(id);
+  const quote = await getQuote(id) as NonNullable<Awaited<ReturnType<typeof getQuote>>>;
 
   if (!quote) {
     notFound();

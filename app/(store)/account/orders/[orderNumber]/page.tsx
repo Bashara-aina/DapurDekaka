@@ -34,7 +34,36 @@ export default async function AccountOrderDetailPage({ params }: OrderDetailPage
         orderBy: (history, { asc }) => [asc(history.createdAt)],
       },
     },
-  });
+  }) as {
+    orderNumber: string;
+    userId: string | null;
+    status: string;
+    createdAt: Date;
+    subtotal: number;
+    discountAmount: number;
+    pointsDiscount: number;
+    shippingCost: number;
+    totalAmount: number;
+    recipientName: string;
+    recipientPhone: string;
+    addressLine: string | null;
+    district: string | null;
+    city: string | null;
+    province: string | null;
+    postalCode: string | null;
+    deliveryMethod: string;
+    courierName: string | null;
+    trackingNumber: string | null;
+    items: Array<{
+      productNameId: string;
+      variantNameId: string;
+      quantity: number;
+      unitPrice: number;
+      subtotal: number;
+      productImageUrl: string | null;
+    }>;
+    statusHistory: Array<{ createdAt: Date }>;
+  } | null;
 
   if (!order) {
     notFound();

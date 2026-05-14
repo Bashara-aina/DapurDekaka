@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { useQuery } from '@tanstack/react-query';
 import {
   AlertTriangle, CheckCircle2, X, RefreshCw, ExternalLink,
@@ -155,6 +156,7 @@ const LIVE_FEED_FILTERS = [
 ];
 
 export default function SuperadminDashboardPage() {
+  const { data: session } = useSession();
   const [dismissedAlert, setDismissedAlert] = useState(false);
   const [funnelFilter] = useState('all');
   const [feedFilter, setFeedFilter] = useState('all');
@@ -271,7 +273,7 @@ export default function SuperadminDashboardPage() {
       {/* ── Page Header ──────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[#1A1A1A]">{greeting()}, Bashara 👋</h1>
+          <h1 className="text-2xl font-bold text-[#1A1A1A]">{greeting()}, {session?.user?.name ?? 'Admin'} 👋</h1>
           <p className="text-sm text-[#6B6B6B]">{today}</p>
         </div>
 

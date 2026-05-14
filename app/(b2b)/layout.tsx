@@ -3,6 +3,7 @@ import { Navbar } from '@/components/store/layout/Navbar';
 import { Footer } from '@/components/store/layout/Footer';
 import { WhatsAppButton } from '@/components/store/layout/WhatsAppButton';
 import { Providers } from '../(store)/providers';
+import { getSetting } from '@/lib/settings/get-settings';
 import '../globals.css';
 
 const playfair = Playfair_Display({
@@ -19,7 +20,9 @@ const inter = Inter({
   display: 'swap',
 });
 
-export default function B2BLayout({ children }: { children: React.ReactNode }) {
+export default async function B2BLayout({ children }: { children: React.ReactNode }) {
+  const whatsappNumber = await getSetting('store_whatsapp_number');
+
   return (
     <html lang="id">
       <body className={`${playfair.variable} ${inter.variable} font-body antialiased`}>
@@ -27,7 +30,7 @@ export default function B2BLayout({ children }: { children: React.ReactNode }) {
           <Navbar />
           <main className="min-h-screen pb-20 md:pb-0">{children}</main>
           <Footer />
-          <WhatsAppButton />
+          <WhatsAppButton whatsappNumber={whatsappNumber ?? undefined} />
         </Providers>
       </body>
     </html>

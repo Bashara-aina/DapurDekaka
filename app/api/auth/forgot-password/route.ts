@@ -7,50 +7,52 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { resend } from '@/lib/resend/client';
 import { success, validationError, notFound, serverError } from '@/lib/utils/api-response';
+import { withRateLimit } from '@/lib/utils/rate-limit';
 
 const forgotPasswordSchema = z.object({
   email: z.string().email('Format email tidak valid'),
 });
 
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const parsed = forgotPasswordSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return validationError(parsed.error);
-    }
-
-    const { email } = parsed.data;
-
-    const user = await db.query.users.findFirst({
-      where: eq(users.email, email.toLowerCase()),
-    });
-
-    if (!user) {
-      return notFound('Email tidak ditemukan');
-    }
-
-    await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, user.id));
-
-    const token = crypto.randomBytes(32).toString('hex');
-    const tokenHash = bcrypt.hashSync(token, 10);
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
-
-    await db.insert(passwordResetTokens).values({
-      userId: user.id,
-      tokenHash,
-      expiresAt,
-    });
-
-    const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password/${token}`;
-
+export const POST = withRateLimit(
+  async (req: NextRequest) => {
     try {
-      await resend.emails.send({
-        from: 'Dapur Dekaka <noreply@dapurdekaka.com>',
-        to: user.email,
-        subject: 'Reset Password — Dapur Dekaka',
-        html: `
+      const body = await req.json();
+      const parsed = forgotPasswordSchema.safeParse(body);
+
+      if (!parsed.success) {
+        return validationError(parsed.error);
+      }
+
+      const { email } = parsed.data;
+
+      const user = await db.query.users.findFirst({
+        where: eq(users.email, email.toLowerCase()),
+      });
+
+      if (!user) {
+        return notFound('Email tidak ditemukan');
+      }
+
+      await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, user.id));
+
+      const token = crypto.randomBytes(32).toString('hex');
+      const tokenHash = bcrypt.hashSync(token, 10);
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+      await db.insert(passwordResetTokens).values({
+        userId: user.id,
+        tokenHash,
+        expiresAt,
+      });
+
+      const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password/${token}`;
+
+      try {
+        await resend.emails.send({
+          from: 'Dapur Dekaka <noreply@dapurdekaka.com>',
+          to: user.email,
+          subject: 'Reset Password — Dapur Dekaka',
+          html: `
           <div style="font-family: 'Inter', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="background: #F0EAD6; padding: 24px; text-align: center;">
               <h1 style="color: #C8102E; font-size: 24px; margin: 0;">Dapur Dekaka</h1>
@@ -80,15 +82,17 @@ export async function POST(req: NextRequest) {
             </div>
           </div>
         `,
-      });
-    } catch (emailError) {
-      console.error('[forgot-password] Email error:', emailError);
+        });
+      } catch (emailError) {
+        console.error('[forgot-password] Email error:', emailError);
+      }
+
+      return success({ message: 'Link reset password telah dikirim ke email kamu' });
+
+    } catch (error) {
+      console.error('[auth/forgot-password]', error);
+      return serverError(error);
     }
-
-    return success({ message: 'Link reset password telah dikirim ke email kamu' });
-
-  } catch (error) {
-    console.error('[auth/forgot-password]', error);
-    return serverError(error);
-  }
-}
+  },
+  { windowMs: 60000, maxRequests: 3 }
+);

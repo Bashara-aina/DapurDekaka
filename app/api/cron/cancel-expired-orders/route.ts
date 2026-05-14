@@ -5,6 +5,7 @@ import { eq, and, lt, sql } from 'drizzle-orm';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { checkTransactionStatus } from '@/lib/midtrans/status';
 import { serverError, success } from '@/lib/utils/api-response';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * Cancel orders that have exceeded payment expiry time.
@@ -48,17 +49,15 @@ export async function POST(req: NextRequest) {
               midtransStatus.transactionStatus === 'settlement' ||
               midtransStatus.transactionStatus === 'capture'
             ) {
-              console.log(
-                `[CancelExpired] Order ${order.orderNumber} actually paid via Midtrans — skipping cancel`
-              );
+              logger.info('[CancelExpired] Order paid via Midtrans — skipping cancel', { orderNumber: order.orderNumber });
               continue;
             }
           } catch (midtransError) {
             // If we can't reach Midtrans, proceed with cancellation
             // to avoid stuck pending orders
-            console.warn(
-              `[CancelExpired] Could not verify Midtrans status for ${order.orderNumber}, proceeding with cancel`
-            );
+            logger.warn('[CancelExpired] Could not verify Midtrans status — proceeding with cancel', {
+              orderNumber: order.orderNumber,
+            });
           }
         }
 
@@ -126,22 +125,22 @@ export async function POST(req: NextRequest) {
         });
 
         cancelled++;
-        console.log(`[CancelExpired] Cancelled order ${order.orderNumber}`);
+        logger.info('[CancelExpired] Order cancelled', { orderNumber: order.orderNumber });
       } catch (orderError) {
         const message = orderError instanceof Error ? orderError.message : String(orderError);
         errors.push(`Failed to cancel order ${order.orderNumber}: ${message}`);
-        console.error(`[CancelExpired] Error cancelling ${order.orderNumber}:`, orderError);
+        logger.error('[CancelExpired] Error cancelling order', { orderNumber: order.orderNumber, error: message });
       }
     }
 
-    console.log(`[CancelExpired] Completed: ${cancelled} cancelled, ${errors.length} errors`);
+    logger.info('[CancelExpired] Completed', { cancelled, errorsCount: errors.length });
     if (errors.length > 0) {
-      errors.forEach((e) => console.error(`[CancelExpired] ${e}`));
+      errors.forEach((e) => logger.error('[CancelExpired] Error', { message: e }));
     }
 
     return success({ cancelled, errors });
   } catch (error) {
-    console.error('[CancelExpired] Fatal error:', error);
+    logger.error('[CancelExpired] Fatal error', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
 }

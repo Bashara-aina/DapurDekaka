@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { useQuery } from '@tanstack/react-query';
 import nextDynamic from 'next/dynamic';
 import { useCartStore } from '@/store/cart.store';
 import { formatIDR } from '@/lib/utils/format-currency';
@@ -20,6 +21,8 @@ import { CouponInput } from '@/components/store/checkout/CouponInput';
 import { PointsRedeemer } from '@/components/store/checkout/PointsRedeemer';
 import { OrderSummaryCard } from '@/components/store/checkout/OrderSummaryCard';
 import { EmptyState } from '@/components/store/common/EmptyState';
+import { SavedAddressPicker } from '@/components/store/checkout/SavedAddressPicker';
+import type { SavedAddress } from '@/components/store/checkout/SavedAddressPicker';
 
 const MidtransPayment = nextDynamic(
   () => import('@/components/store/checkout/MidtransPayment').then((m) => m.MidtransPayment),
@@ -30,6 +33,12 @@ const STEPS = [
   { id: 'identity', label: 'Identitas' },
   { id: 'delivery', label: 'Pengiriman' },
   { id: 'courier', label: 'Kurir' },
+  { id: 'payment', label: 'Bayar' },
+];
+
+const STEPS_PICKUP = [
+  { id: 'identity', label: 'Identitas' },
+  { id: 'delivery', label: 'Pengiriman' },
   { id: 'payment', label: 'Bayar' },
 ];
 
@@ -92,11 +101,47 @@ export default function CheckoutPage() {
 
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [couponError, setCouponError] = useState('');
+  const [couponType, setCouponType] = useState<string | null>(null);
+  const [couponBuyXgetY, setCouponBuyXgetY] = useState<{ buyQuantity: number; getQuantity: number } | null>(null);
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
   const [loadingShipping, setLoadingShipping] = useState(false);
   const [usePoints, setUsePoints] = useState(false);
-  // TODO: Fetch points balance from DB for logged-in users
-  const pointsBalance = session?.user ? 0 : 0;
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string | null>(null);
+  const [showAddressPicker, setShowAddressPicker] = useState(false);
+  const [showNewAddressForm, setShowNewAddressForm] = useState(false);
+
+  const { data: pointsData } = useQuery({
+    queryKey: ['account', 'points'],
+    queryFn: async () => {
+      const res = await fetch('/api/account/points');
+      const json = await res.json();
+      return json.success ? json.data : { balance: 0, history: [], expiringCount: 0 };
+    },
+    enabled: !!session?.user,
+  });
+
+  const pointsBalance = pointsData?.balance ?? 0;
+
+  // Fetch saved addresses when logged-in user reaches delivery step
+  const { data: addressesData } = useQuery({
+    queryKey: ['account', 'addresses'],
+    queryFn: async () => {
+      const res = await fetch('/api/account/addresses');
+      const json = await res.json();
+      return json.success ? json.data : [];
+    },
+    enabled: !!session?.user && step === 'delivery',
+  });
+
+  // Sync saved addresses when data changes
+  useState(() => {
+    if (addressesData) {
+      setSavedAddresses(addressesData as SavedAddress[]);
+    }
+  });
+
+  const activeSteps = formData.deliveryMethod === 'pickup' ? STEPS_PICKUP : STEPS;
 
   if (items.length === 0) {
     return (
@@ -128,6 +173,7 @@ export default function CheckoutPage() {
       recipientName: data.recipientName,
       recipientEmail: data.recipientEmail,
       recipientPhone: data.recipientPhone,
+      customerNote: data.customerNote || '',
     });
     setStep('delivery');
   };
@@ -203,10 +249,14 @@ export default function CheckoutPage() {
       if (!data.success) {
         setCouponError(data.error || 'Kupon tidak valid');
         setCouponDiscount(0);
+        setCouponType(null);
+        setCouponBuyXgetY(null);
         return;
       }
 
       setCouponDiscount(data.data.discountAmount);
+      setCouponType(data.data.type ?? null);
+      setCouponBuyXgetY(data.data.buyXgetY ?? null);
       setCouponError('');
     } catch {
       setCouponError('Gagal validasi kupon');
@@ -270,16 +320,10 @@ export default function CheckoutPage() {
 
   // Step back navigation
   const handleBack = () => {
-    switch (step) {
-      case 'payment':
-        setStep(formData.deliveryMethod === 'pickup' ? 'delivery' : 'courier');
-        break;
-      case 'courier':
-        setStep('delivery');
-        break;
-      case 'delivery':
-        setStep('identity');
-        break;
+    const stepOrder = activeSteps.map(s => s.id);
+    const currentIndex = stepOrder.indexOf(step);
+    if (currentIndex > 0) {
+      setStep(stepOrder[currentIndex - 1] as CheckoutStep);
     }
   };
 
@@ -292,7 +336,19 @@ export default function CheckoutPage() {
         <div className="container mx-auto px-4 py-4">
           <h1 className="font-display text-xl font-bold">Checkout</h1>
           <div className="mt-4">
-            <CheckoutStepper steps={STEPS} currentStepId={step} />
+            <CheckoutStepper
+              steps={activeSteps}
+              currentStepId={step}
+              onStepClick={(stepId) => {
+                // Only allow going back to completed steps
+                const stepOrder = activeSteps.map(s => s.id);
+                const targetIndex = stepOrder.indexOf(stepId);
+                const currentIndex = stepOrder.indexOf(step);
+                if (targetIndex < currentIndex) {
+                  setStep(stepId as CheckoutStep);
+                }
+              }}
+            />
           </div>
         </div>
       </div>
@@ -304,11 +360,13 @@ export default function CheckoutPage() {
             {step === 'identity' && (
               <IdentityForm
                 defaultValues={{
-                  recipientName: formData.recipientName,
-                  recipientEmail: formData.recipientEmail,
-                  recipientPhone: formData.recipientPhone,
+                  recipientName: formData.recipientName || session?.user?.name || '',
+                  recipientEmail: formData.recipientEmail || session?.user?.email || '',
+                  recipientPhone: formData.recipientPhone || '',
+                  customerNote: formData.customerNote,
                 }}
                 onSubmit={handleIdentitySubmit}
+                onBack={handleBack}
               />
             )}
 
@@ -322,19 +380,96 @@ export default function CheckoutPage() {
 
                 {formData.deliveryMethod === 'delivery' && (
                   <div className="mt-4">
-                    <AddressForm
-                      defaultValues={{
-                        addressLine: formData.addressLine,
-                        district: formData.district,
-                        city: formData.city,
-                        cityId: formData.cityId,
-                        province: formData.province,
-                        provinceId: formData.provinceId,
-                        postalCode: formData.postalCode,
-                      }}
-                      onSubmit={handleAddressSubmit}
-                      onBack={handleBack}
-                    />
+                    {session?.user && savedAddresses.length > 0 && !showNewAddressForm ? (
+                      <>
+                        <SavedAddressPicker
+                          addresses={savedAddresses}
+                          selectedId={selectedSavedAddressId}
+                          onSelect={(address) => {
+                            if (address === null) {
+                              setShowNewAddressForm(true);
+                            } else {
+                              setSelectedSavedAddressId(address.id);
+                              updateForm({
+                                addressLine: address.addressLine,
+                                district: address.district,
+                                city: address.city,
+                                cityId: address.cityId,
+                                province: address.province,
+                                provinceId: address.provinceId,
+                                postalCode: address.postalCode,
+                              });
+                            }
+                          }}
+                          onBack={handleBack}
+                        />
+                        {selectedSavedAddressId && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              setLoadingShipping(true);
+                              const address = savedAddresses.find(a => a.id === selectedSavedAddressId);
+                              if (address) {
+                                updateForm({
+                                  addressLine: address.addressLine,
+                                  district: address.district,
+                                  city: address.city,
+                                  cityId: address.cityId,
+                                  province: address.province,
+                                  provinceId: address.provinceId,
+                                  postalCode: address.postalCode,
+                                });
+                                try {
+                                  const res = await fetch('/api/shipping/cost', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ destination: address.cityId, weight: totalWeight }),
+                                  });
+                                  const data = await res.json();
+                                  if (!data.success) {
+                                    alert(data.error || 'Gagal menghitung ongkir');
+                                    setLoadingShipping(false);
+                                    return;
+                                  }
+                                  setShippingOptions(data.data.services);
+                                  setStep('courier');
+                                } catch {
+                                  alert('Gagal menghitung ongkir');
+                                }
+                                setLoadingShipping(false);
+                              }
+                            }}
+                            className="w-full h-12 bg-brand-red text-white font-bold rounded-button mt-4"
+                          >
+                            Lanjut ke Kurir
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <AddressForm
+                        defaultValues={{
+                          addressLine: formData.addressLine,
+                          district: formData.district,
+                          city: formData.city,
+                          cityId: formData.cityId,
+                          province: formData.province,
+                          provinceId: formData.provinceId,
+                          postalCode: formData.postalCode,
+                        }}
+                        onSubmit={(data) => {
+                          setShowNewAddressForm(false);
+                          handleAddressSubmit(data);
+                        }}
+                        onBack={() => {
+                          if (session?.user && savedAddresses.length > 0) {
+                            setShowNewAddressForm(false);
+                            setShowAddressPicker(true);
+                          } else {
+                            handleBack();
+                          }
+                        }}
+                      />
+                    )}
                   </div>
                 )}
 
@@ -393,7 +528,7 @@ export default function CheckoutPage() {
                 <h2 className="font-semibold text-lg mb-4">Pembayaran</h2>
 
                 {/* Coupon */}
-                <div className="mb-6">
+                <div role="alert" aria-live="polite" className="mb-6">
                   <CouponInput
                     code={formData.couponCode}
                     onCodeChange={(code) => updateForm({ couponCode: code })}
@@ -402,33 +537,27 @@ export default function CheckoutPage() {
                     error={couponError}
                     isLoading={false}
                   />
+                  {couponType === 'buy_x_get_y' && couponBuyXgetY && (
+                    <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-sm text-green-700">
+                        <span className="font-semibold">Kupon gratis item aktif!</span>
+                        <br />
+                        Beli {couponBuyXgetY.buyQuantity}item, dapat {couponBuyXgetY.getQuantity}item gratis otomatis.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Points */}
-                {session?.user && pointsBalance >= POINTS_MIN_REDEEM && (
-                  <div className="mb-6">
-                    <PointsRedeemer
-                      pointsBalance={pointsBalance}
-                      subtotal={subtotal - couponDiscount}
-                      usedPoints={usePoints ? Math.min(pointsBalance, Math.floor((subtotal - couponDiscount) * 0.5 / POINTS_VALUE_IDR) * POINTS_VALUE_IDR) : 0}
-                      onToggle={handlePointsToggle}
-                    />
-                  </div>
-                )}
-
-                {/* Customer note */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium mb-2">
-                    Catatan Pesanan (opsional)
-                  </label>
-                  <textarea
-                    value={formData.customerNote}
-                    onChange={(e) => updateForm({ customerNote: e.target.value })}
-                    className="w-full px-3 py-2 border border-brand-cream-dark rounded-lg focus:border-brand-red focus:ring-2 focus:ring-brand-red/10 outline-none"
-                    rows={2}
-                    placeholder="Contoh: Tanpa sambal, pisahkan dengan kuah"
+                <div role="status" aria-live="polite" className="mb-6">
+                  <PointsRedeemer
+                    pointsBalance={pointsBalance}
+                    subtotal={subtotal - couponDiscount}
+                    usedPoints={usePoints ? Math.min(pointsBalance, Math.floor((subtotal - couponDiscount) * 0.5 / POINTS_VALUE_IDR) * POINTS_VALUE_IDR) : 0}
+                    onToggle={handlePointsToggle}
                   />
                 </div>
+
 
                 <button
                   type="button"

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { serverError, success } from '@/lib/utils/api-response';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * Send warning emails for points expiring in 30 days.
@@ -21,11 +22,12 @@ export async function POST(req: NextRequest) {
 
     const result = await checkExpiringPoints();
 
-    console.log(
-      `[PointsExpiryWarning] Completed: ${result.processed} emails sent, ${result.errors.length} errors`
-    );
+    logger.info('[PointsExpiryWarning] Completed', {
+      processed: result.processed,
+      errorsCount: result.errors.length,
+    });
     if (result.errors.length > 0) {
-      result.errors.forEach((e) => console.error(`[PointsExpiryWarning] ${e}`));
+      result.errors.forEach((e) => logger.error('[PointsExpiryWarning]', { message: e }));
     }
 
     return success({
@@ -33,7 +35,7 @@ export async function POST(req: NextRequest) {
       errors: result.errors,
     });
   } catch (error) {
-    console.error('[PointsExpiryWarning] Fatal error:', error);
+    logger.error('[PointsExpiryWarning] Fatal error', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
 }

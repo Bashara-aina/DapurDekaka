@@ -45,15 +45,13 @@ export async function GET(
       return unauthorized('Email tidak cocok dengan pesanan');
     }
 
-    // No session and no email - return partial info for display only
+    // No session and no email - return minimal info for status tracking only
     return success({
       order: {
         orderNumber: order.orderNumber,
         status: order.status,
         deliveryMethod: order.deliveryMethod,
-        recipientName: order.recipientName,
         createdAt: order.createdAt,
-        items: order.items,
       },
       verified: false,
       requiresEmailVerification: true,

@@ -11,8 +11,23 @@ import { cn } from '@/lib/utils/cn';
 import type { Product, ProductVariant } from '@/lib/db/schema';
 
 interface ProductCardProps {
-  product: Product & { imageUrl?: string };
-  variant: ProductVariant;
+  product: {
+    id: string;
+    nameId: string;
+    nameEn: string;
+    slug: string;
+    isHalal: boolean;
+    imageUrl?: string;
+  };
+  variant: {
+    id: string;
+    nameId: string;
+    nameEn: string;
+    sku: string;
+    price: number;
+    stock: number;
+    weightGram: number;
+  };
   className?: string;
 }
 
@@ -58,6 +73,11 @@ export function ProductCard({ product, variant, className }: ProductCardProps) {
         {/* Badges */}
         <div className="absolute top-2 right-2 flex flex-col gap-1">
           <HalalBadge />
+          {product.isHalal && (
+            <span className="text-[8px] text-text-muted bg-white/60 px-1 rounded text-center">
+              MUI 001/2020
+            </span>
+          )}
           {isOutOfStock && (
             <span className="px-2 py-1 bg-text-secondary text-white text-xs font-bold rounded">
               HABIS
@@ -88,7 +108,7 @@ export function ProductCard({ product, variant, className }: ProductCardProps) {
             onClick={handleAddToCart}
             disabled={isOutOfStock}
             className={cn(
-              'h-10 w-10 rounded-full flex items-center justify-center transition-colors',
+              'h-11 w-11 rounded-full flex items-center justify-center transition-colors',
               isOutOfStock
                 ? 'bg-text-disabled text-white cursor-not-allowed'
                 : 'bg-brand-red text-white hover:bg-brand-red-dark'

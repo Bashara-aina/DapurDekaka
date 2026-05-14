@@ -35,6 +35,12 @@ export function Footer() {
                 <Link href="/orders/DDK-TEST-0001" className="hover:text-brand-cream">Lacak Pesanan</Link>
               </li>
               <li>
+                <Link href="/refund-policy" className="hover:text-brand-cream">Kebijakan Pengembalian</Link>
+              </li>
+              <li>
+                <Link href="/privacy-policy" className="hover:text-brand-cream">Kebijakan Privasi</Link>
+              </li>
+              <li>
                 <a
                   href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER}`}
                   className="hover:text-brand-cream"
@@ -74,6 +80,8 @@ export function Footer() {
         <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm">© 2026 Dapur Dekaka. All rights reserved.</p>
           <div className="flex gap-4 text-xs">
+            <span>Harga sudah termasuk PPN 11%</span>
+            <span>•</span>
             <span>Halal</span>
             <span>•</span>
             <span>Frozen Fresh</span>

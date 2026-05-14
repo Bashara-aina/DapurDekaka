@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { b2bQuotes, b2bQuoteItems, b2bProfiles } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { success, validationError, serverError, notFound } from '@/lib/utils/api-response';
+import { success, validationError, serverError, notFound, unauthorized, forbidden } from '@/lib/utils/api-response';
+import { auth } from '@/lib/auth';
 
 const CreateQuoteSchema = z.object({
   b2bProfileId: z.string().uuid('ID profil B2B tidak valid'),
@@ -28,6 +29,16 @@ function generateQuoteNumber(): string {
 
 export async function GET() {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return unauthorized('Silakan login terlebih dahulu');
+    }
+
+    const role = session.user.role;
+    if (!['superadmin', 'owner'].includes(role as string)) {
+      return forbidden('Anda tidak memiliki akses');
+    }
+
     const quotes = await db.query.b2bQuotes.findMany({
       with: {
         b2bProfile: {
@@ -48,6 +59,16 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return unauthorized('Silakan login terlebih dahulu');
+    }
+
+    const role = session.user.role;
+    if (!['superadmin', 'owner'].includes(role as string)) {
+      return forbidden('Anda tidak memiliki akses');
+    }
+
     const body = await req.json();
     const parsed = CreateQuoteSchema.safeParse(body);
 

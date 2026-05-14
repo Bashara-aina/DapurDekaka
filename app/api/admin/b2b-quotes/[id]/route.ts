@@ -3,13 +3,24 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { b2bQuotes, b2bQuoteItems } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { success, notFound, serverError } from '@/lib/utils/api-response';
+import { success, notFound, serverError, unauthorized, forbidden } from '@/lib/utils/api-response';
+import { auth } from '@/lib/auth';
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return unauthorized('Silakan login terlebih dahulu');
+    }
+
+    const role = session.user.role;
+    if (!['superadmin', 'owner'].includes(role as string)) {
+      return forbidden('Anda tidak memiliki akses');
+    }
+
     const { id } = await params;
     const quote = await db.query.b2bQuotes.findFirst({
       where: eq(b2bQuotes.id, id),
@@ -53,6 +64,16 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return unauthorized('Silakan login terlebih dahulu');
+    }
+
+    const role = session.user.role;
+    if (!['superadmin', 'owner'].includes(role as string)) {
+      return forbidden('Anda tidak memiliki akses');
+    }
+
     const { id } = await params;
     const body = await req.json();
     const parsed = UpdateQuoteSchema.safeParse(body);

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
+import DOMPurify from 'isomorphic-dompurify';
 import { db } from '@/lib/db';
 import { blogPosts } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -72,11 +73,28 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     with: {
       category: true,
     },
-  });
+  }) as ({
+    titleId: string;
+    titleEn: string;
+    slug: string;
+    excerptId: string | null;
+    contentId: string;
+    metaTitleId: string | null;
+    metaDescriptionId: string | null;
+    publishedAt: Date | null;
+    coverImageUrl: string | null;
+    isPublished: boolean;
+    category: { nameId: string } | null;
+  } | null);
 
   if (!post || !post.isPublished) {
     notFound();
   }
+
+  const sanitizedContent = DOMPurify.sanitize(post.contentId || '', {
+    ALLOWED_TAGS: ['p', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'em', 'u', 'ul', 'ol', 'li', 'a', 'img', 'blockquote', 'code', 'pre'],
+    ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'target', 'rel'],
+  });
 
   return (
     <div className="container py-8 md:py-12 pb-20 md:pb-12">
@@ -111,7 +129,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
         <div 
           className="prose prose-lg max-w-none"
-          dangerouslySetInnerHTML={{ __html: post.contentId }} 
+          dangerouslySetInnerHTML={{ __html: sanitizedContent }} 
         />
       </article>
     </div>

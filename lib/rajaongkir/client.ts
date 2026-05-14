@@ -17,13 +17,20 @@ export async function rajaOngkirGet<T>(endpoint: string): Promise<T> {
 
   let res: Response;
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10_000);
     res = await fetch(`${RAJAONGKIR_BASE_URL}${endpoint}`, {
       headers: {
         key: apiKey,
       },
       next: { revalidate: 3600 },
+      signal: controller.signal,
     });
+    clearTimeout(timer);
   } catch (err) {
+    if ((err as Error).name === 'AbortError') {
+      throw new Error('RajaOngkir API timeout after 10s');
+    }
     throw new Error(`RajaOngkir network error: ${err instanceof Error ? err.message : String(err)}`);
   }
 
@@ -48,6 +55,8 @@ export async function rajaOngkirPost<T>(endpoint: string, body: Record<string, u
 
   let res: Response;
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10_000);
     res = await fetch(`${RAJAONGKIR_BASE_URL}${endpoint}`, {
       method: 'POST',
       headers: {
@@ -57,8 +66,13 @@ export async function rajaOngkirPost<T>(endpoint: string, body: Record<string, u
       body: new URLSearchParams(
         Object.entries(body).map(([k, v]) => [k, String(v)])
       ).toString(),
+      signal: controller.signal,
     });
+    clearTimeout(timer);
   } catch (err) {
+    if ((err as Error).name === 'AbortError') {
+      throw new Error('RajaOngkir API timeout after 10s');
+    }
     throw new Error(`RajaOngkir network error: ${err instanceof Error ? err.message : String(err)}`);
   }
 
@@ -75,4 +89,4 @@ export async function rajaOngkirPost<T>(endpoint: string, body: Record<string, u
   return data.rajaongkir.results;
 }
 
-export { ALLOWED_COURIERS, ORIGIN_CITY_ID };
+export { ALLOWED_COURIERS };

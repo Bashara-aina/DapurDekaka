@@ -1,5 +1,7 @@
 import { rajaOngkirPost } from './client';
-import { ALLOWED_COURIERS, ORIGIN_CITY_ID, MIN_WEIGHT_GRAM } from '@/lib/constants/couriers';
+import { withRetry } from '@/lib/utils/integration-helpers';
+import { ALLOWED_COURIERS, MIN_WEIGHT_GRAM } from '@/lib/constants/couriers';
+import { getSetting } from '@/lib/settings/get-settings';
 
 export interface ShippingCostResult {
   courier: string;
@@ -38,18 +40,27 @@ export async function calculateShippingCost(
   const billableWeight = Math.max(weightGram, MIN_WEIGHT_GRAM);
   const roundedWeight = Math.ceil(billableWeight / 100) * 100;
 
+  const [originCityId, whatsappNumber] = await Promise.all([
+    getSetting('rajaongkir_origin_city_id'),
+    getSetting('store_whatsapp_number'),
+  ]);
+
+  const origin = originCityId ?? '23'; // fallback to Bandung
+  const waNumber = whatsappNumber ?? process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '6281234567890';
+
   const allResults: ShippingCostResult[] = [];
 
   for (const courier of ALLOWED_COURIERS) {
     try {
-      const results = await rajaOngkirPost<RajaOngkirCostResult[]>(
-        '/cost',
-        {
-          origin: ORIGIN_CITY_ID,
-          destination: destinationCityId,
-          weight: roundedWeight,
-          courier: courier.code,
-        }
+      const results = await withRetry(
+        () =>
+          rajaOngkirPost<RajaOngkirCostResult[]>('/cost', {
+            origin,
+            destination: destinationCityId,
+            weight: roundedWeight,
+            courier: courier.code,
+          }),
+        { maxRetries: 2, retryableStatuses: [429, 503], context: 'RajaOngkir.calculateCost' }
       );
 
       for (const result of results) {
@@ -74,12 +85,11 @@ export async function calculateShippingCost(
   }
 
   if (allResults.length === 0) {
-    const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '6281234567890';
     return {
       available: false,
       message:
         'Mohon maaf, layanan pengiriman frozen ke daerah Anda belum tersedia. Silakan hubungi kami via WhatsApp untuk solusi pengiriman khusus.',
-      whatsappUrl: `https://wa.me/${whatsappNumber.replace(/^0/, '62')}`,
+      whatsappUrl: `https://wa.me/${waNumber.replace(/^0/, '62')}`,
     };
   }
 

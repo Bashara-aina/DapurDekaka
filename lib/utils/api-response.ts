@@ -49,6 +49,13 @@ export function conflict(message: string) {
   );
 }
 
+export function badRequest(message: string) {
+  return NextResponse.json(
+    { success: false, error: message, code: 'BAD_REQUEST' },
+    { status: 400 }
+  );
+}
+
 export function serverError(error: unknown) {
   console.error('[API Error]', error);
   return NextResponse.json(

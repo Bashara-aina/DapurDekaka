@@ -57,7 +57,8 @@ export function PointsRedeemer({
             type="checkbox"
             checked={usePoints}
             onChange={(e) => handleToggle(e.target.checked)}
-            className="sr-only peer"
+            className="sr-only"
+            aria-label={`Gunakan poin (${pointsBalance.toLocaleString('id-ID')} poin tersedia)`}
           />
           <div className="w-11 h-6 bg-brand-cream-dark rounded-full peer peer-checked:bg-brand-red peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all" />
         </label>

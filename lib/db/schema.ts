@@ -8,6 +8,7 @@ import {
   boolean,
   timestamp,
   jsonb,
+  index,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -154,6 +155,7 @@ export const categories = pgTable('categories', {
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
 
 export const products = pgTable('products', {
@@ -289,6 +291,7 @@ export const orderItems = pgTable('order_items', {
   quantity: integer('quantity').notNull(),
   subtotal: integer('subtotal').notNull(),
   weightGram: integer('weight_gram').notNull(),
+  variantOptions: jsonb('variant_options'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -331,6 +334,7 @@ export const coupons = pgTable('coupons', {
   expiresAt: timestamp('expires_at', { withTimezone: true }),
   createdBy: uuid('created_by').notNull().references(() => users.id),
   ...timestamps,
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
 
 export const couponUsages = pgTable('coupon_usages', {
@@ -353,6 +357,9 @@ export const pointsHistory = pgTable('points_history', {
   descriptionEn: varchar('description_en', { length: 255 }).notNull(),
   expiresAt: timestamp('expires_at', { withTimezone: true }),
   isExpired: boolean('is_expired').notNull().default(false),
+  consumedAt: timestamp('consumed_at', { withTimezone: true }),
+  // Self-reference without .references() to avoid circular type inference
+  referencedEarnId: uuid('referenced_earn_id'),
   adjustedBy: uuid('adjusted_by').references(() => users.id),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -390,6 +397,7 @@ export const blogPosts = pgTable('blog_posts', {
   authorId: uuid('author_id').notNull().references(() => users.id),
   publishedAt: timestamp('published_at', { withTimezone: true }),
   ...timestamps,
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
 
 export const carouselSlides = pgTable('carousel_slides', {
@@ -410,6 +418,7 @@ export const carouselSlides = pgTable('carousel_slides', {
   startsAt: timestamp('starts_at', { withTimezone: true }),
   endsAt: timestamp('ends_at', { withTimezone: true }),
   ...timestamps,
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
 
 export const testimonials = pgTable('testimonials', {
@@ -423,6 +432,7 @@ export const testimonials = pgTable('testimonials', {
   isActive: boolean('is_active').notNull().default(true),
   sortOrder: integer('sort_order').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
 
 // ─────────────────────────────────────────
@@ -447,6 +457,7 @@ export const b2bProfiles = pgTable('b2b_profiles', {
   approvedBy: uuid('approved_by').references(() => users.id),
   approvedAt: timestamp('approved_at', { withTimezone: true }),
   ...timestamps,
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
 
 export const b2bInquiries = pgTable('b2b_inquiries', {
@@ -462,6 +473,7 @@ export const b2bInquiries = pgTable('b2b_inquiries', {
   handledBy: uuid('handled_by').references(() => users.id),
   internalNotes: text('internal_notes'),
   ...timestamps,
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
 
 export const b2bQuotes = pgTable('b2b_quotes', {
@@ -504,6 +516,14 @@ export const systemSettings = pgTable('system_settings', {
   type: varchar('type', { length: 50 }).notNull(),
   description: text('description'),
   updatedBy: uuid('updated_by').references(() => users.id),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const orderDailyCounters = pgTable('order_daily_counters', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  date: varchar('date', { length: 10 }).notNull().unique(),
+  lastSequence: integer('last_sequence').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -610,3 +630,17 @@ export type BlogPost = typeof blogPosts.$inferSelect;
 export type CarouselSlide = typeof carouselSlides.$inferSelect;
 export type B2bProfile = typeof b2bProfiles.$inferSelect;
 export type SystemSetting = typeof systemSettings.$inferSelect;
+export type OrderDailyCounter = typeof orderDailyCounters.$inferSelect;
+
+// ─────────────────────────────────────────
+// INDEXES
+// ─────────────────────────────────────────
+
+export const ordersUserIdIdx = index('idx_orders_user_id').on(orders.userId);
+export const ordersStatusIdx = index('idx_orders_status').on(orders.status);
+export const ordersPaymentExpiresAtIdx = index('idx_orders_payment_expires_at').on(orders.paymentExpiresAt);
+export const orderItemsOrderIdIdx = index('idx_order_items_order_id').on(orderItems.orderId);
+export const productVariantsProductIdIdx = index('idx_product_variants_product_id').on(productVariants.productId);
+export const pointsHistoryUserIdIdx = index('idx_points_history_user_id').on(pointsHistory.userId);
+export const pointsHistoryExpiresAtIdx = index('idx_points_history_expires_at').on(pointsHistory.expiresAt);
+export const inventoryLogsVariantIdIdx = index('idx_inventory_logs_variant_id').on(inventoryLogs.variantId);

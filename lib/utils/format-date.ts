@@ -6,8 +6,10 @@ import { toZonedTime } from 'date-fns-tz';
  * Format a UTC timestamp to WIB display format
  * @example formatWIB(new Date()) → "12 Mei 2026, 01:30 WIB"
  */
-export function formatWIB(date: Date): string {
-  const zonedDate = toZonedTime(date, 'Asia/Jakarta');
+export function formatWIB(date: Date | string | null | undefined): string {
+  if (!date) return '-';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  const zonedDate = toZonedTime(d, 'Asia/Jakarta');
   return format(zonedDate, "d MMMM yyyy, HH:mm 'WIB'", { locale: id });
 }
 

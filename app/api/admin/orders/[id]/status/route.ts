@@ -1,28 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { orders } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { orders, orderItems, productVariants, inventoryLogs, coupons, pointsHistory, users, orderStatusHistory } from '@/lib/db/schema';
+import { eq, and, sql } from 'drizzle-orm';
 import { success, serverError, notFound, forbidden, conflict } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
 import { z } from 'zod';
 import { sendEmail } from '@/lib/resend/send-email';
 import { OrderShippedEmail } from '@/lib/resend/templates/OrderShipped';
 import { OrderDeliveredEmail } from '@/lib/resend/templates/OrderDelivered';
+import { OrderCancellationEmail } from '@/lib/resend/templates/OrderCancellation';
 import { formatWIB } from '@/lib/utils/format-date';
+import { logAdminActivity } from '@/lib/services/audit.service';
 
 const statusUpdateSchema = z.object({
-  status: z.enum(['shipped', 'delivered']),
+  status: z.enum(['processing', 'packed', 'shipped', 'delivered', 'cancelled']),
   trackingNumber: z.string().optional(),
   trackingUrl: z.string().optional(),
   estimatedDays: z.string().optional(),
+  cancellationReason: z.string().optional(),
 });
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
-  paid: ['processing'],
-  processing: ['packed'],
-  packed: ['shipped'],
+  pending_payment: ['cancelled'],
+  paid: ['processing', 'cancelled'],
+  processing: ['packed', 'cancelled'],
+  packed: ['shipped', 'cancelled'],
   shipped: ['delivered'],
 };
+
+// Warehouse can only do packed→shipped
+const WAREHOUSE_TRANSITIONS = ['shipped'];
+
+// Superadmin/owner can do all transitions
+const ADMIN_TRANSITIONS = ['processing', 'packed', 'shipped', 'delivered', 'cancelled'];
 
 export async function PATCH(
   req: NextRequest,
@@ -32,6 +42,11 @@ export async function PATCH(
     const session = await auth();
     if (!session?.user) {
       return forbidden('Anda harus login');
+    }
+
+    const role = session.user.role;
+    if (!role || !['superadmin', 'owner', 'warehouse'].includes(role)) {
+      return forbidden('Anda tidak memiliki akses ke fitur ini');
     }
 
     const { id: orderId } = await params;
@@ -50,7 +65,7 @@ export async function PATCH(
       );
     }
 
-    const { status: newStatus, trackingNumber, trackingUrl, estimatedDays } = parsed.data;
+    const { status: newStatus, trackingNumber, trackingUrl, estimatedDays, cancellationReason } = parsed.data;
 
     const order = await db.query.orders.findFirst({
       where: eq(orders.id, orderId),
@@ -68,6 +83,12 @@ export async function PATCH(
       return conflict(`Tidak dapat mengubah status dari ${currentStatus} ke ${newStatus}`);
     }
 
+    // Warehouse can only do packed→shipped
+    if (role === 'warehouse' && !WAREHOUSE_TRANSITIONS.includes(newStatus)) {
+      return forbidden('Warehouse hanya dapat mengubah status ke shipped');
+    }
+
+    // Build update payload and timestamps
     const updateData: Record<string, unknown> = {
       status: newStatus,
       updatedAt: new Date(),
@@ -80,9 +101,82 @@ export async function PATCH(
       if (estimatedDays) updateData.estimatedDays = estimatedDays;
     } else if (newStatus === 'delivered') {
       updateData.deliveredAt = new Date();
+    } else if (newStatus === 'cancelled') {
+      updateData.cancelledAt = new Date();
     }
 
-    await db.update(orders).set(updateData).where(eq(orders.id, orderId));
+    // All status transitions (including cancellation) happen in a transaction
+    // to ensure order update, status history, and financial reversals are atomic
+    await db.transaction(async (tx) => {
+      // Apply status update
+      await tx.update(orders).set(updateData).where(eq(orders.id, orderId));
+
+      // Write order status history for every transition
+      await tx.insert(orderStatusHistory).values({
+        orderId: order.id,
+        fromStatus: currentStatus as any,
+        toStatus: newStatus as any,
+        changedByUserId: session.user.id,
+        changedByType: 'admin',
+        note: newStatus === 'cancelled'
+          ? (cancellationReason ?? 'Dibatalkan oleh admin')
+          : `Status diubah ke ${newStatus} oleh admin`,
+      });
+
+      // If cancelling, restore stock + reverse points + reverse coupon
+      if (newStatus === 'cancelled') {
+        // Restore stock from order items
+        for (const item of order.items) {
+          const result = await tx
+            .update(productVariants)
+            .set({
+              stock: sql`stock + ${item.quantity}`,
+              updatedAt: new Date(),
+            })
+            .where(eq(productVariants.id, item.variantId))
+            .returning({ newStock: productVariants.stock });
+
+          if (result[0]) {
+            await tx.insert(inventoryLogs).values({
+              variantId: item.variantId,
+              changeType: 'reversal',
+              quantityBefore: result[0].newStock - item.quantity,
+              quantityAfter: result[0].newStock,
+              quantityDelta: item.quantity,
+              orderId: order.id,
+              note: `Pembatalan pesanan ${order.orderNumber} oleh admin`,
+            });
+          }
+        }
+
+        // Reverse points if order used them
+        if (order.userId && order.pointsUsed > 0) {
+          await tx
+            .update(users)
+            .set({ pointsBalance: sql`points_balance + ${order.pointsUsed}` })
+            .where(eq(users.id, order.userId));
+
+          await tx.insert(pointsHistory).values({
+            userId: order.userId,
+            type: 'expire',
+            pointsAmount: -order.pointsUsed,
+            pointsBalanceAfter: sql`points_balance + ${order.pointsUsed}`,
+            descriptionId: `Pembatalan pesanan ${order.orderNumber} — poin dikembalikan`,
+            descriptionEn: `Order ${order.orderNumber} cancelled — points returned`,
+            expiresAt: null,
+            isExpired: false,
+          });
+        }
+
+        // Reverse coupon usage
+        if (order.couponId) {
+          await tx
+            .update(coupons)
+            .set({ usedCount: sql`GREATEST(used_count - 1, 0)` })
+            .where(eq(coupons.id, order.couponId));
+        }
+      }
+    });
 
     if (newStatus === 'shipped' && trackingNumber) {
       try {
@@ -135,6 +229,47 @@ export async function PATCH(
         console.error('[Status Update] Failed to send delivered email:', emailError);
       }
     }
+
+    if (newStatus === 'cancelled') {
+      try {
+        const reason = cancellationReason ?? 'Dibatalkan oleh admin';
+        const cancellationEmailHtml = OrderCancellationEmail({
+          orderNumber: order.orderNumber,
+          customerName: order.recipientName,
+          items: order.items.map((item) => ({
+            name: item.productNameId,
+            variant: item.variantNameId,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            subtotal: item.subtotal,
+          })),
+          subtotal: order.subtotal,
+          shippingCost: order.shippingCost,
+          discountAmount: order.discountAmount,
+          totalAmount: order.totalAmount,
+          reason,
+          cancelledAt: formatWIB(new Date()),
+        });
+
+        await sendEmail({
+          to: order.recipientEmail,
+          subject: `Pesanan ${order.orderNumber} dibatalkan`,
+          react: cancellationEmailHtml,
+        });
+      } catch (emailError) {
+        console.error('[Status Update] Failed to send cancellation email:', emailError);
+      }
+    }
+
+    // Audit log — non-blocking
+    logAdminActivity({
+      userId: session.user.id,
+      action: `order_status_${newStatus}`,
+      targetType: 'order',
+      targetId: order.id,
+      beforeState: { status: currentStatus },
+      afterState: { status: newStatus },
+    }).catch((e) => console.error('[Audit] Failed to log order status change:', e));
 
     return success({
       orderId: order.id,
