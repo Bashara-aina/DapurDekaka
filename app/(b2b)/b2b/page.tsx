@@ -1,7 +1,10 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { QuoteForm } from '@/components/b2b/QuoteForm';
-import { Truck, Shield, Users, Clock, ChefHat, ArrowRight } from 'lucide-react';
+import { Truck, Shield, Users, Clock, ArrowRight, Package } from 'lucide-react';
+import { db } from '@/lib/db';
+import { products, productVariants, categories } from '@/lib/db/schema';
+import { eq, and, isNull, count } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,15 +31,54 @@ const BENEFITS = [
   },
 ];
 
-const PRODUCT_CATEGORIES = [
-  { name: 'Dimsum', count: '9 Varian' },
-  { name: 'Siomay', count: '4 Varian' },
-  { name: 'Bakso & Sosis', count: '3 Varian' },
-  { name: 'Lumpia', count: '2 Varian' },
-  { name: 'Pangsit', count: '2 Varian' },
-];
+async function getProductCategories() {
+  // Get all active categories
+  const allCategories = await db.query.categories.findMany({
+    where: eq(categories.isActive, true),
+    orderBy: [categories.sortOrder],
+  });
 
-export default function B2BLandingPage() {
+  // Get product counts per category
+  const categoryStats = await db
+    .select({
+      categoryId: products.categoryId,
+      productCount: count(),
+    })
+    .from(products)
+    .where(and(eq(products.isActive, true), isNull(products.deletedAt)))
+    .groupBy(products.categoryId);
+
+  const productCountMap = new Map(categoryStats.map(s => [s.categoryId, s.productCount]));
+
+  // Get variant counts per category
+  const variantStats = await db
+    .select({
+      categoryId: products.categoryId,
+      variantCount: count(),
+    })
+    .from(productVariants)
+    .innerJoin(products, eq(productVariants.productId, products.id))
+    .where(and(eq(products.isActive, true), eq(productVariants.isActive, true), isNull(products.deletedAt)))
+    .groupBy(products.categoryId);
+
+  const variantCountMap = new Map(variantStats.map(s => [s.categoryId, s.variantCount]));
+
+  // Filter categories that have active products
+  return allCategories
+    .filter(cat => productCountMap.has(cat.id))
+    .map(cat => ({
+      id: cat.id,
+      nameId: cat.nameId,
+      nameEn: cat.nameEn,
+      slug: cat.slug,
+      productCount: productCountMap.get(cat.id) ?? 0,
+      variantCount: variantCountMap.get(cat.id) ?? 0,
+    }));
+}
+
+export default async function B2BLandingPage() {
+  const productCategories = await getProductCategories();
+
   return (
     <div className="bg-brand-cream">
       {/* Hero Section */}
@@ -130,17 +172,20 @@ export default function B2BLandingPage() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {PRODUCT_CATEGORIES.map((cat) => (
-              <div
-                key={cat.name}
-                className="bg-brand-cream rounded-lg p-4 text-center hover:bg-brand-cream-dark transition-colors cursor-pointer"
+            {productCategories.map((cat) => (
+              <Link
+                key={cat.id}
+                href={`/b2b/products?category=${cat.slug}`}
+                className="bg-brand-cream rounded-lg p-4 text-center hover:bg-brand-cream-dark transition-colors cursor-pointer group"
               >
-                <div className="w-12 h-12 bg-white rounded-full mx-auto mb-3 flex items-center justify-center">
-                  <ChefHat className="w-6 h-6 text-brand-red" />
+                <div className="w-12 h-12 bg-white rounded-full mx-auto mb-3 flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <Package className="w-6 h-6 text-brand-red" />
                 </div>
-                <p className="font-medium text-sm">{cat.name}</p>
-                <p className="text-text-muted text-xs mt-1">{cat.count}</p>
-              </div>
+                <p className="font-medium text-sm">{cat.nameId}</p>
+                <p className="text-text-muted text-xs mt-1">
+                  {cat.variantCount} Varian
+                </p>
+              </Link>
             ))}
           </div>
 
