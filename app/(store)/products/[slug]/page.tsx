@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { db } from '@/lib/db';
 import { products, productVariants, productImages } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, ne, isNull } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import { ProductDetailClient } from '@/components/store/products/ProductDetailClient';
 
@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
   const { slug } = await params;
   
   const product = await db.query.products.findFirst({
-    where: and(eq(products.slug, slug), eq(products.isActive, true)),
+    where: and(eq(products.slug, slug), eq(products.isActive, true), isNull(products.deletedAt)),
     with: {
       category: true,
       images: { limit: 1 },
@@ -85,7 +85,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   const { slug } = await params;
 
   const product = await db.query.products.findFirst({
-    where: and(eq(products.slug, slug), eq(products.isActive, true)),
+    where: and(eq(products.slug, slug), eq(products.isActive, true), isNull(products.deletedAt)),
     with: {
       variants: { where: eq(productVariants.isActive, true) },
       images: { orderBy: (images, { asc }) => [asc(images.sortOrder)] },
@@ -111,6 +111,34 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
 
   const selectedVariant = product.variants.find(v => v.isActive) ?? product.variants[0];
   const primaryImage = product.images[0];
+
+  // Fetch related products from same category (excluding current product)
+  let relatedProducts: Array<{
+    id: string;
+    nameId: string;
+    nameEn: string;
+    slug: string;
+    isHalal: boolean;
+    category: { id: string; nameId: string; slug: string } | null;
+    variants: Array<{ id: string; nameId: string; nameEn: string; price: number; stock: number; isActive: boolean; sortOrder: number; sku: string; weightGram: number }>;
+    images: Array<{ id: string; cloudinaryUrl: string; sortOrder: number }>;
+  }> = [];
+
+  if (product.category) {
+    relatedProducts = await db.query.products.findMany({
+      where: and(
+        eq(products.categoryId, product.category.id),
+        eq(products.isActive, true),
+        ne(products.slug, slug)
+      ),
+      with: {
+        variants: { where: eq(productVariants.isActive, true) },
+        images: { orderBy: (images, { asc }) => [asc(images.sortOrder)] },
+        category: true,
+      },
+      limit: 8,
+    }) as typeof relatedProducts;
+  }
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -139,7 +167,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <ProductDetailClient product={product} />
+      <ProductDetailClient product={product} relatedProducts={relatedProducts} />
     </>
   );
 }

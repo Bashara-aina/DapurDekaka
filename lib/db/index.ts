@@ -1,6 +1,12 @@
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from './schema';
+import { requireEnv } from '@/lib/config/validate-env';
+
+// Validate required env vars on startup (only in production)
+if (process.env.NODE_ENV === 'production') {
+  requireEnv();
+}
 
 // Infer the db type from drizzle call
 type DbType = ReturnType<typeof drizzle<typeof schema>>;

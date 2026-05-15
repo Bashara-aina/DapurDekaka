@@ -131,6 +131,15 @@ export const addresses = pgTable('addresses', {
   ...timestamps,
 });
 
+export const savedCarts = pgTable('saved_carts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  variantId: uuid('variant_id').notNull().references(() => productVariants.id),
+  quantity: integer('quantity').notNull().default(1),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const passwordResetTokens = pgTable('password_reset_tokens', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -344,7 +353,9 @@ export const couponUsages = pgTable('coupon_usages', {
   userId: uuid('user_id').references(() => users.id),
   discountApplied: integer('discount_applied').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => ({
+  couponOrderUnique: unique('uq_coupon_usages_coupon_order').on(table.couponId, table.orderId),
+}));
 
 export const pointsHistory = pgTable('points_history', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -548,6 +559,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   accounts: many(accounts),
   sessions: many(sessions),
   addresses: many(addresses),
+  savedCarts: many(savedCarts),
   orders: many(orders),
   pointsHistory: many(pointsHistory),
   couponUsages: many(couponUsages),
@@ -568,6 +580,7 @@ export const productVariantsRelations = relations(productVariants, ({ one, many 
   product: one(products, { fields: [productVariants.productId], references: [products.id] }),
   inventoryLogs: many(inventoryLogs),
   orderItems: many(orderItems),
+  savedByUsers: many(savedCarts),
 }));
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({
@@ -639,8 +652,16 @@ export type OrderDailyCounter = typeof orderDailyCounters.$inferSelect;
 export const ordersUserIdIdx = index('idx_orders_user_id').on(orders.userId);
 export const ordersStatusIdx = index('idx_orders_status').on(orders.status);
 export const ordersPaymentExpiresAtIdx = index('idx_orders_payment_expires_at').on(orders.paymentExpiresAt);
+export const ordersMidtransOrderIdIdx = index('idx_orders_midtrans_order_id').on(orders.midtransOrderId);
 export const orderItemsOrderIdIdx = index('idx_order_items_order_id').on(orderItems.orderId);
 export const productVariantsProductIdIdx = index('idx_product_variants_product_id').on(productVariants.productId);
 export const pointsHistoryUserIdIdx = index('idx_points_history_user_id').on(pointsHistory.userId);
+export const pointsHistoryOrderIdIdx = index('idx_points_history_order_id').on(pointsHistory.orderId);
 export const pointsHistoryExpiresAtIdx = index('idx_points_history_expires_at').on(pointsHistory.expiresAt);
+export const pointsHistoryTypeIdx = index('idx_points_history_type').on(pointsHistory.type);
+export const pointsHistoryIsExpiredIdx = index('idx_points_history_is_expired').on(pointsHistory.isExpired);
+export const couponUsagesCouponUserIdx = index('idx_coupon_usages_coupon_user').on(couponUsages.couponId, couponUsages.userId);
+export const adminLogsUserIdIdx = index('idx_admin_logs_user_id').on(adminActivityLogs.userId);
+export const adminLogsEntityIdx = index('idx_admin_logs_entity').on(adminActivityLogs.entityType, adminActivityLogs.entityId);
+export const b2bInquiriesStatusIdx = index('idx_b2b_inquiries_status').on(b2bInquiries.status);
 export const inventoryLogsVariantIdIdx = index('idx_inventory_logs_variant_id').on(inventoryLogs.variantId);

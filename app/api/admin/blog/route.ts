@@ -5,6 +5,7 @@ import { blogPosts } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { z } from 'zod';
 import { success, serverError, unauthorized, forbidden } from '@/lib/utils/api-response';
+import DOMPurify from 'isomorphic-dompurify';
 
 const CreatePostSchema = z.object({
   titleId: z.string().min(1),
@@ -69,10 +70,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Sanitize HTML content to prevent XSS
+    const cleanContentId = parsed.data.contentId
+      ? DOMPurify.sanitize(parsed.data.contentId, {
+          ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h2', 'h3', 'a', 'img', 'blockquote', 'code', 'pre'],
+          ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'target', 'rel'],
+        })
+      : '';
+    const cleanContentEn = parsed.data.contentEn
+      ? DOMPurify.sanitize(parsed.data.contentEn, {
+          ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h2', 'h3', 'a', 'img', 'blockquote', 'code', 'pre'],
+          ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'target', 'rel'],
+        })
+      : '';
+
     const [post] = await db.insert(blogPosts).values({
       ...parsed.data,
-      contentId: parsed.data.contentId ?? '',
-      contentEn: parsed.data.contentEn ?? '',
+      contentId: cleanContentId,
+      contentEn: cleanContentEn,
       publishedAt: parsed.data.publishedAt ? new Date(parsed.data.publishedAt) : null,
       authorId: session.user.id,
     }).returning();

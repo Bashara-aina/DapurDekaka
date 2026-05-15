@@ -11,7 +11,7 @@ import {
   users,
   orderStatusHistory,
 } from '@/lib/db/schema';
-import { eq, and, inArray, sql, or } from 'drizzle-orm';
+import { eq, and, inArray, sql, or, gte } from 'drizzle-orm';
 import crypto from 'crypto';
 import { success, serverError } from '@/lib/utils/api-response';
 import { verifyMidtransSignature } from '@/lib/midtrans/verify-webhook';
@@ -49,6 +49,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: false }, { status: 400 });
     }
 
+    // Reject webhooks older than 1 hour (replay attack protection)
+    if (body.transaction_time) {
+      const txTime = new Date(body.transaction_time).getTime();
+      const oneHourAgo = Date.now() - 60 * 60 * 1000;
+      if (txTime < oneHourAgo) {
+        logger.warn('[Midtrans Webhook] Stale webhook rejected', { orderId: order_id, txTime });
+        return NextResponse.json({ received: false, error: 'Stale webhook' }, { status: 400 });
+      }
+    }
+
     // ── Step 2: Find order ───────────────────────────────────────────────
     const order = await db.query.orders.findFirst({
       where: eq(orders.midtransOrderId, order_id),
@@ -61,6 +71,11 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Step 3: Idempotency — already processed? ───────────────────────
+    // Use midtransTransactionId to prevent concurrent webhooks from double-processing
+    if (body.transaction_id && order.midtransTransactionId === body.transaction_id) {
+      return success({ received: true, note: 'already_processed' });
+    }
+
     if (order.status === 'paid' && transaction_status === 'settlement') {
       return success({ received: true, note: 'already_processed' });
     }
@@ -70,11 +85,23 @@ export async function POST(req: NextRequest) {
       return success({ received: true, note: 'already_cancelled' });
     }
 
+    // Settlement for already-cancelled order — requires manual review
+    if (order.status === 'cancelled' && transaction_status === 'settlement') {
+      logger.warn('[Midtrans Webhook] Received settlement for cancelled order', {
+        orderNumber: order.orderNumber,
+        midtransOrderId: order_id,
+      });
+      return NextResponse.json(
+        { received: true, note: 'order_cancelled_but_payment_received_manual_review_needed' },
+        { status: 200 }
+      );
+    }
+
     // ── Step 4: Settlement — full processing ───────────────────────────
     if (transaction_status === 'settlement') {
       // Amount cross-check — validate gross_amount matches order total to prevent tampered webhooks
       const expectedAmount = order.totalAmount;
-      const webhookAmount = parseInt(gross_amount, 10);
+      const webhookAmount = Math.round(parseFloat(gross_amount));
       if (webhookAmount !== expectedAmount) {
         console.error('[Midtrans Webhook] Amount mismatch', {
           order_id,
@@ -85,7 +112,7 @@ export async function POST(req: NextRequest) {
       }
 
       await db.transaction(async (tx) => {
-        // Update order status
+        // Update order status + save midtransTransactionId for idempotency
         await tx
           .update(orders)
           .set({
@@ -93,38 +120,42 @@ export async function POST(req: NextRequest) {
             paidAt: new Date(),
             midtransPaymentType: body.payment_type ?? null,
             midtransVaNumber: body.va_numbers?.[0]?.va_number ?? null,
+            midtransTransactionId: body.transaction_id ?? null,
           })
           .where(eq(orders.id, order.id));
 
-        // Deduct stock (atomic, prevent negative)
+        // Deduct stock (conditional — only if sufficient stock exists)
         for (const item of order.items) {
           const result = await tx
             .update(productVariants)
             .set({
-              stock: sql`GREATEST(stock - ${item.quantity}, 0)`,
+              stock: sql`stock - ${item.quantity}`,
               updatedAt: new Date(),
             })
-            .where(
-              and(
-                eq(productVariants.id, item.variantId),
-                sql`stock >= ${item.quantity}`
-              )
-            )
+            .where(and(
+              eq(productVariants.id, item.variantId),
+              gte(productVariants.stock, item.quantity)
+            ))
             .returning({ newStock: productVariants.stock });
 
-          const updatedStock = result[0];
-          if (!updatedStock) {
-            throw new Error(`Stock deduction failed for variant ${item.variantId} — insufficient stock`);
+          if (result.length === 0) {
+            // Stock was insufficient — log error but don't fail the webhook
+            logger.error('[Midtrans Webhook] Oversell detected', {
+              orderNumber: order.orderNumber,
+              variantId: item.variantId,
+              requestedQty: item.quantity,
+            });
+          } else {
+            const updatedStock = result[0]!.newStock;
+            await tx.insert(inventoryLogs).values({
+              variantId: item.variantId,
+              changeType: 'sale',
+              quantityBefore: updatedStock + item.quantity,
+              quantityAfter: updatedStock,
+              quantityDelta: -item.quantity,
+              orderId: order.id,
+            });
           }
-
-          await tx.insert(inventoryLogs).values({
-            variantId: item.variantId,
-            changeType: 'sale',
-            quantityBefore: updatedStock.newStock + item.quantity,
-            quantityAfter: updatedStock.newStock,
-            quantityDelta: -item.quantity,
-            orderId: order.id,
-          });
         }
 
         // Increment coupon used_count
@@ -135,15 +166,9 @@ export async function POST(req: NextRequest) {
             .where(eq(coupons.id, order.couponId));
         }
 
-        // Award loyalty points (B2B users earn 2x)
+        // Award loyalty points (order.pointsEarned already includes 2x for B2B, set at checkout initiate)
         if (order.userId && order.pointsEarned > 0) {
-          // Fetch user role to determine B2B multiplier
-          const userRecord = await tx.query.users.findFirst({
-            where: eq(users.id, order.userId),
-            columns: { role: true },
-          });
-          const isB2B = userRecord?.role === 'b2b';
-          const earnedPoints = isB2B ? order.pointsEarned * 2 : order.pointsEarned;
+          const earnedPoints = order.pointsEarned;
 
           const updatedUsers = await tx
             .update(users)
@@ -158,8 +183,8 @@ export async function POST(req: NextRequest) {
             type: 'earn',
             pointsAmount: earnedPoints,
             pointsBalanceAfter: newBalance,
-            descriptionId: `Pembelian ${order.orderNumber}${isB2B ? ' (Poin B2B 2x)' : ''}`,
-            descriptionEn: `Purchase ${order.orderNumber}${isB2B ? ' (B2B Points 2x)' : ''}`,
+            descriptionId: `Pembelian ${order.orderNumber}`,
+            descriptionEn: `Purchase ${order.orderNumber}`,
             orderId: order.id,
             expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
           });
@@ -192,9 +217,11 @@ export async function POST(req: NextRequest) {
 
       logger.info('[Midtrans Webhook] Order paid successfully', { orderNumber: order.orderNumber });
 
-      // ── Step 5a: Send confirmation email (async, non-blocking) ─────────
-      try {
-        const emailHtml = OrderConfirmationEmail({
+      // ── Step 5a: Send confirmation email (fire-and-forget, non-blocking) ─────────
+      sendEmail({
+        to: order.recipientEmail,
+        subject: `Pesanan ${order.orderNumber} telah dikonfirmasi!`,
+        react: OrderConfirmationEmail({
           orderNumber: order.orderNumber,
           customerName: order.recipientName,
           items: order.items.map((item) => ({
@@ -216,21 +243,17 @@ export async function POST(req: NextRequest) {
           city: order.city ?? undefined,
           province: order.province ?? undefined,
           paidAt: formatWIB(new Date()),
-        });
-
-        await sendEmail({
-          to: order.recipientEmail,
-          subject: `Pesanan ${order.orderNumber} telah dikonfirmasi!`,
-          react: emailHtml,
-        });
-      } catch (emailError) {
+        }),
+      }).catch((emailError) => {
         logger.error('[Email] Failed to send confirmation', { error: emailError instanceof Error ? emailError.message : String(emailError) });
-      }
+      });
 
-      // ── Step 5b: Send pickup invitation for pickup orders ────────────
+      // ── Step 5b: Send pickup invitation for pickup orders (fire-and-forget) ────────────
       if (order.deliveryMethod === 'pickup') {
-        try {
-          const pickupEmailHtml = PickupInvitationEmail({
+        sendEmail({
+          to: order.recipientEmail,
+          subject: `Pesanan ${order.orderNumber} siap diambil!`,
+          react: PickupInvitationEmail({
             orderNumber: order.orderNumber,
             customerName: order.recipientName,
             items: order.items.map((item) => ({
@@ -243,16 +266,10 @@ export async function POST(req: NextRequest) {
             paidAt: formatWIB(new Date()),
             pickupAddress: process.env.NEXT_PUBLIC_STORE_ADDRESS ?? 'Jl. Sinom V no. 7, Turangga, Bandung',
             openingHours: 'Senin-Sabtu: 08.00 - 17.00 WIB',
-          });
-
-          await sendEmail({
-            to: order.recipientEmail,
-            subject: `Pesanan ${order.orderNumber} siap diambil!`,
-            react: pickupEmailHtml,
-          });
-        } catch (emailError) {
+          }),
+        }).catch((emailError) => {
           logger.error('[Email] Failed to send pickup invitation', { error: emailError instanceof Error ? emailError.message : String(emailError) });
-        }
+        });
       }
 
     } else if (['cancel', 'deny', 'expire'].includes(transaction_status)) {
@@ -277,11 +294,11 @@ export async function POST(req: NextRequest) {
               and(
                 eq(pointsHistory.userId, order.userId),
                 eq(pointsHistory.type, 'redeem'),
+                eq(pointsHistory.orderId, order.id),
                 sql`${pointsHistory.referencedEarnId} IS NOT NULL`
               )
             )
-            .orderBy(pointsHistory.createdAt)
-            .limit(order.pointsUsed);
+            .orderBy(pointsHistory.createdAt);
 
           // Unconsume the referenced earn records
           for (const redeem of redeemRecords) {
@@ -311,15 +328,17 @@ export async function POST(req: NextRequest) {
 
       logger.info('[Midtrans Webhook] Order cancelled', { orderNumber: order.orderNumber, reason: transaction_status });
 
-      // ── Step 7: Send cancellation email ─────────────────────────────
-      try {
-        const cancelReason = transaction_status === 'expire'
-          ? 'Pembayaran kadaluarsa (maksimal waktu pembayaran terlampaui)'
-          : transaction_status === 'cancel'
-            ? 'Pembayaran dibatalkan oleh sistem Midtrans'
-            : 'Pembayaran ditolak oleh bank atau provider';
+      // ── Step 7: Send cancellation email (fire-and-forget) ─────────────
+      const cancelReason = transaction_status === 'expire'
+        ? 'Pembayaran kadaluarsa (maksimal waktu pembayaran terlampaui)'
+        : transaction_status === 'cancel'
+          ? 'Pembayaran dibatalkan oleh sistem Midtrans'
+          : 'Pembayaran ditolak oleh bank atau provider';
 
-        const cancellationEmailHtml = OrderCancellationEmail({
+      sendEmail({
+        to: order.recipientEmail,
+        subject: `Pesanan ${order.orderNumber} dibatalkan`,
+        react: OrderCancellationEmail({
           orderNumber: order.orderNumber,
           customerName: order.recipientName,
           items: order.items.map((item) => ({
@@ -337,16 +356,10 @@ export async function POST(req: NextRequest) {
           cancelledAt: formatWIB(new Date()),
           refundAmount: order.totalAmount,
           refundInfo: 'Pengembalian dana akan diproses 1-7 hari kerja',
-        });
-
-        await sendEmail({
-          to: order.recipientEmail,
-          subject: `Pesanan ${order.orderNumber} dibatalkan`,
-          react: cancellationEmailHtml,
-        });
-      } catch (emailError) {
+        }),
+      }).catch((emailError) => {
         logger.error('[Email] Failed to send cancellation email', { error: emailError instanceof Error ? emailError.message : String(emailError) });
-      }
+      });
     }
 
     return success({ received: true });

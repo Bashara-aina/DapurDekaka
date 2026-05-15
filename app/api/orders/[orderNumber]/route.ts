@@ -45,12 +45,16 @@ export async function GET(
       return unauthorized('Email tidak cocok dengan pesanan');
     }
 
-    // No session and no email - return minimal info for status tracking only
+    // No session and no email - return minimal info for status tracking + pending payment page
     return success({
       order: {
         orderNumber: order.orderNumber,
         status: order.status,
         deliveryMethod: order.deliveryMethod,
+        totalAmount: order.totalAmount,
+        midtransVaNumber: order.midtransVaNumber,
+        midtransPaymentType: order.midtransPaymentType,
+        paymentExpiresAt: order.paymentExpiresAt,
         createdAt: order.createdAt,
       },
       verified: false,

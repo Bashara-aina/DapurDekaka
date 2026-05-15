@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Package, ChevronRight, ChevronLeft } from 'lucide-react';
 import type { Metadata } from 'next';
+import { count, desc, eq } from 'drizzle-orm';
+import { orders } from '@/lib/db/schema';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,18 +29,22 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
   const perPage = 10;
   const offset = (currentPage - 1) * perPage;
 
-  const allOrders = await db.query.orders.findMany({
-    where: (orders, { eq }) => eq(orders.userId, session.user.id!),
-    with: {
-      items: true,
-    },
-    orderBy: (orders, { desc }) => [desc(orders.createdAt)],
-  });
+  const [ordersResult, totalResult] = await Promise.all([
+    db.query.orders.findMany({
+      where: (o, { eq }) => eq(o.userId, session.user.id!),
+      with: {
+        items: true,
+      },
+      orderBy: (o, { desc }) => [desc(o.createdAt)],
+      limit: perPage,
+      offset,
+    }),
+    db.select({ total: count() }).from(orders)
+      .where(eq(orders.userId, session.user.id!)),
+  ]);
 
-  const totalOrders = allOrders.length;
+  const totalOrders = totalResult[0]?.total ?? 0;
   const totalPages = Math.ceil(totalOrders / perPage);
-
-  const orders = allOrders.slice(offset, offset + perPage);
 
   const formatIDR = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {

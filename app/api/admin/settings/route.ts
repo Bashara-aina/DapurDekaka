@@ -4,7 +4,7 @@ import { success, unauthorized, forbidden, serverError, validationError } from '
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { systemSettings, adminActivityLogs } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 export async function GET(req: NextRequest) {
@@ -19,11 +19,23 @@ export async function GET(req: NextRequest) {
       return forbidden('Anda tidak memiliki akses');
     }
 
-    const settings = await db.query.systemSettings.findMany({
-      orderBy: [asc(systemSettings.key)],
-    });
+    const keysParam = req.nextUrl.searchParams.get('keys');
+    const keys = keysParam ? keysParam.split(',').map((k) => k.trim()) : null;
 
-    const settingsWithType = settings.map(s => {
+    let settings;
+    if (keys) {
+      const rows = await db
+        .select()
+        .from(systemSettings)
+        .where(sql`${systemSettings.key} IN (${sql.join(keys.map((k) => sql`${k}`), sql`, `)})`);
+      settings = rows;
+    } else {
+      settings = await db.query.systemSettings.findMany({
+        orderBy: [asc(systemSettings.key)],
+      });
+    }
+
+    const settingsWithType = settings.map((s) => {
       let type: 'string' | 'number' | 'boolean' = 'string';
       const lowerValue = s.value.toLowerCase();
       if (lowerValue === 'true' || lowerValue === 'false') {
@@ -56,8 +68,8 @@ export async function PATCH(req: NextRequest) {
     }
 
     const role = (session.user as { role?: string }).role;
-    if (!role || !['superadmin', 'owner'].includes(role)) {
-      return forbidden('Anda tidak memiliki akses untuk mengubah pengaturan');
+    if (!role || role !== 'superadmin') {
+      return forbidden('Hanya superadmin yang dapat mengubah pengaturan');
     }
 
     const body = await req.json();

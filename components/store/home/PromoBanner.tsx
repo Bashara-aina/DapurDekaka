@@ -1,6 +1,18 @@
+'use client';
+
 import Link from 'next/link';
 
-export function PromoBanner() {
+interface PromoBannerProps {
+  promoCode?: string;
+  promoTitle?: string;
+  promoSubtitle?: string;
+}
+
+export function PromoBanner({
+  promoCode = 'SELAMATDATANG',
+  promoTitle = 'Untuk pembelian pertama kamu',
+  promoSubtitle = 'Gunakan kode:',
+}: PromoBannerProps) {
   return (
     <section className="py-6 px-4 container mx-auto">
       <div className="bg-brand-red rounded-card p-6 md:p-8 text-center relative overflow-hidden">
@@ -12,11 +24,11 @@ export function PromoBanner() {
             PROMO 10% OFF
           </span>
           <h3 className="font-display text-xl md:text-2xl font-bold text-white mb-2">
-            Untuk pembelian pertama kamu
+            {promoTitle}
           </h3>
-          <p className="text-white/80 mb-4">Gunakan kode:</p>
+          <p className="text-white/80 mb-4">{promoSubtitle}</p>
           <span className="inline-block px-6 py-2 bg-white text-brand-red font-mono font-bold rounded-lg text-lg md:text-xl mb-6">
-            SELAMATDATANG
+            {promoCode}
           </span>
           <br />
           <Link

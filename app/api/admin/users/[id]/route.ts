@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { success, notFound, unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { users } from '@/lib/db/schema';
+import { users, sessions } from '@/lib/db/schema';
 import { z } from 'zod';
 import { logAdminActivity } from '@/lib/services/audit.service';
 
@@ -59,6 +59,8 @@ export async function PATCH(
       );
     }
 
+    const oldRole = existing.role;
+
     const [updated] = await db
       .update(users)
       .set({
@@ -69,13 +71,18 @@ export async function PATCH(
       .where(eq(users.id, id))
       .returning();
 
+    // Invalidate all sessions when role changes
+    if (parsed.data.role !== undefined && parsed.data.role !== oldRole) {
+      await db.delete(sessions).where(eq(sessions.userId, id));
+    }
+
     // Audit log — non-blocking
     logAdminActivity({
       userId: session.user.id,
       action: 'user_role_changed',
       targetType: 'user',
       targetId: id,
-      beforeState: { role: existing.role, isActive: existing.isActive },
+      beforeState: { role: oldRole, isActive: existing.isActive },
       afterState: { role: parsed.data.role, isActive: parsed.data.isActive ?? existing.isActive },
     }).catch((e) => console.error('[Audit] Failed to log user role change:', e));
 

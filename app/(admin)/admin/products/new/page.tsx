@@ -24,7 +24,6 @@ export default async function NewProductPage() {
   });
 
   async function handleSubmit(data: ProductFormData) {
-    'use server';
     const session = await auth();
     if (!session?.user) throw new Error('Unauthorized');
 

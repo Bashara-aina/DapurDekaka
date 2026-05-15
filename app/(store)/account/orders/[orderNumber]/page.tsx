@@ -231,7 +231,7 @@ export default async function AccountOrderDetailPage({ params }: OrderDetailPage
           )}
 
           <div className="flex justify-between text-sm">
-            <span className="text-text-secondary">Ongkos Kirir</span>
+            <span className="text-text-secondary">Ongkos Kirim</span>
             <span className="text-text-primary">{formatIDR(order.shippingCost)}</span>
           </div>
 
@@ -241,6 +241,21 @@ export default async function AccountOrderDetailPage({ params }: OrderDetailPage
           </div>
         </div>
       </div>
+
+      {/* PDF Receipt Download */}
+      {order.status !== 'pending_payment' && order.status !== 'cancelled' && (
+        <div className="bg-white rounded-card shadow-card p-6">
+          <a
+            href={`/api/orders/${order.orderNumber}/receipt`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full h-12 bg-brand-red text-white font-bold rounded-button hover:bg-brand-red-dark transition-colors"
+          >
+            <FileText className="w-5 h-5" />
+            Download Bukti Pembayaran
+          </a>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,9 +1,78 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { XCircle, RefreshCw, ArrowRight, Home } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { XCircle, RefreshCw, Home } from 'lucide-react';
+import { useCartStore } from '@/store/cart.store';
+
+interface FailedOrderItem {
+  variantId: string;
+  productId: string;
+  productNameId: string;
+  variantNameId: string;
+  unitPrice: number;
+  quantity: number;
+  weightGram: number;
+  imageUrl?: string;
+}
 
 export default function CheckoutFailedPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const orderNumber = searchParams.get('order');
+  const [orderItems, setOrderItems] = useState<FailedOrderItem[] | null>(null);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const addItem = useCartStore((s) => s.addItem);
+
+  useEffect(() => {
+    if (!orderNumber) return;
+
+    const restoreCart = async () => {
+      try {
+        const res = await fetch(`/api/orders/${orderNumber}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.data?.order?.items) {
+            setOrderItems(data.data.order.items);
+          }
+        }
+      } catch {
+        // Silent fail — order items couldn't be fetched
+      }
+    };
+    restoreCart();
+  }, [orderNumber]);
+
+  const handleRetry = async () => {
+    if (!orderItems?.length) {
+      router.push('/checkout');
+      return;
+    }
+
+    setIsRestoring(true);
+    try {
+      for (const item of orderItems) {
+        addItem({
+          variantId: item.variantId,
+          productId: item.productId,
+          productNameId: item.productNameId,
+          productNameEn: '',
+          variantNameId: item.variantNameId,
+          variantNameEn: '',
+          sku: '',
+          imageUrl: item.imageUrl ?? '',
+          unitPrice: item.unitPrice,
+          weightGram: item.weightGram,
+          stock: 0,
+        });
+      }
+      router.push('/checkout');
+    } catch {
+      router.push('/checkout');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-brand-cream flex items-center justify-center p-4">
       <div className="text-center max-w-md">
@@ -18,17 +87,30 @@ export default function CheckoutFailedPage() {
           Maaf, pembayaran Anda tidak dapat diproses.
         </p>
         <p className="text-sm text-text-secondary mb-8">
-          Jangan khawatir — keranjang Anda masih tersimpan. Silakan coba lagi.
+          {orderItems?.length
+            ? 'Keranjang Anda telah dipulihkan. Silakan coba lagi.'
+            : 'Jangan khawatir — keranjang Anda masih tersimpan.'}
         </p>
 
         <div className="space-y-3">
-          <Link
-            href="/checkout"
-            className="flex items-center justify-center gap-2 w-full h-12 bg-brand-red text-white font-bold rounded-button hover:bg-brand-red-dark transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Coba Lagi
-          </Link>
+          {orderItems?.length ? (
+            <button
+              onClick={handleRetry}
+              disabled={isRestoring}
+              className="flex items-center justify-center gap-2 w-full h-12 bg-brand-red text-white font-bold rounded-button hover:bg-brand-red-dark transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className="w-4 h-4" />
+              {isRestoring ? 'Memulihkan...' : 'Coba Lagi'}
+            </button>
+          ) : (
+            <Link
+              href="/checkout"
+              className="flex items-center justify-center gap-2 w-full h-12 bg-brand-red text-white font-bold rounded-button hover:bg-brand-red-dark transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Coba Lagi
+            </Link>
+          )}
 
           <Link
             href="/products"

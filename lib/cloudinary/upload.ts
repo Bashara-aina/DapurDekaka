@@ -15,6 +15,7 @@ export const CLOUDINARY_FOLDERS = {
   avatars: 'dapurdekaka/avatars',
   gallery: 'dapurdekaka/gallery',
   sauces: 'dapurdekaka/sauces',
+  quotes: 'dapurdekaka/quotes',
 } as const;
 
 export type CloudinaryFolder = keyof typeof CLOUDINARY_FOLDERS;
@@ -78,6 +79,43 @@ export function generateSignedUploadParams({
     maxFileSize,
     allowedFormats,
   };
+}
+
+/**
+ * Upload a buffer directly to Cloudinary.
+ * Used for generated PDFs and other in-memory uploads.
+ */
+export async function uploadBuffer(
+  buffer: Buffer,
+  folder: CloudinaryFolder,
+  publicId?: string
+): Promise<ServerUploadResult> {
+  return new Promise((resolve, reject) => {
+    const folderPath = CLOUDINARY_FOLDERS[folder];
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: folderPath,
+        resource_type: 'auto',
+        use_filename: true,
+        unique_filename: true,
+        overwrite: Boolean(publicId),
+        ...(publicId ? { public_id: publicId } : {}),
+      },
+      (error, result) => {
+        if (error) {
+          reject(error);
+        } else if (result) {
+          resolve({
+            url: result.secure_url,
+            publicId: result.public_id as string,
+          });
+        } else {
+          reject(new Error('Cloudinary upload returned no result'));
+        }
+      }
+    );
+    uploadStream.end(buffer);
+  });
 }
 
 /**

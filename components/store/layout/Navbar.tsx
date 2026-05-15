@@ -2,25 +2,23 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useTranslations } from 'next-intl';
 import { ShoppingCart, User, Search, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils/cn';
 import { useCartStore } from '@/store/cart.store';
 import { LanguageSwitcher } from './LanguageSwitcher';
 
+const NAV_LINKS = [
+  { href: '/', label: 'Beranda' },
+  { href: '/products', label: 'Produk' },
+  { href: '/blog', label: 'Blog' },
+  { href: '/b2b', label: 'B2B' },
+];
+
 export function Navbar() {
-  const t = useTranslations('nav');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const cartItems = useCartStore((s) => s.items);
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-
-  const navLinks = [
-    { href: '/', label: t('home') },
-    { href: '/products', label: t('products') },
-    { href: '/blog', label: t('blog') },
-    { href: '/b2b', label: 'B2B' },
-  ];
 
   return (
     <>
@@ -35,7 +33,7 @@ export function Navbar() {
 
           {/* Nav Links */}
           <nav className="flex items-center gap-8">
-            {navLinks.map((link) => (
+            {NAV_LINKS.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -50,7 +48,7 @@ export function Navbar() {
           <div className="flex items-center gap-3">
             <LanguageSwitcher />
             <Link
-              href="/products"
+              href="/products?q="
               className="p-2 text-text-secondary hover:text-brand-red transition-colors"
               aria-label="Cari produk"
             >
@@ -115,7 +113,7 @@ export function Navbar() {
         {mobileMenuOpen && (
           <div className="absolute top-14 left-0 right-0 bg-white border-b border-brand-cream-dark shadow-lg z-40">
             <nav className="p-4 space-y-1">
-              {navLinks.map((link) => (
+              {NAV_LINKS.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}

@@ -2,6 +2,9 @@
   "name": "dapur-dekaka-b2c",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=18.17.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -24,11 +27,14 @@
     "@neondatabase/serverless": "^0.10.0",
     "@react-email/components": "^1.0.12",
     "@react-pdf/renderer": "^4.0.0",
+    "@sentry/nextjs": "^10.53.1",
     "@tanstack/react-query": "^5.56.0",
     "@tiptap/extension-image": "^2.10.0",
     "@tiptap/extension-link": "^2.10.0",
     "@tiptap/react": "^2.10.0",
     "@tiptap/starter-kit": "^2.10.0",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.0",
     "@vercel/analytics": "^2.0.1",
     "bcryptjs": "^2.4.3",
     "canvas-confetti": "^1.9.3",

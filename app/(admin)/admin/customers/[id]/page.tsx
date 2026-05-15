@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { formatWIB } from '@/lib/utils/format-date';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Plus, Minus } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface CustomerDetail {
   id: string;
@@ -68,6 +69,9 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAdjustPoints, setShowAdjustPoints] = useState(false);
+  const [adjustForm, setAdjustForm] = useState({ amount: 0, type: 'add' as 'add' | 'deduct', reason: '' });
+  const [isAdjusting, setIsAdjusting] = useState(false);
 
   useEffect(() => {
     params.then(p => {
@@ -94,6 +98,55 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
 
     fetchCustomer();
   }, [customerId]);
+
+  async function handleAdjustPoints() {
+    if (!adjustForm.reason.trim()) {
+      toast.error('Alasan wajib diisi');
+      return;
+    }
+    if (adjustForm.amount <= 0) {
+      toast.error('Jumlah poin harus lebih dari 0');
+      return;
+    }
+
+    setIsAdjusting(true);
+    try {
+      const res = await fetch('/api/admin/points/adjust', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: customerId,
+          amount: adjustForm.amount,
+          type: adjustForm.type,
+          reason: adjustForm.reason,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Gagal menyesuaikan poin');
+
+      toast.success(data.data.message);
+      setShowAdjustPoints(false);
+      setAdjustForm({ amount: 0, type: 'add', reason: '' });
+
+      // Refresh customer data
+      const refreshed = await fetch(`/api/admin/customers/${customerId}`);
+      const result = await refreshed.json();
+      setCustomer(result.data);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal menyesuaikan poin');
+    } finally {
+      setIsAdjusting(false);
+    }
+  }
+
+  function handleReasonChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setAdjustForm((f) => ({ ...f, reason: e.target.value }));
+  }
+
+  function handleAmountChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setAdjustForm((f) => ({ ...f, amount: parseInt(e.target.value, 10) || 0 }));
+  }
 
   if (!isClientReady) {
     return <div className="p-6 text-gray-500">Memuat...</div>;
@@ -137,6 +190,13 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
             {customer.isActive ? 'Aktif' : 'Nonaktif'}
           </span>
           <span className="text-2xl font-bold text-amber-600">{customer.pointsBalance ?? 0} pts</span>
+          <button
+            onClick={() => setShowAdjustPoints(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-lg hover:bg-amber-200 transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Sesuaikan Poin
+          </button>
         </div>
       </div>
 
@@ -192,9 +252,9 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
           )}
         </div>
 
-        {/* Order History */}
+        {/* Points History */}
         <div className="bg-white rounded-lg border border-admin-border p-6 lg:col-span-2">
-          <h2 className="font-semibold text-gray-700 mb-4">Riwayat Pesanan</h2>
+          <h2 className="font-semibold text-gray-700 mb-4">Riwayat Poin</h2>
           {customer.orders.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -278,6 +338,100 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
           )}
         </div>
       </div>
+
+      {/* Adjust Points Modal */}
+      {showAdjustPoints && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold">Sesuaikan Poin</h2>
+              <button
+                onClick={() => setShowAdjustPoints(false)}
+                className="p-1 text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Aksi</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAdjustForm((f) => ({ ...f, type: 'add' }))}
+                    className={`flex-1 h-10 rounded-lg text-sm font-medium transition-colors ${
+                      adjustForm.type === 'add'
+                        ? 'bg-green-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    <Plus className="w-4 h-4 inline mr-1" />
+                    Tambah
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdjustForm((f) => ({ ...f, type: 'deduct' }))}
+                    className={`flex-1 h-10 rounded-lg text-sm font-medium transition-colors ${
+                      adjustForm.type === 'deduct'
+                        ? 'bg-red-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    <Minus className="w-4 h-4 inline mr-1" />
+                    Kurang
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Jumlah Poin
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={adjustForm.amount || ''}
+                  onChange={handleAmountChange}
+                  placeholder="100"
+                  className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Alasan</label>
+                <input
+                  type="text"
+                  value={adjustForm.reason}
+                  onChange={handleReasonChange}
+                  placeholder="Contoh: Koreksi kesalahan input"
+                  className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowAdjustPoints(false)}
+                className="flex-1 h-10 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleAdjustPoints}
+                disabled={isAdjusting}
+                className={`flex-1 h-10 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
+                  adjustForm.type === 'add'
+                    ? 'bg-green-600 text-white hover:bg-green-700'
+                    : 'bg-red-600 text-white hover:bg-red-700'
+                }`}
+              >
+                {isAdjusting ? 'Memproses...' : 'Simpan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

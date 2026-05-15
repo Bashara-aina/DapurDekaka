@@ -7,8 +7,8 @@ import { WhyDapurDekaka } from '@/components/store/home/WhyDapurDekaka';
 import { InstagramFeed } from '@/components/store/home/InstagramFeed';
 import { Testimonials } from '@/components/store/home/Testimonials';
 import { db } from '@/lib/db';
-import { products, productVariants, productImages, categories, carouselSlides } from '@/lib/db/schema';
-import { eq, and, desc, isNull, lte, gte, isNull as isNullCond } from 'drizzle-orm';
+import { products, productVariants, productImages, categories, carouselSlides, systemSettings } from '@/lib/db/schema';
+import { eq, and, desc, isNull, lte, gte, isNull as isNullCond, sql } from 'drizzle-orm';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -70,13 +70,14 @@ async function getFeaturedProducts() {
 }
 
 async function getCategories() {
-  // Single query with LEFT JOIN + GROUP BY to get categories with active products
+  // Single query with LEFT JOIN + GROUP BY + HAVING to get categories with active products
   const categoriesWithProducts = await db
     .select({
       id: categories.id,
       nameId: categories.nameId,
       slug: categories.slug,
       sortOrder: categories.sortOrder,
+      productCount: sql<number>`count(${products.id})`,
     })
     .from(categories)
     .leftJoin(products, and(
@@ -86,10 +87,10 @@ async function getCategories() {
     ))
     .where(eq(categories.isActive, true))
     .groupBy(categories.id)
+    .having(sql`count(${products.id}) > 0`)
     .orderBy(categories.sortOrder);
 
-  // Filter to only categories that have at least one active product
-  return categoriesWithProducts.filter(cat => cat.id !== null);
+  return categoriesWithProducts;
 }
 
 async function getActiveCarouselSlides() {
@@ -106,11 +107,24 @@ async function getActiveCarouselSlides() {
   }));
 }
 
+async function getPromoSettings() {
+  const settings = await db.query.systemSettings.findMany({
+    where: sql`${systemSettings.key} IN ('PROMO_CODE', 'PROMO_TITLE', 'PROMO_SUBTITLE', 'CAROUSEL_SPEED_MS')`,
+  });
+  return {
+    promoCode: settings.find(s => s.key === 'PROMO_CODE')?.value ?? 'SELAMATDATANG',
+    promoTitle: settings.find(s => s.key === 'PROMO_TITLE')?.value ?? 'Untuk pembelian pertama kamu',
+    promoSubtitle: settings.find(s => s.key === 'PROMO_SUBTITLE')?.value ?? 'Gunakan kode:',
+    carouselSpeedMs: parseInt(settings.find(s => s.key === 'CAROUSEL_SPEED_MS')?.value ?? '5000', 10),
+  };
+}
+
 export default async function HomePage() {
-  const [featuredProducts, allCategories, activeSlides] = await Promise.all([
+  const [featuredProducts, allCategories, activeSlides, promoSettings] = await Promise.all([
     getFeaturedProducts(),
     getCategories(),
     getActiveCarouselSlides(),
+    getPromoSettings(),
   ]);
 
   const organizationJsonLd = {
@@ -146,13 +160,17 @@ export default async function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
       />
-      <HeroCarousel slides={activeSlides} />
+      <HeroCarousel slides={activeSlides} autoRotateSpeed={promoSettings.carouselSpeedMs} />
 
       <CategoryChips categories={allCategories} />
 
       <FeaturedProducts products={featuredProducts} />
 
-      <PromoBanner />
+      <PromoBanner
+        promoCode={promoSettings.promoCode}
+        promoTitle={promoSettings.promoTitle}
+        promoSubtitle={promoSettings.promoSubtitle}
+      />
 
       <WhyDapurDekaka />
 

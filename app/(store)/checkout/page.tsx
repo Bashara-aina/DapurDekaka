@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useQuery } from '@tanstack/react-query';
 import nextDynamic from 'next/dynamic';
+import { toast } from 'sonner';
 import { useCartStore } from '@/store/cart.store';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { cn } from '@/lib/utils/cn';
@@ -23,11 +25,17 @@ import { OrderSummaryCard } from '@/components/store/checkout/OrderSummaryCard';
 import { EmptyState } from '@/components/store/common/EmptyState';
 import { SavedAddressPicker } from '@/components/store/checkout/SavedAddressPicker';
 import type { SavedAddress } from '@/components/store/checkout/SavedAddressPicker';
+import { ChevronDown } from 'lucide-react';
 
 const MidtransPayment = nextDynamic(
   () => import('@/components/store/checkout/MidtransPayment').then((m) => m.MidtransPayment),
   { ssr: false }
 );
+
+interface StoreHours {
+  openDays: string;
+  openHours: string;
+}
 
 const STEPS = [
   { id: 'identity', label: 'Identitas' },
@@ -77,6 +85,8 @@ export default function CheckoutPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [snapToken, setSnapToken] = useState<string | null>(null);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
+  const [storeHours, setStoreHours] = useState<StoreHours>({ openDays: 'Senin - Sabtu', openHours: '08.00 - 17.00 WIB' });
+  const [serverTotalAmount, setServerTotalAmount] = useState<number>(0);
 
   const [formData, setFormData] = useState<CheckoutFormData>({
     recipientName: '',
@@ -110,6 +120,7 @@ export default function CheckoutPage() {
   const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string | null>(null);
   const [showAddressPicker, setShowAddressPicker] = useState(false);
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
+  const [showOrderReview, setShowOrderReview] = useState(false);
 
   const { data: pointsData } = useQuery({
     queryKey: ['account', 'points'],
@@ -121,7 +132,34 @@ export default function CheckoutPage() {
     enabled: !!session?.user,
   });
 
+  // FIX 4: Fetch profile to pre-fill phone number for logged-in users
+  const { data: profileData } = useQuery({
+    queryKey: ['account', 'profile'],
+    queryFn: async () => {
+      const res = await fetch('/api/account/profile');
+      const json = await res.json();
+      return json.success ? json.data : null;
+    },
+    enabled: !!session?.user,
+  });
+
   const pointsBalance = pointsData?.balance ?? 0;
+
+  // Auto-skip identity step for logged-in users
+  useEffect(() => {
+    if (session?.user && step === 'identity') {
+      updateForm({
+        recipientName: session.user.name || '',
+        recipientEmail: session.user.email || '',
+        recipientPhone: profileData?.phone || '',
+      });
+      setStep('delivery');
+      // Sync local cart to DB for logged-in user
+      const syncCart = useCartStore.getState().syncToDb;
+      syncCart();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user, profileData]);
 
   // Fetch saved addresses when logged-in user reaches delivery step
   const { data: addressesData } = useQuery({
@@ -135,11 +173,29 @@ export default function CheckoutPage() {
   });
 
   // Sync saved addresses when data changes
-  useState(() => {
+  useEffect(() => {
     if (addressesData) {
       setSavedAddresses(addressesData as SavedAddress[]);
     }
-  });
+  }, [addressesData]);
+
+  // Fetch store hours from system settings
+  useEffect(() => {
+    async function fetchStoreHours() {
+      try {
+        const res = await fetch('/api/admin/settings?keys=store_open_days,store_opening_hours');
+        const json = await res.json();
+        if (json.success && json.data) {
+          const openDays = json.data.store_open_days?.value ?? 'Senin - Sabtu';
+          const openHours = json.data.store_opening_hours?.value ?? '08.00 - 17.00 WIB';
+          setStoreHours({ openDays, openHours });
+        }
+      } catch {
+        // Use defaults on error
+      }
+    }
+    fetchStoreHours();
+  }, []);
 
   const activeSteps = formData.deliveryMethod === 'pickup' ? STEPS_PICKUP : STEPS;
 
@@ -181,6 +237,9 @@ export default function CheckoutPage() {
   // Step 2: Delivery method
   const handleDeliveryMethodChange = async (method: 'delivery' | 'pickup') => {
     updateForm({ deliveryMethod: method, shippingCost: 0 });
+    if (method === 'pickup' && step === 'courier') {
+      setStep('delivery');
+    }
   };
 
   const handleAddressSubmit = async (addressData: {
@@ -210,7 +269,7 @@ export default function CheckoutPage() {
       const data = await res.json();
 
       if (!data.success) {
-        alert(data.error || 'Gagal menghitung ongkir');
+        toast.error(data.error || 'Gagal menghitung ongkir');
         setLoadingShipping(false);
         return;
       }
@@ -218,7 +277,7 @@ export default function CheckoutPage() {
       setShippingOptions(data.data.services);
       setStep('courier');
     } catch {
-      alert('Gagal menghitung ongkir');
+      toast.error('Gagal menghitung ongkir');
     }
     setLoadingShipping(false);
   };
@@ -242,7 +301,7 @@ export default function CheckoutPage() {
       const res = await fetch('/api/coupons/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: formData.couponCode, subtotal }),
+        body: JSON.stringify({ code: formData.couponCode, subtotal, userId: session?.user?.id ?? null }),
       });
       const data = await res.json();
 
@@ -267,6 +326,12 @@ export default function CheckoutPage() {
     setUsePoints(use);
     if (!use) {
       updateForm({ pointsUsed: 0 });
+    } else {
+      // Calculate and update pointsUsed when toggled on
+      const maxPointsValue = Math.floor((subtotal - couponDiscount) * 0.5);
+      const maxPoints = Math.min(pointsBalance, maxPointsValue);
+      const pointsToUse = Math.floor(maxPoints / POINTS_VALUE_IDR) * POINTS_VALUE_IDR;
+      updateForm({ pointsUsed: pointsToUse });
     }
   };
 
@@ -301,15 +366,20 @@ export default function CheckoutPage() {
       const data = await res.json();
 
       if (!data.success) {
-        alert(data.error || 'Gagal membuat pesanan');
+        toast.error(data.error || 'Gagal membuat pesanan');
         setIsLoading(false);
         return;
       }
 
+      // Clear cart immediately after order is created successfully
+      // The order is now in pending_payment status even if user doesn't complete payment
+      clearCart();
+
       setSnapToken(data.data.snapToken);
       setOrderNumber(data.data.orderNumber);
+      setServerTotalAmount(data.data.totalAmount);
     } catch {
-      alert('Gagal membuat pesanan');
+      toast.error('Gagal membuat pesanan');
       setIsLoading(false);
     }
   };
@@ -327,7 +397,7 @@ export default function CheckoutPage() {
     }
   };
 
-  const currentStepIndex = STEPS.findIndex((s) => s.id === step);
+  const currentStepIndex = activeSteps.findIndex((s) => s.id === step);
 
   return (
     <div className="min-h-screen bg-brand-cream pb-24 md:pb-0">
@@ -358,16 +428,26 @@ export default function CheckoutPage() {
           {/* Main form area */}
           <div className="lg:col-span-2">
             {step === 'identity' && (
-              <IdentityForm
-                defaultValues={{
-                  recipientName: formData.recipientName || session?.user?.name || '',
-                  recipientEmail: formData.recipientEmail || session?.user?.email || '',
-                  recipientPhone: formData.recipientPhone || '',
-                  customerNote: formData.customerNote,
-                }}
-                onSubmit={handleIdentitySubmit}
-                onBack={handleBack}
-              />
+              <>
+                <IdentityForm
+                  defaultValues={{
+                    recipientName: formData.recipientName || session?.user?.name || '',
+                    recipientEmail: formData.recipientEmail || session?.user?.email || '',
+                    recipientPhone: formData.recipientPhone || '',
+                    customerNote: formData.customerNote,
+                  }}
+                  onSubmit={handleIdentitySubmit}
+                  onBack={handleBack}
+                />
+                {!session?.user && (
+                  <p className="mt-4 text-center text-sm text-text-secondary">
+                    Sudah punya akun?{' '}
+                    <Link href={`/login?callbackUrl=${encodeURIComponent('/checkout')}`} className="text-brand-red font-medium hover:underline">
+                      Masuk di sini
+                    </Link>
+                  </p>
+                )}
+              </>
             )}
 
             {step === 'delivery' && (
@@ -427,14 +507,14 @@ export default function CheckoutPage() {
                                   });
                                   const data = await res.json();
                                   if (!data.success) {
-                                    alert(data.error || 'Gagal menghitung ongkir');
+                                    toast.error(data.error || 'Gagal menghitung ongkir');
                                     setLoadingShipping(false);
                                     return;
                                   }
                                   setShippingOptions(data.data.services);
                                   setStep('courier');
                                 } catch {
-                                  alert('Gagal menghitung ongkir');
+                                  toast.error('Gagal menghitung ongkir');
                                 }
                                 setLoadingShipping(false);
                               }
@@ -481,7 +561,18 @@ export default function CheckoutPage() {
                         Setelah pembayaran berhasil, Anda akan mendapat instruksi pengambilan.
                         Tunjukkan nomor pesanan ke staff toko.
                       </p>
-                      <div className="flex gap-4">
+                      <div className="mt-4 bg-green-50 border border-green-200 rounded-lg p-4">
+                        <h3 className="font-semibold text-green-800 mb-2">📍 Lokasi Pengambilan</h3>
+                        <p className="text-sm text-green-700 mb-1">
+                          <strong>Dapur Dekaka</strong><br/>
+                          Jl. Sinom V No. 7, Turangga<br/>
+                          Bandung, Jawa Barat
+                        </p>
+                        <p className="text-xs text-green-600 mt-2">
+                          {storeHours.openDays}: {storeHours.openHours}<br/>
+                        </p>
+                      </div>
+                      <div className="flex gap-4 mt-4">
                         <button
                           type="button"
                           onClick={handleBack}
@@ -527,6 +618,78 @@ export default function CheckoutPage() {
               <div className="bg-white rounded-card p-6 shadow-card">
                 <h2 className="font-semibold text-lg mb-4">Pembayaran</h2>
 
+                {/* Order Review Collapsible */}
+                <button
+                  type="button"
+                  onClick={() => setShowOrderReview(!showOrderReview)}
+                  className="w-full flex items-center justify-between py-3 border-b border-brand-cream-dark mb-4"
+                  aria-expanded={showOrderReview}
+                >
+                  <span className="font-medium text-sm text-text-primary">Review Pesanan</span>
+                  <ChevronDown className={cn('w-4 h-4 text-text-secondary transition-transform', showOrderReview && 'rotate-180')} />
+                </button>
+
+                {showOrderReview && (
+                  <div className="mb-6 p-4 bg-brand-cream rounded-lg text-sm space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-text-secondary">Penerima</span>
+                      <span className="font-medium">{formData.recipientName}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-text-secondary">No. HP</span>
+                      <span className="font-medium">{formData.recipientPhone}</span>
+                    </div>
+                    {formData.deliveryMethod === 'delivery' && (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-text-secondary">Alamat</span>
+                          <span className="font-medium text-right max-w-[60%]">
+                            {formData.addressLine}, {formData.district}, {formData.city}, {formData.province}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-text-secondary">Kurir</span>
+                          <span className="font-medium">{formData.courierName} {formData.courierService}</span>
+                        </div>
+                      </>
+                    )}
+                    {formData.deliveryMethod === 'pickup' && (
+                      <div className="flex justify-between">
+                        <span className="text-text-secondary">Metode</span>
+                        <span className="font-medium">Ambil di Toko</span>
+                      </div>
+                    )}
+                    <div className="border-t border-brand-cream-dark pt-2 mt-2 space-y-1">
+                      <div className="flex justify-between text-xs text-text-secondary">
+                        <span>Subtotal</span>
+                        <span>{formatIDR(subtotal)}</span>
+                      </div>
+                      {couponDiscount > 0 && (
+                        <div className="flex justify-between text-xs text-success">
+                          <span>Diskon</span>
+                          <span>-{formatIDR(couponDiscount)}</span>
+                        </div>
+                      )}
+                      {pointsDiscount > 0 && (
+                        <div className="flex justify-between text-xs text-success">
+                          <span>Points ({formData.pointsUsed} pt)</span>
+                          <span>-{formatIDR(pointsDiscount)}</span>
+                        </div>
+                      )}
+                      {formData.shippingCost > 0 && (
+                        <div className="flex justify-between text-xs text-text-secondary">
+                          <span>Ongkir</span>
+                          <span>{formatIDR(formData.shippingCost)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between font-bold text-brand-red pt-1">
+                        <span>Total Bayar</span>
+                        <span>{formatIDR(totalAmount)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Coupon */}
                 <div role="alert" aria-live="polite" className="mb-6">
                   <CouponInput
@@ -542,7 +705,7 @@ export default function CheckoutPage() {
                       <p className="text-sm text-green-700">
                         <span className="font-semibold">Kupon gratis item aktif!</span>
                         <br />
-                        Beli {couponBuyXgetY.buyQuantity}item, dapat {couponBuyXgetY.getQuantity}item gratis otomatis.
+                        Beli {couponBuyXgetY.buyQuantity} item, dapat {couponBuyXgetY.getQuantity} item gratis otomatis.
                       </p>
                     </div>
                   )}
@@ -573,7 +736,7 @@ export default function CheckoutPage() {
                   disabled={isLoading}
                   className="w-full h-14 bg-brand-red text-white font-bold rounded-button disabled:opacity-50"
                 >
-                  {isLoading ? 'Memproses...' : `Bayar Sekarang — ${formatIDR(totalAmount)}`}
+                  {isLoading ? 'Memproses...' : `Bayar Sekarang — ${formatIDR(serverTotalAmount)}`}
                 </button>
               </div>
             )}
@@ -595,12 +758,20 @@ export default function CheckoutPage() {
 
       {/* Midtrans Payment Modal */}
       {snapToken && orderNumber && (
-        <MidtransPayment
-          snapToken={snapToken}
-          callbacks={{
-            onSuccess: handleMidtransSuccess,
-          }}
-        />
+        <>
+          <div className="fixed inset-0 bg-black/50 z-40 flex items-center justify-center">
+            <div className="bg-white rounded-xl p-6 text-center">
+              <div className="w-8 h-8 border-4 border-brand-red border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="mt-3 text-sm">Mempersiapkan pembayaran...</p>
+            </div>
+          </div>
+          <MidtransPayment
+            snapToken={snapToken}
+            callbacks={{
+              onSuccess: handleMidtransSuccess,
+            }}
+          />
+        </>
       )}
     </div>
   );

@@ -3,6 +3,11 @@ import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '../lib/db/schema';
 import bcrypt from 'bcryptjs';
 
+if (process.env.NODE_ENV === 'production') {
+  console.error('ABORT: Cannot run seed script in production.');
+  process.exit(1);
+}
+
 const sql = neon(process.env.DATABASE_URL!);
 const db = drizzle(sql, { schema });
 
@@ -52,6 +57,8 @@ async function seed() {
     { key: 'store_whatsapp_number', value: '6281234567890', type: 'string' },
     { key: 'store_opening_hours', value: '09:00 - 17:00 WIB', type: 'string' },
     { key: 'store_open_days', value: 'Senin - Sabtu', type: 'string' },
+    { key: 'store_sunday_hours', value: '09:00 - 15:00 WIB', type: 'string' },
+    { key: 'store_address', value: 'Jl. Sinom V No. 7, Turangga, Bandung, Jawa Barat', type: 'string' },
     { key: 'points_earn_rate', value: '1', type: 'integer' },
     { key: 'points_per_idr', value: '1000', type: 'integer' },
     { key: 'points_expiry_days', value: '365', type: 'integer' },
@@ -61,6 +68,9 @@ async function seed() {
     { key: 'payment_max_retries', value: '3', type: 'integer' },
     { key: 'rajaongkir_origin_city_id', value: '23', type: 'string' },
     { key: 'min_order_weight_gram', value: '1000', type: 'integer' },
+    { key: 'free_shipping_threshold', value: '300000', type: 'integer' },
+    { key: 'low_stock_threshold', value: '5', type: 'integer' },
+    { key: 'estimated_margin_pct', value: '18', type: 'integer' },
     { key: 'b2b_points_multiplier', value: '2', type: 'integer' },
     { key: 'maintenance_mode', value: 'false', type: 'boolean' },
     { key: 'instagram_handle', value: '@dapurdekaka', type: 'string' },

@@ -16,12 +16,17 @@ export const registerSchema = z.object({
     .regex(/[0-9]/, 'Password harus mengandung minimal 1 angka'),
   phone: z
     .string()
-    .regex(/^(\+62|62|0)[0-9]{8,13}$/, 'Masukkan nomor HP yang valid (contoh: 08123456789)')
-    .transform((val) => {
-      if (val.startsWith('+62')) return '0' + val.slice(3);
-      if (val.startsWith('62')) return '0' + val.slice(2);
-      return val;
-    }),
+    .transform((val) => val.replace(/[\s-]/g, ''))
+    .pipe(
+      z
+        .string()
+        .regex(/^(\+62|62|0)[0-9]{8,13}$/, 'Masukkan nomor HP yang valid (contoh: 08123456789)')
+        .transform((val) => {
+          if (val.startsWith('+62')) return '0' + val.slice(3);
+          if (val.startsWith('62')) return '0' + val.slice(2);
+          return val;
+        })
+    ),
   role: z.enum(['customer', 'b2b']).optional().default('customer'),
 });
 

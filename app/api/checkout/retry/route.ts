@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { orders } from '@/lib/db/schema';
-import { success, serverError, notFound, conflict } from '@/lib/utils/api-response';
+import { success, serverError, notFound, conflict, unauthorized, forbidden } from '@/lib/utils/api-response';
 import { createMidtransTransaction } from '@/lib/midtrans/create-transaction';
 import { formatWIB } from '@/lib/utils/format-date';
+import { getSetting } from '@/lib/settings/get-settings';
+import { auth } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await auth();
     const body = await req.json();
     const { orderNumber } = body;
 
@@ -25,6 +28,14 @@ export async function POST(req: NextRequest) {
 
     if (!order) {
       return notFound('Order tidak ditemukan');
+    }
+
+    // Auth: must be owner of order OR superadmin/owner
+    if (session?.user?.id && order.userId && session.user.id !== order.userId) {
+      const role = (session.user as { role?: string }).role;
+      if (role !== 'superadmin' && role !== 'owner') {
+        return forbidden('Anda tidak berhak mengakses pesanan ini');
+      }
     }
 
     if (order.status !== 'pending_payment') {
@@ -82,13 +93,14 @@ export async function POST(req: NextRequest) {
     });
 
     // Update order with new Midtrans IDs
+    const expiryMinutes = await getSetting<number>('payment_expiry_minutes', 'integer') ?? 15;
     await db
       .update(orders)
       .set({
         midtransOrderId,
         midtransSnapToken: snapToken,
         paymentRetryCount: retryCount,
-        paymentExpiresAt: new Date(Date.now() + 15 * 60 * 1000),
+        paymentExpiresAt: new Date(Date.now() + expiryMinutes * 60 * 1000),
       })
       .where(eq(orders.id, order.id));
 
@@ -96,7 +108,7 @@ export async function POST(req: NextRequest) {
       orderId: order.id,
       orderNumber: order.orderNumber,
       snapToken,
-      expiresAt: formatWIB(new Date(Date.now() + 15 * 60 * 1000)),
+      expiresAt: formatWIB(new Date(Date.now() + expiryMinutes * 60 * 1000)),
     });
   } catch (error) {
     console.error('[checkout/retry]', error);

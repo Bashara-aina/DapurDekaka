@@ -49,8 +49,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, user }) {
       if (session.user) {
         session.user.id = user.id;
-        // @ts-expect-error role on user
-        session.user.role = user.role;
+        // user.role is stored in our DB adapter but not on AdapterUser type
+        session.user.role = (user as { role?: string }).role;
       }
       return session;
     },

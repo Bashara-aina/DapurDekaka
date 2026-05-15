@@ -185,6 +185,16 @@ export default function AccountProfilePage() {
             </p>
           </div>
 
+          {/* Google OAuth users with null phone */}
+          {!profile?.phone && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-700">
+                Nomor HP belum diisi. Silakan tambahkan nomor HP untuk menerima notifikasi pesanan.
+              </p>
+            </div>
+          )}
+
           {/* Name */}
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">

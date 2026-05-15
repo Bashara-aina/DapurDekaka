@@ -25,6 +25,9 @@ interface CartStore {
   getTotalItems: () => number;
   getSubtotal: () => number;
   getTotalWeight: () => number;
+  validateStock: () => Promise<void>;
+  syncToDb: () => Promise<void>;
+  loadFromDb: () => Promise<void>;
 }
 
 export const useCartStore = create<CartStore>()(
@@ -35,15 +38,17 @@ export const useCartStore = create<CartStore>()(
       addItem: (item) => {
         const existing = get().items.find((i) => i.variantId === item.variantId);
         if (existing) {
+          const maxQty = Math.min(99, item.stock ?? 99);
           set({
             items: get().items.map((i) =>
               i.variantId === item.variantId
-                ? { ...i, quantity: Math.min(i.quantity + 1, 99) }
+                ? { ...i, quantity: Math.min(i.quantity + 1, maxQty) }
                 : i
             ),
           });
         } else {
-          set({ items: [...get().items, { ...item, quantity: 1 }] });
+          const maxQty = Math.min(99, item.stock ?? 99);
+          set({ items: [...get().items, { ...item, quantity: Math.min(1, maxQty) }] });
         }
       },
 
@@ -56,9 +61,11 @@ export const useCartStore = create<CartStore>()(
           get().removeItem(variantId);
           return;
         }
+        const item = get().items.find((i) => i.variantId === variantId);
+        const maxQty = Math.min(99, item?.stock ?? 99);
         set({
           items: get().items.map((i) =>
-            i.variantId === variantId ? { ...i, quantity: Math.min(quantity, 99) } : i
+            i.variantId === variantId ? { ...i, quantity: Math.min(quantity, maxQty) } : i
           ),
         });
       },
@@ -71,6 +78,52 @@ export const useCartStore = create<CartStore>()(
 
       getTotalWeight: () =>
         get().items.reduce((sum, item) => sum + item.weightGram * item.quantity, 0),
+
+      validateStock: async () => {
+        const items = get().items;
+        if (items.length === 0) return;
+
+        try {
+          const res = await fetch('/api/cart/validate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: items.map(i => ({ variantId: i.variantId, quantity: i.quantity })) }),
+          });
+          const json = await res.json();
+          if (json.success && json.data) {
+            // Fix cart.store.ts stock mapping type issue
+            const stockMap = new Map<string, number>(json.data.map((s: { variantId: string; stock: number }) => [s.variantId, s.stock]));
+            set({
+              items: items.map(i => ({
+                ...i,
+                stock: stockMap.get(i.variantId) ?? i.stock,
+              } as CartItem)),
+            });
+          }
+        } catch {
+          // Silently fail - cart stock will remain stale but cart is still functional
+        }
+      },
+
+      syncToDb: async () => {
+        const items = get().items;
+        if (items.length === 0) return;
+
+        try {
+          await fetch('/api/auth/merge-cart', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items }),
+          });
+        } catch {
+          // Silently fail - cart will remain in localStorage
+        }
+      },
+
+      loadFromDb: async () => {
+        // This is a placeholder — actual DB→Zustand sync happens
+        // via the /api/auth/merge-cart response in the login flow
+      },
     }),
     {
       name: 'dapur-cart',

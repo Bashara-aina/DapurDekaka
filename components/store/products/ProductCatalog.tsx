@@ -73,28 +73,36 @@ export function ProductCatalog({ products, categories, initialCategory = '', ini
       );
     }
 
-    // Sort
-    switch (sort) {
-      case 'price_asc':
-        result.sort((a, b) => {
-          const priceA = a.variants[0]?.price ?? 0;
-          const priceB = b.variants[0]?.price ?? 0;
-          return priceA - priceB;
-        });
-        break;
-      case 'price_desc':
-        result.sort((a, b) => {
-          const priceA = a.variants[0]?.price ?? 0;
-          const priceB = b.variants[0]?.price ?? 0;
-          return priceB - priceA;
-        });
-        break;
-      case 'newest':
-        result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        break;
-    }
+    // Sort: OOS items always go to end, then apply sort option
+    const inStock: typeof result = [];
+    const outOfStock: typeof result = [];
 
-    return result;
+    result.forEach((p) => {
+      const hasStock = p.variants.some((v) => v.stock > 0);
+      if (hasStock) {
+        inStock.push(p);
+      } else {
+        outOfStock.push(p);
+      }
+    });
+
+    const sortFn = (a: ProductWithVariantsAndImages, b: ProductWithVariantsAndImages) => {
+      switch (sort) {
+        case 'price_asc':
+          return (a.variants[0]?.price ?? 0) - (b.variants[0]?.price ?? 0);
+        case 'price_desc':
+          return (b.variants[0]?.price ?? 0) - (a.variants[0]?.price ?? 0);
+        case 'newest':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        default:
+          return (a.variants[0]?.sortOrder ?? 999) - (b.variants[0]?.sortOrder ?? 999);
+      }
+    };
+
+    inStock.sort(sortFn);
+    outOfStock.sort(sortFn);
+
+    return [...inStock, ...outOfStock];
   }, [products, category, q, sort]);
 
   const handleCategoryChange = (slug: string | null) => {

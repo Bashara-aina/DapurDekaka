@@ -3,10 +3,21 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { useQuery } from '@tanstack/react-query';
+import { ShoppingBag, ChevronRight, Loader2 } from 'lucide-react';
 
 export default function B2BAccountOrdersPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+
+  const { data: ordersData, isLoading } = useQuery({
+    queryKey: ['b2b', 'orders'],
+    queryFn: async () => {
+      const res = await fetch('/api/b2b/orders');
+      const json = await res.json();
+      return json.success ? json.data : [];
+    },
+  });
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -14,10 +25,10 @@ export default function B2BAccountOrdersPage() {
     }
   }, [status, router]);
 
-  if (status === 'loading') {
+  if (status === 'loading' || isLoading) {
     return (
       <div className="bg-brand-cream min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-brand-red/30 border-t-brand-red rounded-full animate-spin" />
+        <Loader2 className="w-8 h-8 text-brand-red animate-spin" />
       </div>
     );
   }
@@ -31,17 +42,51 @@ export default function B2BAccountOrdersPage() {
         </div>
       </div>
 
-      {/* Empty State */}
-      <div className="px-4 py-16 container mx-auto text-center">
-        <div className="w-20 h-20 mx-auto mb-4 bg-white rounded-full flex items-center justify-center">
-          <span className="text-3xl">📦</span>
-        </div>
-        <h2 className="font-display text-lg font-semibold mb-2">
-          Belum Ada Pesanan
-        </h2>
-        <p className="text-text-secondary text-sm mb-6">
-          Pesanan B2B Anda akan muncul di sini.
-        </p>
+      {/* Content */}
+      <div className="px-4 py-6 container mx-auto">
+        {ordersData && ordersData.length > 0 ? (
+          <div className="space-y-4">
+            {ordersData.map((order: { id: string; orderNumber: string; status: string; totalAmount: number; createdAt: string }) => (
+              <div key={order.id} className="bg-white rounded-xl p-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-sm">{order.orderNumber}</p>
+                    <p className="text-xs text-text-secondary">
+                      {new Date(order.createdAt).toLocaleDateString('id-ID')}
+                    </p>
+                    <p className="text-sm font-medium text-brand-red mt-1">
+                      Rp {order.totalAmount.toLocaleString('id-ID')}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-1 text-xs rounded ${
+                      order.status === 'paid' ? 'bg-green-100 text-green-700' :
+                      order.status === 'pending_payment' ? 'bg-yellow-100 text-yellow-700' :
+                      order.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                      'bg-gray-100 text-gray-700'
+                    }`}>
+                      {order.status}
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-text-muted" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* Empty State */
+          <div className="py-16 text-center">
+            <div className="w-20 h-20 mx-auto mb-4 bg-white rounded-full flex items-center justify-center">
+              <ShoppingBag className="w-8 h-8 text-text-muted" />
+            </div>
+            <h2 className="font-display text-lg font-semibold mb-2">
+              Belum Ada Pesanan
+            </h2>
+            <p className="text-text-secondary text-sm mb-6">
+              Pesanan B2B Anda akan muncul di sini.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

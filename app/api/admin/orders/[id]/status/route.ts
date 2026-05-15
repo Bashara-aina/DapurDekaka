@@ -18,7 +18,10 @@ const statusUpdateSchema = z.object({
   trackingUrl: z.string().optional(),
   estimatedDays: z.string().optional(),
   cancellationReason: z.string().optional(),
-});
+}).refine(
+  (data) => data.status !== 'shipped' || (!!data.trackingNumber && data.trackingNumber.trim().length > 0),
+  { message: 'Nomor resi harus diisi untuk mengubah status ke shipped', path: ['trackingNumber'] }
+);
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   pending_payment: ['cancelled'],
@@ -79,7 +82,18 @@ export async function PATCH(
     const currentStatus = order.status;
     const allowedTransitions = VALID_TRANSITIONS[currentStatus];
 
-    if (!allowedTransitions?.includes(newStatus)) {
+    // Pickup orders skip packed/shipped statuses
+    if (order.deliveryMethod === 'pickup') {
+      const PICKUP_VALID_TRANSITIONS: Record<string, string[]> = {
+        pending_payment: ['cancelled'],
+        paid: ['processing', 'cancelled'],
+        processing: ['delivered', 'cancelled'],
+      };
+      const allowedForPickup = PICKUP_VALID_TRANSITIONS[currentStatus] ?? [];
+      if (!allowedForPickup.includes(newStatus)) {
+        return conflict(`Tidak dapat mengubah status pickup dari ${currentStatus} ke ${newStatus}`);
+      }
+    } else if (!allowedTransitions?.includes(newStatus)) {
       return conflict(`Tidak dapat mengubah status dari ${currentStatus} ke ${newStatus}`);
     }
 
@@ -125,31 +139,35 @@ export async function PATCH(
 
       // If cancelling, restore stock + reverse points + reverse coupon
       if (newStatus === 'cancelled') {
-        // Restore stock from order items
-        for (const item of order.items) {
-          const result = await tx
-            .update(productVariants)
-            .set({
-              stock: sql`stock + ${item.quantity}`,
-              updatedAt: new Date(),
-            })
-            .where(eq(productVariants.id, item.variantId))
-            .returning({ newStock: productVariants.stock });
+        // Only restore stock if order was already PAID (stock was deducted at settlement)
+        // pending_payment orders never had stock deducted — no stock to restore
+        const statusesThatDeductedStock = ['paid', 'processing', 'packed', 'shipped', 'delivered'];
+        if (statusesThatDeductedStock.includes(currentStatus)) {
+          for (const item of order.items) {
+            const result = await tx
+              .update(productVariants)
+              .set({
+                stock: sql`stock + ${item.quantity}`,
+                updatedAt: new Date(),
+              })
+              .where(eq(productVariants.id, item.variantId))
+              .returning({ newStock: productVariants.stock });
 
-          if (result[0]) {
-            await tx.insert(inventoryLogs).values({
-              variantId: item.variantId,
-              changeType: 'reversal',
-              quantityBefore: result[0].newStock - item.quantity,
-              quantityAfter: result[0].newStock,
-              quantityDelta: item.quantity,
-              orderId: order.id,
-              note: `Pembatalan pesanan ${order.orderNumber} oleh admin`,
-            });
+            if (result[0]) {
+              await tx.insert(inventoryLogs).values({
+                variantId: item.variantId,
+                changeType: 'reversal',
+                quantityBefore: result[0].newStock - item.quantity,
+                quantityAfter: result[0].newStock,
+                quantityDelta: item.quantity,
+                orderId: order.id,
+                note: `Pembatalan pesanan ${order.orderNumber} oleh admin`,
+              });
+            }
           }
         }
 
-        // Reverse points if order used them
+        // Points/coupon reversal is always safe to do (idempotent)
         if (order.userId && order.pointsUsed > 0) {
           await tx
             .update(users)

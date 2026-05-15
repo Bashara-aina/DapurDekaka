@@ -26,6 +26,10 @@ export default async function AccountPage() {
     limit: 5,
   });
 
+  const [totalOrderCountResult] = await db.select({ count: count() }).from(orders)
+    .where(eq(orders.userId, session.user.id!));
+  const totalOrderCount = totalOrderCountResult?.count ?? 0;
+
   const pointsHistory = await db.query.pointsHistory.findMany({
     where: (ph, { eq }) => eq(ph.userId, session.user.id!),
     orderBy: (ph, { desc }) => [desc(ph.createdAt)],
@@ -69,7 +73,7 @@ export default async function AccountPage() {
               <Package className="w-5 h-5 text-brand-red" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-text-primary">{recentOrders.length || 0}</p>
+              <p className="text-2xl font-bold text-text-primary">{totalOrderCount || 0}</p>
               <p className="text-xs text-text-secondary">Total Pesanan</p>
             </div>
           </div>
@@ -195,7 +199,7 @@ export default async function AccountPage() {
               <p className="text-sm opacity-80">Poin Kamu</p>
               <p className="text-3xl font-bold">{user.pointsBalance} poin</p>
               <p className="text-xs opacity-70 mt-1">
-                {formatIDR(user.pointsBalance)} bisa ditukarkan
+                {formatIDR(user.pointsBalance * 10)} bisa ditukarkan
               </p>
             </div>
             <Link

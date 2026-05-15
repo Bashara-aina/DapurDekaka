@@ -1,10 +1,13 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
+import Link from 'next/link';
 import DOMPurify from 'isomorphic-dompurify';
 import { db } from '@/lib/db';
 import { blogPosts } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
+import { BlogCard } from '@/components/store/blog/BlogCard';
+import { Copy, Share2 } from 'lucide-react';
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
@@ -74,6 +77,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       category: true,
     },
   }) as ({
+    id: string;
     titleId: string;
     titleEn: string;
     slug: string;
@@ -84,7 +88,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     publishedAt: Date | null;
     coverImageUrl: string | null;
     isPublished: boolean;
-    category: { nameId: string } | null;
+    category: { id: string; nameId: string } | null;
   } | null);
 
   if (!post || !post.isPublished) {
@@ -95,6 +99,25 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     ALLOWED_TAGS: ['p', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'em', 'u', 'ul', 'ol', 'li', 'a', 'img', 'blockquote', 'code', 'pre'],
     ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'target', 'rel'],
   });
+
+  const pageUrl = `https://dapurdekaka.com/blog/${slug}`;
+
+  // Fetch related posts (same category, excluding current)
+  const relatedPosts = post.category
+    ? await db.query.blogPosts.findMany({
+        where: eq(blogPosts.blogCategoryId, post.category.id),
+        orderBy: [desc(blogPosts.publishedAt)],
+        limit: 3,
+      })
+    : await db.query.blogPosts.findMany({
+        where: eq(blogPosts.isPublished, true),
+        orderBy: [desc(blogPosts.publishedAt)],
+        limit: 3,
+      });
+
+  const filteredRelated = relatedPosts
+    .filter(p => p.slug !== slug)
+    .slice(0, 3);
 
   return (
     <div className="container py-8 md:py-12 pb-20 md:pb-12">
@@ -127,11 +150,59 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           )}
         </header>
 
-        <div 
+        <div
           className="prose prose-lg max-w-none"
-          dangerouslySetInnerHTML={{ __html: sanitizedContent }} 
+          dangerouslySetInnerHTML={{ __html: sanitizedContent }}
         />
+
+        {/* Share Buttons */}
+        <div className="mt-8 pt-6 border-t border-brand-cream-dark">
+          <p className="text-sm font-medium text-text-secondary mb-3">Bagikan artikel ini:</p>
+          <div className="flex flex-wrap gap-3">
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent(`${post.titleId} - ${pageUrl}`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#25D366] text-white text-sm font-medium rounded-button hover:bg-[#20BD5A] transition-colors"
+            >
+              <span>💬</span> WhatsApp
+            </a>
+            <CopyLinkButton url={pageUrl} />
+          </div>
+        </div>
       </article>
+
+      {/* Related Posts */}
+      {filteredRelated.length > 0 && (
+        <div className="mt-12 pt-8 border-t border-brand-cream-dark">
+          <h2 className="font-display text-xl font-bold mb-6">Artikel Terkait</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {filteredRelated.map((related) => (
+              <BlogCard key={related.id} post={related as Parameters<typeof BlogCard>[0]['post']} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+// Client component for copy link button
+function CopyLinkButton({ url }: { url: string }) {
+  return (
+    <button
+      onClick={() => {
+        if (typeof navigator !== 'undefined' && navigator.clipboard) {
+          navigator.clipboard.writeText(url).then(() => {
+            // Could add toast notification here
+          }).catch(() => {
+            // Fallback: select text
+          });
+        }
+      }}
+      className="inline-flex items-center gap-2 px-4 py-2 bg-brand-cream-dark text-text-primary text-sm font-medium rounded-button hover:bg-brand-cream transition-colors"
+    >
+      <Copy className="w-4 h-4" /> Salin Link
+    </button>
   );
 }

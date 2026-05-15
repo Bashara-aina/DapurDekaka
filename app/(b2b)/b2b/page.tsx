@@ -2,6 +2,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { QuoteForm } from '@/components/b2b/QuoteForm';
 import { Truck, Shield, Users, Clock, ChefHat, ArrowRight } from 'lucide-react';
+import { db } from '@/lib/db';
+import { categories, products, productVariants } from '@/lib/db/schema';
+import { eq, and, isNull, sql, asc } from 'drizzle-orm';
+import { formatIDR } from '@/lib/utils/format-currency';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,15 +32,51 @@ const BENEFITS = [
   },
 ];
 
-const PRODUCT_CATEGORIES = [
-  { name: 'Dimsum', count: '9 Varian' },
-  { name: 'Siomay', count: '4 Varian' },
-  { name: 'Bakso & Sosis', count: '3 Varian' },
-  { name: 'Lumpia', count: '2 Varian' },
-  { name: 'Pangsit', count: '2 Varian' },
-];
+async function getCategoryCounts() {
+  const counts = await db
+    .select({
+      id: categories.id,
+      nameId: categories.nameId,
+    })
+    .from(categories)
+    .leftJoin(
+      products,
+      and(
+        eq(categories.id, products.categoryId),
+        eq(products.isActive, true),
+        eq(products.isB2bAvailable, true),
+        isNull(products.deletedAt)
+      )
+    )
+    .where(eq(categories.isActive, true))
+    .groupBy(categories.id);
 
-export default function B2BLandingPage() {
+  return counts
+    .filter(c => c.id !== null)
+    .map(c => ({
+      id: c.id,
+      name: c.nameId,
+      count: (c as unknown as { count: number }).count ?? 0,
+    }));
+}
+
+async function getPriceTeaserProducts() {
+  return await db.query.products.findMany({
+    where: and(eq(products.isActive, true), eq(products.isB2bAvailable, true), isNull(products.deletedAt)),
+    with: {
+      variants: { where: eq(productVariants.isActive, true), orderBy: (v, { asc }) => [asc(productVariants.price)] },
+    },
+    orderBy: (p, { asc }) => [asc(p.createdAt)],
+    limit: 5,
+  });
+}
+
+export default async function B2BLandingPage() {
+  const [categoryCounts, priceTeaserProducts] = await Promise.all([
+    getCategoryCounts(),
+    getPriceTeaserProducts(),
+  ]);
+
   return (
     <div className="bg-brand-cream">
       {/* Hero Section */}
@@ -130,19 +170,62 @@ export default function B2BLandingPage() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {PRODUCT_CATEGORIES.map((cat) => (
+            {categoryCounts.map((cat) => (
               <div
-                key={cat.name}
+                key={cat.id}
                 className="bg-brand-cream rounded-lg p-4 text-center hover:bg-brand-cream-dark transition-colors cursor-pointer"
               >
                 <div className="w-12 h-12 bg-white rounded-full mx-auto mb-3 flex items-center justify-center">
                   <ChefHat className="w-6 h-6 text-brand-red" />
                 </div>
                 <p className="font-medium text-sm">{cat.name}</p>
-                <p className="text-text-muted text-xs mt-1">{cat.count}</p>
+                <p className="text-text-muted text-xs mt-1">{cat.count} Varian</p>
               </div>
             ))}
           </div>
+
+          {/* B2B Price Teaser Table */}
+          {priceTeaserProducts.length > 0 && (
+            <div className="mt-8 p-6 bg-white rounded-xl border border-brand-cream-dark">
+              <h3 className="font-display font-semibold text-lg mb-1">
+                Contoh Harga B2B
+              </h3>
+              <p className="text-text-secondary text-sm mb-4">
+                Harga khusus untuk pemesanan dalam jumlah besar. Hubungi kami untuk penawaran penuh.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-brand-cream-dark">
+                      <th className="text-left py-2 px-3 font-medium text-text-secondary">Produk</th>
+                      <th className="text-right py-2 px-3 font-medium text-text-secondary">Harga Retail</th>
+                      <th className="text-right py-2 px-3 font-medium text-brand-red">Harga B2B</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {priceTeaserProducts.slice(0, 5).map((product) => {
+                      const retailPrice = product.variants[0]?.price ?? 0;
+                      const b2bPrice = Math.round(retailPrice * 0.85);
+                      return (
+                        <tr key={product.id} className="border-b border-brand-cream/50">
+                          <td className="py-2.5 px-3 font-medium">{product.nameId}</td>
+                          <td className="py-2.5 px-3 text-right text-text-secondary">
+                            {formatIDR(retailPrice)}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-bold text-brand-red">
+                            {formatIDR(b2bPrice)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-text-muted mt-3">
+                * Harga di atas hanya perkiraan. Harga B2B sebenarnya akan diberikan setelah konsultasi.
+              </p>
+            </div>
+          )}
 
           <div className="mt-8 p-6 bg-brand-cream rounded-xl">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
@@ -151,7 +234,7 @@ export default function B2BLandingPage() {
                   Dapatkan Harga Khusus
                 </h3>
                 <p className="text-text-secondary text-sm">
-                  Untuk pesanan minimal 50 item per varian. Hubungi tim kami untuk penawaran terbaik.
+                  Hubungi tim kami untuk penawaran terbaik sesuai kebutuhan bisnis Anda.
                 </p>
               </div>
               <a

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { formatWIB } from '@/lib/utils/format-date';
 import { Check, X, Edit2, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface SystemSetting {
   id: string;
@@ -11,6 +12,14 @@ interface SystemSetting {
   description: string | null;
   type: 'string' | 'number' | 'boolean';
   updatedAt: string | null;
+}
+
+interface SessionUser {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  role?: string;
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -25,16 +34,29 @@ export default function SettingsPage() {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [readOnly, setReadOnly] = useState(false);
 
   useEffect(() => {
     async function fetchSettings() {
       try {
-        const res = await fetch('/api/admin/settings');
-        if (!res.ok) throw new Error('Failed to fetch settings');
-        const result = await res.json();
+        const [settingsRes, sessionRes] = await Promise.all([
+          fetch('/api/admin/settings'),
+          fetch('/api/admin/session'),
+        ]);
+
+        if (!settingsRes.ok) throw new Error('Failed to fetch settings');
+        const result = await settingsRes.json();
         setSettings(result.data ?? []);
+
+        if (sessionRes.ok) {
+          const sessionData = await sessionRes.json();
+          const role = sessionData?.user?.role;
+          setUserRole(role ?? null);
+          setReadOnly(role === 'owner');
+        }
       } catch {
-        alert('Gagal memuat pengaturan');
+        toast.error('Gagal memuat pengaturan');
       } finally {
         setLoading(false);
       }
@@ -64,7 +86,7 @@ export default function SettingsPage() {
       setSettings(prev => prev.map(s => s.key === key ? { ...s, value: editValue, updatedAt: new Date().toISOString() } : s));
       setEditingKey(null);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Gagal menyimpan pengaturan');
+      toast.error(err instanceof Error ? err.message : 'Gagal menyimpan pengaturan');
     } finally {
       setIsSubmitting(false);
     }
@@ -87,7 +109,7 @@ export default function SettingsPage() {
 
       setSettings(prev => prev.map(s => s.key === key ? { ...s, value: newValue, updatedAt: new Date().toISOString() } : s));
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Gagal toggle pengaturan');
+      toast.error(err instanceof Error ? err.message : 'Gagal toggle pengaturan');
     } finally {
       setIsSubmitting(false);
     }
@@ -181,17 +203,31 @@ export default function SettingsPage() {
                           </button>
                         </div>
                       ) : isBoolean ? (
-                        <button
-                          onClick={() => handleBooleanToggle(setting.key, setting.value)}
-                          disabled={isSubmitting}
-                          className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
+                        readOnly ? (
+                          <span className={`inline-flex px-3 py-1 text-sm font-medium rounded ${
                             setting.value === 'true'
-                              ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                              : 'bg-green-100 text-green-700 hover:bg-green-200'
-                          } disabled:opacity-50`}
-                        >
-                          {setting.value === 'true' ? 'Matikan' : 'Aktifkan'}
-                        </button>
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {setting.value === 'true' ? 'Ya' : 'Tidak'}
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleBooleanToggle(setting.key, setting.value)}
+                            disabled={isSubmitting}
+                            className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
+                              setting.value === 'true'
+                                ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                                : 'bg-green-100 text-green-700 hover:bg-green-200'
+                            } disabled:opacity-50`}
+                          >
+                            {setting.value === 'true' ? 'Matikan' : 'Aktifkan'}
+                          </button>
+                        )
+                      ) : readOnly ? (
+                        <span className="p-1.5 text-gray-400 rounded" title="Hanya superadmin yang dapat mengedit">
+                          <Edit2 className="w-4 h-4" />
+                        </span>
                       ) : (
                         <button
                           onClick={() => startEdit(setting)}

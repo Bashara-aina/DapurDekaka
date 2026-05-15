@@ -5,14 +5,16 @@ import {
   orders,
   orderItems,
   coupons,
+  couponUsages,
   users,
   productVariants,
   products,
   addresses,
   orderDailyCounters,
   pointsHistory,
+  orderStatusHistory,
 } from '@/lib/db/schema';
-import { eq, and, inArray, sql, or } from 'drizzle-orm';
+import { eq, and, inArray, sql, or, desc, gte } from 'drizzle-orm';
 import { success, serverError, validationError, conflict, unauthorized } from '@/lib/utils/api-response';
 import { z } from 'zod';
 import { generateOrderNumber } from '@/lib/utils/generate-order-number';
@@ -106,7 +108,9 @@ export const POST = withRateLimit(
       weightGram: number;
     }> = [];
 
-    for (const item of items) {
+    let isB2bOrder = false;
+
+  for (const item of items) {
       const variant = dbVariants.find((v) => v.id === item.variantId);
       if (!variant) {
         return conflict(`Variant tidak ditemukan`);
@@ -117,7 +121,16 @@ export const POST = withRateLimit(
         );
       }
 
-      const itemSubtotal = variant.price * item.quantity;
+      // Use B2B price if user is B2B role and variant has b2bPrice
+      const unitPrice = (session?.user?.role === 'b2b' && variant.b2bPrice && variant.b2bPrice > 0)
+        ? variant.b2bPrice
+        : variant.price;
+
+      if (session?.user?.role === 'b2b') {
+        isB2bOrder = true;
+      }
+
+      const itemSubtotal = unitPrice * item.quantity;
       subtotal += itemSubtotal;
 
       orderItemsData.push({
@@ -130,7 +143,7 @@ export const POST = withRateLimit(
         variantNameEn: item.variantNameEn,
         sku: item.sku,
         productImageUrl: item.imageUrl,
-        unitPrice: variant.price,
+        unitPrice,
         quantity: item.quantity,
         subtotal: itemSubtotal,
         weightGram: item.weightGram,
@@ -140,6 +153,7 @@ export const POST = withRateLimit(
     // ── Step 2: Validate coupon ───────────────────────────────────────────
     let discountAmount = parsed.data.discountAmount ?? 0;
     let couponId: string | null = null;
+    let coupon: Awaited<ReturnType<typeof db.query.coupons.findFirst>> = undefined;
     let freeItems: Array<{
       variantId: string;
       productId: string;
@@ -156,7 +170,7 @@ export const POST = withRateLimit(
     }> = [];
 
     if (couponCode) {
-      const coupon = await db.query.coupons.findFirst({
+      coupon = await db.query.coupons.findFirst({
         where: and(
           eq(coupons.code, couponCode.toUpperCase()),
           eq(coupons.isActive, true)
@@ -179,6 +193,20 @@ export const POST = withRateLimit(
 
       if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
         return conflict('Kupon sudah mencapai batas penggunaan');
+      }
+
+      // Per-user limit check (after userId is declared)
+      if (coupon.maxUsesPerUser && userId) {
+        const userUsageCount = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(couponUsages)
+          .where(and(
+            eq(couponUsages.couponId, coupon.id),
+            eq(couponUsages.userId, userId)
+          ));
+        if ((userUsageCount[0]?.count ?? 0) >= coupon.maxUsesPerUser) {
+          return conflict('Anda sudah menggunakan kupon ini sebelumnya');
+        }
       }
 
       couponId = coupon.id;
@@ -271,6 +299,50 @@ export const POST = withRateLimit(
     let pointsDeducted = false;
     const userId = session?.user?.id ?? null;
 
+    // FIX 3: Guest checkout idempotency — check for very recent order (30 seconds) with same email + subtotal for guest users
+    // NOTE: totalAmount cannot be used here because it requires coupon validation (discountAmount) first.
+    // Using subtotal as a proxy for amount since shipping is 0 for guests at this stage.
+    if (!userId && recipientEmail) {
+      const thirtySecsAgo = new Date(Date.now() - 30 * 1000);
+      const recentGuestOrder = await db.query.orders.findFirst({
+        where: and(
+          eq(orders.recipientEmail, recipientEmail.toLowerCase()),
+          eq(orders.status, 'pending_payment'),
+          gte(orders.createdAt, thirtySecsAgo),
+          eq(orders.subtotal, subtotal)
+        ),
+        orderBy: [desc(orders.createdAt)],
+      });
+
+      if (recentGuestOrder?.midtransSnapToken) {
+        return success({
+          orderId: recentGuestOrder.id,
+          orderNumber: recentGuestOrder.orderNumber,
+          snapToken: recentGuestOrder.midtransSnapToken,
+        });
+      }
+    }
+
+    // Idempotency: return existing pending order if same user checks out within 5 minutes
+    if (userId) {
+      const existingPending = await db.query.orders.findFirst({
+        where: and(
+          eq(orders.userId, userId),
+          eq(orders.status, 'pending_payment'),
+          gte(orders.createdAt, new Date(Date.now() - 5 * 60 * 1000))
+        ),
+        orderBy: [desc(orders.createdAt)],
+      });
+
+      if (existingPending?.midtransSnapToken) {
+        return success({
+          orderId: existingPending.id,
+          orderNumber: existingPending.orderNumber,
+          snapToken: existingPending.midtransSnapToken,
+        });
+      }
+    }
+
     if (userId && pointsUsed && pointsUsed > 0) {
       const user = await db.query.users.findFirst({
         where: eq(users.id, userId),
@@ -282,13 +354,19 @@ export const POST = withRateLimit(
       pointsDeducted = true;
     }
 
-    // ── Step 4: Calculate totals ────────────────────────────────────────
-    const shippingCost = deliveryMethod === 'pickup' ? 0 : (addressData.courierCode ? (parsed.data.shippingCost ?? 0) : 0);
-    const totalAmount = subtotal - discountAmount - pointsDiscount + shippingCost;
-    const pointsEarned = Math.floor(subtotal / 1000) * POINTS_EARN_RATE;
+    // FIX 5: Coupon per-user limit check (after userId is declared)
+    if (coupon && coupon.maxUsesPerUser && userId) {
+      const baseShippingCost = deliveryMethod === 'pickup' ? 0 : (addressData.courierCode ? (parsed.data.shippingCost ?? 0) : 0);
+      const shippingCost = (coupon && (coupon.type === 'free_shipping' || coupon.freeShipping)) && deliveryMethod === 'delivery'
+        ? 0
+        : baseShippingCost;
+      const totalAmount = subtotal - discountAmount - pointsDiscount + shippingCost;
+      const pointsEarnedBase = Math.floor(totalAmount / 1000) * POINTS_EARN_RATE;
+      // B2B users earn 2x points
+      const pointsEarned = isB2bOrder ? pointsEarnedBase * 2 : pointsEarnedBase;
 
-    // ── Step 5: Generate order number using atomic DB counter ───────────
-    const today = new Date().toISOString().slice(0, 10); // "2026-05-14"
+      // ── Step 5: Generate order number using atomic DB counter ───────────
+      const today = new Date().toISOString().slice(0, 10); // "2026-05-14"
 
     const expiryMinutes = await getSetting<number>('payment_expiry_minutes', 'integer') ?? 15;
     const paymentExpiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000);
@@ -320,7 +398,7 @@ export const POST = withRateLimit(
         .where(eq(orderDailyCounters.id, counterRow!.id))
         .returning({ newSequence: orderDailyCounters.lastSequence });
 
-      const seq = (updatedCounters[0]?.newSequence ?? 1) + 1; // +1 because increment hasn't committed yet in same tx
+      const seq = updatedCounters[0]?.newSequence ?? 1;
       const orderNumber = generateOrderNumber(seq);
 
       // Deduct points using FIFO inside transaction (rollback-safe)
@@ -343,11 +421,19 @@ export const POST = withRateLimit(
           .orderBy(pointsHistory.createdAt)
           .limit(pointsUsed);
 
-        // Deduct from user balance
-        await tx
+        // Deduct from user balance using conditional update (prevents negative balance)
+        const updatedUsers = await tx
           .update(users)
           .set({ pointsBalance: sql`points_balance - ${pointsUsed}` })
-          .where(eq(users.id, userId));
+          .where(and(
+            eq(users.id, userId),
+            gte(users.pointsBalance, pointsUsed)
+          ))
+          .returning({ pointsBalance: users.pointsBalance });
+
+        if (updatedUsers.length === 0) {
+          throw new Error('Poin tidak mencukupi atau terjadi kesalahan');
+        }
 
         // Create redeem records referencing specific earn IDs (FIFO)
         let remainingToDeduct = pointsUsed;
@@ -380,8 +466,10 @@ export const POST = withRateLimit(
         .insert(orders)
         .values({
           orderNumber,
+          pickupCode: deliveryMethod === 'pickup' ? orderNumber : null,
           userId: session?.user?.id ?? null,
           status: 'pending_payment',
+          isB2b: isB2bOrder,
           deliveryMethod,
           recipientName,
           recipientEmail,
@@ -431,7 +519,34 @@ export const POST = withRateLimit(
         await tx.insert(orderItems).values(freeItemsWithOrderId);
       }
 
+      // FIX 2: Back-fill orderId on points redeem records created during this transaction
+      if (userId && pointsDeducted) {
+        await tx
+          .update(pointsHistory)
+          .set({ orderId: created.id })
+          .where(
+            and(
+              eq(pointsHistory.userId, userId),
+              eq(pointsHistory.type, 'redeem'),
+              sql`${pointsHistory.orderId} IS NULL`,
+              gte(pointsHistory.createdAt, sql`NOW() - INTERVAL '30 seconds'`)
+            )
+          );
+      }
+
       return [created];
+    });
+
+    // Write initial status history
+    await db.transaction(async (tx) => {
+      await tx.insert(orderStatusHistory).values({
+        orderId: newOrder.id,
+        fromStatus: null,
+        toStatus: 'pending_payment',
+        changedByUserId: userId,
+        changedByType: 'system',
+        note: 'Pesanan dibuat, menunggu pembayaran',
+      });
     });
 
     // ── Step 8: Create Midtrans transaction ─────────────────────────────
@@ -446,7 +561,7 @@ export const POST = withRateLimit(
     for (const freeItem of freeItems) {
       itemDetails.push({
         id: freeItem.variantId,
-        price: 0,
+        price: 1,
         quantity: freeItem.quantity,
         name: `FREE: ${freeItem.productNameId.substring(0, 40)} - ${freeItem.variantNameId}`.substring(0, 50),
       });

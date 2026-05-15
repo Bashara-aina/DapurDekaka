@@ -9,6 +9,7 @@ import {
   ArrowRight, Download, Plus
 } from 'lucide-react';
 import { KPICard } from '@/components/admin/dashboard/KPICard';
+import { RevenueChart } from '@/components/admin/dashboard/RevenueChart';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { formatWIB } from '@/lib/utils/format-date';
 import { cn } from '@/lib/utils/cn';
@@ -19,11 +20,12 @@ interface KPIData {
   revenueToday: number;
   revenueDelta: number;
   estimatedMargin: number;
+  marginPercent: number;
   ordersToday: number;
   ordersDelta: number;
   newCustomersToday: number;
   guestCheckoutsToday: number;
-  systemHealth: {
+  systemHealth?: {
     status: string;
     midtransWebhook: string;
     neonDB: string;
@@ -158,13 +160,18 @@ const LIVE_FEED_FILTERS = [
 export default function SuperadminDashboardPage() {
   const { data: session } = useSession();
   const [dismissedAlert, setDismissedAlert] = useState(false);
+  const [dismissedActions, setDismissedActions] = useState<Set<string>>(new Set());
   const [funnelFilter] = useState('all');
   const [feedFilter, setFeedFilter] = useState('all');
+  const [dateRange, setDateRange] = useState<{ from: string; to: string }>({ from: '', to: '' });
 
   const { data: kpis } = useQuery<KPIData>({
-    queryKey: ['superadmin-kpis'],
+    queryKey: ['superadmin-kpis', dateRange.from, dateRange.to],
     queryFn: async () => {
-      const res = await fetch('/api/admin/dashboard/kpis');
+      const params = new URLSearchParams();
+      if (dateRange.from) params.set('from', dateRange.from);
+      if (dateRange.to) params.set('to', dateRange.to);
+      const res = await fetch(`/api/admin/dashboard/kpis?${params.toString()}`);
       const json = await res.json();
       if (!json.success) throw new Error(json.error);
       return json.data;
@@ -250,6 +257,17 @@ export default function SuperadminDashboardPage() {
     staleTime: 300000,
   });
 
+  const { data: revenueChartData } = useQuery<Array<{ date: string; label: string; revenue: number; orders: number }>>({
+    queryKey: ['revenue-chart'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/dashboard/revenue-chart');
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
+      return json.data;
+    },
+    staleTime: 300000,
+  });
+
   const isSystemHealthy = kpis?.systemHealth?.status === 'operational';
   const today = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -316,6 +334,37 @@ export default function SuperadminDashboardPage() {
         </div>
       )}
 
+      {/* ── Date Range Filter ─────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center gap-3 bg-white rounded-xl p-4 border border-admin-border">
+        <span className="text-sm font-medium text-[#1A1A1A]">Periode:</span>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={dateRange.from}
+            onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
+            className="h-9 px-3 rounded-lg border border-admin-border bg-white text-sm"
+          />
+          <span className="text-gray-400">—</span>
+          <input
+            type="date"
+            value={dateRange.to}
+            onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
+            className="h-9 px-3 rounded-lg border border-admin-border bg-white text-sm"
+          />
+        </div>
+        {(dateRange.from || dateRange.to) && (
+          <button
+            onClick={() => setDateRange({ from: '', to: '' })}
+            className="text-xs text-brand-red hover:underline font-medium"
+          >
+            Reset
+          </button>
+        )}
+        <span className="text-xs text-gray-400 ml-auto">
+          Default: hari ini
+        </span>
+      </div>
+
       {/* ── KPI Cards ────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <KPICard
@@ -336,7 +385,7 @@ export default function SuperadminDashboardPage() {
           value={kpis?.newCustomersToday ?? 0}
         />
         <KPICard
-          title="Est. Margin (18%)"
+          title={`Est. Margin (${kpis?.marginPercent ?? 18}%)`}
           value={kpis?.estimatedMargin ?? 0}
           isCurrency
         />
@@ -364,6 +413,17 @@ export default function SuperadminDashboardPage() {
           )}
         </div>
       </div>
+
+      {/* ── Revenue Chart ─────────────────────────────────────────────────── */}
+      {revenueChartData && revenueChartData.length > 0 && (
+        <div className="bg-white rounded-xl p-5 border border-admin-border">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-[#1A1A1A]">Revenue 30 Hari Terakhir</h2>
+            <span className="text-xs text-gray-400">Dalam IDR</span>
+          </div>
+          <RevenueChart data={revenueChartData} />
+        </div>
+      )}
 
       {/* ── Order Funnel + Action Queue ───────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -421,30 +481,43 @@ export default function SuperadminDashboardPage() {
           </div>
           <div className="flex-1 p-3 space-y-2 max-h-72 overflow-y-auto">
             {actionQueue && actionQueue.length > 0 ? (
-              actionQueue.slice(0, 8).map((item, idx) => (
-                <div
-                  key={idx}
-                  className={cn(
-                    'flex items-center justify-between gap-3 p-3 rounded-lg border text-sm',
-                    item.priority === 1 ? 'border-red-200 bg-red-50' :
-                    item.priority === 2 ? 'border-amber-200 bg-amber-50' :
-                    'border-blue-100 bg-blue-50'
-                  )}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-base shrink-0">
-                      {item.priority === 1 ? '🔴' : item.priority === 2 ? '🟡' : '🔵'}
-                    </span>
-                    <p className="text-gray-700 truncate">{item.message}</p>
-                  </div>
-                  <a
-                    href={item.link}
-                    className="text-xs font-semibold text-brand-red hover:underline whitespace-nowrap shrink-0"
+              actionQueue.slice(0, 8).map((item, idx) => {
+                const dismissKey = `${item.type}-${item.entityId}`;
+                if (dismissedActions.has(dismissKey)) return null;
+                return (
+                  <div
+                    key={idx}
+                    className={cn(
+                      'flex items-center justify-between gap-3 p-3 rounded-lg border text-sm',
+                      item.priority === 1 ? 'border-red-200 bg-red-50' :
+                      item.priority === 2 ? 'border-amber-200 bg-amber-50' :
+                      'border-blue-100 bg-blue-50'
+                    )}
                   >
-                    {item.actionLabel}
-                  </a>
-                </div>
-              ))
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-base shrink-0">
+                        {item.priority === 1 ? '🔴' : item.priority === 2 ? '🟡' : '🔵'}
+                      </span>
+                      <p className="text-gray-700 truncate">{item.message}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => setDismissedActions(prev => new Set(prev).add(dismissKey))}
+                        className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                        aria-label="Abaikan"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                      <a
+                        href={item.link}
+                        className="text-xs font-semibold text-brand-red hover:underline whitespace-nowrap"
+                      >
+                        {item.actionLabel}
+                      </a>
+                    </div>
+                  </div>
+                );
+              })
             ) : (
               <div className="flex flex-col items-center justify-center py-8 text-gray-400">
                 <CheckCircle2 className="w-8 h-8 mb-2 text-green-400" />

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { formatWIB } from '@/lib/utils/format-date';
+import { buildTrackingUrl } from '@/lib/constants/couriers';
 import type { Order, OrderItem, User } from '@/lib/db/schema';
 
 interface OrderHistoryEntry {
@@ -142,6 +143,14 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
     fetchData();
   }, [orderId]);
+
+  // Auto-generate tracking URL when tracking number or courier changes
+  useEffect(() => {
+    if (trackingNumber && order?.courierCode) {
+      const url = buildTrackingUrl(order.courierCode, trackingNumber);
+      if (url) setTrackingUrl(url);
+    }
+  }, [trackingNumber, order?.courierCode]);
 
   async function handleStatusUpdate(newStatus: string) {
     if (!confirm(`Yakin ubah status ke "${STATUS_LABELS[newStatus]}"?`)) return;

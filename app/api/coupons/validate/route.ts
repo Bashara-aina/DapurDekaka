@@ -33,26 +33,24 @@ export const POST = withRateLimit(
       });
 
       if (!coupon) {
-        return notFound('Kupon tidak ditemukan atau sudah tidak berlaku');
+        return conflict('Kupon tidak valid');
       }
 
       const now = new Date();
       if (coupon.expiresAt && coupon.expiresAt < now) {
-        return badRequest('Kupon sudah kedaluwarsa');
+        return conflict('Kupon tidak valid');
       }
 
       if (coupon.startsAt && coupon.startsAt > now) {
-        return badRequest('Kupon belum berlaku');
+        return conflict('Kupon tidak valid');
       }
 
       if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
-        return conflict('Kupon sudah mencapai batas penggunaan');
+        return conflict('Kupon tidak valid');
       }
 
       if (subtotal < coupon.minOrderAmount) {
-        return badRequest(
-          `Minimal pembelian Rp ${coupon.minOrderAmount.toLocaleString('id-ID')} untuk menggunakan kupon ini`
-        );
+        return conflict('Kupon tidak valid untuk pesanan ini');
       }
 
       if (userId && coupon.maxUsesPerUser) {
@@ -65,7 +63,7 @@ export const POST = withRateLimit(
           ));
 
         if (usageCount[0] && Number(usageCount[0].count) >= coupon.maxUsesPerUser) {
-          return conflict('Anda sudah menggunakan kupon ini sebelumnya');
+          return conflict('Kupon tidak valid');
         }
       }
 
@@ -92,14 +90,9 @@ export const POST = withRateLimit(
       }
 
       return success({
-        code: coupon.code,
         type: coupon.type,
-        discountValue: coupon.discountValue,
         discountAmount,
-        minOrderAmount: coupon.minOrderAmount,
         freeShipping: coupon.freeShipping,
-        nameId: coupon.nameId,
-        nameEn: coupon.nameEn,
         buyXgetY,
       });
     } catch (error) {

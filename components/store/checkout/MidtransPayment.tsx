@@ -6,6 +6,7 @@ import { getSnapUrl } from '@/lib/midtrans/client';
 
 interface SnapApi {
   pay: (token: string, callbacks?: SnapCallbacks) => void;
+  hide?: () => void;
 }
 
 interface SnapCallbacks {
@@ -33,6 +34,26 @@ export function MidtransPayment({
   const router = useRouter();
   const scriptLoaded = useRef(false);
 
+  const handleSuccess = (result: unknown) => {
+    callbacks?.onSuccess?.(result);
+    router.push(`/checkout/success?order=${new URLSearchParams(window.location.search).get('order') ?? ''}`);
+  };
+
+  const handlePending = (result: unknown) => {
+    callbacks?.onPending?.(result);
+    router.push(`/checkout/pending?order=${new URLSearchParams(window.location.search).get('order') ?? ''}`);
+  };
+
+  const handleError = (error: unknown) => {
+    callbacks?.onError?.(error);
+    router.push(`/checkout/failed?order=${new URLSearchParams(window.location.search).get('order') ?? ''}`);
+  };
+
+  const handleClose = () => {
+    callbacks?.onClose?.();
+    router.push(`/checkout/failed?order=${new URLSearchParams(window.location.search).get('order') ?? ''}`);
+  };
+
   useEffect(() => {
     if (scriptLoaded.current) return;
 
@@ -46,20 +67,35 @@ export function MidtransPayment({
       script.onload = () => {
         scriptLoaded.current = true;
         if (window.snap) {
-          window.snap.pay(snapToken, callbacks);
+          window.snap.pay(snapToken, {
+            onSuccess: handleSuccess,
+            onPending: handlePending,
+            onError: handleError,
+            onClose: handleClose,
+          });
         }
       };
       script.onerror = () => {
-        callbacks?.onError?.(new Error('Failed to load Midtrans Snap'));
+        handleError(new Error('Failed to load Midtrans Snap'));
       };
       document.head.appendChild(script);
     } else {
-      // Script already loaded, just call snap
       if (window.snap) {
-        window.snap.pay(snapToken, callbacks);
+        window.snap.pay(snapToken, {
+          onSuccess: handleSuccess,
+          onPending: handlePending,
+          onError: handleError,
+          onClose: handleClose,
+        });
       }
     }
-  }, [snapToken, callbacks]);
+
+    return () => {
+      if (window.snap) {
+        try { window.snap.hide?.(); } catch { /* ignore */ }
+      }
+    };
+  }, [snapToken]);
 
   return null;
 }

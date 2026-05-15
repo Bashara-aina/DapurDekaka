@@ -21,8 +21,8 @@ export async function POST(req: NextRequest) {
     }
 
     const role = session.user.role;
-    if (!role || !['superadmin', 'owner'].includes(role)) {
-      return forbidden('Hanya owner atau superadmin yang dapat melakukan penyesuaian manual');
+    if (!role || !['superadmin', 'owner', 'warehouse'].includes(role)) {
+      return forbidden('Hanya owner, superadmin, atau warehouse yang dapat melakukan penyesuaian manual');
     }
 
     const body = await req.json();
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     await db.insert(inventoryLogs).values({
       variantId,
       changedByUserId: session.user.id,
-      changeType: 'manual',
+      changeType: 'adjustment',
       quantityBefore,
       quantityAfter,
       quantityDelta: delta,

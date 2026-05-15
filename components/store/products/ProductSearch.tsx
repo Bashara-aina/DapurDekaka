@@ -23,7 +23,7 @@ export function ProductSearch({
   useEffect(() => {
     const timer = setTimeout(() => {
       onChange(inputValue);
-    }, 400);
+    }, 200);
 
     return () => clearTimeout(timer);
   }, [inputValue, onChange]);

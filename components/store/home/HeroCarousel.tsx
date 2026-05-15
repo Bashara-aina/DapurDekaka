@@ -23,9 +23,10 @@ interface Slide {
 
 interface HeroCarouselProps {
   slides: Slide[];
+  autoRotateSpeed?: number;
 }
 
-export function HeroCarousel({ slides }: HeroCarouselProps) {
+export function HeroCarousel({ slides, autoRotateSpeed = 5000 }: HeroCarouselProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [MotionComp, setMotionComp] = useState<typeof import('framer-motion') | null>(null);
 
@@ -40,9 +41,9 @@ export function HeroCarousel({ slides }: HeroCarouselProps) {
 
   useEffect(() => {
     if (activeSlides.length <= 1) return;
-    const timer = setInterval(nextSlide, 5000);
+    const timer = setInterval(nextSlide, autoRotateSpeed);
     return () => clearInterval(timer);
-  }, [nextSlide, activeSlides.length]);
+  }, [nextSlide, activeSlides.length, autoRotateSpeed]);
 
   const goToSlide = (index: number) => setCurrentSlide(index);
 

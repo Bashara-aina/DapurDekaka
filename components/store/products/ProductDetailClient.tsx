@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { Minus, Plus, ShoppingCart } from 'lucide-react';
 import { useCartStore } from '@/store/cart.store';
 import { formatIDR } from '@/lib/utils/format-currency';
@@ -10,6 +11,31 @@ import { HalalBadge } from '@/components/store/common/HalalBadge';
 import { cn } from '@/lib/utils/cn';
 import type { Product, ProductVariant } from '@/lib/db/schema';
 import { productImages } from '@/lib/db/schema';
+
+interface RelatedProduct {
+  id: string;
+  nameId: string;
+  nameEn: string;
+  slug: string;
+  isHalal: boolean;
+  category: { id: string; nameId: string; slug: string } | null;
+  variants: Array<{
+    id: string;
+    nameId: string;
+    nameEn: string;
+    price: number;
+    stock: number;
+    isActive: boolean;
+    sortOrder: number;
+    sku: string;
+    weightGram: number;
+  }>;
+  images: Array<{
+    id: string;
+    cloudinaryUrl: string;
+    sortOrder: number;
+  }>;
+}
 
 interface ProductDetailClientProps {
   product: {
@@ -38,11 +64,14 @@ interface ProductDetailClientProps {
       sortOrder: number;
     }>;
   };
+  relatedProducts?: RelatedProduct[];
 }
 
-export function ProductDetailClient({ product }: ProductDetailClientProps) {
+export function ProductDetailClient({ product, relatedProducts }: ProductDetailClientProps) {
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const router = useRouter();
   const addItem = useCartStore((s) => s.addItem);
 
   const selectedVariant = product.variants[selectedVariantIndex];
@@ -71,9 +100,9 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
     <div className="bg-brand-cream min-h-screen pb-24">
       {/* Image Gallery */}
       <div className="relative aspect-[4/3] bg-brand-cream-dark">
-        {primaryImage ? (
+        {product.images[selectedImageIndex] ? (
           <Image
-            src={primaryImage.cloudinaryUrl}
+            src={product.images[selectedImageIndex].cloudinaryUrl}
             alt={product.nameId}
             fill
             className="object-cover"
@@ -87,21 +116,16 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
         )}
         
         {/* Back Button */}
-        <a
-          href="/products"
+        <button
+          onClick={() => router.back()}
           className="absolute top-4 left-4 w-10 h-10 bg-white/80 backdrop-blur rounded-full flex items-center justify-center"
         >
           ←
-        </a>
+        </button>
 
         {/* Badges */}
         <div className="absolute top-4 right-4 flex flex-col gap-2">
           {product.isHalal && <HalalBadge />}
-          {product.isHalal && (
-            <span className="text-[10px] text-text-muted bg-white/60 px-1 rounded">
-              MUI 001/2020
-            </span>
-          )}
         </div>
       </div>
 
@@ -111,9 +135,10 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
           {product.images.map((img, i) => (
             <button
               key={img.id}
+              onClick={() => setSelectedImageIndex(i)}
               className={cn(
                 'w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden border-2',
-                i === 0 ? 'border-brand-red' : 'border-transparent'
+                i === selectedImageIndex ? 'border-brand-red' : 'border-transparent'
               )}
               aria-label={`Lihat foto ${i + 1} ${product.nameId}`}
             >
@@ -184,6 +209,64 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
         </div>
       </div>
 
+      {/* Related Products Section */}
+      {relatedProducts && relatedProducts.length > 0 && (
+        <div className="px-4 mt-6">
+          <h2 className="font-display text-xl font-bold text-text-primary mb-4">
+            Produk Lainnya
+          </h2>
+          <div className="grid grid-cols-2 gap-3">
+            {relatedProducts.slice(0, 4).map((related) => {
+              const firstImage = related.images[0];
+              const firstVariant = related.variants.find(v => v.isActive) ?? related.variants[0];
+              return (
+                <a
+                  key={related.id}
+                  href={`/products/${related.slug}`}
+                  className="bg-white rounded-card overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <div className="aspect-square relative bg-brand-cream-dark">
+                    {firstImage ? (
+                      <Image
+                        src={firstImage.cloudinaryUrl}
+                        alt={related.nameId}
+                        fill
+                        className="object-cover"
+                        sizes="50vw"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-4xl">🥟</span>
+                      </div>
+                    )}
+                    {related.isHalal && (
+                      <div className="absolute top-2 right-2 w-8 h-8">
+                        <Image
+                          src="/assets/logo/halal.png"
+                          alt="Halal"
+                          fill
+                          className="object-contain"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <p className="text-sm font-medium text-text-primary line-clamp-1">
+                      {related.nameId}
+                    </p>
+                    {firstVariant && (
+                      <p className="text-sm font-bold text-brand-red mt-1">
+                        {formatIDR(firstVariant.price)}
+                      </p>
+                    )}
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Sticky Bottom Bar */}
       <div className="fixed bottom-20 md:bottom-0 left-0 right-0 bg-white border-t border-brand-cream-dark p-4">
         <div className="container mx-auto flex items-center gap-4">
@@ -199,9 +282,9 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
             </button>
             <span className="w-12 text-center font-bold">{quantity}</span>
             <button
-              onClick={() => setQuantity(Math.min(99, quantity + 1))}
+              onClick={() => setQuantity(Math.min(selectedVariant?.stock ?? 99, Math.min(99, quantity + 1)))}
               className="w-11 h-11 flex items-center justify-center text-brand-red"
-              disabled={quantity >= 99}
+              disabled={quantity >= Math.min(99, selectedVariant?.stock ?? 99)}
               aria-label="Tambah jumlah"
             >
               <Plus className="w-4 h-4" />

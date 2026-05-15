@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { db } from '@/lib/db';
 import { products, productVariants } from '@/lib/db/schema';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, isNull } from 'drizzle-orm';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { Plus } from 'lucide-react';
 
@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function ProductsPage() {
   const allProducts = await db.query.products.findMany({
+    where: isNull(products.deletedAt),
     orderBy: [desc(products.createdAt)],
     with: {
       variants: {

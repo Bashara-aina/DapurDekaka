@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Package, ShoppingCart, Users, Tag,
   MessageSquare, Image, Settings, Box, Truck, FileText, Bot, ClipboardList,
-  BarChart3, X
+  BarChart3, X, Layers, Star
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect } from 'react';
@@ -17,12 +17,14 @@ const NAV_ITEMS = [
   { separator: true },
   { href: '/admin/orders', label: 'Pesanan', icon: ShoppingCart },
   { href: '/admin/products', label: 'Produk', icon: Package },
+  { href: '/admin/categories', label: 'Kategori', icon: Layers },
   { href: '/admin/inventory', label: 'Inventori', icon: Box },
   { href: '/admin/shipments', label: 'Pengiriman', icon: Truck },
   { href: '/admin/customers', label: 'Pelanggan', icon: Users },
   { separator: true },
   { href: '/admin/coupons', label: 'Kupon', icon: Tag },
   { href: '/admin/blog', label: 'Blog', icon: FileText },
+  { href: '/admin/testimonials', label: 'Testimoni', icon: Star },
   { href: '/admin/carousel', label: 'Carousel', icon: Image },
   { href: '/admin/b2b-inquiries', label: 'B2B', icon: MessageSquare },
   { href: '/admin/ai-content', label: 'AI Content', icon: Bot },

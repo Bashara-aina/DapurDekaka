@@ -5,6 +5,8 @@ import { eq } from 'drizzle-orm';
 import { success, serverError, notFound, forbidden, conflict, validationError } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
 import { z } from 'zod';
+import { sendEmail } from '@/lib/resend/send-email';
+import { OrderShippedEmail } from '@/lib/resend/templates/OrderShipped';
 
 export async function GET(req: NextRequest) {
   try {
@@ -97,6 +99,41 @@ export async function PATCH(req: NextRequest) {
       note: `Resi ${trackingNumber} ditambahkan, dikirim oleh ${session.user.name}`,
       metadata: { trackingNumber, courierCode, courierName },
     });
+
+    // Fire-and-forget shipped email
+    const COURIER_TRACKING_URLS: Record<string, string> = {
+      SICEPAT: `https://www.sicepat.com/checkAwb?awb=${trackingNumber}`,
+      JNE: `https://www.jne.co.id/id/tracking/trace/${trackingNumber}`,
+      ANTERAJA: `https://anteraja.id/tracking/${trackingNumber}`,
+    };
+    const builtTrackingUrl = trackingUrl ??
+      (courierCode ? COURIER_TRACKING_URLS[courierCode.toUpperCase()] ?? '' : '');
+
+    const fetchedOrder = await db.query.orders.findFirst({
+      where: eq(orders.id, orderId),
+      with: { items: true },
+    });
+
+    if (fetchedOrder) {
+      sendEmail({
+        to: fetchedOrder.recipientEmail,
+        subject: `Pesanan ${fetchedOrder.orderNumber} sudah dikirim!`,
+        react: OrderShippedEmail({
+          orderNumber: fetchedOrder.orderNumber,
+          customerName: fetchedOrder.recipientName,
+          courierName: courierName ?? fetchedOrder.courierName ?? 'Pengiriman',
+          trackingNumber,
+          trackingUrl: builtTrackingUrl,
+          estimatedDays: estimatedDays ?? '',
+          items: fetchedOrder.items?.map((item) => ({
+            name: item.productNameId,
+            variant: item.variantNameId,
+            quantity: item.quantity,
+          })) ?? [],
+          totalAmount: fetchedOrder.totalAmount,
+        }),
+      }).catch(console.error);
+    }
 
     return success({ orderId, status: 'shipped', trackingNumber });
   } catch (error) {

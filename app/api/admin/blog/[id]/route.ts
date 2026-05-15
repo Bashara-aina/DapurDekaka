@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { blogPosts } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
+import DOMPurify from 'isomorphic-dompurify';
 
 export async function GET(
   req: NextRequest,
@@ -103,14 +104,26 @@ export async function PUT(
 
     const data = parsed.data;
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
-    
+
+    // Sanitize HTML content to prevent XSS
+    if (data.contentId !== undefined) {
+      updateData.contentId = DOMPurify.sanitize(data.contentId, {
+        ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h2', 'h3', 'a', 'img', 'blockquote', 'code', 'pre'],
+        ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'target', 'rel'],
+      });
+    }
+    if (data.contentEn !== undefined) {
+      updateData.contentEn = DOMPurify.sanitize(data.contentEn, {
+        ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h2', 'h3', 'a', 'img', 'blockquote', 'code', 'pre'],
+        ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'target', 'rel'],
+      });
+    }
+
     if (data.titleId !== undefined) updateData.titleId = data.titleId;
     if (data.titleEn !== undefined) updateData.titleEn = data.titleEn;
     if (data.slug !== undefined) updateData.slug = data.slug;
     if (data.excerptId !== undefined) updateData.excerptId = data.excerptId;
     if (data.excerptEn !== undefined) updateData.excerptEn = data.excerptEn;
-    if (data.contentId !== undefined) updateData.contentId = data.contentId;
-    if (data.contentEn !== undefined) updateData.contentEn = data.contentEn;
     if (data.coverImageUrl !== undefined) updateData.coverImageUrl = data.coverImageUrl;
     if (data.coverImagePublicId !== undefined) updateData.coverImagePublicId = data.coverImagePublicId;
     if (data.blogCategoryId !== undefined) updateData.blogCategoryId = data.blogCategoryId;

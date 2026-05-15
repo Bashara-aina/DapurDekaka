@@ -3,6 +3,11 @@ import { db } from '../lib/db/index';
 import * as schema from '../lib/db/schema';
 import { eq } from 'drizzle-orm';
 
+if (process.env.NODE_ENV === 'production') {
+  console.error('ABORT: Cannot run seed script in production.');
+  process.exit(1);
+}
+
 const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dsnhwfuxh';
 const CLOUDINARY_BASE = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/f_webp,q_auto,w_800`;
 

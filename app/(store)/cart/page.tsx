@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-import { LogIn, AlertTriangle } from 'lucide-react';
+import { LogIn, AlertTriangle, Trash2 } from 'lucide-react';
 import { useCartStore } from '@/store/cart.store';
 import { CartItemComponent } from '@/components/store/cart/CartItem';
 import { CartSummary } from '@/components/store/cart/CartSummary';
@@ -21,6 +21,7 @@ export default function CartPage() {
   const { data: session } = useSession();
   const items = useCartStore((s) => s.items);
   const getTotalItems = useCartStore((s) => s.getTotalItems);
+  const clearCart = useCartStore((s) => s.clearCart);
 
   const [stockValidations, setStockValidations] = useState<StockValidation[]>([]);
   const [isValidating, setIsValidating] = useState(false);
@@ -31,12 +32,13 @@ export default function CartPage() {
 
     setIsValidating(true);
     try {
-      const variantIds = items.map((i) => i.variantId).join(',');
-      const quantities = items.map((i) => i.quantity).join(',');
-
-      const res = await fetch(
-        `/api/cart/validate?variantIds=${variantIds}&quantities=${quantities}`
-      );
+      const res = await fetch('/api/cart/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: items.map((i) => ({ variantId: i.variantId, quantity: i.quantity })),
+        }),
+      });
       const response = await res.json();
 
       if (response.success && response.data?.items) {
@@ -51,13 +53,10 @@ export default function CartPage() {
   };
 
   useEffect(() => {
-    if (items.length > 0 && session?.user?.id) {
+    if (items.length > 0) {
       validateCartStock();
-    } else if (items.length > 0 && !session?.user?.id) {
-      setHasValidated(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items.length, session?.user?.id]);
+  }, [items.length]);
 
   const getStockValidation = (variantId: string): StockValidation | undefined => {
     return stockValidations.find((v) => v.variantId === variantId);
@@ -80,8 +79,22 @@ export default function CartPage() {
   return (
     <div className="min-h-screen bg-brand-cream pb-32">
       <div className="bg-white border-b border-brand-cream-dark py-6 px-4">
-        <h1 className="font-display text-2xl font-bold">Keranjang</h1>
-        <p className="text-text-secondary text-sm mt-1">{getTotalItems()} item</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="font-display text-2xl font-bold">Keranjang</h1>
+            <p className="text-text-secondary text-sm mt-1">{getTotalItems()} item</p>
+          </div>
+          {items.length > 0 && (
+            <button
+              onClick={() => clearCart()}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-button transition-colors"
+              aria-label="Hapus semua item di keranjang"
+            >
+              <Trash2 className="w-4 h-4" />
+              Hapus Semua
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="px-4 py-4 container mx-auto">

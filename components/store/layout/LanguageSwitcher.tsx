@@ -1,22 +1,16 @@
 'use client';
 
-import { useLocale, useTranslations } from 'next-intl';
-import { useRouter, usePathname } from 'next/navigation';
-import { useCallback } from 'react';
+import { useState } from 'react';
 import { cn } from '@/lib/utils/cn';
 
 export function LanguageSwitcher({ className }: { className?: string }) {
-  const locale = useLocale();
-  const t = useTranslations('common');
-  const router = useRouter();
-  const pathname = usePathname();
+  const [locale, setLocale] = useState<'id' | 'en'>('id');
 
-  const switchLocale = useCallback(
-    (newLocale: string) => {
-      router.replace(`/${newLocale}${pathname}`);
-    },
-    [router, pathname]
-  );
+  const switchLocale = (newLocale: 'id' | 'en') => {
+    setLocale(newLocale);
+    // The app doesn't have full i18n yet — just toggle the state for future use
+    // When i18n is fully implemented, this would update cookies/locale
+  };
 
   return (
     <div className={cn('flex items-center gap-1', className)}>

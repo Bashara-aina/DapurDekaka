@@ -42,7 +42,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
 
   // Fetch all products (sort/filter done client-side for URL state)
   const productsList = await db.query.products.findMany({
-    where: and(eq(products.isActive, true)),
+    where: and(eq(products.isActive, true), isNull(products.deletedAt)),
     with: {
       variants: { where: eq(productVariants.isActive, true) },
       images: { orderBy: (images, { asc }) => [asc(images.sortOrder)] },

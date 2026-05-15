@@ -2,34 +2,31 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { productVariants } from '@/lib/db/schema';
 import { eq, inArray } from 'drizzle-orm';
-import { auth } from '@/lib/auth';
-import { success, unauthorized, serverError } from '@/lib/utils/api-response';
+import { success, serverError } from '@/lib/utils/api-response';
+import { checkRateLimitAsync } from '@/lib/utils/rate-limit';
 
-export async function GET(req: NextRequest) {
+async function handleValidate(req: NextRequest) {
   try {
-    const session = await auth();
+    const variantIdsParam = req.nextUrl.searchParams.get('variantIds');
 
-    if (!session?.user?.id) {
-      return unauthorized('Silakan masuk terlebih dahulu');
+    let variantIds: string[] = [];
+    let cartQtys: number[] = [];
+
+    if (variantIdsParam) {
+      variantIds = variantIdsParam.split(',').filter(Boolean);
+      const cartQtysParam = req.nextUrl.searchParams.get('quantities');
+      cartQtys = cartQtysParam ? cartQtysParam.split(',').map(Number) : [];
+    } else {
+      const body = await req.json().catch(() => null);
+      if (body?.items && Array.isArray(body.items)) {
+        variantIds = body.items.map((i: { variantId: string; quantity?: number }) => i.variantId).filter(Boolean);
+        cartQtys = body.items.map((i: { variantId: string; quantity?: number }) => i.quantity ?? 1);
+      }
     }
-
-    const { searchParams } = new URL(req.url);
-    const variantIdsParam = searchParams.get('variantIds');
-
-    if (!variantIdsParam) {
-      return success({ items: [] });
-    }
-
-    const variantIds = variantIdsParam.split(',').filter(Boolean);
 
     if (variantIds.length === 0) {
       return success({ items: [] });
     }
-
-    const cartQtysParam = searchParams.get('quantities');
-    const cartQtys = cartQtysParam
-      ? cartQtysParam.split(',').map(Number)
-      : [];
 
     const variants = await db.query.productVariants.findMany({
       where: inArray(productVariants.id, variantIds),
@@ -68,7 +65,41 @@ export async function GET(req: NextRequest) {
 
     return success({ items });
   } catch (error) {
-    console.error('[cart/validate GET]', error);
+    console.error('[cart/validate]', error);
     return serverError(error);
   }
+}
+
+export async function GET(req: NextRequest) {
+  const ip = req.ip || req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
+  const rateLimit = await checkRateLimitAsync(ip, 30, '1 m');
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Terlalu banyak permintaan. Silakan coba lagi nanti.',
+        code: 'RATE_LIMITED',
+        retryAfter: Math.ceil((rateLimit.resetAt - Date.now()) / 1000),
+      },
+      { status: 429 }
+    );
+  }
+  return handleValidate(req);
+}
+
+export async function POST(req: NextRequest) {
+  const ip = req.ip || req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
+  const rateLimit = await checkRateLimitAsync(ip, 30, '1 m');
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Terlalu banyak permintaan. Silakan coba lagi nanti.',
+        code: 'RATE_LIMITED',
+        retryAfter: Math.ceil((rateLimit.resetAt - Date.now()) / 1000),
+      },
+      { status: 429 }
+    );
+  }
+  return handleValidate(req);
 }

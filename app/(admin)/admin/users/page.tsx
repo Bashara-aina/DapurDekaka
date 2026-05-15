@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { formatWIB } from '@/lib/utils/format-date';
-import { Shield, UserX, RefreshCw } from 'lucide-react';
+import { Shield, UserX, RefreshCw, UserPlus, X, Check } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface UserItem {
   id: string;
@@ -31,12 +32,19 @@ const ROLE_COLORS: Record<string, string> = {
   b2b: 'bg-amber-100 text-amber-800',
 };
 
+const INVITE_ROLE_OPTIONS = ROLE_OPTIONS.filter((r) =>
+  ['warehouse', 'owner', 'b2b', 'customer'].includes(r.value)
+);
+
 export default function UsersPage() {
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editingRole, setEditingRole] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteForm, setInviteForm] = useState({ email: '', name: '', role: 'warehouse' });
+  const [inviteLoading, setInviteLoading] = useState(false);
 
   useEffect(() => {
     async function fetchUsers() {
@@ -46,7 +54,7 @@ export default function UsersPage() {
         const result = await res.json();
         setUsers(result.data ?? []);
       } catch {
-        alert('Gagal memuat data pengguna');
+        toast.error('Gagal memuat data pengguna');
       } finally {
         setLoading(false);
       }
@@ -68,10 +76,12 @@ export default function UsersPage() {
         throw new Error(err.error || 'Gagal mengupdate role');
       }
 
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
+      );
       setEditingUserId(null);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Gagal mengupdate role');
+      toast.error(err instanceof Error ? err.message : 'Gagal mengupdate role');
     } finally {
       setIsSubmitting(false);
     }
@@ -93,9 +103,46 @@ export default function UsersPage() {
         throw new Error(err.error || `Gagal ${action} pengguna`);
       }
 
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, isActive: !currentStatus } : u));
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, isActive: !currentStatus } : u))
+      );
     } catch (err) {
-      alert(err instanceof Error ? err.message : `Gagal ${action} pengguna`);
+      toast.error(err instanceof Error ? err.message : `Gagal ${action} pengguna`);
+    }
+  }
+
+  async function handleInvite() {
+    if (!inviteForm.email || !inviteForm.name || !inviteForm.role) {
+      toast.error('Lengkapi semua field');
+      return;
+    }
+
+    setInviteLoading(true);
+    try {
+      const res = await fetch('/api/admin/users/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(inviteForm),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Gagal mengundang pengguna');
+      }
+
+      toast.success(data.data.message);
+      setShowInviteModal(false);
+      setInviteForm({ email: '', name: '', role: 'warehouse' });
+
+      // Refresh user list
+      const userRes = await fetch('/api/admin/users');
+      const userResult = await userRes.json();
+      setUsers(userResult.data ?? []);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal mengundang pengguna');
+    } finally {
+      setInviteLoading(false);
     }
   }
 
@@ -107,7 +154,16 @@ export default function UsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Pengguna</h1>
-        <span className="text-sm text-gray-500">{users.length} pengguna</span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-500">{users.length} pengguna</span>
+          <button
+            onClick={() => setShowInviteModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0F172A] text-white text-xs font-medium rounded-lg hover:bg-[#1E293B] transition-colors"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            Undang Pengguna
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg border border-admin-border overflow-hidden">
@@ -140,8 +196,10 @@ export default function UsersPage() {
                           onChange={(e) => setEditingRole(e.target.value)}
                           className="h-8 px-2 rounded border border-input bg-white text-sm"
                         >
-                          {ROLE_OPTIONS.map(r => (
-                            <option key={r.value} value={r.value}>{r.label}</option>
+                          {ROLE_OPTIONS.map((r) => (
+                            <option key={r.value} value={r.value}>
+                              {r.label}
+                            </option>
                           ))}
                         </select>
                         <button
@@ -149,13 +207,13 @@ export default function UsersPage() {
                           disabled={isSubmitting}
                           className="p-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
                         >
-                          <RefreshCw className="w-3 h-3" />
+                          <Check className="w-3 h-3" />
                         </button>
                         <button
                           onClick={() => setEditingUserId(null)}
                           className="p-1 text-gray-500 hover:text-gray-700"
                         >
-                          ✕
+                          <X className="w-3 h-3" />
                         </button>
                       </div>
                     ) : (
@@ -164,7 +222,9 @@ export default function UsersPage() {
                           setEditingUserId(user.id);
                           setEditingRole(user.role);
                         }}
-                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded ${ROLE_COLORS[user.role] || 'bg-gray-100 text-gray-800'} hover:opacity-80`}
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded ${
+                          ROLE_COLORS[user.role] || 'bg-gray-100 text-gray-800'
+                        } hover:opacity-80`}
                         title="Klik untuk ubah role"
                       >
                         {user.role}
@@ -172,7 +232,11 @@ export default function UsersPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded ${user.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded ${
+                        user.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
                       {user.isActive ? 'Aktif' : 'Nonaktif'}
                     </span>
                   </td>
@@ -185,7 +249,9 @@ export default function UsersPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <button
                       onClick={() => handleDeactivate(user.id, user.isActive)}
-                      className={`p-1.5 rounded hover:bg-admin-content ${user.isActive ? 'text-red-500' : 'text-green-600'}`}
+                      className={`p-1.5 rounded hover:bg-admin-content ${
+                        user.isActive ? 'text-red-500' : 'text-green-600'
+                      }`}
                       title={user.isActive ? 'Nonaktifkan' : 'Aktifkan'}
                     >
                       <UserX className="w-4 h-4" />
@@ -204,6 +270,84 @@ export default function UsersPage() {
           </table>
         </div>
       </div>
+
+      {/* Invite Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold">Undang Pengguna Baru</h2>
+              <button
+                onClick={() => setShowInviteModal(false)}
+                className="p-1 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nama Lengkap
+                </label>
+                <input
+                  type="text"
+                  value={inviteForm.name}
+                  onChange={(e) => setInviteForm({ ...inviteForm, name: e.target.value })}
+                  placeholder="John Doe"
+                  className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={inviteForm.email}
+                  onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
+                  placeholder="john@example.com"
+                  className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                <select
+                  value={inviteForm.role}
+                  onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
+                  className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red bg-white"
+                >
+                  {INVITE_ROLE_OPTIONS.map((r) => (
+                    <option key={r.value} value={r.value}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <p className="text-xs text-gray-500">
+                Password sementara akan dibuat otomatis dan ditampilkan setelah akun dibuat.
+              </p>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowInviteModal(false)}
+                className="flex-1 h-10 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleInvite}
+                disabled={inviteLoading}
+                className="flex-1 h-10 bg-[#0F172A] text-white rounded-lg text-sm font-medium hover:bg-[#1E293B] transition-colors disabled:opacity-50"
+              >
+                {inviteLoading ? 'Memproses...' : 'Undang'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

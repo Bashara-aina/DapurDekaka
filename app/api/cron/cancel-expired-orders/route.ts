@@ -61,16 +61,25 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // Cancel the order
+        // Cancel the order — only if still pending_payment (conditional update prevents race with Midtrans webhook)
         await db.transaction(async (tx) => {
-          // Update order status
-          await tx
+          const cancelResult = await tx
             .update(orders)
             .set({
               status: 'cancelled',
               cancelledAt: now,
             })
-            .where(eq(orders.id, order.id));
+            .where(and(
+              eq(orders.id, order.id),
+              eq(orders.status, 'pending_payment')
+            ))
+            .returning({ id: orders.id });
+
+          // If 0 rows affected, order is no longer pending — skip (Midtrans likely settled it)
+          if (cancelResult.length === 0) {
+            logger.info('[CancelExpired] Order no longer pending — skipping cancel', { orderNumber: order.orderNumber });
+            return;
+          }
 
           // Restore stock from order items
           for (const item of order.items) {

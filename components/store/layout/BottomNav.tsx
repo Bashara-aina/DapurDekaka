@@ -1,21 +1,37 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { useCartStore } from '@/store/cart.store';
 
 export function BottomNav() {
   const t = useTranslations('nav');
+  const pathname = usePathname();
+  const [hydrated, setHydrated] = useState(false);
+  const { data: session } = useSession();
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
+
   const cartItems = useCartStore((s) => s.items);
-  const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const totalItems = hydrated
+    ? cartItems.reduce((sum, item) => sum + item.quantity, 0)
+    : 0;
+
+  const isB2bUser = session?.user?.role === 'b2b' || session?.user?.role === 'superadmin';
 
   const navItems = [
     { href: '/', icon: '🏠', label: t('home') },
     { href: '/products', icon: '📦', label: t('products') },
     { href: '/cart', icon: '🛒', label: t('cart'), badge: totalItems },
+    ...(isB2bUser ? [{ href: '/b2b/account', icon: '🏢', label: 'B2B' }] : []),
     { href: '/account', icon: '👤', label: t('account') },
     {
-      href: `https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER}`,
+      href: `https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '6281234567890'}`,
       icon: '💬',
       label: 'WA',
       external: true,
@@ -26,7 +42,7 @@ export function BottomNav() {
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-brand-cream-dark h-20">
       <div className="flex items-center justify-around h-full px-2">
         {navItems.map((item, index) => {
-          const isActive = typeof window !== 'undefined' && window.location.pathname === item.href;
+          const isActive = pathname === item.href;
           const content = (
             <>
               <span className="text-2xl relative">

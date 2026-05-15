@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { db } from '@/lib/db';
+import { savedCarts } from '@/lib/db/schema';
+import { eq, and, inArray, sql } from 'drizzle-orm';
 import { success, unauthorized, serverError } from '@/lib/utils/api-response';
 import { withRateLimit } from '@/lib/utils/rate-limit';
 import type { CartItem } from '@/store/cart.store';
@@ -23,6 +26,22 @@ export const POST = withRateLimit(
       if (!items || !Array.isArray(items) || items.length === 0) {
         return success({ merged: 0 });
       }
+
+      await db.transaction(async (tx) => {
+        // Delete user's existing saved cart
+        await tx.delete(savedCarts).where(eq(savedCarts.userId, session.user.id));
+
+        // Insert incoming items
+        if (items.length > 0) {
+          await tx.insert(savedCarts).values(
+            items.map((item) => ({
+              userId: session.user.id,
+              variantId: item.variantId,
+              quantity: item.quantity,
+            }))
+          );
+        }
+      });
 
       return success({ merged: items.length });
 

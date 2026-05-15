@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { MessageCircle, Info } from 'lucide-react';
 
 export interface WhatsAppButtonProps {
@@ -13,9 +14,11 @@ export function WhatsAppButton({ whatsappNumber, className }: WhatsAppButtonProp
   const message = encodeURIComponent('Halo Dapur Dekaka, saya ingin bertanya tentang...');
   const whatsappUrl = `https://wa.me/${number}?text=${message}`;
   const [showTooltip, setShowTooltip] = useState(false);
+  const pathname = usePathname();
+  const isCheckout = pathname?.startsWith('/checkout');
 
   return (
-    <div className="fixed bottom-24 md:bottom-8 right-4 md:right-8 z-50">
+    <div className={`fixed ${isCheckout ? 'bottom-20 md:bottom-8' : 'bottom-24 md:bottom-8'} right-4 md:right-8 z-50`}>
       {showTooltip && (
         <div className="absolute bottom-16 right-0 bg-white rounded-lg shadow-lg p-3 max-w-[200px] text-sm text-text-secondary mb-2 border border-brand-cream-dark">
           <button

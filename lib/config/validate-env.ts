@@ -2,7 +2,10 @@ const REQUIRED = [
   'DATABASE_URL',
   'AUTH_SECRET',
   'MIDTRANS_SERVER_KEY',
-  'RAJAONGKIR_API_KEY',
+  'NEXT_PUBLIC_MIDTRANS_CLIENT_KEY',
+  'CLOUDINARY_API_SECRET',
+  'RESEND_API_KEY',
+  'CRON_SECRET',
 ] as const;
 
 interface EnvValidationResult {
