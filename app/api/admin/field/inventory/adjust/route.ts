@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
 
     const quantityBefore = variant.stock;
     const quantityAfter = Math.max(0, quantityBefore + delta);
+    const actualDelta = quantityAfter - quantityBefore;
 
     await db.update(productVariants).set({ stock: quantityAfter, updatedAt: new Date() }).where(eq(productVariants.id, variantId));
 
@@ -52,11 +53,13 @@ export async function POST(req: NextRequest) {
       changeType: 'adjustment',
       quantityBefore,
       quantityAfter,
-      quantityDelta: delta,
-      note: `[Manual Adjust] ${reason}${note ? ` - ${note}` : ''}`,
+      quantityDelta: actualDelta,
+      note: actualDelta !== delta
+        ? `[Manual Adjust] ${reason}${note ? ` - ${note}` : ''}\n(permintaan ${delta > 0 ? '+' : ''}${delta}, real ${actualDelta > 0 ? '+' : ''}${actualDelta} — dibatasi stok tersedia)`
+        : `[Manual Adjust] ${reason}${note ? ` - ${note}` : ''}`,
     });
 
-    return success({ variantId, stockBefore: quantityBefore, stockAfter: quantityAfter, delta });
+    return success({ variantId, stockBefore: quantityBefore, stockAfter: quantityAfter, actualDelta });
   } catch (error) {
     console.error('[admin/field/inventory/adjust POST]', error);
     return serverError(error);

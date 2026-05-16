@@ -169,18 +169,39 @@ export async function PATCH(
 
         // Points/coupon reversal is always safe to do (idempotent)
         if (order.userId && order.pointsUsed > 0) {
+          // BUG-12: Find the original redeem record to unconsume FIFO earn records
+          const redeemRecords = await tx.query.pointsHistory.findMany({
+            where: and(
+              eq(pointsHistory.orderId, orderId),
+              eq(pointsHistory.type, 'redeem'),
+              sql`${pointsHistory.referencedEarnId} IS NOT NULL`
+            ),
+          });
+
+          // Unconsume FIFO earn records if referenced
+          for (const redeem of redeemRecords) {
+            if (redeem.referencedEarnId) {
+              await tx
+                .update(pointsHistory)
+                .set({ consumedAt: null })
+                .where(eq(pointsHistory.id, redeem.referencedEarnId));
+            }
+          }
+
           await tx
             .update(users)
             .set({ pointsBalance: sql`points_balance + ${order.pointsUsed}` })
             .where(eq(users.id, order.userId));
 
+          // BUG-12: Use type 'adjust' not 'expire' for cancellation reversal
           await tx.insert(pointsHistory).values({
             userId: order.userId,
-            type: 'expire',
-            pointsAmount: -order.pointsUsed,
+            type: 'adjust',
+            pointsAmount: order.pointsUsed,
             pointsBalanceAfter: sql`points_balance + ${order.pointsUsed}`,
             descriptionId: `Pembatalan pesanan ${order.orderNumber} — poin dikembalikan`,
             descriptionEn: `Order ${order.orderNumber} cancelled — points returned`,
+            orderId: orderId,
             expiresAt: null,
             isExpired: false,
           });
@@ -251,6 +272,7 @@ export async function PATCH(
     if (newStatus === 'cancelled') {
       try {
         const reason = cancellationReason ?? 'Dibatalkan oleh admin';
+        const isPaidOrder = ['paid', 'processing', 'packed', 'shipped', 'delivered'].includes(currentStatus);
         const cancellationEmailHtml = OrderCancellationEmail({
           orderNumber: order.orderNumber,
           customerName: order.recipientName,
@@ -267,6 +289,8 @@ export async function PATCH(
           totalAmount: order.totalAmount,
           reason,
           cancelledAt: formatWIB(new Date()),
+          refundAmount: isPaidOrder ? order.totalAmount : 0,
+          refundInfo: isPaidOrder ? 'Refund akan diproses dalam 3-5 hari kerja ke metode pembayaran asal Anda.' : undefined,
         });
 
         await sendEmail({

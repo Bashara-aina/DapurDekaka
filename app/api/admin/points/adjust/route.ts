@@ -44,6 +44,14 @@ export async function POST(req: NextRequest) {
     }
 
     const adjustedAmount = type === 'deduct' ? -Math.abs(amount) : Math.abs(amount);
+
+    // Guard: prevent deduction from going negative
+    if (adjustedAmount < 0 && Math.abs(adjustedAmount) > (targetUser.pointsBalance ?? 0)) {
+      return badRequest(
+        `Tidak bisa mengurangi ${Math.abs(amount)} poin. Saldo saat ini: ${targetUser.pointsBalance ?? 0}`
+      );
+    }
+
     const noteId = type === 'add'
       ? `Penyesuaian: ${reason}`
       : `Pengurangan poin: ${reason}`;
@@ -51,16 +59,18 @@ export async function POST(req: NextRequest) {
       ? `Adjustment: ${reason}`
       : `Points deduction: ${reason}`;
 
-    const newBalance = (targetUser.pointsBalance ?? 0) + adjustedAmount;
-
     await db.transaction(async (tx) => {
-      await tx
+      const [updatedUser] = await tx
         .update(users)
         .set({
-          pointsBalance: sql`points_balance + ${adjustedAmount}`,
+          // GREATEST guard as safety net even though we validated above
+          pointsBalance: sql`GREATEST(points_balance + ${adjustedAmount}, 0)`,
           updatedAt: new Date(),
         })
-        .where(eq(users.id, userId));
+        .where(eq(users.id, userId))
+        .returning({ pointsBalance: users.pointsBalance });
+
+      const newBalance = updatedUser?.pointsBalance ?? 0;
 
       await tx.insert(pointsHistory).values({
         userId,
@@ -75,7 +85,7 @@ export async function POST(req: NextRequest) {
     return success({
       userId,
       adjustedAmount,
-      newBalance,
+      newBalance: (targetUser.pointsBalance ?? 0) + adjustedAmount,
       message: type === 'add'
         ? `Berhasil menambahkan ${amount} poin`
         : `Berhasil mengurangi ${amount} poin`,

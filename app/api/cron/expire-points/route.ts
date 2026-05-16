@@ -73,31 +73,35 @@ export async function GET(req: NextRequest) {
               )
             );
 
-          // Deduct from user's points balance (compute integer in JS first)
-            if (entry.userId) {
-              const currentUser = await tx.query.users.findFirst({
-                where: eq(users.id, entry.userId),
-              });
-              const currentBalance = currentUser?.pointsBalance ?? 0;
-              const newBalanceAfter = Math.max(0, currentBalance - entry.totalPoints);
+          // Deduct from user's points balance using relative SQL decrement.
+          // This is safe against concurrent modifications — each call subtracts atomically
+          // rather than setting an absolute value computed from a stale read.
+          if (entry.userId) {
+            await tx
+              .update(users)
+              .set({
+                pointsBalance: sql`GREATEST(points_balance - ${entry.totalPoints}, 0)`,
+              })
+              .where(eq(users.id, entry.userId));
 
-              await tx
-                .update(users)
-                .set({ pointsBalance: newBalanceAfter })
-                .where(eq(users.id, entry.userId));
+            // Read back the new balance for the history record
+            const updatedUser = await tx.query.users.findFirst({
+              where: eq(users.id, entry.userId),
+            });
+            const newBalanceAfter = updatedUser?.pointsBalance ?? 0;
 
-              // Record the expiration in points history
-              await tx.insert(pointsHistory).values({
-                userId: entry.userId,
-                type: 'expire',
-                pointsAmount: -entry.totalPoints,
-                pointsBalanceAfter: newBalanceAfter,
-                descriptionId: `Poin hangus karena melewati 1 tahun`,
-                descriptionEn: `Points expired after 1 year`,
-                expiresAt: null,
-                isExpired: true,
-              });
-            }
+            // Record the expiration in points history
+            await tx.insert(pointsHistory).values({
+              userId: entry.userId,
+              type: 'expire',
+              pointsAmount: -entry.totalPoints,
+              pointsBalanceAfter: newBalanceAfter,
+              descriptionId: `Poin hangus karena melewati 1 tahun`,
+              descriptionEn: `Points expired after 1 year`,
+              expiresAt: null,
+              isExpired: true,
+            });
+          }
         });
 
         expired++;

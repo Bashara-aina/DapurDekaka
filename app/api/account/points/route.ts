@@ -32,16 +32,27 @@ export async function GET(req: NextRequest) {
       offset,
     });
 
-    const expiringPoints = history.filter(h =>
-      h.expiresAt &&
-      !h.isExpired &&
-      new Date(h.expiresAt) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-    );
+    const soonThreshold = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    // Separate unpaginated query so we capture ALL expiring points, not just the first page
+    const expiringEntries = await db.query.pointsHistory.findMany({
+      where: (ph, { and, eq, isNull, lte, gte }) => and(
+        eq(ph.userId, session.user.id!),
+        eq(ph.type, 'earn'),
+        isNull(ph.consumedAt),
+        eq(ph.isExpired, false),
+        gte(ph.expiresAt, new Date()),
+        lte(ph.expiresAt, soonThreshold),
+      ),
+    });
+
+    const expiringPointsSum = expiringEntries.reduce((sum, e) => sum + e.pointsAmount, 0);
 
     return success({
       balance: user?.pointsBalance || 0,
       history,
-      expiringCount: expiringPoints.length,
+      expiringCount: expiringEntries.length,
+      expiringPoints: expiringPointsSum,
       page,
       hasMore: history.length === limit,
     });

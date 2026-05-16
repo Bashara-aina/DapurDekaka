@@ -11,25 +11,15 @@ function SuccessContent() {
   const searchParams = useSearchParams();
   const orderNumber = searchParams.get('order');
 
-  // FIX 15: Only fire confetti after order is verified (paid status)
-  useEffect(() => {
-    if (orderData?.order?.status === 'paid') {
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-      });
-    }
-  }, [orderData?.order?.status]);
-
+  // BUG-13: useQuery must come before useEffect that depends on it (React hook ordering rules)
   const { data: orderData, isLoading } = useQuery<{
     order: {
       courierName: string;
       courierService: string;
       deliveryMethod: string;
       totalAmount: number;
-    };
-    verified: boolean;
+      pointsEarned: number;
+      status: string;
     };
     verified: boolean;
   }>({
@@ -43,6 +33,17 @@ function SuccessContent() {
     enabled: !!orderNumber,
     staleTime: 60000,
   });
+
+  // FIX 15: Only fire confetti after order is verified (paid status)
+  useEffect(() => {
+    if (orderData?.order?.status === 'paid') {
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+      });
+    }
+  }, [orderData?.order?.status]);
 
   return (
     <div className="min-h-screen bg-brand-cream flex items-center justify-center p-4">

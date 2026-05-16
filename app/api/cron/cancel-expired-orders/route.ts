@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { orders, orderItems, productVariants, inventoryLogs, coupons, couponUsages, pointsHistory, users } from '@/lib/db/schema';
+import { orders, orderItems, productVariants, inventoryLogs, coupons, couponUsages, pointsHistory, users, orderStatusHistory } from '@/lib/db/schema';
 import { eq, and, lt, sql } from 'drizzle-orm';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { checkTransactionStatus } from '@/lib/midtrans/status';
@@ -80,6 +80,15 @@ export async function GET(req: NextRequest) {
             logger.info('[CancelExpired] Order no longer pending — skipping cancel', { orderNumber: order.orderNumber });
             return;
           }
+
+          await tx.insert(orderStatusHistory).values({
+            orderId: order.id,
+            fromStatus: order.status,
+            toStatus: 'cancelled',
+            changedByUserId: null,
+            changedByType: 'system',
+            note: `Otomatis dibatalkan karena tidak dibayar dalam 15 menit`,
+          });
 
           // Reverse points if used — full FIFO reversal from webhook handler
           if (order.userId && order.pointsUsed > 0) {

@@ -1,11 +1,8 @@
 import {
   Body,
-  Button,
   Container,
   Head,
-  Hr,
   Html,
-  Img,
   Link,
   Preview,
   Row,
@@ -13,9 +10,9 @@ import {
   Text,
 } from '@react-email/components';
 
-interface OrderConfirmationEmailProps {
-  orderNumber: string;
-  customerName: string;
+interface B2BQuoteApprovedEmailProps {
+  quoteNumber: string;
+  companyName: string;
   items: Array<{
     name: string;
     variant: string;
@@ -24,40 +21,20 @@ interface OrderConfirmationEmailProps {
     subtotal: number;
   }>;
   subtotal: number;
-  shippingCost: number;
   discountAmount: number;
   totalAmount: number;
-  deliveryMethod: 'delivery' | 'pickup';
-  courierName?: string;
-  recipientName: string;
-  recipientPhone: string;
-  addressLine?: string;
-  city?: string;
-  province?: string;
-  paidAt: string;
-  pointsEarned?: number;
-  pdfAttachment?: { filename: string; content: Buffer | string };
+  validUntil: string;
 }
 
-export function OrderConfirmationEmail({
-  orderNumber,
-  customerName,
+export function B2BQuoteApprovedEmail({
+  quoteNumber,
+  companyName,
   items,
   subtotal,
-  shippingCost,
   discountAmount,
   totalAmount,
-  deliveryMethod,
-  courierName,
-  recipientName,
-  recipientPhone,
-  addressLine,
-  city,
-  province,
-  paidAt,
-  pointsEarned,
-  pdfAttachment,
-}: OrderConfirmationEmailProps) {
+  validUntil,
+}: B2BQuoteApprovedEmailProps) {
   const formatPrice = (price: number) =>
     new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -69,38 +46,40 @@ export function OrderConfirmationEmail({
     <Html>
       <Head />
       <Preview>
-        Pesanan {orderNumber} telah dikonfirmasi! — Dapur Dekaka 德卡
+        Penawaran #{quoteNumber} Telah Disetujui — Dapur Dekaka B2B
       </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
           {/* Header */}
           <Section style={styles.headerSection}>
-            <Text style={styles.brandName}>Dapur Dekaka 德卡</Text>
-            <Text style={styles.headerTitle}>Pesanan Kamu Sudah Dikonfirmasi!</Text>
+            <Text style={styles.brandName}>Dapur Dekaka 德卡 — B2B</Text>
+            <Text style={styles.headerTitle}>Penawaran Telah Disetujui!</Text>
             <Text style={styles.headerSubtitle}>
-              Terima kasih, {customerName}. Pesananmu sedang kami siapkan.
+              Selamat, {companyName}. Penawaran #{quoteNumber} telah disetujui.
             </Text>
           </Section>
 
-          {/* Order Info Banner */}
-          <Section style={styles.orderBanner}>
-            <Row>
-              <Text style={styles.orderLabel}>Nomor Pesanan</Text>
-              <Text style={styles.orderNumber}>{orderNumber}</Text>
-            </Row>
-            <Row>
-              <Text style={styles.orderLabel}>Tanggal Pembayaran</Text>
-              <Text style={styles.orderValue}>{paidAt}</Text>
-            </Row>
-            <Row>
-              <Text style={styles.orderLabel}>Total Pembayaran</Text>
-              <Text style={styles.orderAmount}>{formatPrice(totalAmount)}</Text>
-            </Row>
+          {/* Approval Banner */}
+          <Section style={styles.approvalBanner}>
+            <Text style={styles.approvedIcon}>✓</Text>
+            <Text style={styles.approvedTitle}>Penawaran Disetujui</Text>
+            <Text style={styles.approvedSubtitle}>
+              Nomor Penawaran: {quoteNumber}
+            </Text>
           </Section>
+
+          {/* Valid Until */}
+          {validUntil && (
+            <Section style={styles.validUntilSection}>
+              <Text style={styles.validUntilText}>
+                Penawaran berlaku hingga: <strong>{validUntil}</strong>
+              </Text>
+            </Section>
+          )}
 
           {/* Items Table */}
           <Section style={styles.itemsSection}>
-            <Text style={styles.sectionTitle}>Detail Pesanan</Text>
+            <Text style={styles.sectionTitle}>Detail Penawaran</Text>
             {items.map((item, index) => (
               <Row key={index} style={styles.itemRow}>
                 <td style={styles.itemNameCell}>
@@ -129,62 +108,27 @@ export function OrderConfirmationEmail({
               </Row>
             )}
             <Row style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>
-                Ongkos Kirim{deliveryMethod === 'pickup' ? ' (Ambil di Toko)' : courierName ? ` (${courierName})` : ''}
-              </Text>
-              <Text style={styles.summaryValue}>
-                {deliveryMethod === 'pickup' ? 'Gratis' : formatPrice(shippingCost)}
-              </Text>
-            </Row>
-            <Hr style={styles.summaryDivider} />
-            <Row style={styles.summaryRow}>
               <Text style={styles.totalLabel}>Total</Text>
               <Text style={styles.totalValue}>{formatPrice(totalAmount)}</Text>
             </Row>
           </Section>
 
-          {/* Loyalty Points Earned */}
-          {pointsEarned !== undefined && pointsEarned > 0 && (
-            <Section style={styles.loyaltySection}>
-              <Text style={styles.loyaltyTitle}>Poin Loyalty Diperoleh</Text>
-              <Text style={styles.loyaltyPoints}>
-                +{pointsEarned.toLocaleString('id-ID')} poin
-              </Text>
-              <Text style={styles.loyaltyNote}>
-                100 poin = Rp 1.000 untuk redeem di pembelian berikutnya
-              </Text>
-            </Section>
-          )}
-
-          {/* Delivery / Pickup Info */}
-          {deliveryMethod === 'delivery' ? (
-            <Section style={styles.deliverySection}>
-              <Text style={styles.sectionTitle}>Alamat Pengiriman</Text>
-              <Text style={styles.deliveryText}>
-                <strong>{recipientName}</strong>
-                <br />
-                {recipientPhone}
-                <br />
-                {addressLine}
-                <br />
-                {city}, {province}
-              </Text>
-            </Section>
-          ) : (
-            <Section style={styles.pickupSection}>
-              <Text style={styles.sectionTitle}>Ambil di Toko</Text>
-              <Text style={styles.deliveryText}>
-                Jl. Sinom V no. 7, Turangga, Bandung
-                <br />
-                Tunjukkan kode pesanan <strong>{orderNumber}</strong> ke staff toko.
-              </Text>
-            </Section>
-          )}
+          {/* Next Steps */}
+          <Section style={styles.nextStepsSection}>
+            <Text style={styles.nextStepsTitle}>Langkah Selanjutnya</Text>
+            <Text style={styles.nextStepsText}>
+              Tim kami akan menghubungi Anda untuk koordinasi pembayaran dan pengiriman.
+             若有疑问，请通过 WhatsApp 联系 kami.
+            </Text>
+          </Section>
 
           {/* Footer */}
           <Section style={styles.footer}>
             <Text style={styles.footerText}>
-              Pesananmu akan diproses segera.若有 pertanyaan，请 hubungi kami via WhatsApp.
+              Dapur Dekaka — 德卡 B2B
+            </Text>
+            <Text style={styles.footerSubtext}>
+              Jl. Sinom V no. 7, Turangga, Bandung
             </Text>
             <Link href={process.env.NEXT_PUBLIC_APP_URL} style={styles.footerLink}>
               dapurdekaka.com
@@ -209,10 +153,10 @@ const styles = {
   },
   headerSection: {
     textAlign: 'center' as const,
-    marginBottom: '32px',
+    marginBottom: '24px',
   },
   brandName: {
-    fontSize: '24px',
+    fontSize: '20px',
     fontWeight: 'bold',
     color: '#C8102E',
     marginBottom: '8px',
@@ -227,32 +171,38 @@ const styles = {
     fontSize: '14px',
     color: '#6B6B6B',
   },
-  orderBanner: {
-    backgroundColor: '#C8102E',
+  approvalBanner: {
+    backgroundColor: '#16A34A',
     borderRadius: '12px',
-    padding: '20px 24px',
+    padding: '24px',
     marginBottom: '24px',
+    textAlign: 'center' as const,
   },
-  orderLabel: {
-    fontSize: '12px',
-    color: 'rgba(255,255,255,0.7)',
-    marginBottom: '2px',
-  },
-  orderNumber: {
-    fontSize: '20px',
-    fontWeight: 'bold',
+  approvedIcon: {
+    fontSize: '32px',
     color: '#FFFFFF',
-    marginBottom: '12px',
+    marginBottom: '8px',
   },
-  orderValue: {
-    fontSize: '14px',
+  approvedTitle: {
+    fontSize: '18px',
+    fontWeight: 'bold',
     color: '#FFFFFF',
     marginBottom: '4px',
   },
-  orderAmount: {
-    fontSize: '24px',
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+  approvedSubtitle: {
+    fontSize: '14px',
+    color: 'rgba(255,255,255,0.8)',
+  },
+  validUntilSection: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: '8px',
+    padding: '16px',
+    marginBottom: '24px',
+    textAlign: 'center' as const,
+  },
+  validUntilText: {
+    fontSize: '14px',
+    color: '#92400E',
   },
   itemsSection: {
     marginBottom: '24px',
@@ -310,10 +260,6 @@ const styles = {
     color: '#16A34A',
     textAlign: 'right' as const,
   },
-  summaryDivider: {
-    borderColor: '#E0D4BC',
-    margin: '12px 0',
-  },
   totalLabel: {
     fontSize: '16px',
     fontWeight: 'bold',
@@ -325,39 +271,21 @@ const styles = {
     color: '#C8102E',
     textAlign: 'right' as const,
   },
-  loyaltySection: {
-    backgroundColor: '#F0FDF4',
-    borderRadius: '12px',
+  nextStepsSection: {
+    backgroundColor: '#F8F8F8',
+    borderRadius: '8px',
     padding: '16px',
     marginBottom: '24px',
-    textAlign: 'center' as const,
   },
-  loyaltyTitle: {
-    fontSize: '12px',
-    color: '#16A34A',
-    fontWeight: 'bold',
-    textTransform: 'uppercase' as const,
-    marginBottom: '4px',
-  },
-  loyaltyPoints: {
-    fontSize: '24px',
-    fontWeight: 'bold',
-    color: '#16A34A',
-    marginBottom: '4px',
-  },
-  loyaltyNote: {
-    fontSize: '12px',
-    color: '#6B6B6B',
-  },
-  deliverySection: {
-    marginBottom: '24px',
-  },
-  pickupSection: {
-    marginBottom: '24px',
-  },
-  deliveryText: {
+  nextStepsTitle: {
     fontSize: '14px',
+    fontWeight: 'bold',
     color: '#1A1A1A',
+    marginBottom: '8px',
+  },
+  nextStepsText: {
+    fontSize: '13px',
+    color: '#6B6B6B',
     lineHeight: '1.6',
   },
   footer: {
@@ -367,8 +295,14 @@ const styles = {
     borderTop: '1px solid #E0D4BC',
   },
   footerText: {
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+    marginBottom: '4px',
+  },
+  footerSubtext: {
     fontSize: '12px',
-    color: '#6B6B6B',
+    color: '#ABABAB',
     marginBottom: '8px',
   },
   footerLink: {

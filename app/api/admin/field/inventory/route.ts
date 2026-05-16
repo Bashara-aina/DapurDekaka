@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
 
 const adjustStockSchema = z.object({
   variantId: z.string().uuid(),
-  newStock: z.number().int().min(0, 'Stok tidak boleh negatif'),
+  delta: z.number().int(),
   note: z.string().optional(),
 });
 
@@ -65,7 +65,7 @@ export async function PATCH(req: NextRequest) {
       return validationError(parsed.error);
     }
 
-    const { variantId, newStock, note } = parsed.data;
+    const { variantId, delta, note } = parsed.data;
 
     const variant = await db.query.productVariants.findFirst({
       where: eq(productVariants.id, variantId),
@@ -76,21 +76,27 @@ export async function PATCH(req: NextRequest) {
     }
 
     const quantityBefore = variant.stock;
-    const quantityDelta = newStock - quantityBefore;
+    const quantityAfter = Math.max(0, quantityBefore + delta);
+    const actualDelta = quantityAfter - quantityBefore;
 
-    await db.update(productVariants).set({ stock: newStock, updatedAt: new Date() }).where(eq(productVariants.id, variantId));
+    await db
+      .update(productVariants)
+      .set({ stock: sql`GREATEST(stock + ${delta}, 0)`, updatedAt: new Date() })
+      .where(eq(productVariants.id, variantId));
 
     await db.insert(inventoryLogs).values({
       variantId,
       changedByUserId: session.user.id,
       changeType: 'adjustment',
       quantityBefore,
-      quantityAfter: newStock,
-      quantityDelta,
-      note: note || `Penyesuaian stok oleh ${session.user.name}`,
+      quantityAfter,
+      quantityDelta: actualDelta,
+      note: actualDelta !== delta
+        ? `[Manual Adjust] ${note || 'Penyesuaian stok'}\n(permintaan ${delta > 0 ? '+' : ''}${delta}, real ${actualDelta > 0 ? '+' : ''}${actualDelta} — dibatasi stok tersedia)`
+        : (note ? `[Manual Adjust] ${note}` : `Penyesuaian stok oleh ${session.user.name}`),
     });
 
-    return success({ variantId, stockBefore: quantityBefore, stockAfter: newStock, delta: quantityDelta });
+    return success({ variantId, stockBefore: quantityBefore, stockAfter: quantityAfter, delta: actualDelta });
   } catch (error) {
     console.error('[admin/field/inventory PATCH]', error);
     return serverError(error);

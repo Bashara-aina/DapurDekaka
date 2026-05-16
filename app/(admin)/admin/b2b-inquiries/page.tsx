@@ -2,6 +2,7 @@ import { db } from '@/lib/db';
 import { b2bInquiries } from '@/lib/db/schema';
 import { desc, eq } from 'drizzle-orm';
 import Link from 'next/link';
+import { B2BInquiryStatusClient } from './B2BInquiryStatusClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,9 +88,7 @@ export default async function B2BInquiriesPage() {
                       </p>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusInfo.className}`}>
-                        {statusInfo.label}
-                      </span>
+                      <B2BInquiryStatusClient inquiryId={inquiry.id} currentStatus={inquiry.status} />
                     </td>
                     <td className="px-4 py-3">
                       <p className="text-sm text-admin-text-secondary">

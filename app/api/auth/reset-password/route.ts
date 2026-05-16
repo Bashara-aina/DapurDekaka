@@ -4,7 +4,7 @@ import { users, passwordResetTokens } from '@/lib/db/schema';
 import { eq, and, gt } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
-import { success, validationError, notFound, serverError, unauthorized } from '@/lib/utils/api-response';
+import { success, validationError, serverError, unauthorized } from '@/lib/utils/api-response';
 import { withRateLimit } from '@/lib/utils/rate-limit';
 
 const resetPasswordSchema = z.object({
@@ -23,21 +23,16 @@ export const POST = withRateLimit(
       }
 
       const { token, password } = parsed.data;
+      const tokenPrefix = token.slice(0, 8);
 
-      const allTokens = await db.query.passwordResetTokens.findMany({
-        where: gt(passwordResetTokens.expiresAt, new Date()),
+      const record = await db.query.passwordResetTokens.findFirst({
+        where: and(
+          eq(passwordResetTokens.tokenPrefix, tokenPrefix),
+          gt(passwordResetTokens.expiresAt, new Date())
+        ),
       });
 
-      let validToken = null;
-      for (const storedToken of allTokens) {
-        const isValid = await bcrypt.compare(token, storedToken.tokenHash);
-        if (isValid) {
-          validToken = storedToken;
-          break;
-        }
-      }
-
-      if (!validToken) {
+      if (!record || !(await bcrypt.compare(token, record.tokenHash))) {
         return unauthorized('Token tidak valid atau sudah kedaluwarsa');
       }
 
@@ -45,11 +40,11 @@ export const POST = withRateLimit(
 
       await db.update(users)
         .set({ passwordHash, updatedAt: new Date() })
-        .where(eq(users.id, validToken.userId));
+        .where(eq(users.id, record.userId));
 
       await db.update(passwordResetTokens)
         .set({ usedAt: new Date() })
-        .where(eq(passwordResetTokens.id, validToken.id));
+        .where(eq(passwordResetTokens.id, record.id));
 
       return success({ message: 'Password berhasil direset' });
 

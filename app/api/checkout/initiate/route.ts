@@ -15,7 +15,7 @@ import {
   orderStatusHistory,
   b2bProfiles,
 } from '@/lib/db/schema';
-import { eq, and, inArray, sql, or, desc, gte } from 'drizzle-orm';
+import { eq, and, inArray, sql, or, desc, gte, gt } from 'drizzle-orm';
 import { success, serverError, validationError, conflict, unauthorized } from '@/lib/utils/api-response';
 import { z } from 'zod';
 import { generateOrderNumber } from '@/lib/utils/generate-order-number';
@@ -205,6 +205,9 @@ export const POST = withRateLimit(
         }
       } else if (coupon.type === 'fixed') {
         discountAmount = coupon.discountValue!;
+      } else if (coupon.type === 'free_shipping') {
+        // free_shipping: no monetary discount; shipping cost is zeroed below after courier selection
+        discountAmount = 0;
       } else if (coupon.type === 'buy_x_get_y') {
         // buy_x_get_y: no monetary discount, add free items to order
         const buyQty = coupon.buyQuantity ?? 1;
@@ -424,7 +427,9 @@ export const POST = withRateLimit(
 
       // Deduct points using FIFO inside transaction (rollback-safe)
       if (pointsDeducted && userId && pointsUsed) {
-        // Find oldest unconsumed, unexpired earn records (FIFO order)
+        // Fetch ALL eligible earn records without a row limit.
+        // .limit(pointsUsed) limits by row count, not points total — the accumulating
+        // loop below determines how many records are needed to cover pointsUsed.
         const earnRecords = await tx
           .select()
           .from(pointsHistory)
@@ -433,19 +438,30 @@ export const POST = withRateLimit(
               eq(pointsHistory.userId, userId),
               eq(pointsHistory.type, 'earn'),
               sql`${pointsHistory.consumedAt} IS NULL`,
-              or(
-                sql`${pointsHistory.expiresAt} IS NULL`,
-                sql`${pointsHistory.expiresAt} > NOW()`
-              )
+              sql`${pointsHistory.isExpired} = false`,
+              gt(pointsHistory.pointsAmount, 0),
             )
           )
-          .orderBy(pointsHistory.createdAt)
-          .limit(pointsUsed);
+          .orderBy(pointsHistory.expiresAt, pointsHistory.createdAt); // FIFO: earliest-expiring first
 
-        // Deduct from user balance using conditional update (prevents negative balance)
+        // Accumulating loop: walk through records until we cover all of pointsUsed
+        let remaining = pointsUsed;
+        const toConsume: { id: string; amountUsed: number }[] = [];
+        for (const record of earnRecords) {
+          if (remaining <= 0) break;
+          const amountUsed = Math.min(record.pointsAmount, remaining);
+          toConsume.push({ id: record.id, amountUsed });
+          remaining -= amountUsed;
+        }
+
+        if (remaining > 0) {
+          throw new Error('Poin tidak mencukupi atau terjadi kesalahan');
+        }
+
+        // Deduct from user balance using GREATEST guard (prevents negative balance)
         const updatedUsers = await tx
           .update(users)
-          .set({ pointsBalance: sql`points_balance - ${pointsUsed}` })
+          .set({ pointsBalance: sql`GREATEST(points_balance - ${pointsUsed}, 0)` })
           .where(and(
             eq(users.id, userId),
             gte(users.pointsBalance, pointsUsed)
@@ -455,30 +471,26 @@ export const POST = withRateLimit(
         if (updatedUsers.length === 0) {
           throw new Error('Poin tidak mencukupi atau terjadi kesalahan');
         }
+        const pointsBalanceAfterDeduct = updatedUsers[0]!.pointsBalance;
 
         // Create redeem records referencing specific earn IDs (FIFO)
-        let remainingToDeduct = pointsUsed;
-        for (const earnRecord of earnRecords) {
-          if (remainingToDeduct <= 0) break;
-          const deductFromThis = Math.min(earnRecord.pointsAmount, remainingToDeduct);
-          remainingToDeduct -= deductFromThis;
-
+        for (const { id, amountUsed } of toConsume) {
           // Mark the earn record as consumed
           await tx
             .update(pointsHistory)
             .set({ consumedAt: new Date() })
-            .where(eq(pointsHistory.id, earnRecord.id));
+            .where(eq(pointsHistory.id, id));
 
           // Create redeem record referencing this earn
           await tx.insert(pointsHistory).values({
             userId,
             type: 'redeem',
-            pointsAmount: -deductFromThis,
-            pointsBalanceAfter: sql`points_balance`,
+            pointsAmount: -amountUsed,
+            pointsBalanceAfter: pointsBalanceAfterDeduct,
             orderId: null,
             descriptionId: `Tukar poin untuk pesanan (FIFO)`,
             descriptionEn: `Redeem points for order (FIFO)`,
-            referencedEarnId: earnRecord.id,
+            referencedEarnId: id,
           });
         }
       }
@@ -549,6 +561,38 @@ export const POST = withRateLimit(
         await tx.insert(orderItems).values(freeItemsWithOrderId);
       }
 
+      // BUG-07: Reserve stock at initiate time to prevent overselling from concurrent checkouts
+      // Uses atomic conditional update — only succeeds if sufficient stock exists
+      const allOrderItems = [...orderItemsData, ...freeItems];
+      for (const item of allOrderItems) {
+        if (item.quantity <= 0) continue;
+        const [updated] = await tx
+          .update(productVariants)
+          .set({ stock: sql`stock - ${item.quantity}` })
+          .where(
+            and(
+              eq(productVariants.id, item.variantId),
+              gte(productVariants.stock, item.quantity)
+            )
+          )
+          .returning({ newStock: productVariants.stock });
+
+        if (!updated) {
+          throw new Error(`Insufficient stock for variant ${item.variantId}`);
+        }
+      }
+
+      // BUG-08: Insert provisional couponUsages row to enforce per-user limit under concurrency
+      // If order is cancelled, this row is deleted by the cancel/expire webhook handler
+      if (coupon && coupon.maxUsesPerUser && userId) {
+        await tx.insert(couponUsages).values({
+          couponId: coupon.id,
+          orderId: created.id,
+          userId,
+          discountApplied: discountAmount,
+        });
+      }
+
       // FIX 2: Back-fill orderId on points redeem records created during this transaction
       if (userId && pointsDeducted) {
         await tx
@@ -607,11 +651,11 @@ export const POST = withRateLimit(
       name: `${item.productNameId.substring(0, 45)} - ${item.variantNameId}`.substring(0, 50),
     }));
 
-    // Add free items to Midtrans item details
+    // Add free items to Midtrans item details (price must be 0 for Midtrans gross_amount validation)
     for (const freeItem of freeItems) {
       itemDetails.push({
         id: freeItem.variantId,
-        price: 1,
+        price: 0,
         quantity: freeItem.quantity,
         name: `FREE: ${freeItem.productNameId.substring(0, 40)} - ${freeItem.variantNameId}`.substring(0, 50),
       });

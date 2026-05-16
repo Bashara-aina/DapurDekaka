@@ -47,6 +47,7 @@ export async function GET(req: NextRequest) {
     const results = { checked: 0, reconciled: 0, cancelled: 0, errors: 0 };
 
     for (const order of pendingOrders) {
+      let orderStatus: 'settlement' | 'cancel' | 'skip' | 'error' = 'skip';
       try {
         results.checked++;
 
@@ -69,10 +70,19 @@ export async function GET(req: NextRequest) {
           }
 
           await db.transaction(async (tx) => {
-            await tx.update(orders).set({
+            // BUG-11: Use conditional WHERE to prevent race with webhook
+            const [updated] = await tx.update(orders).set({
               status: 'paid',
               paidAt: new Date(),
-            }).where(eq(orders.id, fullOrder.id));
+            }).where(and(
+              eq(orders.id, fullOrder.id),
+              eq(orders.status, 'pending_payment')
+            )).returning();
+
+            if (!updated) {
+              // Another process already handled this order — rollback
+              throw new Error('ORDER_ALREADY_PROCESSED');
+            }
 
             for (const item of fullOrder.items) {
               const result = await tx
@@ -83,12 +93,12 @@ export async function GET(req: NextRequest) {
                 ))
                 .returning({ newStock: productVariants.stock });
 
-              const updated = result[0];
+              const updatedItem = result[0];
               await tx.insert(inventoryLogs).values({
                 variantId: item.variantId,
                 changeType: 'sale',
-                quantityBefore: (updated?.newStock ?? 0) + item.quantity,
-                quantityAfter: updated?.newStock ?? 0,
+                quantityBefore: (updatedItem?.newStock ?? 0) + item.quantity,
+                quantityAfter: updatedItem?.newStock ?? 0,
                 quantityDelta: -item.quantity,
                 orderId: fullOrder.id,
                 note: '[Reconcile] Stock deducted via cron recovery',
@@ -162,7 +172,7 @@ export async function GET(req: NextRequest) {
             }),
           }).catch(console.error);
 
-          results.reconciled++;
+          orderStatus = 'settlement';
         } else if (['cancel', 'deny', 'expire'].includes(midtransStatus)) {
           // Midtrans says cancelled, we say pending — trigger cancellation with full reversal
           await db.transaction(async (tx) => {
@@ -174,13 +184,8 @@ export async function GET(req: NextRequest) {
               })
               .where(eq(orders.id, order.id));
 
-            // Points reversal: fetch user and update points balance — full FIFO reversal from webhook handler
             if (order.userId) {
-              const user = await tx.query.users.findFirst({
-                where: eq(users.id, order.userId),
-              });
-              if (user && order.pointsUsed > 0) {
-                // 1. Find redeem records for this order
+              if (order.pointsUsed > 0) {
                 const redeemRecords = await tx
                   .select()
                   .from(pointsHistory)
@@ -190,7 +195,6 @@ export async function GET(req: NextRequest) {
                     eq(pointsHistory.orderId, order.id)
                   ));
 
-                // 2. Unconsume referenced earn records (FIFO reversal)
                 for (const redeem of redeemRecords) {
                   if (redeem.referencedEarnId) {
                     await tx.update(pointsHistory)
@@ -199,14 +203,12 @@ export async function GET(req: NextRequest) {
                   }
                 }
 
-                // 3. Restore balance (pointsAmount is negative for redeem, so adding restores)
                 await tx.update(users)
                   .set({ pointsBalance: sql`points_balance + ${order.pointsUsed}` })
                   .where(eq(users.id, order.userId));
               }
             }
 
-            // Coupon reversal: decrement used_count and delete couponUsage row
             if (order.couponId) {
               await tx.update(coupons)
                 .set({ usedCount: sql`GREATEST(used_count - 1, 0)` })
@@ -215,15 +217,26 @@ export async function GET(req: NextRequest) {
               await tx.delete(couponUsages).where(eq(couponUsages.orderId, order.id));
             }
           });
-          results.cancelled++;
+
+          orderStatus = 'cancel';
         }
       } catch (err) {
-        logger.error('[Reconcile] Error processing order', {
-          orderNumber: order.orderNumber,
-          error: err instanceof Error ? err.message : String(err),
-        });
-        results.errors++;
+        const message = err instanceof Error ? err.message : String(err);
+        if (message === 'ORDER_ALREADY_PROCESSED') {
+          logger.info('[Reconcile] Order already processed by webhook, skipping', { orderNumber: order.orderNumber });
+          orderStatus = 'skip';
+        } else {
+          logger.error('[Reconcile] Error processing order', {
+            orderNumber: order.orderNumber,
+            error: message,
+          });
+          orderStatus = 'error';
+        }
       }
+
+      if (orderStatus === 'settlement') results.reconciled++;
+      else if (orderStatus === 'cancel') results.cancelled++;
+      else if (orderStatus === 'error') results.errors++;
     }
 
     logger.info('[Reconcile] Payment reconciliation complete', results);

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { adminActivityLogs } from '@/lib/db/schema';
+import { adminActivityLogs, users } from '@/lib/db/schema';
 import { eq, and, gte, lt } from 'drizzle-orm';
 import { success, serverError, forbidden } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
       // fetch individually to avoid complex query
       for (const uid of userIds) {
         const user = await db.query.users.findFirst({
-          where: eq(adminActivityLogs.userId, uid),
+          where: eq(users.id, uid),
         });
         if (user) usersMap[uid] = user.name;
       }

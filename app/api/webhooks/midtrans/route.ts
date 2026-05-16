@@ -49,15 +49,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: false }, { status: 400 });
     }
 
-    // Reject webhooks older than 1 hour (replay attack protection)
-    if (body.transaction_time) {
-      const txTime = new Date(body.transaction_time).getTime();
-      const oneHourAgo = Date.now() - 60 * 60 * 1000;
-      if (txTime < oneHourAgo) {
-        logger.warn('[Midtrans Webhook] Stale webhook rejected', { orderId: order_id, txTime });
-        return NextResponse.json({ received: false, error: 'Stale webhook' }, { status: 400 });
-      }
-    }
+    // BUG-03: Removed stale webhook check — VA/bank transfer can settle hours/days later.
+    // Idempotency is handled by midtransTransactionId uniqueness check below.
+    // Signature verification (above) protects against replay attacks.
 
     // ── Step 2: Find order ───────────────────────────────────────────────
     const order = await db.query.orders.findFirst({
@@ -98,7 +92,8 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Step 4: Settlement — full processing ───────────────────────────
-    if (transaction_status === 'settlement') {
+// BUG-02: Also handle 'capture' status for credit card auto-captured transactions
+    if (transaction_status === 'settlement' || transaction_status === 'capture') {
       // Amount cross-check — validate gross_amount matches order total to prevent tampered webhooks
       const expectedAmount = order.totalAmount;
       const webhookAmount = Math.round(parseFloat(gross_amount));
@@ -124,31 +119,21 @@ export async function POST(req: NextRequest) {
           })
           .where(eq(orders.id, order.id));
 
-        // Deduct stock for each item with row-level lock to prevent concurrent oversell
+        // BUG-07: Stock was already decremented at initiate time to prevent overselling.
+        // At settlement we only need to log the sale — no stock deduction needed here.
+        // We still log the inventory movement for audit trail.
         for (const item of order.items) {
-          // Lock variant row (PostgreSQL FOR UPDATE) to serialize concurrent stock deductions
-          const [lockedVariant] = await tx
-            .select({ id: productVariants.id })
+          const [currentVariant] = await tx
+            .select({ stock: productVariants.stock })
             .from(productVariants)
-            .where(eq(productVariants.id, item.variantId))
-            .for('update');
+            .where(eq(productVariants.id, item.variantId));
 
-          const result = await tx
-            .update(productVariants)
-            .set({
-              stock: sql`GREATEST(stock - ${item.quantity}, 0)`,
-              updatedAt: new Date(),
-            })
-            .where(eq(productVariants.id, item.variantId))
-            .returning({ newStock: productVariants.stock });
-
-          if (result.length > 0) {
-            const updatedStock = result[0]!.newStock;
+          if (currentVariant) {
             await tx.insert(inventoryLogs).values({
               variantId: item.variantId,
               changeType: 'sale',
-              quantityBefore: updatedStock + item.quantity,
-              quantityAfter: updatedStock,
+              quantityBefore: currentVariant.stock + item.quantity,
+              quantityAfter: currentVariant.stock,
               quantityDelta: -item.quantity,
               orderId: order.id,
             });
@@ -202,51 +187,26 @@ export async function POST(req: NextRequest) {
         });
 
         // Record coupon usage
+        // BUG-08: If a provisional row was inserted at initiate (for maxUsesPerUser coupons),
+        // it already exists — upsert is safe either way (ON CONFLICT DO NOTHING)
         if (order.couponId) {
-          await tx.insert(couponUsages).values({
-            couponId: order.couponId,
-            orderId: order.id,
-            userId: order.userId ?? null,
-            discountApplied: order.discountAmount,
-          });
+          await tx
+            .insert(couponUsages)
+            .values({
+              couponId: order.couponId,
+              orderId: order.id,
+              userId: order.userId ?? null,
+              discountApplied: order.discountAmount,
+            })
+            .onConflictDoNothing();
         }
       });
 
       logger.info('[Midtrans Webhook] Order paid successfully', { orderNumber: order.orderNumber });
 
-      // ── Step 5a: Send confirmation email (fire-and-forget, non-blocking) ─────────
-      sendEmail({
-        to: order.recipientEmail,
-        subject: `Pesanan ${order.orderNumber} telah dikonfirmasi!`,
-        react: OrderConfirmationEmail({
-          orderNumber: order.orderNumber,
-          customerName: order.recipientName,
-          items: order.items.map((item) => ({
-            name: item.productNameId,
-            variant: item.variantNameId,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            subtotal: item.subtotal,
-          })),
-          subtotal: order.subtotal,
-          shippingCost: order.shippingCost,
-          discountAmount: order.discountAmount,
-          totalAmount: order.totalAmount,
-          deliveryMethod: order.deliveryMethod as 'delivery' | 'pickup',
-          courierName: order.courierName ?? undefined,
-          recipientName: order.recipientName,
-          recipientPhone: order.recipientPhone,
-          addressLine: order.addressLine ?? undefined,
-          city: order.city ?? undefined,
-          province: order.province ?? undefined,
-          paidAt: formatWIB(new Date()),
-        }),
-      }).catch((emailError) => {
-        logger.error('[Email] Failed to send confirmation', { error: emailError instanceof Error ? emailError.message : String(emailError) });
-      });
-
-      // ── Step 5b: Send pickup invitation for pickup orders (fire-and-forget) ────────────
+      // ── Step 5: Send email based on delivery method ─────────────────────────────
       if (order.deliveryMethod === 'pickup') {
+        // Only send pickup invitation for pickup orders
         sendEmail({
           to: order.recipientEmail,
           subject: `Pesanan ${order.orderNumber} siap diambil!`,
@@ -267,10 +227,42 @@ export async function POST(req: NextRequest) {
         }).catch((emailError) => {
           logger.error('[Email] Failed to send pickup invitation', { error: emailError instanceof Error ? emailError.message : String(emailError) });
         });
+      } else {
+        // Only send general confirmation for delivery orders
+        sendEmail({
+          to: order.recipientEmail,
+          subject: `Pesanan ${order.orderNumber} telah dikonfirmasi!`,
+          react: OrderConfirmationEmail({
+            orderNumber: order.orderNumber,
+            customerName: order.recipientName,
+            items: order.items.map((item) => ({
+              name: item.productNameId,
+              variant: item.variantNameId,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              subtotal: item.subtotal,
+            })),
+            subtotal: order.subtotal,
+            shippingCost: order.shippingCost,
+            discountAmount: order.discountAmount,
+            totalAmount: order.totalAmount,
+            deliveryMethod: 'delivery',
+            courierName: order.courierName ?? undefined,
+            recipientName: order.recipientName,
+            recipientPhone: order.recipientPhone,
+            addressLine: order.addressLine ?? undefined,
+            city: order.city ?? undefined,
+            province: order.province ?? undefined,
+            paidAt: formatWIB(new Date()),
+            pointsEarned: order.pointsEarned ?? 0,
+          }),
+        }).catch((emailError) => {
+          logger.error('[Email] Failed to send confirmation', { error: emailError instanceof Error ? emailError.message : String(emailError) });
+        });
       }
 
     } else if (['cancel', 'deny', 'expire'].includes(transaction_status)) {
-      // ── Step 6: Payment failed — reverse points + coupon ────────────────
+      // ── Step 6: Payment failed — restore stock + reverse points + coupon ─────────
       await db.transaction(async (tx) => {
         await tx
           .update(orders)
@@ -279,6 +271,27 @@ export async function POST(req: NextRequest) {
             cancelledAt: new Date(),
           })
           .where(eq(orders.id, order.id));
+
+        // BUG-07: Restore stock that was reserved at initiate time
+        for (const item of order.items) {
+          const [updated] = await tx
+            .update(productVariants)
+            .set({ stock: sql`stock + ${item.quantity}`, updatedAt: new Date() })
+            .where(eq(productVariants.id, item.variantId))
+            .returning({ newStock: productVariants.stock });
+
+          if (updated) {
+            await tx.insert(inventoryLogs).values({
+              variantId: item.variantId,
+              changeType: 'reversal',
+              quantityBefore: updated.newStock - item.quantity,
+              quantityAfter: updated.newStock,
+              quantityDelta: item.quantity,
+              orderId: order.id,
+              note: `Pembatalan pesanan ${order.orderNumber} — stok dikembalikan`,
+            });
+          }
+        }
 
         // Reverse points if user had used them (FIFO: unconsume referenced earn records)
         if (order.userId && order.pointsUsed > 0) {

@@ -5,6 +5,9 @@ import { eq } from 'drizzle-orm';
 import { success, serverError, notFound, forbidden, conflict, validationError } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
 import { z } from 'zod';
+import { sendEmail } from '@/lib/resend/send-email';
+import { OrderShippedEmail } from '@/lib/resend/templates/OrderShipped';
+import { formatWIB } from '@/lib/utils/format-date';
 
 export async function GET(
   req: NextRequest,
@@ -55,7 +58,7 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
 const WAREHOUSE_RESTRICTED_TRANSITIONS: Record<string, string[]> = {
   paid: ['processing'],
   processing: ['packed'],
-  packed: ['shipped', 'delivered'],
+  packed: ['shipped'],
 };
 
 const statusUpdateSchema = z.object({
@@ -140,17 +143,47 @@ export async function PATCH(
       updateData.deliveredAt = new Date();
     }
 
-    await db.update(orders).set(updateData).where(eq(orders.id, orderId));
+    await db.transaction(async (tx) => {
+      await tx.update(orders).set(updateData).where(eq(orders.id, orderId));
 
-    await db.insert(orderStatusHistory).values({
-      orderId,
-      fromStatus: currentStatus,
-      toStatus: newStatus,
-      changedByUserId: session.user.id,
-      changedByType: 'user',
-      note: note || `Status diubah oleh ${session.user.name} dari ${currentStatus} ke ${newStatus}`,
-      metadata: trackingNumber ? { trackingNumber } : undefined,
+      await tx.insert(orderStatusHistory).values({
+        orderId,
+        fromStatus: currentStatus,
+        toStatus: newStatus,
+        changedByUserId: session.user.id,
+        changedByType: 'user',
+        note: note || `Status diubah oleh ${session.user.name} dari ${currentStatus} ke ${newStatus}`,
+        metadata: trackingNumber ? { trackingNumber } : undefined,
+      });
     });
+
+    // Send shipped email notification
+    if (newStatus === 'shipped' && trackingNumber) {
+      try {
+        const emailHtml = OrderShippedEmail({
+          orderNumber: order.orderNumber,
+          customerName: order.recipientName,
+          courierName: order.courierName ?? 'Pengiriman',
+          trackingNumber,
+          trackingUrl: trackingUrl ?? '',
+          estimatedDays: estimatedDays ?? '',
+          items: order.items.map((item) => ({
+            name: item.productNameId,
+            variant: item.variantNameId,
+            quantity: item.quantity,
+          })),
+          totalAmount: order.totalAmount,
+        });
+
+        await sendEmail({
+          to: order.recipientEmail,
+          subject: `Pesanan ${order.orderNumber} sudah dikirim!`,
+          react: emailHtml,
+        });
+      } catch (emailError) {
+        console.error('[Field Order] Failed to send shipped email:', emailError);
+      }
+    }
 
     return success({
       orderId,

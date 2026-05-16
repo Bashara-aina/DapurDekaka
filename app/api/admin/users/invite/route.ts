@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 import { db } from '@/lib/db';
-import { users } from '@/lib/db/schema';
+import { users, passwordResetTokens } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { success, serverError, conflict, forbidden, badRequest } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
+import { sendEmail } from '@/lib/resend/send-email';
+import { TeamInviteEmail } from '@/lib/resend/templates/TeamInvite';
 
 const inviteSchema = z.object({
   email: z.string().email('Email tidak valid'),
@@ -44,17 +47,13 @@ export async function POST(req: NextRequest) {
       return conflict('Email sudah terdaftar. Gunakan email lain.');
     }
 
-    // Generate temporary password
-    const tempPassword = generateTempPassword();
-    const passwordHash = await bcrypt.hash(tempPassword, 12);
-
-    // Create user with temporary password
+    // Create user with temporary placeholder password (they will set real password via reset link)
     const [newUser] = await db
       .insert(users)
       .values({
         email: email.toLowerCase(),
         name,
-        passwordHash,
+        passwordHash: await bcrypt.hash(randomBytes(16).toString('hex'), 12),
         role: userRole,
         isActive: true,
         pointsBalance: 0,
@@ -65,25 +64,44 @@ export async function POST(req: NextRequest) {
     if (!newUser) {
       throw new Error('Failed to create user');
     }
-    // For now, log the temp password (in production, send via email)
-    console.log(`[Invite User] Created user ${newUser.email} with temp password: ${tempPassword}`);
+
+    // Create password reset token for first-time login
+    const token = randomBytes(32).toString('hex');
+    const tokenPrefix = token.slice(0, 8);
+    const hashedToken = await bcrypt.hash(token, 12);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    await db.insert(passwordResetTokens).values({
+      userId: newUser.id,
+      tokenPrefix,
+      tokenHash: hashedToken,
+      expiresAt,
+    });
+
+    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password/${token}`;
+
+    // Send invite email using React Email template
+    await sendEmail({
+      to: email,
+      subject: 'Undangan Bergabung — Dapur Dekaka',
+      react: TeamInviteEmail({
+        inviteUrl,
+        inviterName: session.user.name ?? 'Admin',
+        role: userRole,
+      }),
+    });
 
     return success({
-      user: newUser,
-      tempPassword, // In production, don't return this — send via email instead
-      message: `Pengguna berhasil diundang. Password sementara: ${tempPassword}`,
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        role: newUser.role,
+      },
+      message: 'Pengguna berhasil diundang. Email undangan telah dikirim.',
     });
   } catch (error) {
     console.error('[admin/users/invite]', error);
     return serverError(error);
   }
-}
-
-function generateTempPassword(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  let password = '';
-  for (let i = 0; i < 12; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return password;
 }

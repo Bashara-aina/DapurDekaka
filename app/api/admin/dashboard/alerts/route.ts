@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { orders, productVariants, b2bInquiries } from '@/lib/db/schema';
@@ -15,7 +15,7 @@ interface Alert {
   link: string;
 }
 
-const getAlerts = cache(async (): Promise<Alert[]> => {
+const getAlerts = unstable_cache(async (): Promise<Alert[]> => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 

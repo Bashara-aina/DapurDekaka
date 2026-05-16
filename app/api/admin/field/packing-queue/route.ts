@@ -70,15 +70,34 @@ export async function PATCH(req: NextRequest) {
       return conflict('Hanya order dengan status paid yang dapat dipack');
     }
 
-    await db.update(orders).set({ status: 'packed', updatedAt: new Date() }).where(eq(orders.id, orderId));
+    await db.transaction(async (tx) => {
+      // First: paid → processing
+      await tx.update(orders)
+        .set({ status: 'processing', updatedAt: new Date() })
+        .where(and(eq(orders.id, orderId), eq(orders.status, 'paid')));
 
-    await db.insert(orderStatusHistory).values({
-      orderId,
-      fromStatus: 'paid',
-      toStatus: 'packed',
-      changedByUserId: session.user.id,
-      changedByType: 'user',
-      note: `Order dikemas oleh ${session.user.name}`,
+      await tx.insert(orderStatusHistory).values({
+        orderId,
+        fromStatus: 'paid',
+        toStatus: 'processing',
+        changedByUserId: session.user.id,
+        changedByType: 'user',
+        note: `Auto-progressed by packing queue`,
+      });
+
+      // Then: processing → packed
+      await tx.update(orders)
+        .set({ status: 'packed', packedAt: new Date(), updatedAt: new Date() })
+        .where(and(eq(orders.id, orderId), eq(orders.status, 'processing')));
+
+      await tx.insert(orderStatusHistory).values({
+        orderId,
+        fromStatus: 'processing',
+        toStatus: 'packed',
+        changedByUserId: session.user.id,
+        changedByType: 'user',
+        note: `Order dikemas oleh ${session.user.name}`,
+      });
     });
 
     return success({ orderId, status: 'packed' });

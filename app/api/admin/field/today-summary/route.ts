@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { orders } from '@/lib/db/schema';
+import { orders, orderStatusHistory } from '@/lib/db/schema';
 import { eq, and, gte, lt, count } from 'drizzle-orm';
 import { success, serverError, forbidden } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
@@ -21,14 +21,17 @@ export async function GET(req: NextRequest) {
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
     const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
 
-    const [packedToday, shippedToday, pendingPickup] = await Promise.all([
-      db.query.orders.findMany({
-        where: and(
-          eq(orders.status, 'packed'),
-          gte(orders.updatedAt, startOfDay),
-          lt(orders.updatedAt, endOfDay)
+    const [packedTodayResult, shippedToday, pendingPickup] = await Promise.all([
+      db
+        .select({ count: count() })
+        .from(orderStatusHistory)
+        .where(
+          and(
+            eq(orderStatusHistory.toStatus, 'packed'),
+            gte(orderStatusHistory.createdAt, startOfDay),
+            lt(orderStatusHistory.createdAt, endOfDay)
+          )
         ),
-      }),
       db.query.orders.findMany({
         where: and(
           eq(orders.status, 'shipped'),
@@ -45,7 +48,7 @@ export async function GET(req: NextRequest) {
     ]);
 
     return success({
-      packedToday: packedToday.length,
+      packedToday: packedTodayResult[0]?.count ?? 0,
       shippedToday: shippedToday.length,
       pendingPickup: pendingPickup.length,
       generatedAt: now.toISOString(),

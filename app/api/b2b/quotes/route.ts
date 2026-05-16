@@ -3,7 +3,7 @@ import { eq, desc } from 'drizzle-orm';
 import { success, unauthorized, forbidden, serverError, notFound, validationError } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { b2bQuotes, b2bProfiles, b2bQuoteItems } from '@/lib/db/schema';
+import { b2bQuotes, b2bProfiles, b2bQuoteItems, b2bQuoteCounters } from '@/lib/db/schema';
 import { z } from 'zod';
 import { sql } from 'drizzle-orm';
 
@@ -56,18 +56,33 @@ export async function POST(req: NextRequest) {
       return notFound('Profil B2B tidak ditemukan');
     }
 
-    // Generate quote number
+    // Atomic quote number generation via counter table
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-    const countResult = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(b2bQuotes)
-      .execute();
-    const countNum = (countResult[0]?.count ?? 0) + 1;
-    const quoteNumber = `BBQ-${dateStr}-${String(countNum).padStart(4, '0')}`;
+
+    const counterResult = await db.transaction(async (tx) => {
+      const result = await tx
+        .insert(b2bQuoteCounters)
+        .values({
+          date: dateStr,
+          lastSequence: 1,
+        })
+        .onConflictDoUpdate({
+          target: b2bQuoteCounters.date,
+          set: {
+            lastSequence: sql`${b2bQuoteCounters.lastSequence} + 1`,
+            updatedAt: new Date(),
+          },
+        })
+        .returning({ newSequence: b2bQuoteCounters.lastSequence });
+
+      const seq = result[0]?.newSequence ?? 1;
+      const quoteNumber = `BBQ-${dateStr}-${String(seq).padStart(4, '0')}`;
+      return quoteNumber;
+    });
 
     const [createdQuote] = await db.insert(b2bQuotes).values({
-      quoteNumber,
+      quoteNumber: counterResult,
       b2bProfileId: data.b2bProfileId,
       createdBy: session.user.id,
       status: 'sent',
@@ -130,9 +145,10 @@ export async function GET(req: NextRequest) {
       const profile = await db.query.b2bProfiles.findFirst({
         where: eq(b2bProfiles.userId, session.user.id),
       });
-      if (profile) {
-        whereClause = eq(b2bQuotes.b2bProfileId, profile.id);
+      if (!profile) {
+        return success({ quotes: [] });
       }
+      whereClause = eq(b2bQuotes.b2bProfileId, profile.id);
     }
 
     const quotes = await db.query.b2bQuotes.findMany({

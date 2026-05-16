@@ -144,6 +144,7 @@ export const savedCarts = pgTable('saved_carts', {
 export const passwordResetTokens = pgTable('password_reset_tokens', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  tokenPrefix: varchar('token_prefix', { length: 8 }).notNull(),
   tokenHash: varchar('token_hash', { length: 255 }).notNull().unique(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   usedAt: timestamp('used_at', { withTimezone: true }),
@@ -541,6 +542,14 @@ export const orderDailyCounters = pgTable('order_daily_counters', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const b2bQuoteCounters = pgTable('b2b_quote_counters', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  date: varchar('date', { length: 10 }).notNull().unique(),
+  lastSequence: integer('last_sequence').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const adminActivityLogs = pgTable('admin_activity_logs', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id),
@@ -668,3 +677,5 @@ export const adminLogsUserIdIdx = index('idx_admin_logs_user_id').on(adminActivi
 export const adminLogsEntityIdx = index('idx_admin_logs_entity').on(adminActivityLogs.entityType, adminActivityLogs.entityId);
 export const b2bInquiriesStatusIdx = index('idx_b2b_inquiries_status').on(b2bInquiries.status);
 export const inventoryLogsVariantIdIdx = index('idx_inventory_logs_variant_id').on(inventoryLogs.variantId);
+export const passwordResetTokensTokenPrefixIdx = index('idx_password_reset_tokens_token_prefix').on(passwordResetTokens.tokenPrefix);
+export const passwordResetTokensExpiresAtIdx = index('idx_password_reset_tokens_expires_at').on(passwordResetTokens.expiresAt);

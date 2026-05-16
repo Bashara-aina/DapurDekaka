@@ -8,7 +8,7 @@ import { z } from 'zod';
 
 const restockSchema = z.object({
   variantId: z.string().uuid(),
-  quantity: z.number().int().min(1, 'Jumlah harus lebih dari 0'),
+  quantity: z.number().int().min(1, 'Jumlah harus lebih dari 0').max(10000, 'Jumlah maksimum restock adalah 10.000 unit'),
   note: z.string().min(1, 'Alasan restock harus diisi'),
 });
 

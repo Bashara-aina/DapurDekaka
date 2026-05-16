@@ -161,6 +161,10 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   }, [trackingNumber, order?.courierCode]);
 
   async function handleStatusUpdate(newStatus: string) {
+    if (newStatus === 'shipped' && !trackingNumber.trim()) {
+      alert('Nomor resi wajib diisi sebelum mengubah status ke "Dikirim"');
+      return;
+    }
     if (!confirm(`Yakin ubah status ke "${STATUS_LABELS[newStatus]}"?`)) return;
 
     setIsUpdating(true);

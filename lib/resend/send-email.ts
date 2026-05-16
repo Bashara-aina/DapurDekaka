@@ -8,19 +8,26 @@ export interface SendEmailParams {
   attachments?: Array<{ filename: string; content: Buffer | string }>;
 }
 
-export async function sendEmail(params: SendEmailParams): Promise<void> {
+export async function sendEmail(params: SendEmailParams): Promise<boolean> {
   const { to, subject, react, attachments } = params;
 
   try {
-    await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: `${FROM_NAME} <${FROM_EMAIL}>`,
       to,
       subject,
       react,
       ...(attachments && { attachments }),
     });
-  } catch (error) {
-    console.error('[Email] Failed to send email:', error);
-    // Never throw — email failures are non-critical
+
+    if (error) {
+      console.error('[Email] Resend API error:', { error, to, subject });
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    console.error('[Email] Unexpected error:', { err, to, subject });
+    return false;
   }
 }

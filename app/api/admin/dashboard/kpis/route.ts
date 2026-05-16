@@ -1,12 +1,12 @@
 import { NextRequest } from 'next/server';
-import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { orders, users, systemSettings } from '@/lib/db/schema';
 import { eq, gte, sql, and, lt, isNull } from 'drizzle-orm';
 import { success, unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
 
-const getKpis = cache(async (fromDate?: Date, toDate?: Date) => {
+const getKpis = unstable_cache(async (fromDate?: Date, toDate?: Date) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 

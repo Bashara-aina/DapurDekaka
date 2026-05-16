@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Mail, Lock, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -99,6 +99,23 @@ export function OrderTrackingClient({
   const currentStatus = order?.status ?? preVerifyStatus ?? 'pending_payment';
   const timelineInfo = STATUS_TIMELINE[currentStatus] ?? { label: currentStatus, index: 0 };
   const currentIndex = currentStatus === 'cancelled' ? 0 : timelineInfo.index;
+
+  // Auto-verify for logged-in users who own the order
+  useEffect(() => {
+    async function tryAutoVerify() {
+      try {
+        const res = await fetch(`/api/orders/${orderNumber}`);
+        const data = await res.json();
+        if (data?.order && data?.verified) {
+          setOrder(data.order as Order);
+          setVerified(true);
+        }
+      } catch {
+        // Not logged in or not their order — show the email form
+      }
+    }
+    tryAutoVerify();
+  }, [orderNumber]);
 
   const handleVerifyEmail = async (e: React.FormEvent) => {
     e.preventDefault();

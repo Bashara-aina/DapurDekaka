@@ -21,7 +21,10 @@ export async function GET(req: NextRequest) {
     }
 
     const packedOrders = await db.query.orders.findMany({
-      where: eq(orders.status, 'packed'),
+      where: and(
+        eq(orders.status, 'packed'),
+        eq(orders.deliveryMethod, 'delivery'),
+      ),
       with: {
         items: true,
         user: true,

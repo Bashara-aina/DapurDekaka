@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { orders } from '@/lib/db/schema';
-import { desc, eq, or, and } from 'drizzle-orm';
+import { desc, eq, or, and, isNull } from 'drizzle-orm';
 import ShipmentsClient from './ShipmentsClient';
 
 export const dynamic = 'force-dynamic';
@@ -8,13 +8,12 @@ export const dynamic = 'force-dynamic';
 export default async function ShipmentsPage() {
   const shippableOrders = await db.query.orders.findMany({
     where: and(
+      isNull(orders.trackingNumber),
+      eq(orders.deliveryMethod, 'delivery'),
       or(
         eq(orders.status, 'processing'),
-        eq(orders.status, 'packed'),
-        eq(orders.status, 'paid')
-      ),
-      eq(orders.deliveryMethod, 'delivery'),
-      eq(orders.trackingNumber, null)
+        eq(orders.status, 'packed')
+      )
     ),
     orderBy: [desc(orders.createdAt)],
     limit: 50,

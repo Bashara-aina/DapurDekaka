@@ -36,31 +36,50 @@ export async function GET(req: NextRequest) {
       ),
     });
 
-    const usedCouponsWithDetails = await Promise.all(
-      usedCouponsList.map(async (usage) => {
-        const coupon = await db.query.coupons.findFirst({
-          where: eq(coupons.id, usage.couponId),
-        });
-        return {
-          code: coupon?.code ?? '',
-          type: coupon?.type ?? 'percentage',
-          nameId: coupon?.nameId ?? '',
-          nameEn: coupon?.nameEn ?? '',
-          descriptionId: coupon?.descriptionId ?? '',
-          descriptionEn: coupon?.descriptionEn ?? '',
-          discountValue: coupon?.discountValue ?? 0,
-          minOrderAmount: coupon?.minOrderAmount ?? 0,
-          maxDiscountAmount: coupon?.maxDiscountAmount ?? null,
-          freeShipping: coupon?.freeShipping ?? false,
-          usedAt: usage.createdAt,
-          discountApplied: usage.discountApplied,
-        };
-      })
-    );
+    // Batch-fetch coupon details for used coupons (avoids N+1 queries)
+    const couponsData = usedCouponIds.length > 0
+      ? await db.query.coupons.findMany({
+          where: (c, { inArray }) => inArray(c.id, usedCouponIds),
+        })
+      : [];
+    const couponsMap = new Map(couponsData.map(c => [c.id, c]));
+
+    const usedCouponsWithDetails = usedCouponsList.map(usage => ({
+      code: couponsMap.get(usage.couponId)?.code ?? '',
+      type: couponsMap.get(usage.couponId)?.type ?? 'percentage',
+      nameId: couponsMap.get(usage.couponId)?.nameId ?? '',
+      nameEn: couponsMap.get(usage.couponId)?.nameEn ?? '',
+      descriptionId: couponsMap.get(usage.couponId)?.descriptionId ?? '',
+      descriptionEn: couponsMap.get(usage.couponId)?.descriptionEn ?? '',
+      discountValue: couponsMap.get(usage.couponId)?.discountValue ?? 0,
+      minOrderAmount: couponsMap.get(usage.couponId)?.minOrderAmount ?? 0,
+      maxDiscountAmount: couponsMap.get(usage.couponId)?.maxDiscountAmount ?? null,
+      freeShipping: couponsMap.get(usage.couponId)?.freeShipping ?? false,
+      usedAt: usage.createdAt,
+      discountApplied: usage.discountApplied,
+    }));
+
+    // Check per-user usage limits to filter truly available coupons
+    const userUsageCounts = userId
+      ? await db
+          .select({
+            couponId: couponUsages.couponId,
+            useCount: sql<number>`count(*)::int`,
+          })
+          .from(couponUsages)
+          .where(eq(couponUsages.userId, userId))
+          .groupBy(couponUsages.couponId)
+      : [];
+    const userUsageMap = new Map(userUsageCounts.map(u => [u.couponId, u.useCount]));
+
+    const trulyAvailable = availableCouponsList.filter(coupon => {
+      if (!coupon.maxUsesPerUser) return true;
+      return (userUsageMap.get(coupon.id) ?? 0) < coupon.maxUsesPerUser;
+    });
 
     return success({
       usedCoupons: usedCouponsWithDetails,
-      availableCoupons: availableCouponsList.filter(c => !usedCouponIds.includes(c.id)),
+      availableCoupons: trulyAvailable.filter(c => !usedCouponIds.includes(c.id)),
     });
 
   } catch (error) {

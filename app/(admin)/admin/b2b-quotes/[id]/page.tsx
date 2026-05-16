@@ -4,6 +4,8 @@ import { eq } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { formatIDR } from '@/lib/utils/format-currency';
+import { auth } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -40,6 +42,11 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
 };
 
 export default async function B2BQuoteDetailPage({ params }: PageProps) {
+  const session = await auth();
+  if (!session?.user || !['owner', 'superadmin', 'admin'].includes(session.user.role as string)) {
+    redirect('/admin');
+  }
+
   const { id } = await params;
   const quote = await getQuote(id) as NonNullable<Awaited<ReturnType<typeof getQuote>>>;
 

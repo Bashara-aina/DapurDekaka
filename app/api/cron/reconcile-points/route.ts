@@ -22,7 +22,10 @@ export async function GET(req: NextRequest) {
     const results = await db
       .select({
         userId: pointsHistory.userId,
-        calculatedBalance: sql<number>`COALESCE(SUM(${pointsHistory.pointsAmount}) FILTER (WHERE ${pointsHistory.isExpired} = false), 0)`,
+        // Include all records: expire records carry negative amounts to cancel out earn records.
+        // The isExpired filter on earn records is an optimization flag only — it does NOT
+        // affect the running total. Filtering out expired markers would double-count expiries.
+        calculatedBalance: sql<number>`COALESCE(SUM(${pointsHistory.pointsAmount}), 0)`,
       })
       .from(pointsHistory)
       .groupBy(pointsHistory.userId);

@@ -3,6 +3,7 @@ import { pointsHistory, users } from '@/lib/db/schema';
 import { eq, and, lte, gt, sql } from 'drizzle-orm';
 import { sendEmail } from '@/lib/resend/send-email';
 import { PointsExpiringEmail } from '@/lib/resend/templates/PointsExpiring';
+import { POINTS_VALUE_IDR } from '@/lib/constants/points';
 import { formatWIB } from '@/lib/utils/format-date';
 
 const EXPIRY_DAYS = 30;
@@ -53,7 +54,6 @@ export async function checkExpiringPoints(): Promise<{
 
     for (const record of expiringPoints) {
       if (!record.user || !record.user.email) continue;
-      if (record.user.role === 'superadmin' && record.user.email === 'bashara@dapurdekaka.com') continue;
 
       const userId = record.userId;
       if (!groupedByUser.has(userId)) {
@@ -69,7 +69,7 @@ export async function checkExpiringPoints(): Promise<{
 
       const userGroup = groupedByUser.get(userId)!;
       userGroup.totalPoints += record.pointsAmount;
-      userGroup.totalValue += record.pointsAmount;
+      userGroup.totalValue += record.pointsAmount * POINTS_VALUE_IDR;
       userGroup.items.push({
         pointsAmount: record.pointsAmount,
         expiresAt: formatWIB(record.expiresAt!),
@@ -107,16 +107,3 @@ export async function checkExpiringPoints(): Promise<{
 
   return { processed, errors };
 }
-
-checkExpiringPoints()
-  .then((result) => {
-    console.log(`[Points Expiry] Processed: ${result.processed}, Errors: ${result.errors.length}`);
-    if (result.errors.length > 0) {
-      result.errors.forEach((e) => console.error(`[Points Expiry] Error: ${e}`));
-    }
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('[Points Expiry] Fatal error:', error);
-    process.exit(1);
-  });
