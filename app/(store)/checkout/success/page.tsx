@@ -11,24 +11,33 @@ function SuccessContent() {
   const searchParams = useSearchParams();
   const orderNumber = searchParams.get('order');
 
+  // FIX 15: Only fire confetti after order is verified (paid status)
   useEffect(() => {
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 },
-    });
-  }, []);
+    if (orderData?.order?.status === 'paid') {
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+      });
+    }
+  }, [orderData?.order?.status]);
 
   const { data: orderData, isLoading } = useQuery<{
-    pointsEarned: number;
-    totalAmount: number;
-    status: string;
+    order: {
+      courierName: string;
+      courierService: string;
+      deliveryMethod: string;
+      totalAmount: number;
+    };
+    verified: boolean;
+    };
+    verified: boolean;
   }>({
     queryKey: ['order', orderNumber],
     queryFn: async () => {
       const res = await fetch(`/api/orders/${orderNumber}`);
       const json = await res.json();
-      if (!json.success) return { pointsEarned: 0, totalAmount: 0, status: '' };
+      if (!json.success) return { order: { pointsEarned: 0, totalAmount: 0, status: '', courierName: '', courierService: '', deliveryMethod: '' }, verified: false };
       return json.data;
     },
     enabled: !!orderNumber,
@@ -49,16 +58,20 @@ function SuccessContent() {
           Order number: <span className="font-bold text-brand-red">{orderNumber}</span>
         </p>
 
-        {isLoading ? (
-          <div className="animate-pulse h-16 bg-brand-cream-dark rounded-lg mb-4" />
-        ) : orderData?.pointsEarned && orderData.pointsEarned > 0 ? (
+        {orderData?.order?.courierName && orderData?.order?.deliveryMethod === 'delivery' && (
+          <p className="text-sm text-text-secondary mb-4">
+            Dikirim via {orderData.order.courierName} · Estimasi 2-3 hari kerja
+          </p>
+        )}
+
+        {orderData?.order?.pointsEarned && orderData.order.pointsEarned > 0 ? (
           <div className="bg-gradient-to-r from-brand-gold/20 to-brand-gold/10 border border-brand-gold/30 rounded-xl p-4 mb-6">
             <p className="text-sm text-text-secondary mb-1">Kamu mendapat</p>
             <p className="text-2xl font-bold text-brand-gold">
-              +{orderData.pointsEarned.toLocaleString('id-ID')} poin
+              +{orderData.order.pointsEarned.toLocaleString('id-ID')} poin
             </p>
             <p className="text-xs text-text-secondary mt-1">
-              ({formatIDR(orderData.pointsEarned * 10)}) sudah masuk ke akun kamu
+              ({formatIDR(orderData.order.pointsEarned * 10)}) akan masuk setelah pembayaran dikonfirmasi
             </p>
           </div>
         ) : null}

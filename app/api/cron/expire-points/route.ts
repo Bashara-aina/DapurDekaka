@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { pointsHistory, users } from '@/lib/db/schema';
-import { eq, and, lt, inArray } from 'drizzle-orm';
+import { eq, and, lt, inArray, isNull } from 'drizzle-orm';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { serverError, success } from '@/lib/utils/api-response';
 import { logger } from '@/lib/utils/logger';
@@ -10,7 +10,7 @@ import { logger } from '@/lib/utils/logger';
  * Expire points older than 365 days.
  * Runs daily at midnight WIB (18:00 UTC) via Vercel Cron.
  */
-export async function POST(req: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
     if (!verifyCronAuth(req)) {
       return NextResponse.json(
@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
       where: and(
         eq(pointsHistory.type, 'earn'),
         eq(pointsHistory.isExpired, false),
-        lt(pointsHistory.expiresAt, now)
+        lt(pointsHistory.expiresAt, now),
+        isNull(pointsHistory.consumedAt),
       ),
       with: {
         user: true,

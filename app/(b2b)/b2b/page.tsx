@@ -37,6 +37,7 @@ async function getCategoryCounts() {
     .select({
       id: categories.id,
       nameId: categories.nameId,
+      count: sql<number>`count(${products.id})::int`,
     })
     .from(categories)
     .leftJoin(
@@ -49,14 +50,14 @@ async function getCategoryCounts() {
       )
     )
     .where(eq(categories.isActive, true))
-    .groupBy(categories.id);
+    .groupBy(categories.id, categories.nameId);
 
   return counts
     .filter(c => c.id !== null)
     .map(c => ({
       id: c.id,
       name: c.nameId,
-      count: (c as unknown as { count: number }).count ?? 0,
+      count: c.count ?? 0,
     }));
 }
 
@@ -80,8 +81,8 @@ export default async function B2BLandingPage() {
   return (
     <div className="bg-brand-cream">
       {/* Hero Section */}
-      <section className="relative bg-admin-sidebar text-white py-16 md:py-24">
-        <div className="absolute inset-0 bg-gradient-to-br from-admin-sidebar to-slate-800" />
+      <section className="relative bg-gradient-to-br from-brand-navy to-brand-navy-light text-white py-16 md:py-24">
+        <div className="absolute inset-0 bg-brand-navy" />
         <div className="relative container mx-auto px-4">
           <div className="max-w-3xl">
             <p className="text-white/60 text-sm font-medium mb-3 tracking-wide">
@@ -171,16 +172,17 @@ export default async function B2BLandingPage() {
 
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {categoryCounts.map((cat) => (
-              <div
+              <Link
                 key={cat.id}
-                className="bg-brand-cream rounded-lg p-4 text-center hover:bg-brand-cream-dark transition-colors cursor-pointer"
+                href={`/b2b/products?category=${cat.id}`}
+                className="bg-brand-cream rounded-lg p-4 text-center hover:bg-brand-cream-dark transition-colors block"
               >
                 <div className="w-12 h-12 bg-white rounded-full mx-auto mb-3 flex items-center justify-center">
                   <ChefHat className="w-6 h-6 text-brand-red" />
                 </div>
                 <p className="font-medium text-sm">{cat.name}</p>
-                <p className="text-text-muted text-xs mt-1">{cat.count} Varian</p>
-              </div>
+                <p className="text-text-muted text-xs mt-1">{cat.count} Produk</p>
+              </Link>
             ))}
           </div>
 
@@ -203,9 +205,9 @@ export default async function B2BLandingPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {priceTeaserProducts.slice(0, 5).map((product) => {
+                    {priceTeaserProducts.filter(p => p.variants[0]?.b2bPrice != null).slice(0, 5).map((product) => {
                       const retailPrice = product.variants[0]?.price ?? 0;
-                      const b2bPrice = Math.round(retailPrice * 0.85);
+                      const b2bPrice = product.variants[0]?.b2bPrice;
                       return (
                         <tr key={product.id} className="border-b border-brand-cream/50">
                           <td className="py-2.5 px-3 font-medium">{product.nameId}</td>
@@ -213,7 +215,7 @@ export default async function B2BLandingPage() {
                             {formatIDR(retailPrice)}
                           </td>
                           <td className="py-2.5 px-3 text-right font-bold text-brand-red">
-                            {formatIDR(b2bPrice)}
+                            {b2bPrice ? formatIDR(b2bPrice) : <span className="text-brand-red text-xs">Hubungi Kami</span>}
                           </td>
                         </tr>
                       );
@@ -267,7 +269,7 @@ export default async function B2BLandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-12 px-4 bg-admin-sidebar">
+      <section className="py-12 px-4 bg-gradient-to-br from-brand-navy to-brand-navy-light">
         <div className="container mx-auto text-center">
           <h2 className="font-display text-2xl font-bold text-white mb-3">
             Siap Bermitra dengan Dapur Dekaka?

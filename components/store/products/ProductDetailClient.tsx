@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Minus, Plus, ShoppingCart } from 'lucide-react';
+import { toast } from 'sonner';
 import { useCartStore } from '@/store/cart.store';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { StockBadge } from '@/components/store/common/StockBadge';
@@ -68,9 +69,11 @@ interface ProductDetailClientProps {
 }
 
 export function ProductDetailClient({ product, relatedProducts }: ProductDetailClientProps) {
-  const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
+  const defaultVariantIndex = product.variants.findIndex(v => v.stock > 0 && v.isActive);
+  const [selectedVariantIndex, setSelectedVariantIndex] = useState(Math.max(0, defaultVariantIndex));
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const router = useRouter();
   const addItem = useCartStore((s) => s.addItem);
 
@@ -80,7 +83,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
 
   const handleAddToCart = () => {
     if (isOutOfStock || !selectedVariant) return;
-    
+
     addItem({
       variantId: selectedVariant.id,
       productId: product.id,
@@ -93,6 +96,12 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
       unitPrice: selectedVariant.price,
       weightGram: selectedVariant.weightGram,
       stock: selectedVariant.stock,
+    }, quantity);
+    toast.success(`${product.nameId} ditambahkan ke keranjang`, {
+      action: {
+        label: 'Lihat Keranjang',
+        onClick: () => router.push('/cart'),
+      },
     });
   };
 
@@ -101,14 +110,20 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
       {/* Image Gallery */}
       <div className="relative aspect-[4/3] bg-brand-cream-dark">
         {product.images[selectedImageIndex] ? (
-          <Image
-            src={product.images[selectedImageIndex].cloudinaryUrl}
-            alt={product.nameId}
-            fill
-            className="object-cover"
-            priority
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 60vw, 800px"
-          />
+          <button
+            onClick={() => setLightboxOpen(true)}
+            className="relative w-full h-full cursor-zoom-in"
+            aria-label="Perbesar gambar"
+          >
+            <Image
+              src={product.images[selectedImageIndex].cloudinaryUrl}
+              alt={product.nameId}
+              fill
+              className="object-cover"
+              priority
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 60vw, 800px"
+            />
+          </button>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="text-6xl">🥟</span>
@@ -117,7 +132,13 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
         
         {/* Back Button */}
         <button
-          onClick={() => router.back()}
+          onClick={() => {
+            if (window.history.length > 1) {
+              router.back();
+            } else {
+              router.push('/products');
+            }
+          }}
           className="absolute top-4 left-4 w-10 h-10 bg-white/80 backdrop-blur rounded-full flex items-center justify-center"
         >
           ←
@@ -168,7 +189,10 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
               {product.variants.map((variant, i) => (
                 <button
                   key={variant.id}
-                  onClick={() => setSelectedVariantIndex(i)}
+                  onClick={() => {
+                    setSelectedVariantIndex(i);
+                    setQuantity(1);
+                  }}
                   disabled={variant.stock === 0}
                   className={cn(
                     'px-4 py-2 rounded-button border text-sm font-medium transition-colors',
@@ -264,11 +288,19 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
               );
             })}
           </div>
+          {product.category && (
+            <Link
+              href={`/products?category=${product.category.slug}`}
+              className="mt-4 flex items-center justify-center gap-1 text-brand-red text-sm font-medium hover:underline"
+            >
+              Lihat semua {product.category.nameId} →
+            </Link>
+          )}
         </div>
       )}
 
       {/* Sticky Bottom Bar */}
-      <div className="fixed bottom-20 md:bottom-0 left-0 right-0 bg-white border-t border-brand-cream-dark p-4">
+      <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-0 left-0 right-0 bg-white border-t border-brand-cream-dark p-4 pb-[calc(1rem+env(safe-area-inset-bottom))">
         <div className="container mx-auto flex items-center gap-4">
           {/* Quantity Stepper */}
           <div className="flex items-center border border-brand-cream-dark rounded-button">
@@ -307,6 +339,31 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
           </button>
         </div>
       </div>
+
+      {/* Lightbox */}
+      {lightboxOpen && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setLightboxOpen(false)}
+        >
+          <div className="relative w-full max-w-3xl aspect-[4/3]">
+            <Image
+              src={product.images[selectedImageIndex]?.cloudinaryUrl || ''}
+              alt={product.nameId}
+              fill
+              className="object-contain"
+              sizes="100vw"
+            />
+            <button
+              onClick={() => setLightboxOpen(false)}
+              className="absolute top-4 right-4 w-10 h-10 bg-white/80 backdrop-blur rounded-full flex items-center justify-center text-text-primary text-2xl font-bold"
+              aria-label="Tutup"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

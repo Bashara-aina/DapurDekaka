@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Gift, AlertTriangle, TrendingUp } from 'lucide-react';
+import { Gift, AlertTriangle, TrendingUp, ChevronDown } from 'lucide-react';
 import { PointsHistoryCard } from '@/components/store/account/PointsHistoryCard';
 import type { PointsHistory } from '@/lib/db/schema';
 
@@ -9,22 +9,32 @@ interface PointsData {
   balance: number;
   history: PointsHistory[];
   expiringCount: number;
+  total: number;
 }
 
 export default function AccountPointsPage() {
   const [data, setData] = useState<PointsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
 
   useEffect(() => {
-    fetchPoints();
-  }, []);
+    fetchPoints(page);
+  }, [page]);
 
-  const fetchPoints = async () => {
+  const fetchPoints = async (pageNum: number) => {
     try {
-      const res = await fetch('/api/account/points');
+      const res = await fetch(`/api/account/points?page=${pageNum}&limit=20`);
       const response = await res.json();
       if (response.success) {
-        setData(response.data);
+        setData(prev => pageNum === 1
+          ? response.data
+          : {
+            ...response.data,
+            history: [...(prev?.history || []), ...response.data.history]
+          }
+        );
+        setHasMore(response.data.history.length === 20);
       }
     } catch (error) {
       console.error('Failed to fetch points:', error);
@@ -66,13 +76,27 @@ export default function AccountPointsPage() {
             <p className="text-sm opacity-80">Saldo Poin</p>
             <p className="text-4xl font-bold mt-1">{data?.balance || 0}</p>
             <p className="text-sm opacity-70 mt-1">
-              ~{formatIDR(data?.balance || 0)} bisa ditukarkan
+              ~{formatIDR((data?.balance || 0) * 10)} bisa ditukarkan
             </p>
           </div>
           <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
             <Gift className="w-8 h-8" />
           </div>
         </div>
+      </div>
+
+      {/* Redemption Info */}
+      <div className="bg-white rounded-card shadow-card p-6">
+        <h2 className="font-display text-lg font-semibold text-text-primary mb-2">Cara Menukarkan Poin</h2>
+        <p className="text-sm text-text-secondary mb-4">
+          Poin dapat digunakan saat checkout. Pilih "Gunakan Poin Saya" di halaman pembayaran untuk redeem poin kamu.
+        </p>
+        <Link
+          href="/products"
+          className="block w-full h-11 bg-brand-red text-white rounded-button text-center leading-[44px] font-bold hover:bg-brand-red-dark transition-colors"
+        >
+          Belanja Sekarang
+        </Link>
       </div>
 
       {/* Expiring Alert */}
@@ -96,16 +120,40 @@ export default function AccountPointsPage() {
         <h2 className="font-display text-lg font-semibold text-text-primary mb-4">
           Cara Mendapatkan Poin
         </h2>
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 bg-success-light rounded-full flex items-center justify-center flex-shrink-0">
-            <TrendingUp className="w-5 h-5 text-success" />
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-success-light rounded-full flex items-center justify-center flex-shrink-0">
+              <TrendingUp className="w-5 h-5 text-success" />
+            </div>
+            <div>
+              <p className="font-medium text-text-primary">1 poin per Rp 1.000</p>
+              <p className="text-sm text-text-secondary mt-1">
+                Setiap pembelian akan mendapatkan poin loyalty sesuai total belanja
+                (tidak termasuk ongkir dan diskon).
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="font-medium text-text-primary">1 poin per Rp 1.000</p>
-            <p className="text-sm text-text-secondary mt-1">
-              Setiap pembelian akan mendapatkan poin loyalty sesuai total belanja
-              (tidak termasuk ongkir dan diskon).
-            </p>
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <Gift className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="font-medium text-text-primary">Bonus Pendaftaran</p>
+              <p className="text-sm text-text-secondary mt-1">
+                Poin langsung masuk saat akun dibuat (saat ada promo aktif).
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <Gift className="w-5 h-5 text-purple-600" />
+            </div>
+            <div>
+              <p className="font-medium text-text-primary">Pengguna B2B: 2x Poin</p>
+              <p className="text-sm text-text-secondary mt-1">
+                Akun B2B mendapatkan poin ganda dari setiap transaksi.
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -131,6 +179,16 @@ export default function AccountPointsPage() {
                 transaction={transaction}
               />
             ))}
+            {hasMore && (
+              <button
+                onClick={() => setPage(p => p + 1)}
+                disabled={isLoading}
+                className="flex items-center justify-center gap-2 w-full h-11 border border-brand-cream-dark rounded-lg text-sm font-medium text-text-secondary hover:bg-brand-cream transition-colors disabled:opacity-50"
+              >
+                {isLoading ? 'Memuat...' : 'Tampilkan Lebih Banyak'}
+                <ChevronDown className="w-4 h-4" />
+              </button>
+            )}
           </div>
         )}
       </div>

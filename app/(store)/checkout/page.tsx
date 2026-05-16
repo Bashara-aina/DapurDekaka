@@ -25,7 +25,7 @@ import { OrderSummaryCard } from '@/components/store/checkout/OrderSummaryCard';
 import { EmptyState } from '@/components/store/common/EmptyState';
 import { SavedAddressPicker } from '@/components/store/checkout/SavedAddressPicker';
 import type { SavedAddress } from '@/components/store/checkout/SavedAddressPicker';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Loader2 } from 'lucide-react';
 
 const MidtransPayment = nextDynamic(
   () => import('@/components/store/checkout/MidtransPayment').then((m) => m.MidtransPayment),
@@ -88,6 +88,26 @@ export default function CheckoutPage() {
   const [storeHours, setStoreHours] = useState<StoreHours>({ openDays: 'Senin - Sabtu', openHours: '08.00 - 17.00 WIB' });
   const [serverTotalAmount, setServerTotalAmount] = useState<number>(0);
 
+  // FIX 13: Persist checkout state to sessionStorage so refresh doesn't lose progress
+  useEffect(() => {
+    const draft = sessionStorage.getItem('checkout-draft');
+    if (draft) {
+      try {
+        const parsed = JSON.parse(draft);
+        setFormData(parsed.formData);
+        setStep(parsed.step || 'identity');
+      } catch {
+        // ignore corrupt data
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (snapToken) return; // don't save once order is initiated
+    sessionStorage.setItem('checkout-draft', JSON.stringify({ formData, step }));
+  }, [formData, step, snapToken]);
+
   const [formData, setFormData] = useState<CheckoutFormData>({
     recipientName: '',
     recipientEmail: '',
@@ -112,6 +132,7 @@ export default function CheckoutPage() {
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [couponError, setCouponError] = useState('');
   const [couponType, setCouponType] = useState<string | null>(null);
+  const [isFreeShippingCoupon, setIsFreeShippingCoupon] = useState(false);
   const [couponBuyXgetY, setCouponBuyXgetY] = useState<{ buyQuantity: number; getQuantity: number } | null>(null);
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
   const [loadingShipping, setLoadingShipping] = useState(false);
@@ -145,13 +166,12 @@ export default function CheckoutPage() {
 
   const pointsBalance = pointsData?.balance ?? 0;
 
-  // Auto-skip identity step for logged-in users
+  // Auto-skip identity step for logged-in users (name + email from session)
   useEffect(() => {
     if (session?.user && step === 'identity') {
       updateForm({
         recipientName: session.user.name || '',
         recipientEmail: session.user.email || '',
-        recipientPhone: profileData?.phone || '',
       });
       setStep('delivery');
       // Sync local cart to DB for logged-in user
@@ -159,7 +179,14 @@ export default function CheckoutPage() {
       syncCart();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user, profileData]);
+  }, [session?.user]);
+
+  // Pre-fill phone from profile data (separate effect so it doesn't race with auto-skip)
+  useEffect(() => {
+    if (profileData?.phone) {
+      updateForm({ recipientPhone: profileData.phone });
+    }
+  }, [profileData]);
 
   // Fetch saved addresses when logged-in user reaches delivery step
   const { data: addressesData } = useQuery({
@@ -183,7 +210,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     async function fetchStoreHours() {
       try {
-        const res = await fetch('/api/admin/settings?keys=store_open_days,store_opening_hours');
+        const res = await fetch('/api/settings/public');
         const json = await res.json();
         if (json.success && json.data) {
           const openDays = json.data.store_open_days?.value ?? 'Senin - Sabtu';
@@ -215,9 +242,12 @@ export default function CheckoutPage() {
   const subtotal = getSubtotal();
   const totalWeight = getTotalWeight();
   const pointsDiscount = usePoints && formData.pointsUsed > 0
-    ? Math.floor(formData.pointsUsed / POINTS_VALUE_IDR) * POINTS_VALUE_IDR
+    ? formData.pointsUsed * POINTS_VALUE_IDR
     : 0;
-  const totalAmount = subtotal - couponDiscount - pointsDiscount + formData.shippingCost;
+  const effectiveShippingCost = isFreeShippingCoupon && formData.deliveryMethod === 'delivery'
+    ? 0
+    : formData.shippingCost;
+  const totalAmount = subtotal - couponDiscount - pointsDiscount + effectiveShippingCost;
 
   const updateForm = (updates: Partial<CheckoutFormData>) => {
     setFormData((prev) => ({ ...prev, ...updates }));
@@ -282,6 +312,27 @@ export default function CheckoutPage() {
     setLoadingShipping(false);
   };
 
+  const fetchShippingCost = async (cityId: string) => {
+    try {
+      const res = await fetch('/api/shipping/cost', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ destination: cityId, weight: totalWeight }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        toast.error(data.error || 'Gagal menghitung ongkir');
+        setLoadingShipping(false);
+        return;
+      }
+      setShippingOptions(data.data.services);
+      setStep('courier');
+    } catch {
+      toast.error('Gagal menghitung ongkir');
+    }
+    setLoadingShipping(false);
+  };
+
   // Step 3: Courier selection
   const handleCourierSelect = (option: ShippingOption) => {
     updateForm({
@@ -310,6 +361,7 @@ export default function CheckoutPage() {
         setCouponDiscount(0);
         setCouponType(null);
         setCouponBuyXgetY(null);
+        setIsFreeShippingCoupon(false);
         return;
       }
 
@@ -317,6 +369,7 @@ export default function CheckoutPage() {
       setCouponType(data.data.type ?? null);
       setCouponBuyXgetY(data.data.buyXgetY ?? null);
       setCouponError('');
+      setIsFreeShippingCoupon(data.data.type === 'free_shipping');
     } catch {
       setCouponError('Gagal validasi kupon');
     }
@@ -327,10 +380,11 @@ export default function CheckoutPage() {
     if (!use) {
       updateForm({ pointsUsed: 0 });
     } else {
-      // Calculate and update pointsUsed when toggled on
-      const maxPointsValue = Math.floor((subtotal - couponDiscount) * 0.5);
-      const maxPoints = Math.min(pointsBalance, maxPointsValue);
-      const pointsToUse = Math.floor(maxPoints / POINTS_VALUE_IDR) * POINTS_VALUE_IDR;
+      // Calculate max points based on 50% of subtotal-cap, converted from IDR to points (1pt = 10 IDR)
+      const maxPointsInIDR = Math.floor((subtotal - couponDiscount) * 0.5);
+      const maxPointsFromIDR = Math.floor(maxPointsInIDR / 10); // 1pt = 10 IDR
+      const maxPoints = Math.min(pointsBalance, maxPointsFromIDR);
+      const pointsToUse = Math.floor(maxPoints / POINTS_MIN_REDEEM) * POINTS_MIN_REDEEM; // Round to min 100
       updateForm({ pointsUsed: pointsToUse });
     }
   };
@@ -371,9 +425,12 @@ export default function CheckoutPage() {
         return;
       }
 
-      // Clear cart immediately after order is created successfully
-      // The order is now in pending_payment status even if user doesn't complete payment
-      clearCart();
+      // Handle Net-30 B2B orders (skip Midtrans, go directly to success)
+      if (data.data.net30) {
+        clearCart();
+        router.push(`/checkout/success?order=${data.data.orderNumber}&net30=1`);
+        return;
+      }
 
       setSnapToken(data.data.snapToken);
       setOrderNumber(data.data.orderNumber);
@@ -386,6 +443,7 @@ export default function CheckoutPage() {
 
   const handleMidtransSuccess = () => {
     clearCart();
+    router.push(`/checkout/success?order=${orderNumber}`);
   };
 
   // Step back navigation
@@ -401,6 +459,12 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-brand-cream pb-24 md:pb-0">
+      {/* FIX 11: Mobile sticky total bar */}
+      <div className="lg:hidden sticky top-[76px] z-10 bg-white border-b border-brand-cream-dark px-4 py-2 flex justify-between text-sm">
+        <span className="text-text-secondary">{items.reduce((acc, i) => acc + i.quantity, 0)} item</span>
+        <span className="font-bold text-brand-red">{formatIDR(totalAmount)}</span>
+      </div>
+
       {/* Header with stepper */}
       <div className="bg-white border-b border-brand-cream-dark sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
@@ -460,6 +524,14 @@ export default function CheckoutPage() {
 
                 {formData.deliveryMethod === 'delivery' && (
                   <div className="mt-4">
+                    {loadingShipping && (
+                      <div className="bg-white rounded-card p-6 shadow-card mb-4">
+                        <div className="flex items-center justify-center py-12">
+                          <Loader2 className="w-6 h-6 animate-spin text-brand-red" />
+                          <span className="ml-2 text-text-secondary">Menghitung ongkir...</span>
+                        </div>
+                      </div>
+                    )}
                     {session?.user && savedAddresses.length > 0 && !showNewAddressForm ? (
                       <>
                         <SavedAddressPicker
@@ -483,47 +555,30 @@ export default function CheckoutPage() {
                           }}
                           onBack={handleBack}
                         />
-                        {selectedSavedAddressId && (
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              setLoadingShipping(true);
-                              const address = savedAddresses.find(a => a.id === selectedSavedAddressId);
-                              if (address) {
-                                updateForm({
-                                  addressLine: address.addressLine,
-                                  district: address.district,
-                                  city: address.city,
-                                  cityId: address.cityId,
-                                  province: address.province,
-                                  provinceId: address.provinceId,
-                                  postalCode: address.postalCode,
-                                });
-                                try {
-                                  const res = await fetch('/api/shipping/cost', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ destination: address.cityId, weight: totalWeight }),
-                                  });
-                                  const data = await res.json();
-                                  if (!data.success) {
-                                    toast.error(data.error || 'Gagal menghitung ongkir');
-                                    setLoadingShipping(false);
-                                    return;
-                                  }
-                                  setShippingOptions(data.data.services);
-                                  setStep('courier');
-                                } catch {
-                                  toast.error('Gagal menghitung ongkir');
-                                }
-                                setLoadingShipping(false);
-                              }
-                            }}
-                            className="w-full h-12 bg-brand-red text-white font-bold rounded-button mt-4"
-                          >
-                            Lanjut ke Kurir
-                          </button>
-                        )}
+                        <button
+                  type="button"
+                  onClick={() => {
+                    if (!selectedSavedAddressId) return;
+                    setLoadingShipping(true);
+                    const address = savedAddresses.find(a => a.id === selectedSavedAddressId);
+                    if (address) {
+                      updateForm({
+                        addressLine: address.addressLine,
+                        district: address.district,
+                        city: address.city,
+                        cityId: address.cityId,
+                        province: address.province,
+                        provinceId: address.provinceId,
+                        postalCode: address.postalCode,
+                      });
+                      fetchShippingCost(address.cityId);
+                    }
+                  }}
+                  disabled={!selectedSavedAddressId || loadingShipping}
+                  className="w-full h-12 bg-brand-red text-white font-bold rounded-button mt-4 disabled:opacity-50"
+                >
+                  {loadingShipping ? 'Menghitung ongkir...' : 'Lanjut ke Kurir'}
+                </button>
                       </>
                     ) : (
                       <AddressForm
@@ -695,6 +750,7 @@ export default function CheckoutPage() {
                   <CouponInput
                     code={formData.couponCode}
                     onCodeChange={(code) => updateForm({ couponCode: code })}
+                    onClearError={() => setCouponError('')}
                     onApply={handleApplyCoupon}
                     discountAmount={couponDiscount}
                     error={couponError}
@@ -716,18 +772,19 @@ export default function CheckoutPage() {
                   <PointsRedeemer
                     pointsBalance={pointsBalance}
                     subtotal={subtotal - couponDiscount}
-                    usedPoints={usePoints ? Math.min(pointsBalance, Math.floor((subtotal - couponDiscount) * 0.5 / POINTS_VALUE_IDR) * POINTS_VALUE_IDR) : 0}
+                    usedPoints={formData.pointsUsed}
                     onToggle={handlePointsToggle}
                   />
                 </div>
 
 
+                // FIX 4: Payment button shows client total pre-order with note
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="w-full h-12 border border-brand-cream-dark text-text-primary font-medium rounded-button mb-4"
+                  className="text-sm text-text-secondary hover:underline mb-4 text-left"
                 >
-                  Kembali
+                  ← Kembali ke Kurir
                 </button>
 
                 <button
@@ -736,7 +793,8 @@ export default function CheckoutPage() {
                   disabled={isLoading}
                   className="w-full h-14 bg-brand-red text-white font-bold rounded-button disabled:opacity-50"
                 >
-                  {isLoading ? 'Memproses...' : `Bayar Sekarang — ${formatIDR(serverTotalAmount)}`}
+                  {isLoading ? 'Memproses...' : `Bayar Sekarang — ${formatIDR(totalAmount)}`}
+                  <span className="block text-xs font-normal mt-0.5 opacity-80">(dikonfirmasi setelah pesanan dibuat)</span>
                 </button>
               </div>
             )}
@@ -758,20 +816,22 @@ export default function CheckoutPage() {
 
       {/* Midtrans Payment Modal */}
       {snapToken && orderNumber && (
-        <>
-          <div className="fixed inset-0 bg-black/50 z-40 flex items-center justify-center">
-            <div className="bg-white rounded-xl p-6 text-center">
-              <div className="w-8 h-8 border-4 border-brand-red border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="mt-3 text-sm">Mempersiapkan pembayaran...</p>
-            </div>
-          </div>
-          <MidtransPayment
-            snapToken={snapToken}
-            callbacks={{
-              onSuccess: handleMidtransSuccess,
-            }}
-          />
-        </>
+        <MidtransPayment
+          snapToken={snapToken}
+          callbacks={{
+            onSuccess: handleMidtransSuccess,
+            onPending: () => router.push(`/checkout/pending?order=${orderNumber}`),
+            onError: () => {
+              setSnapToken(null);
+              setIsLoading(false);
+              toast.error('Pembayaran gagal. Silakan coba lagi.');
+            },
+            onClose: () => {
+              setSnapToken(null);
+              setIsLoading(false);
+            },
+          }}
+        />
       )}
     </div>
   );

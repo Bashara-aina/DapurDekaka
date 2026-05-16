@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import Link from 'next/link';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Upload } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import TiptapEditor from '@/components/admin/blog/TiptapEditor';
 import { useSession } from 'next-auth/react';
+import { CoverImageUploader } from '@/components/admin/blog/CoverImageUploader';
 
 const blogSchema = z.object({
   titleId: z.string().min(1, 'Judul ID wajib diisi'),
@@ -131,8 +132,31 @@ export default function AdminBlogNewPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="coverImageUrl">URL Cover Image</Label>
-              <Input id="coverImageUrl" {...form.register('coverImageUrl')} placeholder="https://..." />
+              <Label htmlFor="coverImageUrl">Cover Image</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="coverImageUrl"
+                  {...form.register('coverImageUrl')}
+                  placeholder="https://res.cloudinary.com/..."
+                  className="flex-1"
+                />
+                <CoverImageUploader
+                  onUpload={(url, publicId) => {
+                    form.setValue('coverImageUrl', url);
+                    form.setValue('coverImagePublicId', publicId);
+                  }}
+                />
+              </div>
+              {form.watch('coverImageUrl') && (
+                <div className="mt-2 rounded-lg overflow-hidden border border-admin-border">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={form.watch('coverImageUrl')}
+                    alt="Cover preview"
+                    className="h-24 object-cover"
+                  />
+                </div>
+              )}
             </div>
           </div>
 

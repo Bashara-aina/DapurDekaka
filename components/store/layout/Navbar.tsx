@@ -6,7 +6,8 @@ import { ShoppingCart, User, Search, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils/cn';
 import { useCartStore } from '@/store/cart.store';
-import { LanguageSwitcher } from './LanguageSwitcher';
+// LanguageSwitcher is commented out — i18n not yet implemented
+// import { LanguageSwitcher } from './LanguageSwitcher';
 
 const NAV_LINKS = [
   { href: '/', label: 'Beranda' },
@@ -46,7 +47,7 @@ export function Navbar() {
 
           {/* Actions */}
           <div className="flex items-center gap-3">
-            <LanguageSwitcher />
+            {/* <LanguageSwitcher /> */}
             <Link
               href="/products?q="
               className="p-2 text-text-secondary hover:text-brand-red transition-colors"
@@ -86,7 +87,7 @@ export function Navbar() {
           </Link>
 
           <div className="flex items-center gap-2">
-            <LanguageSwitcher />
+            {/* <LanguageSwitcher /> */}
             <Link
               href="/cart"
               className="relative p-2 text-text-secondary"

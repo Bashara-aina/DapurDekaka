@@ -9,6 +9,7 @@ import {
   timestamp,
   jsonb,
   index,
+  unique,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -278,6 +279,8 @@ export const orders = pgTable('orders', {
   trackingUrl: text('tracking_url'),
   pickupCode: varchar('pickup_code', { length: 20 }),
   isB2b: boolean('is_b2b').notNull().default(false),
+  paymentMethod: varchar('payment_method', { length: 50 }),
+  paymentDueAt: timestamp('payment_due_at', { withTimezone: true }),
   ...timestamps,
   paidAt: timestamp('paid_at', { withTimezone: true }),
   shippedAt: timestamp('shipped_at', { withTimezone: true }),

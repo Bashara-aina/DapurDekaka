@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import Image from 'next/image';
 
 interface CarouselFormProps {
   initialData?: {
@@ -181,6 +182,51 @@ export function CarouselForm({ initialData, onSubmit, isSubmitting }: CarouselFo
       <Button type="submit" disabled={isSubmitting}>
         {isSubmitting ? 'Menyimpan...' : initialData?.id ? 'Update Slide' : 'Buat Slide'}
       </Button>
+
+      {/* Live Preview */}
+      <div className="border border-admin-border rounded-lg overflow-hidden">
+        <div className="bg-admin-content px-3 py-2 border-b border-admin-border">
+          <p className="text-xs font-medium text-text-secondary">Preview — bagaimana slide akan terlihat di storefront</p>
+        </div>
+        <div className="relative aspect-[4/3] bg-brand-cream overflow-hidden">
+          {form.watch('imageUrl') ? (
+            <div className="relative w-full h-full">
+              <Image
+                src={form.watch('imageUrl')}
+                alt="Preview"
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 50vw"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 p-4">
+                {form.watch('badgeText') && (
+                  <span className="inline-block px-2 py-1 bg-brand-red text-white text-xs font-bold rounded mb-2">
+                    {form.watch('badgeText')}
+                  </span>
+                )}
+                <p className="text-white font-display font-bold text-lg leading-tight">
+                  {form.watch('titleId') || 'Judul Slide'}
+                </p>
+                {form.watch('subtitleId') && (
+                  <p className="text-white/80 text-sm mt-1">
+                    {form.watch('subtitleId')}
+                  </p>
+                )}
+                {form.watch('ctaLabelId') && form.watch('ctaUrl') && (
+                  <span className="inline-block mt-3 px-3 py-1.5 bg-white text-brand-red text-xs font-bold rounded">
+                    {form.watch('ctaLabelId')}
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <p className="text-text-muted text-sm">Masukkan URL gambar untuk melihat preview</p>
+            </div>
+          )}
+        </div>
+      </div>
     </form>
   );
 }

@@ -102,6 +102,31 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   const pageUrl = `https://dapurdekaka.com/blog/${slug}`;
 
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: 'https://dapurdekaka.com',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Blog',
+        item: 'https://dapurdekaka.com/blog',
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: post.titleId,
+        item: pageUrl,
+      },
+    ],
+  };
+
   // Fetch related posts (same category, excluding current)
   const relatedPosts = post.category
     ? await db.query.blogPosts.findMany({
@@ -121,6 +146,10 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   return (
     <div className="container py-8 md:py-12 pb-20 md:pb-12">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <article>
         {post.coverImageUrl && (
           <div className="relative w-full h-64 md:h-96 mb-8 rounded-xl overflow-hidden">

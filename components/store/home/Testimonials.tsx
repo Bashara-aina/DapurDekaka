@@ -5,57 +5,50 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 interface Testimonial {
-  id: number;
-  name: string;
-  text: string;
+  id: string;
+  customerName: string;
+  customerLocation: string | null;
+  avatarUrl: string | null;
   rating: number;
+  contentId: string;
+  contentEn: string | null;
+  sortOrder: number;
 }
-
-const testimonials: Testimonial[] = [
-  {
-    id: 1,
-    name: 'Ibu Sari, Bandung',
-    text: 'Dimsumnya enak banget! Sama persis kayak yang dijual di restoran Chinese food. Praktis dan rasa tetap juara.',
-    rating: 5,
-  },
-  {
-    id: 2,
-    name: 'Pak Budi, Jakarta',
-    text: 'Pengiriman cepat, packaging bagus. Anak-anak suka banget sama baksonya. Pasti repeat order!',
-    rating: 5,
-  },
-  {
-    id: 3,
-    name: 'Kak Rini, Surabaya',
-    text: '第一次尝试就爱上这个味道！冷冻方式保存得很好，加热后味道和新做的一样。强烈推荐！',
-    rating: 5,
-  },
-  {
-    id: 4,
-    name: 'Mbak Ani, Yogyakarta',
-    text: 'Udah repeat order berkali-kali. Ramai tamunya enak banget. Harga juga terjangkau!',
-    rating: 5,
-  },
-  {
-    id: 5,
-    name: 'Om Heng, Medan',
-    text: 'Siomay dan lumpia kualitas restoran. Frozen food terenak yang pernah coba. Thumbs up!',
-    rating: 5,
-  },
-];
 
 export function Testimonials() {
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+
+  useEffect(() => {
+    async function fetchTestimonials() {
+      try {
+        const res = await fetch('/api/testimonials/public');
+        const json = await res.json();
+        if (json.success && json.data?.length > 0) {
+          setTestimonials(json.data);
+        }
+      } catch {
+        // Fallback: use empty array (component shows nothing)
+      }
+    }
+    fetchTestimonials();
+  }, []);
 
   const next = () => setCurrent((prev) => (prev + 1) % testimonials.length);
   const prev = () => setCurrent((prev) => (prev - 1 + testimonials.length) % testimonials.length);
 
   useEffect(() => {
-    if (isPaused) return;
+    if (isPaused || testimonials.length === 0) return;
     const timer = setInterval(next, 5000);
     return () => clearInterval(timer);
-  }, [isPaused]);
+  }, [isPaused, testimonials.length]);
+
+  if (testimonials.length === 0) {
+    return null;
+  }
+
+  const t = testimonials[current];
 
   return (
     <section
@@ -84,8 +77,11 @@ export function Testimonials() {
                         </span>
                       ))}
                     </div>
-                    <p className="text-text-primary mb-4 italic">&quot;{t.text}&quot;</p>
-                    <p className="font-semibold text-brand-red">{t.name}</p>
+                    <p className="text-text-primary mb-4 italic">&quot;{t.contentId}&quot;</p>
+                    <p className="font-semibold text-brand-red">
+                      {t.customerName}
+                      {t.customerLocation && <span className="font-normal text-text-secondary text-sm">, {t.customerLocation}</span>}
+                    </p>
                   </div>
                 </div>
               ))}

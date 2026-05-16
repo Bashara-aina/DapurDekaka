@@ -16,15 +16,35 @@ interface CouponInputProps {
   className?: string;
 }
 
+interface CouponInputProps {
+  code: string;
+  onCodeChange: (code: string) => void;
+  onClearError?: () => void;
+  onApply: () => void;
+  discountAmount: number;
+  error?: string;
+  isLoading?: boolean;
+  className?: string;
+}
+
 export function CouponInput({
   code,
   onCodeChange,
+  onClearError,
   onApply,
   discountAmount,
   error,
   isLoading,
   className,
 }: CouponInputProps) {
+  const handleChange = (val: string) => {
+    const upper = val.toUpperCase();
+    onCodeChange(upper);
+    if (error && onClearError) {
+      onClearError();
+    }
+  };
+
   return (
     <div className={cn('space-y-2', className)}>
       <label className="block text-sm font-medium">Kode Kupon</label>
@@ -33,7 +53,7 @@ export function CouponInput({
         <div className="flex-1">
           <Input
             value={code}
-            onChange={(e) => onCodeChange(e.target.value.toUpperCase())}
+            onChange={(e) => handleChange(e.target.value)}
             placeholder="Masukkan kode kupon"
             className="uppercase"
             disabled={isLoading}

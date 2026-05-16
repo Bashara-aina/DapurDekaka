@@ -53,7 +53,9 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
 };
 
 const WAREHOUSE_RESTRICTED_TRANSITIONS: Record<string, string[]> = {
-  packed: ['shipped'],
+  paid: ['processing'],
+  processing: ['packed'],
+  packed: ['shipped', 'delivered'],
 };
 
 const statusUpdateSchema = z.object({
@@ -111,7 +113,8 @@ export async function PATCH(
       }
     }
 
-    if (newStatus === 'shipped' && !trackingNumber) {
+    // Tracking number not required for pickup orders
+    if (newStatus === 'shipped' && !trackingNumber && order.deliveryMethod !== 'pickup') {
       return NextResponse.json(
         {
           success: false,

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useSession } from 'next-auth/react';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { formatWIB } from '@/lib/utils/format-date';
 import { buildTrackingUrl } from '@/lib/constants/couriers';
@@ -60,16 +61,34 @@ interface OrderDetail {
   statusHistory: OrderHistoryEntry[];
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  pending_payment: 'bg-yellow-100 text-yellow-800',
-  paid: 'bg-blue-100 text-blue-800',
-  processing: 'bg-purple-100 text-purple-800',
-  packed: 'bg-cyan-100 text-cyan-800',
-  shipped: 'bg-green-100 text-green-800',
-  delivered: 'bg-emerald-100 text-emerald-800',
-  cancelled: 'bg-gray-100 text-gray-800',
-  refunded: 'bg-pink-100 text-pink-800',
+const VALID_TRANSITIONS_ADMIN: Record<string, { status: string; label: string }[]> = {
+  paid: [
+    { status: 'processing', label: 'Proses' },
+    { status: 'cancelled', label: 'Batalkan' },
+  ],
+  processing: [
+    { status: 'packed', label: 'Kemas' },
+    { status: 'cancelled', label: 'Batalkan' },
+  ],
+  packed: [{ status: 'shipped', label: 'Kirim' }],
+  shipped: [{ status: 'delivered', label: 'Terima' }],
 };
+
+const NEXT_STATUS: Record<string, string> = {
+  paid: 'processing',
+  processing: 'packed',
+  packed: 'shipped',
+  shipped: 'delivered',
+};
+
+const STATUS_TIMELINE: string[] = [
+  'pending_payment',
+  'paid',
+  'processing',
+  'packed',
+  'shipped',
+  'delivered',
+];
 
 const STATUS_LABELS: Record<string, string> = {
   pending_payment: 'Menunggu Pembayaran',
@@ -82,21 +101,16 @@ const STATUS_LABELS: Record<string, string> = {
   refunded: 'Dikembalikan',
 };
 
-const VALID_TRANSITIONS: Record<string, { status: string; label: string }[]> = {
-  paid: [{ status: 'processing', label: 'Proses' }],
-  processing: [{ status: 'packed', label: 'Kemas' }],
-  packed: [{ status: 'shipped', label: 'Kirim' }],
-  shipped: [{ status: 'delivered', label: 'Terima' }],
+const STATUS_COLORS: Record<string, string> = {
+  pending_payment: 'bg-yellow-100 text-yellow-800',
+  paid: 'bg-blue-100 text-blue-800',
+  processing: 'bg-purple-100 text-purple-800',
+  packed: 'bg-cyan-100 text-cyan-800',
+  shipped: 'bg-green-100 text-green-800',
+  delivered: 'bg-emerald-100 text-emerald-800',
+  cancelled: 'bg-gray-100 text-gray-800',
+  refunded: 'bg-pink-100 text-pink-800',
 };
-
-const STATUS_TIMELINE: string[] = [
-  'pending_payment',
-  'paid',
-  'processing',
-  'packed',
-  'shipped',
-  'delivered',
-];
 
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [orderId, setOrderId] = useState<string>('');
@@ -108,8 +122,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const [trackingNumber, setTrackingNumber] = useState('');
   const [trackingUrl, setTrackingUrl] = useState('');
   const [estimatedDays, setEstimatedDays] = useState('');
-  const [currentRole, setCurrentRole] = useState<string>('');
   const router = useRouter();
+  const { data: session } = useSession();
 
   useEffect(() => {
     params.then(p => {
@@ -123,16 +137,10 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
     async function fetchData() {
       try {
-        const [orderRes, roleRes] = await Promise.all([
-          fetch(`/api/admin/orders/${orderId}`),
-          fetch('/api/auth/session'),
-        ]);
-
+        const orderRes = await fetch(`/api/admin/orders/${orderId}`);
         if (!orderRes.ok) throw new Error('Failed to fetch order');
         const orderData = await orderRes.json();
-        const roleData = await roleRes.json();
         setOrder(orderData.data);
-        setCurrentRole(roleData?.user?.role ?? '');
         if (orderData.data?.trackingNumber) setTrackingNumber(orderData.data.trackingNumber);
       } catch {
         setError('Gagal memuat detail pesanan');
@@ -173,7 +181,6 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         throw new Error(err.error || 'Gagal mengupdate status');
       }
 
-      router.refresh();
       const updated = await fetch(`/api/admin/orders/${orderId}`).then(r => r.json());
       setOrder(updated.data);
     } catch (err) {
@@ -207,9 +214,13 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  const currentStepIdx = STATUS_TIMELINE.indexOf(order.status);
+  const currentRole = session?.user?.role ?? '';
   const canUpdateStatus = ['superadmin', 'owner', 'warehouse'].includes(currentRole);
-  const allowedTransitions = VALID_TRANSITIONS[order.status] || [];
+
+  const rawTransitions = VALID_TRANSITIONS_ADMIN[order.status] || [];
+  const allowedTransitions = currentRole === 'warehouse'
+    ? rawTransitions.filter(t => t.status === 'shipped')
+    : rawTransitions;
 
   return (
     <div className="space-y-6">
@@ -237,40 +248,49 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* Status Timeline */}
-      <div className="bg-white rounded-lg border border-admin-border p-6">
-        <h2 className="font-semibold text-gray-700 mb-4">Timeline Pesanan</h2>
-        <div className="flex items-center justify-between">
+      {order.status === 'cancelled' ? (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <span className="text-red-600 font-semibold text-lg">Pesanan Dibatalkan</span>
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg border border-admin-border p-6">
+          <h2 className="font-semibold text-gray-700 mb-4">Timeline Pesanan</h2>
+          <div className="flex items-start">
           {STATUS_TIMELINE.map((step, idx) => {
-            const isCompleted = idx < currentStepIdx || order.status === step;
+            const currentStepIdx = STATUS_TIMELINE.indexOf(order.status);
+            const isCompleted = idx < currentStepIdx;
             const isCurrent = order.status === step;
             return (
-              <div key={step} className="flex flex-col items-center flex-1">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                  isCompleted ? 'bg-green-500 text-white' : isCurrent ? 'bg-brand-red text-white' : 'bg-gray-200 text-gray-500'
-                }`}>
-                  {idx + 1}
+              <React.Fragment key={step}>
+                <div className="flex flex-col items-center">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                    isCompleted ? 'bg-green-500 text-white' : isCurrent ? 'bg-brand-red text-white' : 'bg-gray-200 text-gray-500'
+                  }`}>
+                    {idx + 1}
+                  </div>
+                  <span className={`mt-1 text-xs text-center ${isCurrent ? 'text-brand-red font-medium' : 'text-gray-500'}`}>
+                    {STATUS_LABELS[step]}
+                  </span>
                 </div>
-                <span className={`mt-1 text-xs text-center ${isCurrent ? 'text-brand-red font-medium' : 'text-gray-500'}`}>
-                  {STATUS_LABELS[step]}
-                </span>
                 {idx < STATUS_TIMELINE.length - 1 && (
-                  <div className={`absolute h-0.5 w-full bg-gray-200 -z-10`} style={{ display: 'none' }} />
+                  <div className={`flex-1 h-0.5 mt-4 ${idx < currentStepIdx ? 'bg-green-500' : 'bg-gray-200'}`} />
                 )}
-              </div>
+              </React.Fragment>
             );
           })}
-        </div>
-        {order.statusHistory.length > 0 && (
-          <div className="mt-4 pt-4 border-t space-y-2">
-            {order.statusHistory.map((h) => (
-              <div key={h.id} className="text-xs text-gray-500 flex justify-between">
-                <span>{STATUS_LABELS[h.toStatus] ?? h.toStatus}</span>
-                <span>{formatWIB(h.createdAt)}</span>
-              </div>
-            ))}
           </div>
-        )}
-      </div>
+          {order.statusHistory.length > 0 && (
+            <div className="mt-4 pt-4 border-t space-y-2">
+              {order.statusHistory.map((h) => (
+                <div key={h.id} className="text-xs text-gray-500 flex justify-between">
+                  <span>{STATUS_LABELS[h.toStatus] ?? h.toStatus}</span>
+                  <span>{formatWIB(h.createdAt)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Order Items */}
@@ -303,12 +323,6 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               <span className="text-gray-500">Subtotal</span>
               <span>{formatIDR(order.subtotal)}</span>
             </div>
-            {order.discountAmount > 0 && (
-              <div className="flex justify-between text-green-600">
-                <span>Diskon</span>
-                <span>-{formatIDR(order.discountAmount)}</span>
-              </div>
-            )}
             {order.pointsDiscount > 0 && (
               <div className="flex justify-between text-amber-600">
                 <span>Points</span>
@@ -319,8 +333,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               <span className="text-gray-500">Ongkos Kirim</span>
               <span>{formatIDR(order.shippingCost)}</span>
             </div>
-            {order.couponCode && (
-              <div className="flex justify-between text-gray-500">
+            {order.couponCode && order.discountAmount > 0 && (
+              <div className="flex justify-between text-green-600">
                 <span>Kupon ({order.couponCode})</span>
                 <span>-{formatIDR(order.discountAmount)}</span>
               </div>
@@ -417,6 +431,19 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           )}
 
+          {/* Pickup Info */}
+          {order.deliveryMethod === 'pickup' && (
+            <div className="bg-white rounded-lg border border-admin-border p-6">
+              <h2 className="font-semibold text-gray-700 mb-4">Info Pickup</h2>
+              <div className="text-center">
+                <p className="text-sm text-gray-500 mb-2">Kode Pengambilan</p>
+                <p className="font-mono text-3xl font-bold text-brand-red">
+                  {order.orderNumber}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Tracking Number Input (warehouse/superadmin/owner) */}
           {canUpdateStatus && (order.status === 'packed' || order.status === 'shipped') && (
             <div className="bg-white rounded-lg border border-admin-border p-6">
@@ -453,6 +480,47 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                   />
                 </div>
               </div>
+              {order.status === 'shipped' && (
+                <button
+                  onClick={async () => {
+                    if (!trackingNumber.trim()) {
+                      alert('Nomor resi harus diisi');
+                      return;
+                    }
+                    setIsUpdating(true);
+                    try {
+                      const res = await fetch(`/api/admin/orders/${orderId}/status`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          status: 'shipped',
+                          trackingNumber,
+                          trackingUrl: trackingUrl || undefined,
+                          estimatedDays: estimatedDays || undefined,
+                        }),
+                      });
+                      if (!res.ok) {
+                        const err = await res.json();
+                        throw new Error(err.error || 'Gagal menyimpan resi');
+                      }
+                      const updated = await fetch(`/api/admin/orders/${orderId}`).then(r => r.json());
+                      setOrder(updated.data);
+                    } catch (err) {
+                      alert(err instanceof Error ? err.message : 'Gagal menyimpan resi');
+                    } finally {
+                      setIsUpdating(false);
+                    }
+                  }}
+                  className="w-full h-10 mt-4 bg-brand-red text-white text-sm font-medium rounded-lg hover:bg-brand-red-dark transition-colors disabled:opacity-50"
+                >
+                  Simpan Resi
+                </button>
+              )}
+              {order.status === 'packed' && (
+                <p className="text-sm text-text-secondary mt-3">
+                  Klik "Kirim" di bawah untuk menyimpan resi dan ubah status ke Dikirim.
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -471,12 +539,21 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         <div className="bg-white rounded-lg border border-admin-border p-6">
           <h2 className="font-semibold text-gray-700 mb-4">Update Status</h2>
           <div className="flex flex-wrap gap-3">
+            {NEXT_STATUS[order.status] && (
+              <button
+                onClick={() => handleStatusUpdate(NEXT_STATUS[order.status])}
+                disabled={isUpdating}
+                className="h-12 px-6 bg-brand-red text-white font-bold rounded-lg hover:bg-brand-red-dark transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {isUpdating ? 'Memproses...' : `▶ Tandai sebagai "${STATUS_LABELS[NEXT_STATUS[order.status]]}"`}
+              </button>
+            )}
             {allowedTransitions.map((t) => (
               <button
                 key={t.status}
                 onClick={() => handleStatusUpdate(t.status)}
                 disabled={isUpdating}
-                className="px-4 py-2 bg-brand-red text-white text-sm font-medium rounded-lg hover:bg-brand-red-dark transition-colors disabled:opacity-50"
+                className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 {isUpdating ? 'Memproses...' : t.label}
               </button>

@@ -13,6 +13,11 @@ export async function GET(req: NextRequest) {
       return unauthorized('Silakan masuk terlebih dahulu');
     }
 
+    const { searchParams } = new URL(req.url);
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+    const limit = Math.min(50, parseInt(searchParams.get('limit') || '20', 10));
+    const offset = (page - 1) * limit;
+
     const user = await db.query.users.findFirst({
       where: (users, { eq }) => eq(users.id, session.user.id!),
       columns: {
@@ -23,7 +28,8 @@ export async function GET(req: NextRequest) {
     const history = await db.query.pointsHistory.findMany({
       where: (ph, { eq }) => eq(ph.userId, session.user.id!),
       orderBy: [desc(pointsHistory.createdAt)],
-      limit: 50,
+      limit,
+      offset,
     });
 
     const expiringPoints = history.filter(h =>
@@ -36,6 +42,8 @@ export async function GET(req: NextRequest) {
       balance: user?.pointsBalance || 0,
       history,
       expiringCount: expiringPoints.length,
+      page,
+      hasMore: history.length === limit,
     });
 
   } catch (error) {

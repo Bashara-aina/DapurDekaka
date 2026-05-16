@@ -155,7 +155,7 @@ export default async function B2BProductsPage() {
 
       {/* CTA */}
       <div className="px-4 py-6 container mx-auto">
-        <div className="bg-admin-sidebar rounded-xl p-6 text-white text-center">
+        <div className="bg-gradient-to-br from-brand-navy to-brand-navy-light rounded-xl p-6 text-white text-center">
           <h3 className="font-display text-lg font-semibold mb-2">
             Butuh Penawaran Harga?
           </h3>

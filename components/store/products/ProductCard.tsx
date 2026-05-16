@@ -2,8 +2,10 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, Plus } from 'lucide-react';
+import { toast } from 'sonner';
 import { useCartStore } from '@/store/cart.store';
+import { useRouter } from 'next/navigation';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { StockBadge } from '@/components/store/common/StockBadge';
 import { HalalBadge } from '@/components/store/common/HalalBadge';
@@ -33,7 +35,33 @@ interface ProductCardProps {
 
 export function ProductCard({ product, variant, className }: ProductCardProps) {
   const addItem = useCartStore((s) => s.addItem);
+  const router = useRouter();
   const isOutOfStock = variant.stock === 0;
+  const canQuickAdd = !isOutOfStock;
+
+  const handleQuickAdd = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isOutOfStock) return;
+    addItem({
+      variantId: variant.id,
+      productId: product.id,
+      productNameId: product.nameId,
+      productNameEn: product.nameEn,
+      variantNameId: variant.nameId,
+      variantNameEn: variant.nameEn,
+      sku: variant.sku,
+      imageUrl: product.imageUrl || '/assets/logo/logo.png',
+      unitPrice: variant.price,
+      weightGram: variant.weightGram,
+      stock: variant.stock,
+    }, 1);
+    toast.success(`${product.nameId} ditambahkan ke keranjang`, {
+      action: {
+        label: 'Lihat Keranjang',
+        onClick: () => router.push('/cart'),
+      },
+    });
+  };
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -50,6 +78,12 @@ export function ProductCard({ product, variant, className }: ProductCardProps) {
       unitPrice: variant.price,
       weightGram: variant.weightGram,
       stock: variant.stock,
+    });
+    toast.success(`${product.nameId} ditambahkan ke keranjang`, {
+      action: {
+        label: 'Lihat Keranjang',
+        onClick: () => router.push('/cart'),
+      },
     });
   };
 
@@ -88,6 +122,16 @@ export function ProductCard({ product, variant, className }: ProductCardProps) {
           <div className="absolute top-2 left-2">
             <StockBadge stock={variant.stock} />
           </div>
+        )}
+        {/* Quick Add Button */}
+        {canQuickAdd && (
+          <button
+            onClick={handleQuickAdd}
+            className="absolute bottom-2 right-2 w-8 h-8 bg-brand-red rounded-full flex items-center justify-center text-white shadow-lg hover:bg-brand-red-dark transition-colors"
+            aria-label="Tambah ke keranjang"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
         )}
       </div>
 

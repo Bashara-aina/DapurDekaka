@@ -14,8 +14,18 @@ export const metadata: Metadata = {
 };
 
 interface OrdersPageProps {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; status?: string }>;
 }
+
+const STATUS_FILTERS = [
+  { key: 'all', label: 'Semua' },
+  { key: 'pending_payment', label: 'Menunggu Bayar' },
+  { key: 'processing', label: 'Diproses' },
+  { key: 'packed', label: 'Dikemas' },
+  { key: 'shipped', label: 'Dikirim' },
+  { key: 'delivered', label: 'Selesai' },
+  { key: 'cancelled', label: 'Dibatalkan' },
+];
 
 export default async function AccountOrdersPage({ searchParams }: OrdersPageProps) {
   const session = await auth();
@@ -24,14 +34,24 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
     redirect('/login');
   }
 
-  const { page: pageParam } = await searchParams;
+  const { page: pageParam, status: statusParam } = await searchParams;
   const currentPage = Math.max(1, parseInt(pageParam || '1', 10));
   const perPage = 10;
   const offset = (currentPage - 1) * perPage;
 
+  // Build status filter condition
+  let statusFilter = undefined;
+  if (statusParam && statusParam !== 'all') {
+    statusFilter = statusParam;
+  }
+
+  const ordersCondition = statusFilter
+    ? (o: ReturnType<typeof eq>, { and, eq }: any) => and(eq(o.userId, session.user.id!), eq(o.status, statusFilter))
+    : (o: any, { eq }: any) => eq(o.userId, session.user.id!);
+
   const [ordersResult, totalResult] = await Promise.all([
     db.query.orders.findMany({
-      where: (o, { eq }) => eq(o.userId, session.user.id!),
+      where: ordersCondition,
       with: {
         items: true,
       },
@@ -39,8 +59,11 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
       limit: perPage,
       offset,
     }),
-    db.select({ total: count() }).from(orders)
-      .where(eq(orders.userId, session.user.id!)),
+    statusFilter
+      ? db.select({ total: count() }).from(orders)
+        .where(and(eq(orders.userId, session.user.id!), eq(orders.status, statusFilter)))
+      : db.select({ total: count() }).from(orders)
+        .where(eq(orders.userId, session.user.id!)),
   ]);
 
   const totalOrders = totalResult[0]?.total ?? 0;
@@ -62,7 +85,24 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
         <p className="text-text-secondary text-sm mt-1">Lihat semua pesanan kamu</p>
       </div>
 
-      {orders.length === 0 ? (
+      {/* Status Filter */}
+      <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide">
+        {STATUS_FILTERS.map((filter) => (
+          <Link
+            key={filter.key}
+            href={filter.key === 'all' ? '/account/orders' : `/account/orders?status=${filter.key}`}
+            className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              (statusParam || 'all') === filter.key
+                ? 'bg-brand-red text-white'
+                : 'bg-white text-text-secondary hover:bg-brand-cream'
+            }`}
+          >
+            {filter.label}
+          </Link>
+        ))}
+      </div>
+
+      {ordersResult.length === 0 ? (
         <div className="bg-white rounded-card shadow-card p-12 text-center">
           <div className="w-20 h-20 bg-brand-cream rounded-full flex items-center justify-center mx-auto mb-4">
             <Package className="w-10 h-10 text-text-disabled" />
@@ -83,7 +123,7 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
       ) : (
         <>
           <div className="space-y-3">
-            {orders.map((order) => (
+            {ordersResult.map((order) => (
               <Link
                 key={order.id}
                 href={`/account/orders/${order.orderNumber}`}
@@ -137,7 +177,7 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
             <div className="flex items-center justify-center gap-2">
               {currentPage > 1 && (
                 <Link
-                  href={`/account/orders?page=${currentPage - 1}`}
+                  href={`/account/orders?page=${currentPage - 1}${statusFilter ? `&status=${statusFilter}` : ''}`}
                   className="w-10 h-10 flex items-center justify-center rounded-lg border border-brand-cream-dark hover:bg-brand-cream transition-colors"
                 >
                   <ChevronLeft className="w-5 h-5" />
@@ -160,7 +200,7 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
                   return (
                     <Link
                       key={pageNum}
-                      href={`/account/orders?page=${pageNum}`}
+                      href={`/account/orders?page=${pageNum}${statusFilter ? `&status=${statusFilter}` : ''}`}
                       className={`w-10 h-10 flex items-center justify-center rounded-lg text-sm font-medium transition-colors
                         ${pageNum === currentPage
                           ? 'bg-brand-red text-white'
@@ -176,7 +216,7 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
 
               {currentPage < totalPages && (
                 <Link
-                  href={`/account/orders?page=${currentPage + 1}`}
+                  href={`/account/orders?page=${currentPage + 1}${statusFilter ? `&status=${statusFilter}` : ''}`}
                   className="w-10 h-10 flex items-center justify-center rounded-lg border border-brand-cream-dark hover:bg-brand-cream transition-colors"
                 >
                   <ChevronRight className="w-5 h-5" />

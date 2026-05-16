@@ -41,13 +41,7 @@ export async function GET(req: NextRequest) {
         eq(orders.status, 'pending_payment'),
         lt(orders.createdAt, thirtyMinsAgo)
       ),
-      columns: {
-        id: true,
-        orderNumber: true,
-        midtransOrderId: true,
-        status: true,
-        createdAt: true,
-      },
+      with: { user: true },
     });
 
     const results = { checked: 0, reconciled: 0, cancelled: 0, errors: 0 };
@@ -170,7 +164,7 @@ export async function GET(req: NextRequest) {
 
           results.reconciled++;
         } else if (['cancel', 'deny', 'expire'].includes(midtransStatus)) {
-          // Midtrans says cancelled, we say pending — trigger cancellation
+          // Midtrans says cancelled, we say pending — trigger cancellation with full reversal
           await db.transaction(async (tx) => {
             await tx
               .update(orders)
@@ -179,6 +173,47 @@ export async function GET(req: NextRequest) {
                 cancelledAt: new Date(),
               })
               .where(eq(orders.id, order.id));
+
+            // Points reversal: fetch user and update points balance — full FIFO reversal from webhook handler
+            if (order.userId) {
+              const user = await tx.query.users.findFirst({
+                where: eq(users.id, order.userId),
+              });
+              if (user && order.pointsUsed > 0) {
+                // 1. Find redeem records for this order
+                const redeemRecords = await tx
+                  .select()
+                  .from(pointsHistory)
+                  .where(and(
+                    eq(pointsHistory.userId, order.userId),
+                    eq(pointsHistory.type, 'redeem'),
+                    eq(pointsHistory.orderId, order.id)
+                  ));
+
+                // 2. Unconsume referenced earn records (FIFO reversal)
+                for (const redeem of redeemRecords) {
+                  if (redeem.referencedEarnId) {
+                    await tx.update(pointsHistory)
+                      .set({ consumedAt: null })
+                      .where(eq(pointsHistory.id, redeem.referencedEarnId));
+                  }
+                }
+
+                // 3. Restore balance (pointsAmount is negative for redeem, so adding restores)
+                await tx.update(users)
+                  .set({ pointsBalance: sql`points_balance + ${order.pointsUsed}` })
+                  .where(eq(users.id, order.userId));
+              }
+            }
+
+            // Coupon reversal: decrement used_count and delete couponUsage row
+            if (order.couponId) {
+              await tx.update(coupons)
+                .set({ usedCount: sql`GREATEST(used_count - 1, 0)` })
+                .where(eq(coupons.id, order.couponId));
+
+              await tx.delete(couponUsages).where(eq(couponUsages.orderId, order.id));
+            }
           });
           results.cancelled++;
         }

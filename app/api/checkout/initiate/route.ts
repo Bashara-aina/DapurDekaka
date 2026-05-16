@@ -13,6 +13,7 @@ import {
   orderDailyCounters,
   pointsHistory,
   orderStatusHistory,
+  b2bProfiles,
 } from '@/lib/db/schema';
 import { eq, and, inArray, sql, or, desc, gte } from 'drizzle-orm';
 import { success, serverError, validationError, conflict, unauthorized } from '@/lib/utils/api-response';
@@ -195,20 +196,6 @@ export const POST = withRateLimit(
         return conflict('Kupon sudah mencapai batas penggunaan');
       }
 
-      // Per-user limit check (after userId is declared)
-      if (coupon.maxUsesPerUser && userId) {
-        const userUsageCount = await db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(couponUsages)
-          .where(and(
-            eq(couponUsages.couponId, coupon.id),
-            eq(couponUsages.userId, userId)
-          ));
-        if ((userUsageCount[0]?.count ?? 0) >= coupon.maxUsesPerUser) {
-          return conflict('Anda sudah menggunakan kupon ini sebelumnya');
-        }
-      }
-
       couponId = coupon.id;
 
       if (coupon.type === 'percentage') {
@@ -260,12 +247,10 @@ export const POST = withRateLimit(
           orderBy: (variants, { asc }) => [asc(variants.price)],
         });
 
-        // Exclude variants already in cart
-        const cartVariantIds = new Set(items.map((i) => i.variantId));
-        const eligibleVariants = qualifyingVariants.filter((v) => !cartVariantIds.has(v.id));
-
-        // Pick lowest-priced variants up to getQty
-        const selectedVariants = eligibleVariants.slice(0, getQty);
+        // If qualifyingVariants is empty (all variants already in cart), pick lowest-priced anyway as free item
+        const selectedVariants = qualifyingVariants.length >= getQty
+          ? qualifyingVariants.slice(0, getQty)
+          : qualifyingVariants.slice(0, getQty);
 
         // Find product info for free items
         const productInfo = await db.query.products.findFirst({
@@ -295,7 +280,10 @@ export const POST = withRateLimit(
     }
 
     // ── Step 3: Validate + deduct points inside transaction ────────────
-    const pointsDiscount = parsed.data.pointsDiscount ?? 0;
+    const requestedPointsDiscount = parsed.data.pointsDiscount ?? 0;
+    // Enforce 50% of subtotal cap server-side (client may try to exceed)
+    const maxPointsDiscount = Math.floor(subtotal * 0.5);
+    const pointsDiscount = Math.min(requestedPointsDiscount, maxPointsDiscount);
     let pointsDeducted = false;
     const userId = session?.user?.id ?? null;
 
@@ -323,13 +311,14 @@ export const POST = withRateLimit(
       }
     }
 
-    // Idempotency: return existing pending order if same user checks out within 5 minutes
+    // Idempotency: return existing pending order if same user checks out within 30 seconds with same subtotal
     if (userId) {
       const existingPending = await db.query.orders.findFirst({
         where: and(
           eq(orders.userId, userId),
           eq(orders.status, 'pending_payment'),
-          gte(orders.createdAt, new Date(Date.now() - 5 * 60 * 1000))
+          gte(orders.createdAt, new Date(Date.now() - 30 * 1000)),
+          eq(orders.subtotal, subtotal)
         ),
         orderBy: [desc(orders.createdAt)],
       });
@@ -354,51 +343,83 @@ export const POST = withRateLimit(
       pointsDeducted = true;
     }
 
-    // FIX 5: Coupon per-user limit check (after userId is declared)
-    if (coupon && coupon.maxUsesPerUser && userId) {
-      const baseShippingCost = deliveryMethod === 'pickup' ? 0 : (addressData.courierCode ? (parsed.data.shippingCost ?? 0) : 0);
-      const shippingCost = (coupon && (coupon.type === 'free_shipping' || coupon.freeShipping)) && deliveryMethod === 'delivery'
-        ? 0
-        : baseShippingCost;
-      const totalAmount = subtotal - discountAmount - pointsDiscount + shippingCost;
-      const pointsEarnedBase = Math.floor(totalAmount / 1000) * POINTS_EARN_RATE;
-      // B2B users earn 2x points
-      const pointsEarned = isB2bOrder ? pointsEarnedBase * 2 : pointsEarnedBase;
+    // ── B2B Net-30 Check: skip Midtrans for Net-30 approved B2B users ─
+    let isNet30Order = false;
+    let net30PaymentDueAt: Date | null = null;
 
-      // ── Step 5: Generate order number using atomic DB counter ───────────
-      const today = new Date().toISOString().slice(0, 10); // "2026-05-14"
+    if (userId && session?.user?.role === 'b2b') {
+      const b2bProfile = await db.query.b2bProfiles.findFirst({
+        where: eq(b2bProfiles.userId, userId),
+      });
+
+      if (b2bProfile?.isNet30Approved) {
+        isNet30Order = true;
+        net30PaymentDueAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+      }
+    }
+
+    // FIX 10: Coupon per-user limit — check by userId for logged-in, by email for guests
+    if (coupon && coupon.maxUsesPerUser) {
+      if (userId) {
+        const userUsageCount = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(couponUsages)
+          .where(and(
+            eq(couponUsages.couponId, coupon.id),
+            eq(couponUsages.userId, userId)
+          ));
+        if ((userUsageCount[0]?.count ?? 0) >= coupon.maxUsesPerUser) {
+          return conflict('Anda sudah menggunakan kupon ini sebelumnya');
+        }
+      } else if (recipientEmail) {
+        // For guest users, check by email via orders join
+        const guestUsageCount = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(couponUsages)
+          .innerJoin(orders, eq(couponUsages.orderId, orders.id))
+          .where(and(
+            eq(couponUsages.couponId, coupon.id),
+            eq(orders.recipientEmail, recipientEmail.toLowerCase())
+          ));
+        if ((guestUsageCount[0]?.count ?? 0) >= coupon.maxUsesPerUser) {
+          return conflict('Kupon ini sudah digunakan dengan email yang sama');
+        }
+      }
+    }
+
+    const baseShippingCost = deliveryMethod === 'pickup' ? 0 : (addressData.courierCode ? (parsed.data.shippingCost ?? 0) : 0);
+    const shippingCost = (coupon && (coupon.type === 'free_shipping' || coupon.freeShipping)) && deliveryMethod === 'delivery'
+      ? 0
+      : baseShippingCost;
+    const totalAmount = subtotal - discountAmount - pointsDiscount + shippingCost;
+    const pointsEarnedBase = Math.floor(subtotal / 1000) * POINTS_EARN_RATE;
+    const pointsEarned = isB2bOrder ? pointsEarnedBase * 2 : pointsEarnedBase;
+
+    // ── Step 5: Generate order number using atomic DB counter ───────────
+    const today = new Date().toISOString().slice(0, 10); // "2026-05-14"
 
     const expiryMinutes = await getSetting<number>('payment_expiry_minutes', 'integer') ?? 15;
     const paymentExpiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000);
 
     // ── Step 6: Create order + deduct points in single transaction ───────
-    const [newOrder] = await db.transaction(async (tx) => {
-      // Get or create daily counter for today
-      const [counterRow] = await tx
+    // Atomic upsert: INSERT new counter or increment existing counter in a single statement
+    const counterResult = await db.transaction(async (tx) => {
+      const result = await tx
         .insert(orderDailyCounters)
         .values({
           date: today,
-          lastSequence: 0,
+          lastSequence: 1,
         })
         .onConflictDoUpdate({
           target: orderDailyCounters.date,
           set: {
+            lastSequence: sql`${orderDailyCounters.lastSequence} + 1`,
             updatedAt: new Date(),
           },
         })
-        .returning({ id: orderDailyCounters.id });
-
-      // Atomic increment: increment and return new sequence
-      const updatedCounters = await tx
-        .update(orderDailyCounters)
-        .set({
-          lastSequence: sql`last_sequence + 1`,
-          updatedAt: new Date(),
-        })
-        .where(eq(orderDailyCounters.id, counterRow!.id))
         .returning({ newSequence: orderDailyCounters.lastSequence });
 
-      const seq = updatedCounters[0]?.newSequence ?? 1;
+      const seq = result[0]?.newSequence ?? 1;
       const orderNumber = generateOrderNumber(seq);
 
       // Deduct points using FIFO inside transaction (rollback-safe)
@@ -462,13 +483,18 @@ export const POST = withRateLimit(
         }
       }
 
-      const [created] = await tx
+      // Determine order status based on payment method
+    // For Net-30 B2B orders: status is 'paid' directly (no Midtrans needed)
+    // For regular orders: status is 'pending_payment' (needs Midtrans payment)
+    const orderStatus: 'pending_payment' | 'paid' = isNet30Order ? 'paid' : 'pending_payment';
+
+    const [created] = await tx
         .insert(orders)
         .values({
           orderNumber,
           pickupCode: deliveryMethod === 'pickup' ? orderNumber : null,
           userId: session?.user?.id ?? null,
-          status: 'pending_payment',
+          status: orderStatus,
           isB2b: isB2bOrder,
           deliveryMethod,
           recipientName,
@@ -494,8 +520,12 @@ export const POST = withRateLimit(
           pointsUsed: pointsUsed ?? 0,
           pointsEarned,
           customerNote: parsed.data.customerNote,
-          paymentExpiresAt,
+          paymentExpiresAt: isNet30Order ? null : paymentExpiresAt,
           paymentRetryCount: 0,
+          paymentMethod: isNet30Order ? 'net30' : 'midtrans',
+          paymentDueAt: net30PaymentDueAt,
+          // For Net-30 orders, mark as paid immediately
+          paidAt: isNet30Order ? new Date() : null,
         })
         .returning();
 
@@ -538,18 +568,38 @@ export const POST = withRateLimit(
     });
 
     // Write initial status history
+    const order = counterResult[0]!;
+
+    // For Net-30 orders, write 'paid' status history; otherwise 'pending_payment'
+    const initialStatus: 'pending_payment' | 'paid' = isNet30Order ? 'paid' : 'pending_payment';
+    const initialNote = isNet30Order
+      ? 'Pesanan B2B Net-30, langsung lunas'
+      : 'Pesanan dibuat, menunggu pembayaran';
+
     await db.transaction(async (tx) => {
       await tx.insert(orderStatusHistory).values({
-        orderId: newOrder.id,
+        orderId: order.id,
         fromStatus: null,
-        toStatus: 'pending_payment',
+        toStatus: initialStatus,
         changedByUserId: userId,
         changedByType: 'system',
-        note: 'Pesanan dibuat, menunggu pembayaran',
+        note: initialNote,
       });
     });
 
-    // ── Step 8: Create Midtrans transaction ─────────────────────────────
+    // ── Step 8: For Net-30 B2B orders, skip Midtrans and return immediately ─
+    if (isNet30Order) {
+      return success({
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        totalAmount: order.totalAmount,
+        snapToken: null,
+        net30: true,
+        paymentDueAt: net30PaymentDueAt?.toISOString() ?? null,
+      });
+    }
+
+    // ── Step 8b: Create Midtrans transaction ─────────────────────────────
     const itemDetails = items.map((item) => ({
       id: item.variantId,
       price: item.unitPrice,
@@ -586,7 +636,7 @@ export const POST = withRateLimit(
     }
 
     const { snapToken, midtransOrderId } = await createMidtransTransaction({
-      orderNumber: newOrder.orderNumber,
+      orderNumber: order.orderNumber,
       retryCount: 0,
       grossAmount: totalAmount,
       customerName: recipientName,
@@ -602,12 +652,12 @@ export const POST = withRateLimit(
         midtransOrderId,
         midtransSnapToken: snapToken,
       })
-      .where(eq(orders.id, newOrder.id));
+      .where(eq(orders.id, order.id));
 
     return success({
-      orderId: newOrder.id,
-      orderNumber: newOrder.orderNumber,
-      totalAmount: newOrder.totalAmount,
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      totalAmount: order.totalAmount,
       snapToken,
     });
     } catch (error) {

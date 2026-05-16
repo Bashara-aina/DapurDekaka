@@ -86,7 +86,11 @@ export default function CartPage() {
           </div>
           {items.length > 0 && (
             <button
-              onClick={() => clearCart()}
+              onClick={() => {
+                if (confirm('Hapus semua item dari keranjang?')) {
+                  clearCart();
+                }
+              }}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-button transition-colors"
               aria-label="Hapus semua item di keranjang"
             >
@@ -112,13 +116,13 @@ export default function CartPage() {
                 </p>
                 <div className="flex gap-2 mt-3">
                   <Link
-                    href="/login"
+                    href="/login?callbackUrl=/cart"
                     className="px-4 py-2 bg-brand-red text-white text-xs font-bold rounded-button hover:bg-brand-red-dark transition-colors"
                   >
                     Masuk
                   </Link>
                   <Link
-                    href="/register"
+                    href="/register?callbackUrl=/cart"
                     className="px-4 py-2 border border-brand-red text-brand-red text-xs font-bold rounded-button hover:bg-brand-red/5 transition-colors"
                   >
                     Daftar

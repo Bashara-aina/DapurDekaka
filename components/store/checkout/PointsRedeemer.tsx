@@ -29,6 +29,7 @@ export function PointsRedeemer({
   const maxPointsToRedeem = Math.floor(maxPointsValue / POINTS_VALUE_IDR) * POINTS_VALUE_IDR;
 
   const pointsValue = Math.floor(usedPoints / POINTS_VALUE_IDR) * POINTS_VALUE_IDR;
+  const potentialSavings = Math.min(pointsBalance, Math.floor((subtotal * 0.5) / POINTS_VALUE_IDR) * POINTS_VALUE_IDR) * POINTS_VALUE_IDR;
 
   const handleToggle = (checked: boolean) => {
     setUsePoints(checked);
@@ -48,6 +49,9 @@ export function PointsRedeemer({
             <p className="text-sm font-medium">Gunakan Poin</p>
             <p className="text-xs text-text-secondary">
               Saldo: {pointsBalance.toLocaleString('id-ID')} poin
+              {potentialSavings > 0 && (
+                <span className="text-success ml-1">(≈ hemat {formatIDR(potentialSavings)})</span>
+              )}
             </p>
           </div>
         </div>

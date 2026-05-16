@@ -25,13 +25,13 @@ const itemVariants = {
 
 export function CategoryChips({ categories, activeSlug }: CategoryChipsProps) {
   return (
-    <section className="py-4 px-4 overflow-x-auto scrollbar-hide">
+    <section className="py-4">
       <motion.div
         variants={containerVariants}
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: '-50px' }}
-        className="flex gap-2 min-w-max container mx-auto"
+        className="flex gap-2 overflow-x-auto px-4 pb-2 scrollbar-hide [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden"
       >
         <motion.div variants={itemVariants}>
           <Link

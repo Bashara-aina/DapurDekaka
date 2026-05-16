@@ -36,13 +36,7 @@ export async function GET(req: NextRequest) {
     }
 
     const settingsWithType = settings.map((s) => {
-      let type: 'string' | 'number' | 'boolean' = 'string';
-      const lowerValue = s.value.toLowerCase();
-      if (lowerValue === 'true' || lowerValue === 'false') {
-        type = 'boolean';
-      } else if (!isNaN(Number(s.value)) && s.value !== '') {
-        type = 'number';
-      }
+      const type = s.type as 'string' | 'number' | 'boolean';
       return { ...s, type };
     });
 
