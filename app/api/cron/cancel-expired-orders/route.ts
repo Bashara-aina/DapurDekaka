@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { orders, orderItems, productVariants, inventoryLogs, coupons, pointsHistory, users } from '@/lib/db/schema';
+import { orders, orderItems, productVariants, inventoryLogs, coupons, couponUsages, pointsHistory, users } from '@/lib/db/schema';
 import { eq, and, lt, sql } from 'drizzle-orm';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { checkTransactionStatus } from '@/lib/midtrans/status';
@@ -12,7 +12,7 @@ import { logger } from '@/lib/utils/logger';
  * Runs every 5 minutes via Vercel Cron.
  * Checks Midtrans as fallback to avoid cancelling orders that paid concurrently.
  */
-export async function POST(req: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
     if (!verifyCronAuth(req)) {
       return NextResponse.json(
@@ -81,55 +81,41 @@ export async function POST(req: NextRequest) {
             return;
           }
 
-          // Restore stock from order items
-          for (const item of order.items) {
-            const result = await tx
-              .update(productVariants)
-              .set({
-                stock: sql`stock + ${item.quantity}`,
-                updatedAt: now,
-              })
-              .where(eq(productVariants.id, item.variantId))
-              .returning({ newStock: productVariants.stock });
-
-            if (result[0]) {
-              await tx.insert(inventoryLogs).values({
-                variantId: item.variantId,
-                changeType: 'reversal',
-                quantityBefore: result[0].newStock - item.quantity,
-                quantityAfter: result[0].newStock,
-                quantityDelta: item.quantity,
-                orderId: order.id,
-                note: `Pembatalan otomatis: pesanan tidak dibayar dalam waktu yang ditentukan`,
-              });
-            }
-          }
-
-          // Reverse points if used
+          // Reverse points if used — full FIFO reversal from webhook handler
           if (order.userId && order.pointsUsed > 0) {
-            await tx
-              .update(users)
+            // 1. Find redeem records for this order
+            const redeemRecords = await tx
+              .select()
+              .from(pointsHistory)
+              .where(and(
+                eq(pointsHistory.userId, order.userId),
+                eq(pointsHistory.type, 'redeem'),
+                eq(pointsHistory.orderId, order.id)
+              ));
+
+            // 2. Unconsume referenced earn records (FIFO reversal)
+            for (const redeem of redeemRecords) {
+              if (redeem.referencedEarnId) {
+                await tx.update(pointsHistory)
+                  .set({ consumedAt: null })
+                  .where(eq(pointsHistory.id, redeem.referencedEarnId));
+              }
+            }
+
+            // 3. Restore balance (pointsAmount is negative for redeem, so adding restores)
+            await tx.update(users)
               .set({ pointsBalance: sql`points_balance + ${order.pointsUsed}` })
               .where(eq(users.id, order.userId));
-
-            await tx.insert(pointsHistory).values({
-              userId: order.userId,
-              type: 'expire',
-              pointsAmount: -order.pointsUsed,
-              pointsBalanceAfter: sql`points_balance + ${order.pointsUsed}`,
-              descriptionId: `Pembatalan pesanan ${order.orderNumber} — poin dikembalikan`,
-              descriptionEn: `Order ${order.orderNumber} cancelled — points returned`,
-              expiresAt: null,
-              isExpired: false,
-            });
           }
 
-          // Reverse coupon usage (decrement used_count)
+          // Reverse coupon usage: decrement used_count AND delete couponUsage row
           if (order.couponId) {
             await tx
               .update(coupons)
               .set({ usedCount: sql`GREATEST(used_count - 1, 0)` })
               .where(eq(coupons.id, order.couponId));
+
+            await tx.delete(couponUsages).where(eq(couponUsages.orderId, order.id));
           }
         });
 

@@ -31,6 +31,7 @@ export default async function AdminBlogPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Judul</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Slug</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cover</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
               </tr>
@@ -43,7 +44,7 @@ export default async function AdminBlogPage() {
                     <div className="text-xs text-gray-500">{post.titleEn}</div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500 font-mono">/{post.slug}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4">
                     <div className="flex gap-2">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded ${
                         post.isPublished
@@ -58,6 +59,16 @@ export default async function AdminBlogPage() {
                         </span>
                       )}
                     </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    {post.coverImageUrl ? (
+                      <div className="w-12 h-8 rounded overflow-hidden bg-gray-100">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={post.coverImageUrl} alt="" className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400">No cover</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {post.publishedAt
@@ -78,7 +89,7 @@ export default async function AdminBlogPage() {
               ))}
               {allPosts.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                     Belum ada post
                   </td>
                 </tr>

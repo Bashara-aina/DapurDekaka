@@ -10,7 +10,10 @@ interface FailedOrderItem {
   variantId: string;
   productId: string;
   productNameId: string;
+  productNameEn: string;
   variantNameId: string;
+  variantNameEn: string;
+  sku: string;
   unitPrice: number;
   quantity: number;
   weightGram: number;
@@ -53,18 +56,21 @@ export default function CheckoutFailedPage() {
     setIsRestoring(true);
     try {
       for (const item of orderItems) {
+        // FIX 8: Cart restored with stock=0 may block addItem — use 999 (will be re-validated at checkout)
+        // Alternatively, we could fetch current stock from /api/cart/validate but that adds complexity
+        // Since checkout initiate re-validates all prices/stock server-side anyway, high placeholder is safe
         addItem({
           variantId: item.variantId,
           productId: item.productId,
           productNameId: item.productNameId,
-          productNameEn: '',
+          productNameEn: item.productNameEn ?? '',
           variantNameId: item.variantNameId,
-          variantNameEn: '',
-          sku: '',
+          variantNameEn: item.variantNameEn ?? '',
+          sku: item.sku ?? '',
           imageUrl: item.imageUrl ?? '',
           unitPrice: item.unitPrice,
           weightGram: item.weightGram,
-          stock: 0,
+          stock: 999,
         });
       }
       router.push('/checkout');

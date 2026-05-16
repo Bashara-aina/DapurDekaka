@@ -196,7 +196,11 @@ export default function OrdersClient({
                 const isOpen = openDropdown === order.id;
 
                 return (
-                  <tr key={order.id} className="hover:bg-admin-content">
+                  <tr
+                    key={order.id}
+                    className="hover:bg-admin-content cursor-pointer"
+                    onClick={() => router.push(`/admin/orders/${order.id}`)}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex flex-col">
                         <span className="font-medium text-sm">{order.orderNumber}</span>
@@ -225,9 +229,10 @@ export default function OrdersClient({
                       {formatWIB(order.createdAt)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                         <a
                           href={`/admin/orders/${order.id}`}
+                          onClick={e => { e.stopPropagation(); }}
                           className="text-brand-red hover:underline"
                         >
                           Detail

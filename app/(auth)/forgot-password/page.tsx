@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
             </div>
             <h1 className="font-display text-2xl font-bold text-text-primary mb-2">Email Terkirim</h1>
             <p className="text-text-secondary mb-2">
-              Kami telah发送 link reset password ke:
+              Kami telah mengirim link reset password ke:
             </p>
             <p className="font-medium text-text-primary mb-6">{email}</p>
             <p className="text-text-secondary text-sm mb-6">

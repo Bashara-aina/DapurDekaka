@@ -80,3 +80,66 @@ export async function PATCH(req: NextRequest) {
     return serverError(error);
   }
 }
+
+const ChangePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Password saat ini diperlukan'),
+  newPassword: z.string().min(8, 'Password baru minimal 8 karakter').max(128),
+});
+
+export async function PUT(req: NextRequest) {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return unauthorized('Silakan masuk terlebih dahulu');
+    }
+
+    // Check if user has password (OAuth users don't)
+    const user = await db.query.users.findFirst({
+      where: (users, { eq }) => eq(users.id, session.user.id!),
+      columns: {
+        id: true,
+        passwordHash: true,
+      },
+    });
+
+    if (!user) {
+      return unauthorized('Silakan masuk terlebih dahulu');
+    }
+
+    if (!user.passwordHash) {
+      return validationError(new Error('Akun ini tidak menggunakan password. Login dengan Google.'));
+    }
+
+    const body = await req.json();
+    const parsed = ChangePasswordSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return validationError(parsed.error);
+    }
+
+    // Verify current password
+    const bcrypt = await import('bcryptjs');
+    const isValid = await bcrypt.compare(parsed.data.currentPassword, user.passwordHash);
+
+    if (!isValid) {
+      return validationError(new Error('Password saat ini salah'));
+    }
+
+    // Hash and update new password
+    const newPasswordHash = await bcrypt.hash(parsed.data.newPassword, 12);
+
+    await db
+      .update(users)
+      .set({
+        passwordHash: newPasswordHash,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, session.user.id));
+
+    return success({ message: 'Password berhasil diperbarui' });
+  } catch (error) {
+    console.error('[account/profile PUT]', error);
+    return serverError(error);
+  }
+}

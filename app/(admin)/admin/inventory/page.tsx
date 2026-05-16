@@ -21,6 +21,7 @@ export default async function InventoryPage() {
     stock: v.stock,
     productId: v.productId,
     product: {
+      id: v.product.id,
       nameId: v.product.nameId,
     },
   }));

@@ -19,6 +19,17 @@ const profileFormSchema = z.object({
 
 type ProfileFormData = z.infer<typeof profileFormSchema>;
 
+const passwordFormSchema = z.object({
+  currentPassword: z.string().min(1, 'Password saat ini diperlukan'),
+  newPassword: z.string().min(8, 'Password baru minimal 8 karakter').max(128),
+  confirmPassword: z.string().min(1, 'Konfirmasi password diperlukan'),
+}).refine(data => data.newPassword === data.confirmPassword, {
+  message: 'Konfirmasi password tidak cocok',
+  path: ['confirmPassword'],
+});
+
+type PasswordFormData = z.infer<typeof passwordFormSchema>;
+
 interface UserProfile {
   id: string;
   name: string;
@@ -34,12 +45,14 @@ export default function AccountProfilePage() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [serverSuccess, setServerSuccess] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+  const [isPasswordLoading, setIsPasswordLoading] = useState(false);
 
   const {
     register,
     handleSubmit,
     setValue,
-    watch,
     formState: { errors },
   } = useForm<ProfileFormData>({
     resolver: zodResolver(profileFormSchema),
@@ -50,7 +63,19 @@ export default function AccountProfilePage() {
     },
   });
 
-  const selectedLang = watch('languagePreference');
+  const {
+    register: registerPassword,
+    handleSubmit: handleSubmitPasswordBase,
+    formState: { errors: passwordErrors },
+    reset: resetPassword,
+  } = useForm<PasswordFormData>({
+    resolver: zodResolver(passwordFormSchema),
+    defaultValues: {
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    },
+  });
 
   const fetchProfile = async () => {
     try {
@@ -116,6 +141,38 @@ export default function AccountProfilePage() {
       setServerError('Terjadi kesalahan. Silakan coba lagi.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSubmitPassword = async (data: PasswordFormData) => {
+    setIsPasswordLoading(true);
+    setPasswordError(null);
+    setPasswordSuccess(null);
+
+    try {
+      const res = await fetch('/api/account/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword: data.currentPassword,
+          newPassword: data.newPassword,
+        }),
+      });
+
+      const response = await res.json();
+
+      if (!response.success) {
+        setPasswordError(response.error || 'Gagal memperbarui password');
+        return;
+      }
+
+      setPasswordSuccess('Password berhasil diperbarui');
+      resetPassword();
+      setTimeout(() => setPasswordSuccess(null), 4000);
+    } catch {
+      setPasswordError('Terjadi kesalahan. Silakan coba lagi.');
+    } finally {
+      setIsPasswordLoading(false);
     }
   };
 
@@ -244,39 +301,9 @@ export default function AccountProfilePage() {
             <label className="block text-sm font-medium text-text-secondary mb-1">
               Bahasa
             </label>
-            <div className="flex gap-3">
-              <label
-                className={cn(
-                  'flex-1 flex items-center justify-center gap-2 h-11 border rounded-lg cursor-pointer transition-colors',
-                  selectedLang === 'id'
-                    ? 'border-brand-red bg-brand-red/5 text-brand-red font-medium'
-                    : 'border-brand-cream-dark text-text-secondary hover:border-brand-red/50'
-                )}
-              >
-                <input
-                  type="radio"
-                  value="id"
-                  {...register('languagePreference')}
-                  className="sr-only"
-                />
-                🇮🇩 Indonesia
-              </label>
-              <label
-                className={cn(
-                  'flex-1 flex items-center justify-center gap-2 h-11 border rounded-lg cursor-pointer transition-colors',
-                  selectedLang === 'en'
-                    ? 'border-brand-red bg-brand-red/5 text-brand-red font-medium'
-                    : 'border-brand-cream-dark text-text-secondary hover:border-brand-red/50'
-                )}
-              >
-                <input
-                  type="radio"
-                  value="en"
-                  {...register('languagePreference')}
-                  className="sr-only"
-                />
-                🇬🇧 English
-              </label>
+            <div className="flex items-center gap-2 h-11 px-3 border border-brand-cream-dark rounded-lg bg-gray-50">
+              <span>🇮🇩 Indonesia</span>
+              <span className="ml-auto text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Bahasa Inggris segera hadir</span>
             </div>
           </div>
 
@@ -287,6 +314,106 @@ export default function AccountProfilePage() {
             className="w-full h-12 bg-brand-red text-white font-bold rounded-button disabled:opacity-50 hover:bg-brand-red-dark transition-colors"
           >
             {isLoading ? 'Memproses...' : 'Simpan Perubahan'}
+          </button>
+        </form>
+      </div>
+
+      {/* Password Change Section */}
+      <div className="bg-white rounded-card shadow-card p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 bg-brand-red-muted rounded-lg flex items-center justify-center">
+            <User className="w-5 h-5 text-brand-red" />
+          </div>
+          <div>
+            <h2 className="font-display font-semibold text-text-primary">Ubah Password</h2>
+            <p className="text-xs text-text-secondary">Perbarui password akun kamu</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmitPassword} className="space-y-5">
+          {passwordSuccess && (
+            <div className="bg-success-light border border-success/30 rounded-card p-4 flex items-start gap-3">
+              <CheckCircle className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-success font-medium">{passwordSuccess}</p>
+            </div>
+          )}
+
+          {passwordError && (
+            <div className="bg-error-light border border-error/30 rounded-card p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-error font-medium">{passwordError}</p>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1">
+              Password Saat Ini
+            </label>
+            <input
+              type="password"
+              placeholder="Masukkan password saat ini"
+              {...register('currentPassword')}
+              className={cn(
+                'w-full h-11 px-3 border rounded-lg outline-none transition-colors',
+                'focus:border-brand-red focus:ring-2 focus:ring-brand-red/10',
+                errors.currentPassword
+                  ? 'border-error'
+                  : 'border-brand-cream-dark'
+              )}
+            />
+            {errors.currentPassword && (
+              <p className="text-error text-xs mt-1">{errors.currentPassword.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1">
+              Password Baru
+            </label>
+            <input
+              type="password"
+              placeholder="Minimal 8 karakter"
+              {...register('newPassword')}
+              className={cn(
+                'w-full h-11 px-3 border rounded-lg outline-none transition-colors',
+                'focus:border-brand-red focus:ring-2 focus:ring-brand-red/10',
+                errors.newPassword
+                  ? 'border-error'
+                  : 'border-brand-cream-dark'
+              )}
+            />
+            {errors.newPassword && (
+              <p className="text-error text-xs mt-1">{errors.newPassword.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1">
+              Konfirmasi Password Baru
+            </label>
+            <input
+              type="password"
+              placeholder="Masukkan password baru lagi"
+              {...register('confirmPassword')}
+              className={cn(
+                'w-full h-11 px-3 border rounded-lg outline-none transition-colors',
+                'focus:border-brand-red focus:ring-2 focus:ring-brand-red/10',
+                errors.confirmPassword
+                  ? 'border-error'
+                  : 'border-brand-cream-dark'
+              )}
+            />
+            {errors.confirmPassword && (
+              <p className="text-error text-xs mt-1">{errors.confirmPassword.message}</p>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            disabled={isPasswordLoading}
+            className="w-full h-12 bg-brand-red text-white font-bold rounded-button disabled:opacity-50 hover:bg-brand-red-dark transition-colors"
+          >
+            {isPasswordLoading ? 'Memproses...' : 'Ubah Password'}
           </button>
         </form>
       </div>

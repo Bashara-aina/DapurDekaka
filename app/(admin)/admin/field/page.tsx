@@ -130,10 +130,10 @@ async function fetchInventory(): Promise<InventoryItem[]> {
 }
 
 async function packOrder(orderId: string, data: { status: string; note?: string; coldChainCondition?: string }) {
-  const res = await fetch(`/api/admin/field/orders/${orderId}`, {
+  const res = await fetch('/api/admin/field/packing-queue', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify({ orderId }),
   });
   const json = await res.json();
   if (!json.success) throw new Error(json.error);
@@ -141,10 +141,10 @@ async function packOrder(orderId: string, data: { status: string; note?: string;
 }
 
 async function addTracking(orderId: string, data: { trackingNumber: string; courierCode?: string }) {
-  const res = await fetch(`/api/admin/field/orders/${orderId}/tracking`, {
+  const res = await fetch('/api/admin/field/tracking-queue', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify({ orderId, trackingNumber: data.trackingNumber }),
   });
   const json = await res.json();
   if (!json.success) throw new Error(json.error);
@@ -173,7 +173,7 @@ async function restockInventory(data: { variantId: string; quantityAdded: number
   return json.data;
 }
 
-async function adjustInventory(data: { variantId: string; newQuantity: number; reason: string }) {
+async function adjustInventory(data: { variantId: string; delta: number; reason: string }) {
   const res = await fetch('/api/admin/field/inventory/adjust', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -321,13 +321,16 @@ function PackingTab() {
   const { data: orders, isLoading, refetch } = useQuery({
     queryKey: ['field', 'packing-queue'],
     queryFn: fetchPackingQueue,
-    refetchInterval: 30000,
+    refetchInterval: 15000,
   });
 
   const { mutateAsync: packMutate, isPending: isPacking } = useMutation({
     mutationFn: ({ orderId, note, coldChain }: { orderId: string; note?: string; coldChain?: string }) =>
       packOrder(orderId, { status: 'packed', note, coldChainCondition: coldChain }),
     onSuccess: () => refetch(),
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Gagal menyimpan. Coba lagi.');
+    },
   });
 
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -401,7 +404,16 @@ function PackingTab() {
       >
         <div className="space-y-4">
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Checklist Item</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase">Checklist Item</p>
+              <button
+                type="button"
+                onClick={() => setCheckedItems(new Set(selectedOrder.items.map((_, idx) => idx)))}
+                className="text-xs text-brand-red underline"
+              >
+                Centang Semua
+              </button>
+            </div>
             <div className="space-y-2">
               {selectedOrder?.items.map((item, idx) => (
                 <label key={idx} className="flex items-center gap-3 cursor-pointer group">
@@ -474,13 +486,16 @@ function TrackingTab() {
   const { data: orders, isLoading, refetch } = useQuery({
     queryKey: ['field', 'tracking-queue'],
     queryFn: fetchTrackingQueue,
-    refetchInterval: 30000,
+    refetchInterval: 15000,
   });
 
   const { mutateAsync: trackingMutate, isPending: isTracking } = useMutation({
     mutationFn: ({ orderId, trackingNumber, courierCode }: { orderId: string; trackingNumber: string; courierCode?: string }) =>
       addTracking(orderId, { trackingNumber, courierCode }),
     onSuccess: () => refetch(),
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Gagal menyimpan. Coba lagi.');
+    },
   });
 
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -598,12 +613,15 @@ function PickupTab() {
   const { data: orders, isLoading, refetch } = useQuery({
     queryKey: ['field', 'pickup-queue'],
     queryFn: fetchPickupQueue,
-    refetchInterval: 30000,
+    refetchInterval: 15000,
   });
 
   const { mutateAsync: deliverMutate, isPending: isDelivering } = useMutation({
     mutationFn: (orderId: string) => deliverPickup(orderId),
     onSuccess: () => refetch(),
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Gagal menyimpan. Coba lagi.');
+    },
   });
 
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -612,7 +630,8 @@ function PickupTab() {
 
   const handleDeliver = async () => {
     if (!selectedOrder) return;
-    if (selectedOrder.pickupCode && inputCode.trim().toUpperCase() !== selectedOrder.pickupCode.toUpperCase()) {
+    const codeToVerify = selectedOrder.pickupCode ?? selectedOrder.orderNumber;
+    if (inputCode.trim().toUpperCase() !== codeToVerify.toUpperCase()) {
       setCodeError('Kode tidak cocok. Minta pelanggan tunjukkan kode yang benar.');
       return;
     }
@@ -666,6 +685,12 @@ function PickupTab() {
               Minta pelanggan menunjukkan kode ambil mereka, lalu masukkan di bawah.
             </p>
           </div>
+          {selectedOrder && (
+            <div className="bg-gray-50 rounded p-2 mb-3">
+              <p className="text-xs text-gray-500">Kode ambil sistem:</p>
+              <p className="font-mono font-bold">{selectedOrder.pickupCode ?? selectedOrder.orderNumber}</p>
+            </div>
+          )}
           {selectedOrder?.pickupCode && (
             <div>
               <Label htmlFor="pickupCode" className="text-xs font-semibold text-gray-500 uppercase">Kode Ambil Pelanggan</Label>
@@ -718,6 +743,9 @@ function InventoryTab() {
       refetch();
       queryClient.invalidateQueries({ queryKey: ['field', 'today-summary'] });
     },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Gagal menyimpan. Coba lagi.');
+    },
   });
 
   const { mutateAsync: adjustMutate, isPending: isAdjusting } = useMutation({
@@ -725,6 +753,9 @@ function InventoryTab() {
     onSuccess: () => {
       refetch();
       queryClient.invalidateQueries({ queryKey: ['field', 'today-summary'] });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Gagal menyimpan. Coba lagi.');
     },
   });
 
@@ -736,11 +767,24 @@ function InventoryTab() {
 
   const handleSubmit = async () => {
     if (!selectedItem || !quantity) return;
+    const parsedQty = parseInt(quantity.trim(), 10);
+    if (isNaN(parsedQty) || parsedQty < 0) {
+      toast.error('Masukkan angka yang valid (min 0)');
+      return;
+    }
     if (actionType === 'restock') {
-      await restockMutate({ variantId: selectedItem.id, quantityAdded: parseInt(quantity), note: reason || undefined });
+      await restockMutate({ variantId: selectedItem.id, quantityAdded: parsedQty, note: reason || undefined });
     } else if (actionType === 'adjust') {
+      const delta = parsedQty - selectedItem.stock;
+      if (delta === 0) {
+        setSelectedItem(null);
+        setActionType(null);
+        setQuantity('');
+        setReason('');
+        return;
+      }
       if (!reason) return;
-      await adjustMutate({ variantId: selectedItem.id, newQuantity: parseInt(quantity), reason });
+      await adjustMutate({ variantId: selectedItem.id, delta, reason });
     }
     setSelectedItem(null);
     setActionType(null);
@@ -809,20 +853,18 @@ function InventoryTab() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="min-h-[44px] min-w-[44px] text-green-600 border-green-200 hover:bg-green-50"
+                    className="min-h-[44px] text-green-600 border-green-200 hover:bg-green-50 text-xs font-medium"
                     onClick={() => { setSelectedItem(item); setActionType('restock'); setQuantity(''); setReason(''); }}
-                    title="Tambah stok"
                   >
-                    <Plus className="w-4 h-4" />
+                    + Tambah
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="min-h-[44px] min-w-[44px] text-amber-600 border-amber-200 hover:bg-amber-50"
+                    className="min-h-[44px] text-amber-600 border-amber-200 hover:bg-amber-50 text-xs font-medium"
                     onClick={() => { setSelectedItem(item); setActionType('adjust'); setQuantity(item.stock.toString()); setReason(''); }}
-                    title="Koreksi stok"
                   >
-                    <RefreshCw className="w-4 h-4" />
+                    Koreksi
                   </Button>
                 </div>
               </div>
@@ -1035,19 +1077,19 @@ export default function FieldDashboardPage() {
   const { data: packingQueue } = useQuery({
     queryKey: ['field', 'packing-queue'],
     queryFn: fetchPackingQueue,
-    refetchInterval: 30000,
+    refetchInterval: 15000,
   });
 
   const { data: trackingQueue } = useQuery({
     queryKey: ['field', 'tracking-queue'],
     queryFn: fetchTrackingQueue,
-    refetchInterval: 30000,
+    refetchInterval: 15000,
   });
 
   const { data: pickupQueue } = useQuery({
     queryKey: ['field', 'pickup-queue'],
     queryFn: fetchPickupQueue,
-    refetchInterval: 30000,
+    refetchInterval: 15000,
   });
 
   const today = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });

@@ -171,10 +171,15 @@ export default function B2BAccountQuotesPage() {
   const actionMutation = useMutation({
     mutationFn: async ({ quoteId, action }: { quoteId: string; action: 'accept' | 'reject' }) => {
       const res = await fetch(`/api/b2b/quotes/${quoteId}/${action}`, { method: 'POST' });
-      return res.json();
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Gagal memproses tindakan');
+      return data;
     },
     onSuccess: () => {
       refetch();
+    },
+    onError: (error) => {
+      alert(error instanceof Error ? error.message : 'Terjadi kesalahan. Coba lagi.');
     },
   });
 

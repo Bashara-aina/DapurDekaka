@@ -5,8 +5,9 @@ export const POINTS_EARN_RATE = 1;
 
 /**
  * IDR value per point when redeeming
+ * 100 points = IDR 1,000 → 1 point = IDR 10
  */
-export const POINTS_VALUE_IDR = 1000;
+export const POINTS_VALUE_IDR = 10;
 
 /**
  * Days until earned points expire

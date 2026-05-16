@@ -6,10 +6,10 @@ import { PromoBanner } from '@/components/store/home/PromoBanner';
 import { WhyDapurDekaka } from '@/components/store/home/WhyDapurDekaka';
 import { InstagramFeed } from '@/components/store/home/InstagramFeed';
 import { Testimonials } from '@/components/store/home/Testimonials';
+import { HomePageCTA } from '@/components/store/home/HomePageCTA';
 import { db } from '@/lib/db';
 import { products, productVariants, productImages, categories, carouselSlides, systemSettings } from '@/lib/db/schema';
 import { eq, and, desc, isNull, lte, gte, isNull as isNullCond, sql } from 'drizzle-orm';
-import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
@@ -178,23 +178,7 @@ export default async function HomePage() {
 
       <Testimonials />
 
-      {/* CTA Section */}
-      <section className="py-12 px-4 bg-brand-red">
-        <div className="container mx-auto text-center">
-          <h2 className="font-display text-2xl font-bold text-white mb-4">
-            Siap Mencicipi Kelezatan Dapur Dekaka?
-          </h2>
-          <p className="text-white/80 mb-6 max-w-md mx-auto">
-            Pesan sekarang dan nikmati dimsum, siomay, dan bakso premium langsung di rumahmu
-          </p>
-          <Link
-            href="/products"
-            className="inline-flex items-center h-12 px-8 bg-white text-brand-red font-bold rounded-button shadow-lg hover:bg-brand-cream transition-colors"
-          >
-            Jelajahi Produk
-          </Link>
-        </div>
-      </section>
+      <HomePageCTA />
     </div>
   );
 }

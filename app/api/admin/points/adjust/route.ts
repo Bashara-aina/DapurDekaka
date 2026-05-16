@@ -51,6 +51,8 @@ export async function POST(req: NextRequest) {
       ? `Adjustment: ${reason}`
       : `Points deduction: ${reason}`;
 
+    const newBalance = (targetUser.pointsBalance ?? 0) + adjustedAmount;
+
     await db.transaction(async (tx) => {
       await tx
         .update(users)
@@ -64,7 +66,7 @@ export async function POST(req: NextRequest) {
         userId,
         type: 'adjust',
         pointsAmount: adjustedAmount,
-        pointsBalanceAfter: sql`points_balance`,
+        pointsBalanceAfter: newBalance,
         descriptionId: noteId,
         descriptionEn: noteEn,
       });
@@ -73,7 +75,7 @@ export async function POST(req: NextRequest) {
     return success({
       userId,
       adjustedAmount,
-      newBalance: (targetUser.pointsBalance ?? 0) + adjustedAmount,
+      newBalance,
       message: type === 'add'
         ? `Berhasil menambahkan ${amount} poin`
         : `Berhasil mengurangi ${amount} poin`,

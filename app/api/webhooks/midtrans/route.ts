@@ -124,28 +124,25 @@ export async function POST(req: NextRequest) {
           })
           .where(eq(orders.id, order.id));
 
-        // Deduct stock (conditional — only if sufficient stock exists)
+        // Deduct stock for each item with row-level lock to prevent concurrent oversell
         for (const item of order.items) {
+          // Lock variant row (PostgreSQL FOR UPDATE) to serialize concurrent stock deductions
+          const [lockedVariant] = await tx
+            .select({ id: productVariants.id })
+            .from(productVariants)
+            .where(eq(productVariants.id, item.variantId))
+            .for('update');
+
           const result = await tx
             .update(productVariants)
             .set({
-              stock: sql`stock - ${item.quantity}`,
+              stock: sql`GREATEST(stock - ${item.quantity}, 0)`,
               updatedAt: new Date(),
             })
-            .where(and(
-              eq(productVariants.id, item.variantId),
-              gte(productVariants.stock, item.quantity)
-            ))
+            .where(eq(productVariants.id, item.variantId))
             .returning({ newStock: productVariants.stock });
 
-          if (result.length === 0) {
-            // Stock was insufficient — log error but don't fail the webhook
-            logger.error('[Midtrans Webhook] Oversell detected', {
-              orderNumber: order.orderNumber,
-              variantId: item.variantId,
-              requestedQty: item.quantity,
-            });
-          } else {
+          if (result.length > 0) {
             const updatedStock = result[0]!.newStock;
             await tx.insert(inventoryLogs).values({
               variantId: item.variantId,
@@ -317,12 +314,14 @@ export async function POST(req: NextRequest) {
             .where(eq(users.id, order.userId));
         }
 
-        // Reverse coupon used_count (tentative increment should be undone)
+        // Reverse coupon used_count and delete couponUsage row
         if (order.couponId) {
           await tx
             .update(coupons)
             .set({ usedCount: sql`GREATEST(used_count - 1, 0)` })
             .where(eq(coupons.id, order.couponId));
+
+          await tx.delete(couponUsages).where(eq(couponUsages.orderId, order.id));
         }
       });
 

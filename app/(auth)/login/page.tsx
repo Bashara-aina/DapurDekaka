@@ -41,6 +41,19 @@ function LoginForm() {
       if (result?.error) {
         setError('Email atau password salah');
       } else if (result?.url) {
+        // Merge guest cart with user's saved cart after successful login
+        try {
+          const cartItems = JSON.parse(localStorage.getItem('cart-storage') || '{}');
+          if (cartItems?.state?.items?.length > 0) {
+            await fetch('/api/auth/merge-cart', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ items: cartItems.state.items }),
+            });
+          }
+        } catch {
+          // Cart merge is non-critical, don't block on failure
+        }
         router.push(callbackUrl);
       }
     } catch {
@@ -117,7 +130,7 @@ function LoginForm() {
             </div>
 
             <div className="text-right">
-              <Link href="/auth/forgot-password" className="text-sm text-brand-red hover:underline">
+              <Link href="/forgot-password" className="text-sm text-brand-red hover:underline">
                 Lupa password?
               </Link>
             </div>
@@ -133,7 +146,7 @@ function LoginForm() {
 
           <p className="text-center text-sm text-text-secondary mt-6">
             Belum punya akun?{' '}
-            <Link href="/auth/register" className="text-brand-red font-medium hover:underline">
+            <Link href="/register" className="text-brand-red font-medium hover:underline">
               Daftar di sini
             </Link>
           </p>

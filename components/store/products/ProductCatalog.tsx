@@ -193,11 +193,20 @@ export function ProductCatalog({ products, categories, initialCategory = '', ini
             })}
           </div>
         ) : (
-          <div className="text-center py-12">
-            <p className="text-text-secondary">Tidak ada produk ditemukan</p>
-            <Link href="/products" className="text-brand-red font-medium mt-2 inline-block">
-              Lihat semua produk
-            </Link>
+          <div className="text-center py-16 col-span-full">
+            <p className="text-5xl mb-4">😕</p>
+            <h3 className="font-display text-lg font-semibold text-text-primary mb-2">
+              Produk tidak ditemukan
+            </h3>
+            <p className="text-text-secondary text-sm mb-4">
+              Coba kategori lain atau hapus filter
+            </p>
+            <button
+              onClick={() => handleCategoryChange(null)}
+              className="px-4 py-2 bg-brand-red text-white text-sm font-bold rounded-button hover:bg-brand-red-dark transition-colors"
+            >
+              Tampilkan Semua Produk
+            </button>
           </div>
         )}
       </div>

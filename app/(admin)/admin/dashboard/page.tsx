@@ -8,6 +8,7 @@ import {
   Package, Users, DollarSign, Activity, TrendingUp, TrendingDown,
   ArrowRight, Download, Plus
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { KPICard } from '@/components/admin/dashboard/KPICard';
 import { RevenueChart } from '@/components/admin/dashboard/RevenueChart';
 import { formatIDR } from '@/lib/utils/format-currency';
@@ -87,6 +88,7 @@ interface AuditLog {
   entityId: string;
   createdAt: string;
   ipAddress: string | null;
+  user?: { name: string | null; email: string | null } | null;
 }
 
 interface UserSummary {
@@ -157,10 +159,18 @@ const LIVE_FEED_FILTERS = [
   { key: 'shipped', label: 'Dikirim' },
 ];
 
+const DATE_PRESETS = [
+  { label: 'Hari Ini', getValue: () => { const t = new Date(); return { from: t.toISOString().split('T')[0], to: t.toISOString().split('T')[0] }; } },
+  { label: 'Minggu Ini', getValue: () => { const t = new Date(); const start = new Date(t); start.setDate(t.getDate() - 6); return { from: start.toISOString().split('T')[0], to: t.toISOString().split('T')[0] }; } },
+  { label: 'Bulan Ini', getValue: () => { const t = new Date(); const start = new Date(t.getFullYear(), t.getMonth(), 1); return { from: start.toISOString().split('T')[0], to: t.toISOString().split('T')[0] }; } },
+  { label: '30 Hari', getValue: () => { const t = new Date(); const start = new Date(t); start.setDate(t.getDate() - 29); return { from: start.toISOString().split('T')[0], to: t.toISOString().split('T')[0] }; } },
+];
+
 export default function SuperadminDashboardPage() {
   const { data: session } = useSession();
   const [dismissedAlert, setDismissedAlert] = useState(false);
   const [dismissedActions, setDismissedActions] = useState<Set<string>>(new Set());
+  const [downloading, setDownloading] = useState(false);
   const [funnelFilter] = useState('all');
   const [feedFilter, setFeedFilter] = useState('all');
   const [dateRange, setDateRange] = useState<{ from: string; to: string }>({ from: '', to: '' });
@@ -337,6 +347,17 @@ export default function SuperadminDashboardPage() {
       {/* ── Date Range Filter ─────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-3 bg-white rounded-xl p-4 border border-admin-border">
         <span className="text-sm font-medium text-[#1A1A1A]">Periode:</span>
+        <div className="flex flex-wrap gap-2">
+          {DATE_PRESETS.map(preset => (
+            <button
+              key={preset.label}
+              onClick={() => setDateRange(preset.getValue())}
+              className="px-3 py-1.5 text-xs font-medium rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
         <div className="flex items-center gap-2">
           <input
             type="date"
@@ -457,9 +478,15 @@ export default function SuperadminDashboardPage() {
                         className={cn('h-full rounded-full transition-all duration-500', stage.color, !count && 'opacity-30')}
                         style={{ width: `${widthPercent}%` }}
                       />
-                      <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white mix-blend-darken">
-                        {count}
-                      </span>
+                      {count > 0 ? (
+                        <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white">
+                          {count}
+                        </span>
+                      ) : (
+                        <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-gray-400">
+                          0
+                        </span>
+                      )}
                     </div>
                   </a>
                 );
@@ -599,7 +626,7 @@ export default function SuperadminDashboardPage() {
                   </td>
                   <td className="px-4 py-3">
                     <a
-                      href={`/admin/orders?id=${order.id}`}
+                      href={`/admin/orders/${order.id}`}
                       className="text-xs text-brand-red hover:underline font-medium"
                     >
                       Detail
@@ -732,12 +759,29 @@ export default function SuperadminDashboardPage() {
         <div className="px-5 py-4 border-b border-admin-border flex items-center justify-between">
           <h2 className="font-semibold text-[#1A1A1A]">Admin Audit Log</h2>
           <button
-            onClick={() => {
-              window.location.href = '/api/admin/audit-logs?export=csv';
+            onClick={async () => {
+              setDownloading(true);
+              try {
+                const res = await fetch('/api/admin/audit-logs?export=csv');
+                if (!res.ok) throw new Error('Download failed');
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `audit-log-${Date.now()}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+                toast.success('Audit log berhasil diunduh');
+              } catch {
+                toast.error('Gagal mengunduh audit log');
+              } finally {
+                setDownloading(false);
+              }
             }}
-            className="flex items-center gap-1.5 text-xs text-brand-red hover:underline font-medium"
+            disabled={downloading}
+            className="flex items-center gap-1.5 text-xs text-brand-red hover:underline font-medium disabled:opacity-50"
           >
-            <Download className="w-3.5 h-3.5" /> Download CSV
+            <Download className="w-3.5 h-3.5" /> {downloading ? 'Mengunduh...' : 'Download CSV'}
           </button>
         </div>
         <div className="overflow-x-auto max-h-64 overflow-y-auto">
@@ -761,7 +805,7 @@ export default function SuperadminDashboardPage() {
                     {log.entityType}{log.entityId ? ` #${log.entityId.slice(0, 8)}` : ''}
                   </td>
                   <td className="px-5 py-3 text-xs text-gray-400">
-                    {log.userId ? `…${log.userId.slice(-6)}` : '—'}
+                    {log.user?.name ?? log.user?.email ?? '—'}
                   </td>
                 </tr>
               ))}
@@ -788,7 +832,6 @@ export default function SuperadminDashboardPage() {
             { label: 'Midtrans Webhook', value: kpis?.systemHealth?.midtransWebhook ?? 'checking…' },
             { label: 'Database (Neon)', value: kpis?.systemHealth?.neonDB ?? 'checking…' },
             { label: 'Cron Jobs', value: kpis?.systemHealth?.lastCronCheck ?? 'checking…' },
-            { label: 'Cloudinary CDN', value: 'ok' },
           ].map(service => (
             <div key={service.label} className="p-3 rounded-lg border border-gray-100 bg-gray-50">
               <p className="text-xs text-gray-500 mb-1">{service.label}</p>

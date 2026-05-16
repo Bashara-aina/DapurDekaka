@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useQuery } from '@tanstack/react-query';
+import Link from 'next/link';
 import { ShoppingBag, ChevronRight, Loader2 } from 'lucide-react';
 
 export default function B2BAccountOrdersPage() {
@@ -47,7 +48,11 @@ export default function B2BAccountOrdersPage() {
         {ordersData && ordersData.length > 0 ? (
           <div className="space-y-4">
             {ordersData.map((order: { id: string; orderNumber: string; status: string; totalAmount: number; createdAt: string }) => (
-              <div key={order.id} className="bg-white rounded-xl p-4 shadow-sm">
+              <Link
+                key={order.id}
+                href={`/b2b/account/orders/${order.orderNumber}`}
+                className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow block"
+              >
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium text-sm">{order.orderNumber}</p>
@@ -63,14 +68,25 @@ export default function B2BAccountOrdersPage() {
                       order.status === 'paid' ? 'bg-green-100 text-green-700' :
                       order.status === 'pending_payment' ? 'bg-yellow-100 text-yellow-700' :
                       order.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                      order.status === 'processing' ? 'bg-blue-100 text-blue-700' :
+                      order.status === 'packed' ? 'bg-purple-100 text-purple-700' :
+                      order.status === 'shipped' ? 'bg-indigo-100 text-indigo-700' :
+                      order.status === 'delivered' ? 'bg-teal-100 text-teal-700' :
                       'bg-gray-100 text-gray-700'
                     }`}>
-                      {order.status}
+                      {order.status === 'paid' ? 'Lunas' :
+                       order.status === 'pending_payment' ? 'Menunggu Bayar' :
+                       order.status === 'processing' ? 'Diproses' :
+                       order.status === 'packed' ? 'Dikemas' :
+                       order.status === 'shipped' ? 'Dikirim' :
+                       order.status === 'delivered' ? 'Selesai' :
+                       order.status === 'cancelled' ? 'Dibatalkan' :
+                       order.status}
                     </span>
                     <ChevronRight className="w-4 h-4 text-text-muted" />
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         ) : (

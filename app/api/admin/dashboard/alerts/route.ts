@@ -3,8 +3,9 @@ import { cache } from 'react';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { orders, productVariants, b2bInquiries } from '@/lib/db/schema';
-import { eq, sql, and, lt, gt, lte } from 'drizzle-orm';
+import { eq, sql, and, lt, gt } from 'drizzle-orm';
 import { success, unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
+import { getSetting } from '@/lib/settings/get-settings';
 
 interface Alert {
   priority: number;
@@ -19,6 +20,9 @@ const getAlerts = cache(async (): Promise<Alert[]> => {
   today.setHours(0, 0, 0, 0);
 
   const alerts: Alert[] = [];
+
+  // Fetch configurable threshold
+  const lowStockThreshold = await getSetting<number>('low_stock_threshold', 'integer') ?? 5;
 
   const [stuckPaidResult, outOfStockResult, lowStockResult, pendingOrdersResult, pendingB2BResult] = await Promise.all([
     db
@@ -37,7 +41,7 @@ const getAlerts = cache(async (): Promise<Alert[]> => {
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(productVariants)
-      .where(and(lt(productVariants.stock, 5), gt(productVariants.stock, 0), eq(productVariants.isActive, true))),
+      .where(and(lt(productVariants.stock, lowStockThreshold), gt(productVariants.stock, 0), eq(productVariants.isActive, true))),
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(orders)
@@ -75,7 +79,7 @@ const getAlerts = cache(async (): Promise<Alert[]> => {
     alerts.push({
       priority: 2,
       type: 'low_stock',
-      message: `${lowStockCount} varian stok menipis (< 5 unit)`,
+      message: `${lowStockCount} varian stok menipis (< ${lowStockThreshold} unit)`,
       count: lowStockCount,
       link: '/admin/inventory?stock=low',
     });

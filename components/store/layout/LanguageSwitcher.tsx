@@ -2,14 +2,17 @@
 
 import { useState } from 'react';
 import { cn } from '@/lib/utils/cn';
+import { useRouter, usePathname } from 'next/navigation';
 
 export function LanguageSwitcher({ className }: { className?: string }) {
   const [locale, setLocale] = useState<'id' | 'en'>('id');
+  const router = useRouter();
+  const pathname = usePathname();
 
   const switchLocale = (newLocale: 'id' | 'en') => {
     setLocale(newLocale);
-    // The app doesn't have full i18n yet — just toggle the state for future use
-    // When i18n is fully implemented, this would update cookies/locale
+    // Persist locale preference in a cookie
+    document.cookie = `NEXT_LOCALE=${newLocale};path=${pathname};max-age=31536000`;
   };
 
   return (

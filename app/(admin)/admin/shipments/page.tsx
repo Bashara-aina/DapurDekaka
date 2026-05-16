@@ -7,10 +7,14 @@ export const dynamic = 'force-dynamic';
 
 export default async function ShipmentsPage() {
   const shippableOrders = await db.query.orders.findMany({
-    where: or(
-      eq(orders.status, 'processing'),
-      eq(orders.status, 'packed'),
-      eq(orders.status, 'shipped')
+    where: and(
+      or(
+        eq(orders.status, 'processing'),
+        eq(orders.status, 'packed'),
+        eq(orders.status, 'paid')
+      ),
+      eq(orders.deliveryMethod, 'delivery'),
+      eq(orders.trackingNumber, null)
     ),
     orderBy: [desc(orders.createdAt)],
     limit: 50,
@@ -30,6 +34,8 @@ export default async function ShipmentsPage() {
     totalAmount: o.totalAmount,
     paidAt: o.paidAt?.toISOString() ?? null,
     createdAt: o.createdAt.toISOString(),
+    city: o.city ?? null,
+    province: o.province ?? null,
   }));
 
   return <ShipmentsClient initialOrders={serialized} />;

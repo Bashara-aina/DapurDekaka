@@ -14,6 +14,8 @@ const config: Config = {
           'cream-dark': '#E0D4BC',
           'cream-darker': '#C8B89A',
           gold: '#C9A84C',
+          navy: '#1B2A4A',
+          'navy-light': '#2D3F6B',
         },
         surface: {
           white: '#FFFFFF',

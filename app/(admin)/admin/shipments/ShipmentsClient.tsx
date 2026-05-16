@@ -19,6 +19,8 @@ interface ShipmentOrder {
   totalAmount: number;
   paidAt: string | null;
   createdAt: string;
+  city: string | null;
+  province: string | null;
 }
 
 interface ShipmentsClientProps {
@@ -50,11 +52,7 @@ export default function ShipmentsClient({ initialOrders }: ShipmentsClientProps)
         throw new Error(err.error || 'Gagal menyimpan nomor resi');
       }
 
-      setOrders((prev) =>
-        prev.map((o) =>
-          o.id === orderId ? { ...o, status: 'shipped', trackingNumber } : o
-        )
-      );
+      setOrders((prev) => prev.filter((o) => o.id !== orderId));
       setTrackingInputs((prev) => {
         const next = { ...prev };
         delete next[orderId];
@@ -86,7 +84,9 @@ export default function ShipmentsClient({ initialOrders }: ShipmentsClientProps)
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Penerima</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kota</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kurir</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tgl Dibayar</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
               </tr>
@@ -108,10 +108,27 @@ export default function ShipmentsClient({ initialOrders }: ShipmentsClientProps)
                       <div className="font-medium">{order.recipientName}</div>
                       <div className="text-xs text-gray-500">{order.recipientPhone}</div>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <div className="font-medium">{order.city ?? '-'}</div>
+                      {order.province && <div className="text-xs text-gray-400">{order.province}</div>}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {order.courierCode
                         ? `${order.courierCode} ${order.courierService || ''}`.trim()
                         : 'Belum ditentukan'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded ${
+                        order.status === 'packed' ? 'bg-cyan-100 text-cyan-800' :
+                        order.status === 'shipped' ? 'bg-green-100 text-green-800' :
+                        order.status === 'processing' ? 'bg-purple-100 text-purple-800' :
+                        'bg-gray-100 text-gray-600'
+                      }`}>
+                        {order.status === 'packed' ? 'Siap Kirim' :
+                         order.status === 'shipped' ? 'Dikirim' :
+                         order.status === 'processing' ? 'Diproses' :
+                         order.status}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {order.paidAt ? formatWIB(order.paidAt) : '-'}
@@ -121,7 +138,7 @@ export default function ShipmentsClient({ initialOrders }: ShipmentsClientProps)
                         <span className="inline-flex px-2 py-1 text-xs font-semibold rounded bg-green-100 text-green-800">
                           {order.trackingNumber}
                         </span>
-                      ) : order.status === 'packed' || order.status === 'processing' || order.status === 'shipped' ? (
+                      ) : order.status === 'packed' || order.status === 'shipped' ? (
                         <div className="flex items-center gap-2">
                           <input
                             type="text"
@@ -150,7 +167,7 @@ export default function ShipmentsClient({ initialOrders }: ShipmentsClientProps)
               })}
               {orders.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                     Tidak ada pesanan yang perlu dikirim
                   </td>
                 </tr>

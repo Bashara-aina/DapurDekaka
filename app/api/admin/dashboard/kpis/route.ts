@@ -22,7 +22,7 @@ const getKpis = cache(async (fromDate?: Date, toDate?: Date) => {
   let marginPercent = 18;
   try {
     const marginSetting = await db.query.systemSettings.findFirst({
-      where: eq(systemSettings.key, 'ESTIMATED_MARGIN_PERCENT'),
+      where: eq(systemSettings.key, 'estimated_margin_pct'),
       columns: { value: true },
     });
     if (marginSetting && marginSetting.value) {

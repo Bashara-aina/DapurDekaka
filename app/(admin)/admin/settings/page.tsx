@@ -42,7 +42,7 @@ export default function SettingsPage() {
       try {
         const [settingsRes, sessionRes] = await Promise.all([
           fetch('/api/admin/settings'),
-          fetch('/api/admin/session'),
+          fetch('/api/auth/session'),
         ]);
 
         if (!settingsRes.ok) throw new Error('Failed to fetch settings');
@@ -125,6 +125,25 @@ export default function SettingsPage() {
         <h1 className="text-2xl font-bold">Pengaturan Sistem</h1>
         <span className="text-sm text-gray-500">{settings.length} pengaturan</span>
       </div>
+
+      {/* Live Preview for Promo Settings */}
+      {(() => {
+        const promoTitle = settings.find(s => s.key === 'promo_title')?.value ?? '';
+        const promoSubtitle = settings.find(s => s.key === 'promo_subtitle')?.value ?? '';
+        const promoActive = settings.find(s => s.key === 'promo_active')?.value === 'true';
+        if (!promoTitle && !promoSubtitle) return null;
+        return (
+          <div className="border rounded-xl p-5 bg-brand-cream">
+            <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Preview Promo Banner</p>
+            <div className="bg-brand-red rounded-lg p-4 text-white">
+              {promoActive && <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full mb-2 inline-block">ACTIVE</span>}
+              <p className="font-display text-lg font-bold">{promoTitle || '(Judul promo)'}</p>
+              {promoSubtitle && <p className="text-sm opacity-90 mt-1">{promoSubtitle}</p>}
+            </div>
+            <p className="text-xs text-gray-400 mt-2">Tampilan di homepage storefront</p>
+          </div>
+        );
+      })()}
 
       <div className="bg-white rounded-lg border border-admin-border overflow-hidden">
         <div className="overflow-x-auto">

@@ -17,6 +17,7 @@ function PendingContent() {
   const [copied, setCopied] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [snapLoaded, setSnapLoaded] = useState(false);
+  const [countdown, setCountdown] = useState<string | null>(null);
   const [orderDetails, setOrderDetails] = useState<{
     totalAmount?: number;
     vaNumber?: string | null;
@@ -57,6 +58,35 @@ function PendingContent() {
     const interval = setInterval(fetchOrderDetails, 5000);
     return () => clearInterval(interval);
   }, [orderNumber, router]);
+
+  // Countdown timer
+  useEffect(() => {
+    if (!orderDetails?.paymentExpiresAt) {
+      setCountdown(null);
+      return;
+    }
+
+    const updateCountdown = () => {
+      const now = Date.now();
+      const expiry = new Date(orderDetails.paymentExpiresAt!).getTime();
+      const remaining = expiry - now;
+
+      if (remaining <= 0) {
+        setCountdown('00:00');
+        return;
+      }
+
+      const minutes = Math.floor(remaining / 60000);
+      const seconds = Math.floor((remaining % 60000) / 1000);
+      setCountdown(
+        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+      );
+    };
+
+    updateCountdown();
+    const countdownInterval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(countdownInterval);
+  }, [orderDetails?.paymentExpiresAt]);
 
   const handleRetry = async () => {
     if (!orderNumber) return;
@@ -127,7 +157,10 @@ function PendingContent() {
           Pembayaran Anda sedang diproses oleh Midtrans.
         </p>
         <p className="text-sm text-text-secondary mb-8">
-          Harap selesaikan pembayaran sebelum 15 menit dari sekarang.
+          {orderDetails?.paymentExpiresAt
+              ? `Batas waktu: ${formatWIB(new Date(orderDetails.paymentExpiresAt))}`
+              : 'Harap selesaikan pembayaran sebelum batas waktu yang ditentukan.'
+            }
         </p>
 
         {/* Order number display */}
@@ -153,6 +186,11 @@ function PendingContent() {
               <p className="font-bold text-lg text-brand-red mb-3">
                 {formatIDR(orderDetails.totalAmount)}
               </p>
+              {orderDetails.paymentType && (
+                <p className="text-xs text-text-secondary mb-2">
+                  Metode: <span className="font-medium capitalize">{orderDetails.paymentType.replace('_', ' ')}</span>
+                </p>
+              )}
               {orderDetails.vaNumber && (
                 <div className="bg-brand-cream rounded-lg p-3 mb-3">
                   <p className="text-xs text-text-secondary mb-1">Virtual Account</p>
@@ -161,9 +199,14 @@ function PendingContent() {
                   </p>
                 </div>
               )}
+              {countdown && (
+                <p className="text-xs font-medium text-warning">
+                  Sisa waktu: {countdown}
+                </p>
+              )}
               {orderDetails.paymentExpiresAt && (
                 <p className="text-xs text-text-muted">
-                  Batas waktu: {formatWIB(new Date(orderDetails.paymentExpiresAt))}
+                  Batas: {formatWIB(new Date(orderDetails.paymentExpiresAt))}
                 </p>
               )}
             </div>
@@ -176,13 +219,18 @@ function PendingContent() {
         <div className="space-y-3 max-w-sm mx-auto">
           <button
             onClick={handleRetry}
-            disabled={retrying}
+            disabled={retrying || !snapLoaded}
             className="flex items-center justify-center gap-2 w-full h-12 bg-brand-red text-white font-bold rounded-button hover:bg-brand-red-dark transition-colors disabled:opacity-50"
           >
             {retrying ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin" />
                 Memproses...
+              </>
+            ) : !snapLoaded ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Memuat...
               </>
             ) : (
               <>

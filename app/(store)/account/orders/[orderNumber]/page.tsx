@@ -2,11 +2,12 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Package, Truck, MapPin, FileText, Check } from 'lucide-react';
+import { ArrowLeft, Package, Truck, MapPin, FileText, Clock, Copy, CheckCircle } from 'lucide-react';
 import type { Metadata } from 'next';
 import { OrderItemsList } from '@/components/store/orders/OrderItemsList';
 import { OrderTimeline } from '@/components/store/orders/OrderTimeline';
 import { TrackingInfo } from '@/components/store/orders/TrackingInfo';
+import { PayNowButton } from '@/components/store/orders/PayNowButton';
 
 export const metadata: Metadata = {
   title: 'Detail Pesanan — Dapur Dekaka',
@@ -24,10 +25,12 @@ export default async function AccountOrderDetailPage({ params }: OrderDetailPage
     redirect('/login');
   }
 
+  const isAdmin = ['superadmin', 'owner'].includes(session.user.role ?? '');
+
   const order = await db.query.orders.findFirst({
-    where: (orders, { eq, and }) => and(
-      eq(orders.orderNumber, orderNumber),
-    ),
+    where: (orders, { eq, and }) => isAdmin
+      ? eq(orders.orderNumber, orderNumber)
+      : and(eq(orders.orderNumber, orderNumber), eq(orders.userId, session.user.id!)),
     with: {
       items: true,
       statusHistory: {
@@ -102,7 +105,10 @@ export default async function AccountOrderDetailPage({ params }: OrderDetailPage
       <div className="bg-white rounded-card shadow-card p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="font-display text-xl font-bold text-text-primary">{order.orderNumber}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="font-display text-xl font-bold text-text-primary">{order.orderNumber}</h1>
+              <CopyButton text={order.orderNumber} />
+            </div>
             <p className="text-sm text-text-secondary mt-1">
               Tanggal: {new Date(order.createdAt).toLocaleDateString('id-ID', {
                 day: 'numeric',
@@ -133,6 +139,13 @@ export default async function AccountOrderDetailPage({ params }: OrderDetailPage
         </div>
       </div>
 
+      {/* Pay Now Button for Pending Orders */}
+      {order.status === 'pending_payment' && (
+        <div className="bg-white rounded-card shadow-card p-6">
+          <PayNowButton orderNumber={order.orderNumber} />
+        </div>
+      )}
+
       {/* Order Items */}
       <div className="bg-white rounded-card shadow-card p-6">
         <h2 className="font-display text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
@@ -144,44 +157,45 @@ export default async function AccountOrderDetailPage({ params }: OrderDetailPage
 
       {/* Order Timeline */}
       <div className="bg-white rounded-card shadow-card p-6">
-        <h2 className="font-display text-lg font-semibold text-text-primary mb-4">
+        <h2 className="font-display text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
+          <Clock className="w-5 h-5" />
           Status Pesanan
         </h2>
-        <div className="flex items-center gap-3">
-          <span className={`px-3 py-1.5 rounded-lg text-sm font-bold
-            ${order.status === 'pending_payment' ? 'bg-warning-light text-warning' : ''}
-            ${order.status === 'paid' ? 'bg-info-light text-info' : ''}
-            ${order.status === 'processing' ? 'bg-purple-100 text-purple-700' : ''}
-            ${order.status === 'packed' ? 'bg-cyan-100 text-cyan-700' : ''}
-            ${order.status === 'shipped' ? 'bg-success-light text-success' : ''}
-            ${order.status === 'delivered' ? 'bg-success-light text-success' : ''}
-            ${order.status === 'cancelled' ? 'bg-gray-100 text-gray-600' : ''}
-          `}>
-            {order.status === 'pending_payment' && 'Menunggu Pembayaran'}
-            {order.status === 'paid' && 'Pembayaran Diterima'}
-            {order.status === 'processing' && 'Sedang Diproses'}
-            {order.status === 'packed' && 'Dikemas'}
-            {order.status === 'shipped' && 'Sedang Dikirim'}
-            {order.status === 'delivered' && 'Selesai'}
-            {order.status === 'cancelled' && 'Dibatalkan'}
-          </span>
-          <p className="text-sm text-text-secondary">
-            {order.statusHistory.length} update status
-          </p>
-        </div>
+        <OrderTimeline
+          steps={[
+            { label: 'Pesanan Dibuat' },
+            { label: 'Menunggu Pembayaran' },
+            { label: 'Pembayaran Diterima' },
+            { label: 'Sedang Diproses' },
+            { label: 'Dikemas' },
+            { label: 'Sedang Dikirim' },
+            { label: 'Selesai' },
+          ]}
+          currentStepIndex={order.status === 'cancelled'
+            ? -1
+            : ['pending_payment', 'paid', 'processing', 'packed', 'shipped', 'delivered'].indexOf(order.status)
+          }
+          isCancelled={order.status === 'cancelled'}
+        />
       </div>
 
       {/* Tracking Info */}
-      {order.status === 'shipped' && order.trackingNumber && (
+      {(order.status === 'shipped' || order.status === 'delivered') && (
         <div className="bg-white rounded-card shadow-card p-6">
           <h2 className="font-display text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
             <Truck className="w-5 h-5" />
             Info Pengiriman
           </h2>
-          <TrackingInfo
-            trackingNumber={order.trackingNumber}
-            courierName={order.courierName}
-          />
+          {order.trackingNumber ? (
+            <TrackingInfo
+              trackingNumber={order.trackingNumber}
+              courierName={order.courierName}
+            />
+          ) : (
+            <p className="text-text-secondary text-sm">
+              Nomor resi sedang disiapkan. Biasanya tersedia dalam 1x24 jam setelah pembayaran.
+            </p>
+          )}
         </div>
       )}
 

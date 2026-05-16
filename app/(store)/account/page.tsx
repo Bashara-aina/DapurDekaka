@@ -3,6 +3,9 @@ import { db } from '@/lib/db';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Package, Gift, MapPin, ChevronRight, ShoppingBag } from 'lucide-react';
+import { count, eq } from 'drizzle-orm';
+import { orders } from '@/lib/db/schema';
+import { POINTS_VALUE_IDR } from '@/lib/constants/points';
 
 export default async function AccountPage() {
   const session = await auth();
@@ -29,6 +32,10 @@ export default async function AccountPage() {
   const [totalOrderCountResult] = await db.select({ count: count() }).from(orders)
     .where(eq(orders.userId, session.user.id!));
   const totalOrderCount = totalOrderCountResult?.count ?? 0;
+
+  const [pendingCountResult] = await db.select({ count: count() }).from(orders)
+    .where(and(eq(orders.userId, session.user.id!), eq(orders.status, 'pending_payment')));
+  const pendingCount = pendingCountResult?.count ?? 0;
 
   const pointsHistory = await db.query.pointsHistory.findMany({
     where: (ph, { eq }) => eq(ph.userId, session.user.id!),
@@ -67,7 +74,7 @@ export default async function AccountPage() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-card shadow-card p-4">
+        <Link href="/account/orders" className="bg-white rounded-card shadow-card p-4 hover:shadow-card-hover transition-shadow">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-brand-red-muted rounded-lg flex items-center justify-center">
               <Package className="w-5 h-5 text-brand-red" />
@@ -77,9 +84,9 @@ export default async function AccountPage() {
               <p className="text-xs text-text-secondary">Total Pesanan</p>
             </div>
           </div>
-        </div>
+        </Link>
 
-        <div className="bg-white rounded-card shadow-card p-4">
+        <Link href="/account/points" className="bg-white rounded-card shadow-card p-4 hover:shadow-card-hover transition-shadow">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-brand-red-muted rounded-lg flex items-center justify-center">
               <Gift className="w-5 h-5 text-brand-red" />
@@ -89,9 +96,9 @@ export default async function AccountPage() {
               <p className="text-xs text-text-secondary">Poin Saya</p>
             </div>
           </div>
-        </div>
+        </Link>
 
-        <div className="bg-white rounded-card shadow-card p-4">
+        <Link href="/account/addresses" className="bg-white rounded-card shadow-card p-4 hover:shadow-card-hover transition-shadow">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-brand-red-muted rounded-lg flex items-center justify-center">
               <MapPin className="w-5 h-5 text-brand-red" />
@@ -101,21 +108,21 @@ export default async function AccountPage() {
               <p className="text-xs text-text-secondary">Alamat Tersimpan</p>
             </div>
           </div>
-        </div>
+        </Link>
 
-        <div className="bg-white rounded-card shadow-card p-4">
+        <Link href="/account/orders?status=pending_payment" className="bg-white rounded-card shadow-card p-4 hover:shadow-card-hover transition-shadow">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-brand-red-muted rounded-lg flex items-center justify-center">
               <ShoppingBag className="w-5 h-5 text-brand-red" />
             </div>
             <div>
               <p className="text-2xl font-bold text-text-primary">
-                {recentOrders.filter(o => o.status === 'pending_payment').length || 0}
+                {pendingCount || 0}
               </p>
               <p className="text-xs text-text-secondary">Menunggu Pembayaran</p>
             </div>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Recent Orders */}
@@ -171,6 +178,7 @@ export default async function AccountPage() {
                       ${order.status === 'pending_payment' ? 'bg-warning-light text-warning' : ''}
                       ${order.status === 'paid' ? 'bg-info-light text-info' : ''}
                       ${order.status === 'processing' ? 'bg-purple-100 text-purple-700' : ''}
+                      ${order.status === 'packed' ? 'bg-cyan-100 text-cyan-700' : ''}
                       ${order.status === 'shipped' ? 'bg-success-light text-success' : ''}
                       ${order.status === 'delivered' ? 'bg-success-light text-success' : ''}
                       ${order.status === 'cancelled' ? 'bg-gray-100 text-gray-600' : ''}

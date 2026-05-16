@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { Mail, Lock } from 'lucide-react';
+import { Mail, Lock, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { OrderTimeline } from '@/components/store/orders/OrderTimeline';
 
 interface Order {
   orderNumber: string;
@@ -213,50 +214,14 @@ export function OrderTrackingClient({
         {/* Verified order details */}
         {verified && order && (
           <>
-            {/* Timeline */}
+            {/* Timeline using OrderTimeline component */}
             {currentStatus !== 'cancelled' && (
               <div className="bg-white rounded-card p-6 shadow-card mb-6">
                 <h3 className="font-semibold mb-4">Status Pesanan</h3>
-                <div className="space-y-4">
-                  {TIMELINE_STEPS.map((step, index) => (
-                    <div key={step.label} className="flex items-start gap-3">
-                      <div className="flex flex-col items-center">
-                        <div
-                          className={cn(
-                            'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold',
-                            index < currentIndex
-                              ? 'bg-success text-white'
-                              : index === currentIndex
-                                ? 'bg-brand-red text-white'
-                                : 'bg-brand-cream-dark text-text-muted'
-                          )}
-                        >
-                          {index < currentIndex ? (
-                            '✓'
-                          ) : index === currentIndex ? (
-                            currentIndex + 1
-                          ) : (
-                            index + 1
-                          )}
-                        </div>
-                        {index < TIMELINE_STEPS.length - 1 && (
-                          <div
-                            className={cn(
-                              'w-0.5 h-8',
-                              index < currentIndex ? 'bg-success' : 'bg-brand-cream-dark'
-                            )}
-                          />
-                        )}
-                      </div>
-                      <div className="flex-1 pt-0.5">
-                        <p className={cn('text-sm', index <= currentIndex ? 'font-medium text-text-primary' : 'text-text-muted')}>
-                          {step.label}
-                        </p>
-                        <p className="text-xs text-text-muted">{step.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <OrderTimeline
+                  steps={TIMELINE_STEPS}
+                  currentStepIndex={currentIndex}
+                />
               </div>
             )}
 
