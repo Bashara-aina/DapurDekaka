@@ -7,9 +7,7 @@ import { users, accounts, sessions, verificationTokens } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 
-// Workaround: drizzle-adapter's DefaultPostgres* types don't match our camelCase column names
-// but the runtime behavior is correct — we trust it works and suppress TS warnings
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const adapter = DrizzleAdapter(db) as any;
 
 export const authConfig: NextAuthConfig = {
