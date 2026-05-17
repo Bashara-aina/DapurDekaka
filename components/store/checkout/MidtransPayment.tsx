@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSnapUrl } from '@/lib/midtrans/client';
 
@@ -34,25 +34,25 @@ export function MidtransPayment({
   const router = useRouter();
   const scriptLoaded = useRef(false);
 
-  const handleSuccess = (result: unknown) => {
+  const handleSuccess = useCallback((result: unknown) => {
     callbacks?.onSuccess?.(result);
     router.push(`/checkout/success?order=${new URLSearchParams(window.location.search).get('order') ?? ''}`);
-  };
+  }, [callbacks, router]);
 
-  const handlePending = (result: unknown) => {
+  const handlePending = useCallback((result: unknown) => {
     callbacks?.onPending?.(result);
     router.push(`/checkout/pending?order=${new URLSearchParams(window.location.search).get('order') ?? ''}`);
-  };
+  }, [callbacks, router]);
 
-  const handleError = (error: unknown) => {
+  const handleError = useCallback((error: unknown) => {
     callbacks?.onError?.(error);
     router.push(`/checkout/failed?order=${new URLSearchParams(window.location.search).get('order') ?? ''}`);
-  };
+  }, [callbacks, router]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     callbacks?.onClose?.();
     router.push(`/checkout/failed?order=${new URLSearchParams(window.location.search).get('order') ?? ''}`);
-  };
+  }, [callbacks, router]);
 
   useEffect(() => {
     if (scriptLoaded.current) return;
@@ -95,7 +95,7 @@ export function MidtransPayment({
         try { window.snap.hide?.(); } catch { /* ignore */ }
       }
     };
-  }, [snapToken]);
+  }, [snapToken, handleSuccess, handlePending, handleError, handleClose]);
 
   return null;
 }

@@ -71,7 +71,11 @@ export function HeroCarousel({ slides, autoRotateSpeed = 5000 }: HeroCarouselPro
   }
 
   const activeSlide = activeSlides[currentSlide]!;
-  const imageUrl = `${CLOUDINARY_BASE}/${activeSlide.imagePublicId}`;
+  // image_url contains the local/public asset fallback path (e.g. /assets/gallery/1.jpg)
+  // image_public_id is the Cloudinary public ID (e.g. slides/hero-1)
+  // Use Cloudinary URL if image_public_id is a valid upload, otherwise fallback to image_url
+  const cloudinaryUrl = `${CLOUDINARY_BASE}/${activeSlide.imagePublicId}`;
+  const imageUrl = cloudinaryUrl;
 
   const slideContent = (
     <>

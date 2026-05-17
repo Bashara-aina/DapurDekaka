@@ -29,6 +29,7 @@ export const metadata: Metadata = {
       { url: '/favicon.ico', type: 'image/x-icon' },
       { url: '/assets/icons/favicon.svg', type: 'image/svg+xml' },
     ],
+    apple: '/assets/logo/generated-icon.png',
   },
 };
 

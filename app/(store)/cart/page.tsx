@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { LogIn, AlertTriangle, Trash2 } from 'lucide-react';
@@ -27,7 +27,7 @@ export default function CartPage() {
   const [isValidating, setIsValidating] = useState(false);
   const [hasValidated, setHasValidated] = useState(false);
 
-  const validateCartStock = async () => {
+  const validateCartStock = useCallback(async () => {
     if (items.length === 0) return;
 
     setIsValidating(true);
@@ -50,13 +50,13 @@ export default function CartPage() {
       setIsValidating(false);
       setHasValidated(true);
     }
-  };
+  }, [items]);
 
   useEffect(() => {
     if (items.length > 0) {
       validateCartStock();
     }
-  }, [items.length]);
+  }, [items.length, validateCartStock]);
 
   const getStockValidation = (variantId: string): StockValidation | undefined => {
     return stockValidations.find((v) => v.variantId === variantId);
