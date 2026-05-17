@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, Upload } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -14,6 +14,13 @@ import { Switch } from '@/components/ui/switch';
 import TiptapEditor from '@/components/admin/blog/TiptapEditor';
 import { useSession } from 'next-auth/react';
 import { CoverImageUploader } from '@/components/admin/blog/CoverImageUploader';
+
+function generateSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
 
 const blogSchema = z.object({
   titleId: z.string().min(1, 'Judul ID wajib diisi'),
@@ -55,24 +62,28 @@ export default function AdminBlogNewPage() {
     },
   });
 
-  async function generateSlug(title: string): Promise<string> {
-    return title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
-  }
+  const watchedTitleId = form.watch('titleId');
+  const watchedSlug = form.watch('slug');
+
+  // Auto-generate slug from titleId when titleId changes and slug is empty or was auto-generated
+  useEffect(() => {
+    const currentSlug = watchedSlug;
+    if (!currentSlug && watchedTitleId) {
+      form.setValue('slug', generateSlug(watchedTitleId), { shouldValidate: true });
+    }
+  }, [watchedTitleId, watchedSlug, form]);
 
   async function onSubmit(data: BlogFormData) {
     setIsSubmitting(true);
     try {
-      const slug = data.slug || await generateSlug(data.titleId);
+      const finalSlug = data.slug || generateSlug(data.titleId);
       
       const response = await fetch('/api/admin/blog', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...data,
-          slug,
+          slug: finalSlug,
           contentId,
           contentEn,
           coverImageUrl: data.coverImageUrl || null,

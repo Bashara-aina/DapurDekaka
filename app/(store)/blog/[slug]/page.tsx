@@ -63,6 +63,9 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
       description,
       images: post.coverImageUrl ? [post.coverImageUrl] : [],
     },
+    alternates: {
+      canonical: `https://dapurdekaka.com/blog/${slug}`,
+    },
     robots: {
       index: true,
       follow: true,
@@ -72,6 +75,15 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
 
 export const revalidate = 86400;
 
+export async function generateStaticParams() {
+  const posts = await db.query.blogPosts.findMany({
+    where: eq(blogPosts.isPublished, true),
+    columns: { slug: true },
+  });
+
+  return posts.map((post) => ({ slug: post.slug }));
+}
+
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const { slug } = await params;
 
@@ -79,20 +91,11 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     where: eq(blogPosts.slug, slug),
     with: {
       category: true,
+      author: true,
     },
-  }) as ({
-    id: string;
-    titleId: string;
-    titleEn: string;
-    slug: string;
-    excerptId: string | null;
-    contentId: string;
-    metaTitleId: string | null;
-    metaDescriptionId: string | null;
-    publishedAt: Date | null;
-    coverImageUrl: string | null;
-    isPublished: boolean;
+  }) as (Omit<typeof blogPosts.$inferSelect, 'deletedAt' | 'updatedAt' | 'createdAt' | 'contentEn' | 'excerptEn' | 'metaTitleEn' | 'metaDescriptionEn' | 'coverImagePublicId'> & {
     category: { id: string; nameId: string } | null;
+    author: { id: string; name: string; image: string | null } | null;
   } | null);
 
   if (!post || !post.isPublished) {
@@ -154,6 +157,41 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
         />
+
+        {/* Breadcrumb Navigation */}
+        <nav aria-label="Breadcrumb" className="mb-4 text-sm">
+          <ol className="flex items-center gap-1 text-text-secondary">
+            <li>
+              <a href="/" className="hover:text-brand-red transition-colors">
+                Beranda
+              </a>
+            </li>
+            <li className="text-text-muted">/</li>
+            <li>
+              <a href="/blog" className="hover:text-brand-red transition-colors">
+                Blog
+              </a>
+            </li>
+            {post.category && (
+              <>
+                <li className="text-text-muted">/</li>
+                <li>
+                  <a
+                    href={`/blog?category=${post.category.id}`}
+                    className="hover:text-brand-red transition-colors"
+                  >
+                    {post.category.nameId}
+                  </a>
+                </li>
+              </>
+            )}
+            <li className="text-text-muted">/</li>
+            <li className="text-text-primary font-medium truncate max-w-[200px]" aria-current="page">
+              {post.titleId}
+            </li>
+          </ol>
+        </nav>
+
         <div className="flex gap-8 items-start">
           <article className="flex-1 min-w-0">
             {post.coverImageUrl && (
@@ -191,6 +229,34 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
             {/* CTA after content */}
             <BlogCTA />
+
+            {/* Author Bio */}
+            {post.author && (
+              <div className="mt-8 pt-6 border-t border-brand-cream-dark">
+                <div className="flex items-start gap-4 p-4 bg-brand-cream rounded-xl">
+                  {post.author.image ? (
+                    <div className="relative w-14 h-14 rounded-full overflow-hidden flex-shrink-0">
+                      <Image
+                        src={post.author.image}
+                        alt={post.author.name}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-14 h-14 rounded-full bg-brand-red flex items-center justify-center flex-shrink-0">
+                      <span className="text-lg font-bold text-white">
+                        {post.author.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-text-muted mb-1">Ditulis oleh</p>
+                    <p className="font-semibold text-text-primary">{post.author.name}</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Share Buttons */}
             <div className="mt-8 pt-6 border-t border-brand-cream-dark">

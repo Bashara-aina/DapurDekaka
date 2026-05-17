@@ -3,11 +3,15 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { db } from '@/lib/db';
 import { blogPosts, blogCategories } from '@/lib/db/schema';
-import { eq, desc, and, or, like } from 'drizzle-orm';
+import { eq, desc, and, or, like, sql } from 'drizzle-orm';
 import { BlogCard } from '@/components/store/blog/BlogCard';
 import { BlogSearchForm } from '@/components/store/blog/BlogSearchForm';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
+
+interface BlogPageProps {
+  searchParams: Promise<{ q?: string; category?: string; page?: string }>;
+}
 
 export const metadata: Metadata = {
   title: 'Blog - Dapur Dekaka',
@@ -19,19 +23,18 @@ export const metadata: Metadata = {
     url: 'https://dapurdekaka.com/blog',
     type: 'website',
   },
+  alternates: {
+    canonical: 'https://dapurdekaka.com/blog',
+  },
   robots: {
     index: true,
     follow: true,
   },
 };
 
-export const revalidate = 3600;
+const POSTS_PER_PAGE = 12;
 
-interface BlogPageProps {
-  searchParams: Promise<{ q?: string; category?: string }>;
-}
-
-async function getPosts(search?: string, categoryId?: string) {
+async function getPosts(search?: string, categoryId?: string, page: number = 1) {
   const conditions = [eq(blogPosts.isPublished, true)];
 
   if (search) {
@@ -49,8 +52,32 @@ async function getPosts(search?: string, categoryId?: string) {
   return await db.query.blogPosts.findMany({
     where: and(...conditions),
     orderBy: [desc(blogPosts.publishedAt)],
+    limit: POSTS_PER_PAGE,
+    offset: (page - 1) * POSTS_PER_PAGE,
     with: { category: true },
   });
+}
+
+async function getTotalCount(search?: string, categoryId?: string): Promise<number> {
+  const conditions = [eq(blogPosts.isPublished, true)];
+
+  if (search) {
+    conditions.push(or(
+      like(blogPosts.titleId, `%${search}%`),
+      like(blogPosts.titleEn, `%${search}%`),
+      like(blogPosts.excerptId, `%${search}%`)
+    ) as NonNullable<typeof conditions[number]>);
+  }
+
+  if (categoryId) {
+    conditions.push(eq(blogPosts.blogCategoryId, categoryId) as NonNullable<typeof conditions[number]>);
+  }
+
+  const result = await db
+    .select({ count: sql<number>`count(*)`.as('count') })
+    .from(blogPosts)
+    .where(and(...conditions));
+  return Number(result[0]?.count ?? 0);
 }
 
 async function getCategories() {
@@ -63,7 +90,16 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
   const params = await searchParams;
   const search = params.q || '';
   const categoryId = params.category || '';
-  const [posts, categories] = await Promise.all([getPosts(search, categoryId), getCategories()]);
+  const page = Math.max(1, parseInt(params.page || '1', 10));
+  const [posts, categories, totalCount] = await Promise.all([
+    getPosts(search, categoryId, page),
+    getCategories(),
+    getTotalCount(search, categoryId),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / POSTS_PER_PAGE);
+  const hasNextPage = page < totalPages;
+  const hasPrevPage = page > 1;
 
   const featuredPost = posts.length > 0 ? posts[0] : null;
   const remainingPosts = posts.slice(1);
@@ -180,6 +216,39 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
               <BlogCard key={post.id} post={post as Parameters<typeof BlogCard>[0]['post']} />
             ))}
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-8 flex items-center justify-center gap-2">
+              {hasPrevPage ? (
+                <a
+                  href={`/blog?${new URLSearchParams({ ...(search ? { q: search } : {}), ...(categoryId ? { category: categoryId } : {}), page: String(page - 1) }).toString()}`}
+                  className="px-4 py-2 border border-brand-cream-dark rounded-button text-sm font-medium text-text-primary hover:border-brand-red hover:text-brand-red transition-colors"
+                >
+                  ← Sebelumnya
+                </a>
+              ) : (
+                <span className="px-4 py-2 border border-brand-cream-dark rounded-button text-sm font-medium text-text-muted cursor-not-allowed">
+                  ← Sebelumnya
+                </span>
+              )}
+              <span className="px-4 py-2 text-sm text-text-secondary">
+                Halaman {page} dari {totalPages}
+              </span>
+              {hasNextPage ? (
+                <a
+                  href={`/blog?${new URLSearchParams({ ...(search ? { q: search } : {}), ...(categoryId ? { category: categoryId } : {}), page: String(page + 1) }).toString()}`}
+                  className="px-4 py-2 border border-brand-cream-dark rounded-button text-sm font-medium text-text-primary hover:border-brand-red hover:text-brand-red transition-colors"
+                >
+                  Selanjutnya →
+                </a>
+              ) : (
+                <span className="px-4 py-2 border border-brand-cream-dark rounded-button text-sm font-medium text-text-muted cursor-not-allowed">
+                  Selanjutnya →
+                </span>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>
