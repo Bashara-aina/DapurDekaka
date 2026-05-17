@@ -63,9 +63,10 @@ export function BottomNav() {
             <Link
               key={index}
               href={item.href}
-              className={`flex flex-col items-center gap-0.5 py-2 px-3 ${
+              className={cn(
+                'relative flex flex-col items-center gap-0.5 py-2 px-3',
                 isActive ? 'text-brand-red' : 'text-text-secondary'
-              }`}
+              )}
             >
               {content}
               {item.badge && item.badge > 0 && (

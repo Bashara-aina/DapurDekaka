@@ -16,22 +16,28 @@ export async function GET(req: NextRequest) {
       return unauthorized('Silakan masuk terlebih dahulu');
     }
 
-    const user = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.id, session.user.id!),
-      columns: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        languagePreference: true,
+    const userWithAccounts = await db.query.users.findFirst({
+      where: eq(users.id, session.user.id),
+      with: {
+        accounts: {
+          columns: { provider: true },
+        },
       },
     });
 
-    if (!user) {
+    if (!userWithAccounts) {
       return unauthorized('Silakan masuk terlebih dahulu');
     }
 
-    return success(user);
+    return success({
+      id: userWithAccounts.id,
+      name: userWithAccounts.name,
+      email: userWithAccounts.email,
+      phone: userWithAccounts.phone,
+      languagePreference: userWithAccounts.languagePreference,
+      hasPassword: !!userWithAccounts.passwordHash,
+      linkedProviders: userWithAccounts.accounts?.map(a => a.provider) ?? [],
+    });
   } catch (error) {
     console.error('[account/profile GET]', error);
     return serverError(error);
@@ -98,7 +104,7 @@ export async function PUT(req: NextRequest) {
 
     // Check if user has password (OAuth users don't)
     const user = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.id, session.user.id!),
+      where: eq(users.id, session.user.id),
       columns: {
         id: true,
         passwordHash: true,
@@ -142,6 +148,65 @@ export async function PUT(req: NextRequest) {
     return success({ message: 'Password berhasil diperbarui' });
   } catch (error) {
     console.error('[account/profile PUT]', error);
+    return serverError(error);
+  }
+}
+
+const SetPasswordSchema = z.object({
+  newPassword: z.string().min(8, 'Password baru minimal 8 karakter').max(128),
+  confirmPassword: z.string().min(1, 'Konfirmasi password diperlukan'),
+}).refine(data => data.newPassword === data.confirmPassword, {
+  message: 'Konfirmasi password tidak cocok',
+  path: ['confirmPassword'],
+});
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return unauthorized('Silakan masuk terlebih dahulu');
+    }
+
+    const body = await req.json();
+    const parsed = SetPasswordSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return validationError(parsed.error);
+    }
+
+    // Check if user already has a password
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, session.user.id),
+      columns: {
+        id: true,
+        passwordHash: true,
+      },
+    });
+
+    if (!user) {
+      return unauthorized('Silakan masuk terlebih dahulu');
+    }
+
+    if (user.passwordHash) {
+      return serverError('Password sudah ada. Gunakan halaman Ubah Password.');
+    }
+
+    // Hash and set new password
+    const bcrypt = await import('bcryptjs');
+    const newPasswordHash = await bcrypt.hash(parsed.data.newPassword, 12);
+
+    await db
+      .update(users)
+      .set({
+        passwordHash: newPasswordHash,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, session.user.id));
+
+    return success({ message: 'Password berhasil dibuat' });
+  } catch (error) {
+    console.error('[account/profile POST]', error);
     return serverError(error);
   }
 }

@@ -4,11 +4,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ShoppingCart, User, Search, Menu, X } from 'lucide-react';
 import { useState } from 'react';
+import { useSession, signOut } from 'next-auth/react';
 import { cn } from '@/lib/utils/cn';
 import { useCartStore } from '@/store/cart.store';
-import { usePathname } from 'next/navigation';
-// LanguageSwitcher is commented out — i18n not yet implemented
-// import { LanguageSwitcher } from './LanguageSwitcher';
+import { usePathname, useRouter } from 'next/navigation';
 
 const NAV_LINKS = [
   { href: '/', label: 'Beranda' },
@@ -19,9 +18,16 @@ const NAV_LINKS = [
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { data: session } = useSession();
+  const router = useRouter();
+  const pathname = usePathname();
   const cartItems = useCartStore((s) => s.items);
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-  const pathname = usePathname();
+
+  const handleSignOut = async () => {
+    setMobileMenuOpen(false);
+    await signOut({ callbackUrl: '/' });
+  };
 
   return (
     <>
@@ -77,13 +83,40 @@ export function Navbar() {
                 </span>
               )}
             </Link>
-            <Link
-              href="/account"
-              className="p-2 text-text-secondary hover:text-brand-red transition-colors"
-              aria-label="Akun"
-            >
-              <User className="w-5 h-5" />
-            </Link>
+            {session?.user ? (
+              <Link
+                href="/account"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-cream hover:bg-brand-cream-dark transition-colors"
+                aria-label="Akun"
+              >
+                {session.user.image ? (
+                  <Image
+                    src={session.user.image}
+                    alt={session.user.name ?? 'User'}
+                    width={28}
+                    height={28}
+                    className="rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-brand-red flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">
+                      {((session.user.name ?? session.user.email ?? 'U')[0] ?? 'U').toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                <span className="text-sm font-medium text-text-primary hidden lg:block">
+                  {session.user.name?.split(' ')[0] ?? 'Akun'}
+                </span>
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-red text-white text-sm font-medium rounded-button hover:bg-brand-red-dark transition-colors"
+              >
+                <User className="w-4 h-4" />
+                Masuk
+              </Link>
+            )}
           </div>
         </div>
       </header>
@@ -143,13 +176,31 @@ export function Navbar() {
                   </Link>
                 ))}
                 <hr className="my-2 border-brand-cream-dark" />
-                <Link
-                  href="/account"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block py-3 px-4 text-text-primary hover:bg-brand-cream rounded-lg transition-colors min-h-[44px] flex items-center"
-                >
-                  Akun Saya
-                </Link>
+                {session?.user ? (
+                  <>
+                    <Link
+                      href="/account"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block py-3 px-4 text-text-primary hover:bg-brand-cream rounded-lg transition-colors min-h-[44px] flex items-center"
+                    >
+                      Akun Saya
+                    </Link>
+                    <button
+                      onClick={handleSignOut}
+                      className="block w-full text-left py-3 px-4 text-error hover:bg-error-light rounded-lg transition-colors min-h-[44px] flex items-center"
+                    >
+                      Keluar
+                    </button>
+                  </>
+                ) : (
+                  <Link
+                    href="/login"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block py-3 px-4 text-text-primary hover:bg-brand-cream rounded-lg transition-colors min-h-[44px] flex items-center"
+                  >
+                    Masuk
+                  </Link>
+                )}
               </nav>
             </div>
           </>

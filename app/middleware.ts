@@ -1,10 +1,10 @@
+import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { auth } from '@/lib/auth';
 
-export async function middleware(req: NextRequest) {
+export const middleware = auth(async (req) => {
   const { pathname } = req.nextUrl;
-  const session = await auth();
+  const session = req.auth;
 
   if (pathname.startsWith('/admin')) {
     if (!session?.user) {
@@ -24,13 +24,13 @@ export async function middleware(req: NextRequest) {
 
   if (pathname.startsWith('/account')) {
     if (!session?.user) {
-      return NextResponse.redirect(new URL('/login', req.url));
+      return NextResponse.redirect(new URL(`/login?callbackUrl=${encodeURIComponent(pathname)}`, req.url));
     }
   }
 
   if (pathname.startsWith('/b2b/account')) {
     if (!session?.user) {
-      return NextResponse.redirect(new URL('/login', req.url));
+      return NextResponse.redirect(new URL(`/login?callbackUrl=${encodeURIComponent(pathname)}`, req.url));
     }
     if (session.user.role !== 'b2b' && session.user.role !== 'superadmin') {
       return NextResponse.redirect(new URL('/b2b', req.url));
@@ -38,7 +38,7 @@ export async function middleware(req: NextRequest) {
   }
 
   return NextResponse.next();
-}
+});
 
 export const config = {
   matcher: ['/admin/:path*', '/account/:path*', '/b2b/account/:path*'],

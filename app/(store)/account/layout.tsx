@@ -12,6 +12,7 @@ import {
   Gift,
   User,
   LogOut,
+  Ticket,
 } from 'lucide-react';
 
 interface AccountLayoutProps {
@@ -23,6 +24,7 @@ const navItems = [
   { href: '/account/orders', label: 'Pesanan', icon: Package },
   { href: '/account/addresses', label: 'Alamat', icon: MapPin },
   { href: '/account/points', label: 'Poin', icon: Gift },
+  { href: '/account/vouchers', label: 'Voucher', icon: Ticket },
   { href: '/account/profile', label: 'Profil', icon: User },
 ];
 

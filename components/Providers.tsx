@@ -26,7 +26,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <SessionProvider>
+    <SessionProvider
+      refetchInterval={5 * 60}
+      refetchOnWindowFocus={true}
+    >
       <QueryClientProvider client={queryClient}>
         <NextIntlClientProvider locale="id" messages={idMessages} timeZone="Asia/Jakarta">
           <CartMergeHandler />
