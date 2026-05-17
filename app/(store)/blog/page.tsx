@@ -180,10 +180,34 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
             <div className="mb-8">
               <Link href={`/blog/${featuredPost.slug}`} className="group">
                 <div className="relative rounded-2xl overflow-hidden bg-brand-cream">
-                  {featuredPost.coverImageUrl && (
+                  {featuredPost.coverImageUrl ? (
                     <div className="relative h-72 md:h-96">
                       <Image
                         src={featuredPost.coverImageUrl}
+                        alt={featuredPost.titleId}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        priority
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                      <div className="absolute bottom-0 left-0 p-6 text-white">
+                        {featuredPost.category && (
+                          <span className="inline-block px-3 py-1 bg-brand-red text-xs font-medium rounded-full mb-3">
+                            {featuredPost.category.nameId}
+                          </span>
+                        )}
+                        <h2 className="font-display text-2xl md:text-3xl font-bold mb-2 line-clamp-2">
+                          {featuredPost.titleId}
+                        </h2>
+                        {featuredPost.excerptId && (
+                          <p className="text-white/80 text-sm line-clamp-2">{featuredPost.excerptId}</p>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative h-72 md:h-96">
+                      <Image
+                        src={`https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/f_webp,q_auto,w_1600/dapurdekaka/gallery/gallery-01`}
                         alt={featuredPost.titleId}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-300"

@@ -192,12 +192,22 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           </ol>
         </nav>
 
-        <div className="flex gap-8 items-start">
-          <article className="flex-1 min-w-0">
-            {post.coverImageUrl && (
+        <div className="xl:grid xl:grid-cols-[1fr_256px] xl:gap-8 items-start">
+          <article className="min-w-0">
+            {post.coverImageUrl ? (
               <div className="relative w-full h-64 md:h-96 mb-8 rounded-xl overflow-hidden">
                 <Image
                   src={post.coverImageUrl}
+                  alt={post.titleId}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 800px"
+                />
+              </div>
+            ) : (
+              <div className="relative w-full h-64 md:h-96 mb-8 rounded-xl overflow-hidden">
+                <Image
+                  src={`https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/f_webp,q_auto,w_1600/dapurdekaka/gallery/gallery-01`}
                   alt={post.titleId}
                   fill
                   className="object-cover"
@@ -223,7 +233,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             </header>
 
             <div
-              className="prose prose-lg max-w-none"
+              className="prose prose-lg max-w-none prose-headings:font-display prose-headings:font-bold prose-a:text-brand-red prose-img:rounded-xl"
               dangerouslySetInnerHTML={{ __html: sanitizedContent }}
             />
 
@@ -276,7 +286,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           </article>
 
           {/* Sticky Table of Contents */}
-          <TableOfContents contentHtml={post.contentId} />
+          <aside className="hidden xl:block sticky top-24">
+            <TableOfContents contentHtml={post.contentId} />
+          </aside>
         </div>
 
         {/* Related Posts */}
