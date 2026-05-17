@@ -10,7 +10,7 @@ export default async function StoreLayout({ children }: { children: React.ReactN
   return (
     <>
       <Navbar />
-      <main className="min-h-screen pb-20 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">{children}</main>
+      <main className="min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">{children}</main>
       <Footer />
       <WhatsAppButton whatsappNumber={whatsappNumber ?? undefined} />
       <BottomNav />

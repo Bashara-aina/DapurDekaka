@@ -136,13 +136,13 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
       </MotionFn.div>
 
       {/* Mobile: horizontal scroll */}
-      <div className="md:hidden -mx-4 overflow-x-auto scrollbar-hide">
+      <div className="md:hidden -mx-4 overflow-x-auto scrollbar-hide [-webkit-overflow-scrolling:touch]">
         <MotionFn.div
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className="flex gap-3 px-4 pb-2 min-w-max"
+          className="flex gap-3 pl-4 pr-4 pb-2 min-w-max"
         >
           {products.slice(0, 6).map((product) => {
             const variant = product.variants[0];
