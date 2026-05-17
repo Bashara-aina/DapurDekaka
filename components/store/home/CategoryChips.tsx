@@ -31,7 +31,7 @@ export function CategoryChips({ categories, activeSlug }: CategoryChipsProps) {
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: '-50px' }}
-        className="flex gap-2 overflow-x-auto px-4 pb-2 scrollbar-hide [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden"
+        className="flex gap-2 overflow-x-auto px-4 pb-2 mx-4 scrollbar-hide [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden"
       >
         <motion.div variants={itemVariants}>
           <Link
