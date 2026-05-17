@@ -4,6 +4,8 @@ import { db } from '@/lib/db';
 import { adminActivityLogs, users } from '@/lib/db/schema';
 import { desc, eq, gte, lt, and, sql } from 'drizzle-orm';
 import { success, unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   try {

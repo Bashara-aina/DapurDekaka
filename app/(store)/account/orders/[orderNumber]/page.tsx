@@ -8,6 +8,7 @@ import { OrderItemsList } from '@/components/store/orders/OrderItemsList';
 import { OrderTimeline } from '@/components/store/orders/OrderTimeline';
 import { TrackingInfo } from '@/components/store/orders/TrackingInfo';
 import { PayNowButton } from '@/components/store/orders/PayNowButton';
+import { CopyButton } from '@/components/store/orders/CopyButton';
 
 export const metadata: Metadata = {
   title: 'Detail Pesanan — Dapur Dekaka',

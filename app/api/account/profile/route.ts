@@ -5,6 +5,8 @@ import { eq } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
 import { success, unauthorized, serverError, validationError } from '@/lib/utils/api-response';
 import { z } from 'zod';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   try {
@@ -108,7 +110,7 @@ export async function PUT(req: NextRequest) {
     }
 
     if (!user.passwordHash) {
-      return validationError(new Error('Akun ini tidak menggunakan password. Login dengan Google.'));
+      return serverError('Akun ini tidak menggunakan password. Login dengan Google.');
     }
 
     const body = await req.json();
@@ -123,7 +125,7 @@ export async function PUT(req: NextRequest) {
     const isValid = await bcrypt.compare(parsed.data.currentPassword, user.passwordHash);
 
     if (!isValid) {
-      return validationError(new Error('Password saat ini salah'));
+      return serverError('Password saat ini salah');
     }
 
     // Hash and update new password

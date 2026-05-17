@@ -5,6 +5,8 @@ import { orders } from '@/lib/db/schema';
 import { success, serverError, notFound, unauthorized, validationError } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
 import { z } from 'zod';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const emailVerificationSchema = z.object({
   email: z.string().email('Format email tidak valid'),

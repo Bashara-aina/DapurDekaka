@@ -5,6 +5,8 @@ import { db } from '@/lib/db';
 import { orders, users, systemSettings } from '@/lib/db/schema';
 import { eq, gte, sql, and, lt, isNull } from 'drizzle-orm';
 import { success, unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const getKpis = unstable_cache(async (fromDate?: Date, toDate?: Date) => {
   const today = new Date();

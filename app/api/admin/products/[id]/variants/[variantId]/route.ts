@@ -4,6 +4,8 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { productVariants, products } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function PATCH(
   req: NextRequest,

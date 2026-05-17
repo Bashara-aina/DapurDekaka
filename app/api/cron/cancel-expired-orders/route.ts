@@ -6,6 +6,8 @@ import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { checkTransactionStatus } from '@/lib/midtrans/status';
 import { serverError, success } from '@/lib/utils/api-response';
 import { logger } from '@/lib/utils/logger';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 /**
  * Cancel orders that have exceeded payment expiry time.
@@ -89,6 +91,27 @@ export async function GET(req: NextRequest) {
             changedByType: 'system',
             note: `Otomatis dibatalkan karena tidak dibayar dalam 15 menit`,
           });
+
+          // BUG-01: Restore stock for all order items
+          for (const item of order.items) {
+            const [updated] = await tx
+              .update(productVariants)
+              .set({ stock: sql`stock + ${item.quantity}`, updatedAt: new Date() })
+              .where(eq(productVariants.id, item.variantId))
+              .returning({ newStock: productVariants.stock });
+
+            if (updated) {
+              await tx.insert(inventoryLogs).values({
+                variantId: item.variantId,
+                changeType: 'reversal',
+                quantityBefore: updated.newStock - item.quantity,
+                quantityAfter: updated.newStock,
+                quantityDelta: item.quantity,
+                orderId: order.id,
+                note: `Pembatalan expired order ${order.orderNumber} — stok dikembalikan`,
+              });
+            }
+          }
 
           // Reverse points if used — full FIFO reversal from webhook handler
           if (order.userId && order.pointsUsed > 0) {

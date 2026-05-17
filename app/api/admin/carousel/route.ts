@@ -35,6 +35,8 @@ export async function GET(req: NextRequest) {
 }
 
 import { z } from 'zod';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {

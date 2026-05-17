@@ -9,6 +9,8 @@ import { B2BInquiryNotificationEmail } from '@/lib/resend/templates/B2BInquiryNo
 import { B2BInquiryAutoReplyEmail } from '@/lib/resend/templates/B2BInquiryAutoReply';
 import { formatWIB } from '@/lib/utils/format-date';
 import { logger } from '@/lib/utils/logger';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const InquirySchema = z.object({
   companyName: z.string().min(1, 'Nama perusahaan wajib diisi'),

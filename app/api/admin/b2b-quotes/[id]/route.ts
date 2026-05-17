@@ -5,6 +5,8 @@ import { b2bQuotes, b2bQuoteItems } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { success, notFound, serverError, unauthorized, forbidden } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET(
   req: NextRequest,

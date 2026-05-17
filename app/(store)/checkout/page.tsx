@@ -87,27 +87,6 @@ export default function CheckoutPage() {
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const [storeHours, setStoreHours] = useState<StoreHours>({ openDays: 'Senin - Sabtu', openHours: '08.00 - 17.00 WIB' });
   const [serverTotalAmount, setServerTotalAmount] = useState<number>(0);
-
-  // FIX 13: Persist checkout state to sessionStorage so refresh doesn't lose progress
-  useEffect(() => {
-    const draft = sessionStorage.getItem('checkout-draft');
-    if (draft) {
-      try {
-        const parsed = JSON.parse(draft);
-        setFormData(parsed.formData);
-        setStep(parsed.step || 'identity');
-      } catch {
-        // ignore corrupt data
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (snapToken) return; // don't save once order is initiated
-    sessionStorage.setItem('checkout-draft', JSON.stringify({ formData, step }));
-  }, [formData, step, snapToken]);
-
   const [formData, setFormData] = useState<CheckoutFormData>({
     recipientName: '',
     recipientEmail: '',
@@ -128,6 +107,26 @@ export default function CheckoutPage() {
     pointsUsed: 0,
     customerNote: '',
   });
+
+  // FIX 13: Persist checkout state to sessionStorage so refresh doesn't lose progress
+  useEffect(() => {
+    const draft = sessionStorage.getItem('checkout-draft');
+    if (draft) {
+      try {
+        const parsed = JSON.parse(draft);
+        setFormData(parsed.formData);
+        setStep(parsed.step || 'identity');
+      } catch {
+        // ignore corrupt data
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (snapToken) return; // don't save once order is initiated
+    sessionStorage.setItem('checkout-draft', JSON.stringify({ formData, step }));
+  }, [formData, step, snapToken]);
 
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [couponError, setCouponError] = useState('');
@@ -777,8 +776,7 @@ export default function CheckoutPage() {
                   />
                 </div>
 
-
-                // FIX 4: Payment button shows client total pre-order with note
+                {/* FIX 4: Payment button shows client total pre-order with note */}
                 <button
                   type="button"
                   onClick={handleBack}

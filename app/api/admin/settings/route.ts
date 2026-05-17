@@ -6,6 +6,8 @@ import { db } from '@/lib/db';
 import { systemSettings, adminActivityLogs } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   try {
@@ -15,8 +17,8 @@ export async function GET(req: NextRequest) {
     }
 
     const role = (session.user as { role?: string }).role;
-    if (!role || !['superadmin', 'owner'].includes(role)) {
-      return forbidden('Anda tidak memiliki akses');
+    if (!role || role !== 'superadmin') {
+      return forbidden('Hanya superadmin yang dapat membaca pengaturan');
     }
 
     const keysParam = req.nextUrl.searchParams.get('keys');

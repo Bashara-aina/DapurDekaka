@@ -52,6 +52,9 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
       'halal',
       'dapur dekaka',
     ].filter(Boolean) as string[],
+    alternates: {
+      canonical: `https://dapurdekaka.com/products/${slug}`,
+    },
     openGraph: {
       title: title,
       description,
@@ -140,32 +143,85 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     }) as typeof relatedProducts;
   }
 
-  const jsonLd = {
+  // Build enhanced product JSON-LD
+  const cheapestVariant = product.variants.reduce((min, v) =>
+    v.price < min.price ? v : min, product.variants[0]!);
+
+  const productJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: product.nameId,
     description: product.shortDescriptionId || product.descriptionId || `${product.nameId} - frozen food premium dari Dapur Dekaka Bandung`,
-    image: primaryImage?.cloudinaryUrl,
-    offers: {
-      '@type': 'Offer',
-      price: selectedVariant?.price?.toString() ?? '0',
-      priceCurrency: 'IDR',
-      availability: (selectedVariant?.stock ?? 0) > 0
-        ? 'https://schema.org/InStock'
-        : 'https://schema.org/OutOfStock',
-    },
+    image: product.images.map(img => img.cloudinaryUrl),
     brand: {
       '@type': 'Brand',
       name: 'Dapur Dekaka',
     },
-    category: product.category?.nameId,
+    manufacturer: {
+      '@type': 'Organization',
+      name: 'Dapur Dekaka',
+      url: 'https://dapurdekaka.com',
+    },
+    offers: {
+      '@type': 'Offer',
+      priceCurrency: 'IDR',
+      price: cheapestVariant?.price?.toString() ?? '0',
+      priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      availability: (cheapestVariant?.stock ?? 0) > 0
+        ? 'https://schema.org/InStock'
+        : 'https://schema.org/OutOfStock',
+      seller: {
+        '@type': 'Organization',
+        name: 'Dapur Dekaka',
+      },
+      url: `https://dapurdekaka.com/products/${slug}`,
+      shippingDetails: {
+        '@type': 'OfferShippingDetails',
+        shippingRate: {
+          '@type': 'MonetaryAmount',
+          currency: 'IDR',
+          value: '0',
+        },
+        shippingDestination: {
+          '@type': 'DefinedRegion',
+          addressCountry: 'ID',
+        },
+        deliveryTime: {
+          '@type': 'ShippingDeliveryTime',
+          handlingTime: {
+            '@type': 'QuantitativeValue',
+            minValue: 1,
+            maxValue: 2,
+            unitCode: 'DAY',
+          },
+          transitTime: {
+            '@type': 'QuantitativeValue',
+            minValue: 1,
+            maxValue: 5,
+            unitCode: 'DAY',
+          },
+        },
+      },
+    },
+    additionalProperty: [
+      {
+        '@type': 'PropertyValue',
+        name: 'Halal Status',
+        value: product.isHalal ? 'Bersertifikat Halal MUI' : 'Tidak Berlabel Halal',
+      },
+      {
+        '@type': 'PropertyValue',
+        name: 'Storage',
+        value: 'Simpan di freezer -18°C',
+      },
+    ],
   };
 
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
       />
       <ProductDetailClient product={product} relatedProducts={relatedProducts} />
     </>

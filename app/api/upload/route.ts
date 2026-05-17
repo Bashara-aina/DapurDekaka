@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { generateSignedUploadParams } from '@/lib/cloudinary/upload';
 import { success, unauthorized, serverError, forbidden } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const uploadParamsSchema = z.object({
   folder: z.enum(['products', 'blog', 'carousel', 'avatars', 'gallery', 'sauces']),

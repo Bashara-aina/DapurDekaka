@@ -4,6 +4,8 @@ import { success, notFound, unauthorized, forbidden, serverError } from '@/lib/u
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { users, orders, addresses, pointsHistory } from '@/lib/db/schema';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET(
   req: NextRequest,

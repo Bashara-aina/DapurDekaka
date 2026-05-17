@@ -8,6 +8,8 @@ import { z } from 'zod';
 import { sendEmail } from '@/lib/resend/send-email';
 import { OrderShippedEmail } from '@/lib/resend/templates/OrderShipped';
 import { formatWIB } from '@/lib/utils/format-date';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET(
   req: NextRequest,

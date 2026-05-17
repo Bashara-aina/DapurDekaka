@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Gift, AlertTriangle, TrendingUp, ChevronDown } from 'lucide-react';
 import { PointsHistoryCard } from '@/components/store/account/PointsHistoryCard';
 import type { PointsHistory } from '@/lib/db/schema';
@@ -89,7 +90,7 @@ export default function AccountPointsPage() {
       <div className="bg-white rounded-card shadow-card p-6">
         <h2 className="font-display text-lg font-semibold text-text-primary mb-2">Cara Menukarkan Poin</h2>
         <p className="text-sm text-text-secondary mb-4">
-          Poin dapat digunakan saat checkout. Pilih "Gunakan Poin Saya" di halaman pembayaran untuk redeem poin kamu.
+          Poin dapat digunakan saat checkout. Pilih{`"`}Gunakan Poin Saya{`"`} di halaman pembayaran untuk redeem poin kamu.
         </p>
         <Link
           href="/products"

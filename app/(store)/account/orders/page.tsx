@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Package, ChevronRight, ChevronLeft } from 'lucide-react';
 import type { Metadata } from 'next';
-import { count, desc, eq } from 'drizzle-orm';
+import { count, desc, eq, and } from 'drizzle-orm';
 import { orders } from '@/lib/db/schema';
 
 export const dynamic = 'force-dynamic';
@@ -39,19 +39,18 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
   const perPage = 10;
   const offset = (currentPage - 1) * perPage;
 
-  // Build status filter condition
-  let statusFilter = undefined;
-  if (statusParam && statusParam !== 'all') {
-    statusFilter = statusParam;
-  }
-
-  const ordersCondition = statusFilter
-    ? (o: ReturnType<typeof eq>, { and, eq }: any) => and(eq(o.userId, session.user.id!), eq(o.status, statusFilter))
-    : (o: any, { eq }: any) => eq(o.userId, session.user.id!);
+  // BUG-06: Validate statusFilter against allowed enum values
+  const VALID_STATUSES = ['pending_payment', 'paid', 'processing', 'packed', 'shipped', 'delivered', 'cancelled'] as const;
+  type ValidStatus = typeof VALID_STATUSES[number];
+  const validStatus = (statusParam && statusParam !== 'all' && (VALID_STATUSES as readonly string[]).includes(statusParam))
+    ? statusParam as ValidStatus
+    : undefined;
 
   const [ordersResult, totalResult] = await Promise.all([
     db.query.orders.findMany({
-      where: ordersCondition,
+      where: validStatus
+        ? (o: ReturnType<typeof eq>, { and, eq }: any) => and(eq(o.userId, session.user.id!), eq(o.status, validStatus))
+        : (o: any, { eq }: any) => eq(o.userId, session.user.id!),
       with: {
         items: true,
       },
@@ -59,9 +58,9 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
       limit: perPage,
       offset,
     }),
-    statusFilter
+    validStatus
       ? db.select({ total: count() }).from(orders)
-        .where(and(eq(orders.userId, session.user.id!), eq(orders.status, statusFilter)))
+        .where(and(eq(orders.userId, session.user.id!), eq(orders.status, validStatus)))
       : db.select({ total: count() }).from(orders)
         .where(eq(orders.userId, session.user.id!)),
   ]);
@@ -177,7 +176,7 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
             <div className="flex items-center justify-center gap-2">
               {currentPage > 1 && (
                 <Link
-                  href={`/account/orders?page=${currentPage - 1}${statusFilter ? `&status=${statusFilter}` : ''}`}
+                  href={`/account/orders?page=${currentPage - 1}${validStatus ? `&status=${validStatus}` : ''}`}
                   className="w-10 h-10 flex items-center justify-center rounded-lg border border-brand-cream-dark hover:bg-brand-cream transition-colors"
                 >
                   <ChevronLeft className="w-5 h-5" />
@@ -200,7 +199,7 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
                   return (
                     <Link
                       key={pageNum}
-                      href={`/account/orders?page=${pageNum}${statusFilter ? `&status=${statusFilter}` : ''}`}
+                      href={`/account/orders?page=${pageNum}${validStatus ? `&status=${validStatus}` : ''}`}
                       className={`w-10 h-10 flex items-center justify-center rounded-lg text-sm font-medium transition-colors
                         ${pageNum === currentPage
                           ? 'bg-brand-red text-white'
@@ -216,7 +215,7 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
 
               {currentPage < totalPages && (
                 <Link
-                  href={`/account/orders?page=${currentPage + 1}${statusFilter ? `&status=${statusFilter}` : ''}`}
+                  href={`/account/orders?page=${currentPage + 1}${validStatus ? `&status=${validStatus}` : ''}`}
                   className="w-10 h-10 flex items-center justify-center rounded-lg border border-brand-cream-dark hover:bg-brand-cream transition-colors"
                 >
                   <ChevronRight className="w-5 h-5" />

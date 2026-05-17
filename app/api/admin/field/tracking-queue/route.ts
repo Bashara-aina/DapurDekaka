@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { orders, orderStatusHistory } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import { success, serverError, notFound, forbidden, conflict, validationError } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
 import { z } from 'zod';
 import { sendEmail } from '@/lib/resend/send-email';
 import { OrderShippedEmail } from '@/lib/resend/templates/OrderShipped';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   try {
@@ -24,6 +26,7 @@ export async function GET(req: NextRequest) {
       where: and(
         eq(orders.status, 'packed'),
         eq(orders.deliveryMethod, 'delivery'),
+        isNull(orders.trackingNumber),
       ),
       with: {
         items: true,

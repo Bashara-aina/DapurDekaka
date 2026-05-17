@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { coupons, couponUsages } from '@/lib/db/schema';

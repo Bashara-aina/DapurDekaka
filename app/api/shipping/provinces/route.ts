@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getProvinces } from '@/lib/rajaongkir/provinces';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET() {
   try {

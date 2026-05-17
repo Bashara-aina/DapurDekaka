@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCitiesByProvince } from '@/lib/rajaongkir/cities';
 import { z } from 'zod';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const querySchema = z.object({
   provinceId: z.string().min(1),

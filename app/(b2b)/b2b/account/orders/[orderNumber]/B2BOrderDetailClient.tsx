@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
@@ -55,8 +55,6 @@ function CopyButton({ text }: { text: string }) {
     </button>
   );
 }
-
-import { useState } from 'react';
 
 export default function B2BOrderDetailClient({ orderNumber }: { orderNumber: string }) {
   const { data: session, status } = useSession();
@@ -180,7 +178,7 @@ export default function B2BOrderDetailClient({ orderNumber }: { orderNumber: str
               { label: 'Selesai' },
             ]}
             currentStepIndex={currentStepIndex}
-            cancelled={order.status === 'cancelled'}
+            isCancelled={order.status === 'cancelled'}
           />
         </div>
 

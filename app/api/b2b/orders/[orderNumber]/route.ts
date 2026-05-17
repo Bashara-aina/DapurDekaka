@@ -4,6 +4,8 @@ import { db } from '@/lib/db';
 import { eq, and } from 'drizzle-orm';
 import { orders } from '@/lib/db/schema';
 import { success, unauthorized, forbidden, notFound } from '@/lib/utils/api-response';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 interface Props {
   params: Promise<{ orderNumber: string }>;

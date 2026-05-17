@@ -5,6 +5,8 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { products, productVariants, productImages, categories } from '@/lib/db/schema';
 import { z } from 'zod';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const UpdateProductSchema = z.object({
   categoryId: z.string().uuid('ID kategori tidak valid').optional(),

@@ -21,6 +21,8 @@ import { OrderCancellationEmail } from '@/lib/resend/templates/OrderCancellation
 import { PickupInvitationEmail } from '@/lib/resend/templates/PickupInvitation';
 import { formatWIB } from '@/lib/utils/format-date';
 import { logger } from '@/lib/utils/logger';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
@@ -116,6 +118,7 @@ export async function POST(req: NextRequest) {
             midtransPaymentType: body.payment_type ?? null,
             midtransVaNumber: body.va_numbers?.[0]?.va_number ?? null,
             midtransTransactionId: body.transaction_id ?? null,
+            ...(order.deliveryMethod === 'pickup' && { pickupCode: order.orderNumber }),
           })
           .where(eq(orders.id, order.id));
 

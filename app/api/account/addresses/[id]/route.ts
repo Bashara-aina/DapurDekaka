@@ -5,6 +5,9 @@ import { eq, and } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
 import { success, unauthorized, notFound, serverError } from '@/lib/utils/api-response';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 interface DeleteAddressParams {
   params: Promise<{ id: string }>;
 }

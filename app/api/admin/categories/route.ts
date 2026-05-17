@@ -5,6 +5,8 @@ import { success, unauthorized, forbidden, serverError, badRequest } from '@/lib
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { categories } from '@/lib/db/schema';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   try {

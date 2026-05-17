@@ -6,6 +6,8 @@ import { db } from '@/lib/db';
 import { systemSettings } from '@/lib/db/schema';
 import { z } from 'zod';
 import { logAdminActivity } from '@/lib/services/audit.service';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const UpdateSettingSchema = z.object({
   value: z.union([z.string(), z.number(), z.boolean()]),

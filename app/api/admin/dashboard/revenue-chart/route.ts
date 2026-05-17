@@ -5,6 +5,8 @@ import { db } from '@/lib/db';
 import { orders } from '@/lib/db/schema';
 import { gte, sql, and } from 'drizzle-orm';
 import { success, forbidden, serverError } from '@/lib/utils/api-response';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const getRevenueChart = cache(async () => {
   const today = new Date();

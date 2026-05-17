@@ -9,6 +9,8 @@ import { success, serverError, conflict, forbidden, badRequest } from '@/lib/uti
 import { auth } from '@/lib/auth';
 import { sendEmail } from '@/lib/resend/send-email';
 import { TeamInviteEmail } from '@/lib/resend/templates/TeamInvite';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const inviteSchema = z.object({
   email: z.string().email('Email tidak valid'),
@@ -24,8 +26,8 @@ export async function POST(req: NextRequest) {
     }
 
     const role = session.user.role;
-    if (!role || !['superadmin', 'owner'].includes(role)) {
-      return forbidden('Hanya superadmin atau owner yang dapat mengundang pengguna');
+    if (!role || role !== 'superadmin') {
+      return forbidden('Hanya superadmin yang dapat mengundang pengguna');
     }
 
     const body = await req.json();

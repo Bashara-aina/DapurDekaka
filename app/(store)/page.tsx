@@ -11,12 +11,29 @@ import { db } from '@/lib/db';
 import { products, productVariants, productImages, categories, carouselSlides, systemSettings } from '@/lib/db/schema';
 import { eq, and, desc, isNull, lte, gte, isNull as isNullCond, sql } from 'drizzle-orm';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 1800;
 
 export const metadata: Metadata = {
   title: { absolute: 'Dapur Dekaka | Frozen Food Premium dari Bandung' },
   description: 'Cita rasa warisan Chinese-Indonesia, kini di rumahmu. Dimsum, siomay, bakso frozen premium dari Bandung. Pesan online, kirim ke seluruh Indonesia.',
-  keywords: ['frozen food', 'dimsum', 'siomay', 'bakso', ' Bandung', 'halal', 'makanan frozen'],
+  keywords: [
+    'frozen food premium',
+    'dimsum halal',
+    'dimsum Bandung',
+    'siomay premium',
+    'bakso halal',
+    'lumpia frozen',
+    'makanan beku berkualitas',
+    'frozen food online Indonesia',
+    'pesan dimsum online',
+    'dimsum kirim ke rumah',
+    'Chinese Indonesian food halal',
+    'frozen food tanpa pengawet',
+    'dapur dekaka',
+  ],
+  alternates: {
+    canonical: 'https://dapurdekaka.com',
+  },
   openGraph: {
     title: 'Dapur Dekaka | Frozen Food Premium dari Bandung',
     description: 'Cita rasa warisan Chinese-Indonesia, kini di rumahmu. Pesan online, kirim ke seluruh Indonesia.',
@@ -31,6 +48,7 @@ export const metadata: Metadata = {
       },
     ],
     locale: 'id_ID',
+    alternateLocale: ['en_US'],
     type: 'website',
   },
   twitter: {
@@ -135,22 +153,79 @@ export default async function HomePage() {
     url: 'https://dapurdekaka.com',
     logo: 'https://dapurdekaka.com/assets/logo/logo.png',
     description: 'Premium Chinese-Indonesian frozen food from Bandung. Dimsum, siomay, bakso, lumpia. 100% halal.',
-    address: {
-      '@type': 'PostalAddress',
-      streetAddress: 'Jl. Sinom V No. 7, Turangga',
+    foundingLocation: {
+      '@type': 'Place',
       addressLocality: 'Bandung',
-      addressRegion: 'West Java',
-      postalCode: '40261',
+      addressRegion: 'Jawa Barat',
       addressCountry: 'ID',
     },
     contactPoint: {
       '@type': 'ContactPoint',
       contactType: 'customer service',
+      telephone: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER,
       availableLanguage: ['Indonesian', 'English', 'Chinese'],
       url: `https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER}`,
     },
     sameAs: [
       'https://instagram.com/dapurdekaka',
+      'https://www.tokopedia.com/dapurdekaka',
+      'https://shopee.co.id/dapurdekaka',
+    ],
+  };
+
+  const websiteJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'Dapur Dekaka',
+    url: 'https://dapurdekaka.com',
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: 'https://dapurdekaka.com/products?q={search_term_string}',
+      },
+      'query-input': 'required name=search_term_string',
+    },
+  };
+
+  const localBusinessJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    '@id': 'https://dapurdekaka.com/#business',
+    name: 'Dapur Dekaka',
+    description: 'Produsen dan toko online frozen food premium Chinese-Indonesia dari Bandung.',
+    url: 'https://dapurdekaka.com',
+    telephone: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER,
+    priceRange: 'Rp 30.000 - Rp 200.000',
+    currenciesAccepted: 'IDR',
+    paymentAccepted: 'Credit Card, Bank Transfer, E-Wallet',
+    servesCuisine: ['Chinese', 'Indonesian', 'Chinese-Indonesian'],
+    hasMenu: 'https://dapurdekaka.com/products',
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: 'Bandung',
+      addressRegion: 'Jawa Barat',
+      postalCode: '40261',
+      addressCountry: 'ID',
+    },
+    geo: {
+      '@type': 'GeoCoordinates',
+      latitude: -6.9175,
+      longitude: 107.6191,
+    },
+    openingHoursSpecification: [
+      {
+        '@type': 'OpeningHoursSpecification',
+        dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+        opens: '09:00',
+        closes: '17:00',
+      },
+      {
+        '@type': 'OpeningHoursSpecification',
+        dayOfWeek: ['Sunday'],
+        opens: '09:00',
+        closes: '15:00',
+      },
     ],
   };
 
@@ -159,6 +234,14 @@ export default async function HomePage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }}
       />
       <HeroCarousel slides={activeSlides} autoRotateSpeed={promoSettings.carouselSpeedMs} />
 

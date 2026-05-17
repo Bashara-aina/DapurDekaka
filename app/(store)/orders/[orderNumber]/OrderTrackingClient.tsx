@@ -106,8 +106,9 @@ export function OrderTrackingClient({
       try {
         const res = await fetch(`/api/orders/${orderNumber}`);
         const data = await res.json();
-        if (data?.order && data?.verified) {
-          setOrder(data.order as Order);
+        const payload = data?.data;
+        if (payload?.order && payload?.verified) {
+          setOrder(payload.order as Order);
           setVerified(true);
         }
       } catch {

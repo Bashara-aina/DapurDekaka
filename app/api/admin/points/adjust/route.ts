@@ -5,6 +5,9 @@ import { users, pointsHistory } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { success, serverError, forbidden, badRequest } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
+import { logAdminActivity } from '@/lib/services/audit.service';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const adjustSchema = z.object({
   userId: z.string().uuid('ID user tidak valid'),
@@ -59,7 +62,7 @@ export async function POST(req: NextRequest) {
       ? `Adjustment: ${reason}`
       : `Points deduction: ${reason}`;
 
-    await db.transaction(async (tx) => {
+    const returned = await db.transaction(async (tx) => {
       const [updatedUser] = await tx
         .update(users)
         .set({
@@ -80,12 +83,23 @@ export async function POST(req: NextRequest) {
         descriptionId: noteId,
         descriptionEn: noteEn,
       });
+
+      return newBalance;
     });
+
+    logAdminActivity({
+      userId: session.user.id,
+      action: 'points_adjust',
+      targetType: 'user',
+      targetId: userId,
+      beforeState: { pointsBalance: targetUser.pointsBalance },
+      afterState: { pointsBalance: (targetUser.pointsBalance ?? 0) + adjustedAmount, adjustedAmount, reason },
+    }).catch(e => console.error('[Audit] Failed to log points adjust:', e));
 
     return success({
       userId,
       adjustedAmount,
-      newBalance: (targetUser.pointsBalance ?? 0) + adjustedAmount,
+      newBalance: returned,
       message: type === 'add'
         ? `Berhasil menambahkan ${amount} poin`
         : `Berhasil mengurangi ${amount} poin`,

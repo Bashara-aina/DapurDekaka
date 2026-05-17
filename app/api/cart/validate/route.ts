@@ -4,6 +4,8 @@ import { productVariants } from '@/lib/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { success, serverError } from '@/lib/utils/api-response';
 import { checkRateLimitAsync } from '@/lib/utils/rate-limit';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 async function handleValidate(req: NextRequest) {
   try {

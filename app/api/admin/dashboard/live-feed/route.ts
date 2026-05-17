@@ -5,6 +5,8 @@ import { db } from '@/lib/db';
 import { orders } from '@/lib/db/schema';
 import { desc, sql } from 'drizzle-orm';
 import { success, unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const getLiveFeed = cache(async () => {
   const recentOrders = await db

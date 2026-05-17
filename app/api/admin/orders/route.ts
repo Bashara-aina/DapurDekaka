@@ -6,6 +6,8 @@ import { orders, orderItems, orderDailyCounters, orderStatusHistory, productVari
 import { eq, desc, and, isNull, sql, inArray, gte, lt, or, ilike } from 'drizzle-orm';
 import { success, unauthorized, forbidden, serverError, validationError } from '@/lib/utils/api-response';
 import { generateOrderNumber } from '@/lib/utils/generate-order-number';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const ORDER_STATUSES = [
   'pending_payment',

@@ -5,6 +5,8 @@ import { eq, and, inArray } from 'drizzle-orm';
 import { success, serverError, notFound, forbidden, conflict, validationError } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
 import { z } from 'zod';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   try {
@@ -87,7 +89,7 @@ export async function PATCH(req: NextRequest) {
 
       // Then: processing → packed
       await tx.update(orders)
-        .set({ status: 'packed', packedAt: new Date(), updatedAt: new Date() })
+        .set({ status: 'packed', updatedAt: new Date() })
         .where(and(eq(orders.id, orderId), eq(orders.status, 'processing')));
 
       await tx.insert(orderStatusHistory).values({

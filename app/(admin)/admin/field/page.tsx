@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
 import {
   Package, Truck, Warehouse, CheckCircle, RefreshCw, Plus,
   ClipboardList, AlertTriangle, ShoppingBag
@@ -408,7 +409,7 @@ function PackingTab() {
               <p className="text-xs font-semibold text-gray-500 uppercase">Checklist Item</p>
               <button
                 type="button"
-                onClick={() => setCheckedItems(new Set(selectedOrder.items.map((_, idx) => idx)))}
+                onClick={() => selectedOrder && setCheckedItems(new Set(selectedOrder.items.map((_, idx) => idx)))}
                 className="text-xs text-brand-red underline"
               >
                 Centang Semua

@@ -4,6 +4,8 @@ import { db } from '@/lib/db';
 import { productImages, products } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { deleteImage } from '@/lib/cloudinary/upload';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function DELETE(
   req: NextRequest,

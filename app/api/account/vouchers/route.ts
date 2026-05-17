@@ -5,6 +5,9 @@ import { eq, and, sql, or, isNull, gte } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
 import { success, unauthorized, serverError } from '@/lib/utils/api-response';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
@@ -59,17 +62,15 @@ export async function GET(req: NextRequest) {
       discountApplied: usage.discountApplied,
     }));
 
-    // Check per-user usage limits to filter truly available coupons
-    const userUsageCounts = userId
-      ? await db
-          .select({
-            couponId: couponUsages.couponId,
-            useCount: sql<number>`count(*)::int`,
-          })
-          .from(couponUsages)
-          .where(eq(couponUsages.userId, userId))
-          .groupBy(couponUsages.couponId)
-      : [];
+    // BUG-03: Check per-user usage limits using session.user.id (userId was never declared)
+    const userUsageCounts = await db
+      .select({
+        couponId: couponUsages.couponId,
+        useCount: sql<number>`count(*)::int`,
+      })
+      .from(couponUsages)
+      .where(eq(couponUsages.userId, session.user.id!))
+      .groupBy(couponUsages.couponId);
     const userUsageMap = new Map(userUsageCounts.map(u => [u.couponId, u.useCount]));
 
     const trulyAvailable = availableCouponsList.filter(coupon => {
@@ -79,7 +80,8 @@ export async function GET(req: NextRequest) {
 
     return success({
       usedCoupons: usedCouponsWithDetails,
-      availableCoupons: trulyAvailable.filter(c => !usedCouponIds.includes(c.id)),
+      // BUG-04: Use trulyAvailable directly — it's already filtered by per-user limit via userUsageMap
+      availableCoupons: trulyAvailable,
     });
 
   } catch (error) {

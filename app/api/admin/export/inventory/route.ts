@@ -4,6 +4,8 @@ import { productVariants } from '@/lib/db/schema';
 import { asc, eq } from 'drizzle-orm';
 import { success, forbidden, serverError } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   try {

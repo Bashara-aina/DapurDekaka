@@ -5,6 +5,8 @@ import { testimonials } from '@/lib/db/schema';
 import { eq, sql, and } from 'drizzle-orm';
 import { success, created, unauthorized, forbidden, notFound, validationError, serverError } from '@/lib/utils/api-response';
 import { z } from 'zod';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const testimonialSchema = z.object({
   customerName: z.string().min(1).max(100),

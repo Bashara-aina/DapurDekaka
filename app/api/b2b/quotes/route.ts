@@ -6,6 +6,8 @@ import { db } from '@/lib/db';
 import { b2bQuotes, b2bProfiles, b2bQuoteItems, b2bQuoteCounters } from '@/lib/db/schema';
 import { z } from 'zod';
 import { sql } from 'drizzle-orm';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const quoteItemSchema = z.object({
   variantId: z.string().uuid(),

@@ -5,6 +5,8 @@ import { db } from '@/lib/db';
 import { orders, productVariants, orderItems } from '@/lib/db/schema';
 import { eq, sql, and, lt, gt, desc } from 'drizzle-orm';
 import { success, unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const getInventoryFlash = cache(async () => {
   const thirtyDaysAgo = new Date();

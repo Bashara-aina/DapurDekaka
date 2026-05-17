@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Package, Gift, MapPin, ChevronRight, ShoppingBag } from 'lucide-react';
-import { count, eq } from 'drizzle-orm';
+import { count, eq, and } from 'drizzle-orm';
 import { orders } from '@/lib/db/schema';
 import { POINTS_VALUE_IDR } from '@/lib/constants/points';
 

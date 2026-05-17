@@ -522,7 +522,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               )}
               {order.status === 'packed' && (
                 <p className="text-sm text-text-secondary mt-3">
-                  Klik "Kirim" di bawah untuk menyimpan resi dan ubah status ke Dikirim.
+                  Klik{`"`}Kirim{`"`} di bawah untuk menyimpan resi dan ubah status ke Dikirim.
                 </p>
               )}
             </div>
@@ -545,11 +545,11 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           <div className="flex flex-wrap gap-3">
             {NEXT_STATUS[order.status] && (
               <button
-                onClick={() => handleStatusUpdate(NEXT_STATUS[order.status])}
+                onClick={() => handleStatusUpdate(NEXT_STATUS[order.status]!)}
                 disabled={isUpdating}
                 className="h-12 px-6 bg-brand-red text-white font-bold rounded-lg hover:bg-brand-red-dark transition-colors disabled:opacity-50 flex items-center gap-2"
               >
-                {isUpdating ? 'Memproses...' : `▶ Tandai sebagai "${STATUS_LABELS[NEXT_STATUS[order.status]]}"`}
+                {isUpdating ? 'Memproses...' : `▶ Tandai sebagai "${STATUS_LABELS[NEXT_STATUS[order.status]!]}"`}
               </button>
             )}
             {allowedTransitions.map((t) => (

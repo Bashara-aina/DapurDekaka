@@ -4,6 +4,8 @@ import { success, unauthorized, forbidden, serverError } from '@/lib/utils/api-r
 import { auth } from '@/lib/auth';
 import type { CloudinaryFolder } from '@/lib/cloudinary/upload';
 import { z } from 'zod';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const folderSchema = z.object({
   folder: z.enum(['products', 'blog', 'carousel', 'avatars', 'gallery', 'sauces']),

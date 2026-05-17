@@ -5,6 +5,8 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { b2bProfiles } from '@/lib/db/schema';
 import { z } from 'zod';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const ApproveSchema = z.object({
   isApproved: z.boolean(),

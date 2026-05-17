@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { db } from '@/lib/db';
 import { eq, and } from 'drizzle-orm';
 import { orders } from '@/lib/db/schema';
-import { B2BOrderDetailClient } from './B2BOrderDetailClient';
+import B2BOrderDetailClient from './B2BOrderDetailClient';
 import { notFound } from 'next/navigation';
 
 interface Props {

@@ -8,6 +8,8 @@ import { sendEmail } from '@/lib/resend/send-email';
 import { B2BQuoteApprovedEmail } from '@/lib/resend/templates/B2BQuoteApproved';
 import { B2BQuoteRejectedEmail } from '@/lib/resend/templates/B2BQuoteRejected';
 import { formatWIB } from '@/lib/utils/format-date';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function POST(
   req: NextRequest,

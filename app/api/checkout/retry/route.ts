@@ -7,6 +7,8 @@ import { createMidtransTransaction } from '@/lib/midtrans/create-transaction';
 import { formatWIB } from '@/lib/utils/format-date';
 import { getSetting } from '@/lib/settings/get-settings';
 import { auth } from '@/lib/auth';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {

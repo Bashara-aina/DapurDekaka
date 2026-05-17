@@ -2,7 +2,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import { db } from '@/lib/db';
-import { products, productVariants, productImages } from '@/lib/db/schema';
+import { auth } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import { products, productVariants, productImages, b2bProfiles } from '@/lib/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
@@ -16,7 +18,9 @@ export const metadata: Metadata = {
 
 export const revalidate = 300;
 
-async function getB2BProducts() {
+async function getB2BProducts(b2bProfileId: string | null) {
+  if (!b2bProfileId) return [];
+
   return await db.query.products.findMany({
     where: and(eq(products.isActive, true), eq(products.isB2bAvailable, true)),
     with: {
@@ -106,7 +110,57 @@ function B2BProductCard({ product }: ProductCardProps) {
 }
 
 export default async function B2BProductsPage() {
-  const b2bProducts = await getB2BProducts();
+  const session = await auth();
+  let b2bProfileId: string | null = null;
+  let isApproved = false;
+
+  if (session?.user?.id) {
+    const profile = await db.query.b2bProfiles.findFirst({
+      where: eq(b2bProfiles.userId, session.user.id),
+    });
+    if (profile) {
+      b2bProfileId = profile.id;
+      isApproved = profile.isApproved;
+    }
+  }
+
+  // Unapproved B2B users see pending state
+  if (session?.user && !isApproved) {
+    return (
+      <div className="bg-brand-cream min-h-screen pb-20">
+        <div className="bg-white border-b border-brand-cream-dark py-6 px-4">
+          <div className="container mx-auto">
+            <div className="flex items-center gap-4 mb-2">
+              <Link href="/b2b" className="p-2 -ml-2 hover:bg-brand-cream rounded-lg transition-colors">
+                <ArrowLeft className="w-5 h-5" />
+              </Link>
+              <div>
+                <h1 className="font-display text-xl font-bold">Katalog B2B</h1>
+                <p className="text-text-secondary text-sm">Akun Anda belum disetujui</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="px-4 py-16 container mx-auto text-center">
+          <div className="w-24 h-24 mx-auto mb-4 bg-white rounded-full flex items-center justify-center">
+            <span className="text-4xl">⏳</span>
+          </div>
+          <h2 className="font-display text-lg font-semibold mb-2">Menunggu Persetujuan</h2>
+          <p className="text-text-secondary text-sm mb-6 max-w-sm mx-auto">
+            Akun B2B Anda sedang dalam proses peninjauan. Tim kami akan menghubungi Anda setelah persetujuan diberikan.
+          </p>
+          <Link
+            href="/b2b/account"
+            className="inline-flex items-center h-10 px-5 bg-brand-red text-white font-medium rounded-lg hover:bg-brand-red-dark transition-colors"
+          >
+            Kembali ke Akun
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const b2bProducts = await getB2BProducts(b2bProfileId);
 
   return (
     <div className="bg-brand-cream min-h-screen pb-20">

@@ -5,6 +5,8 @@ import { lt } from 'drizzle-orm';
 import { success, serverError } from '@/lib/utils/api-response';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { logger } from '@/lib/utils/logger';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 /**
  * Cleanup old audit logs.

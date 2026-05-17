@@ -5,6 +5,8 @@ import { sql, eq } from 'drizzle-orm';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { serverError, success } from '@/lib/utils/api-response';
 import { logger } from '@/lib/utils/logger';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 /**
  * Reconcile users.pointsBalance with calculated SUM from pointsHistory.
@@ -22,23 +24,18 @@ export async function GET(req: NextRequest) {
     const results = await db
       .select({
         userId: pointsHistory.userId,
-        // Include all records: expire records carry negative amounts to cancel out earn records.
-        // The isExpired filter on earn records is an optimization flag only — it does NOT
-        // affect the running total. Filtering out expired markers would double-count expiries.
         calculatedBalance: sql<number>`COALESCE(SUM(${pointsHistory.pointsAmount}), 0)`,
+        currentBalance: users.pointsBalance,
       })
       .from(pointsHistory)
-      .groupBy(pointsHistory.userId);
+      .innerJoin(users, eq(pointsHistory.userId, users.id))
+      .groupBy(pointsHistory.userId, users.pointsBalance);
 
     let reconciled = 0;
     let drifted = 0;
 
     for (const row of results) {
-      const user = await db.query.users.findFirst({
-        where: eq(users.id, row.userId),
-      });
-
-      if (user && user.pointsBalance !== row.calculatedBalance) {
+      if (row.currentBalance !== row.calculatedBalance) {
         await db
           .update(users)
           .set({ pointsBalance: row.calculatedBalance })
@@ -46,7 +43,7 @@ export async function GET(req: NextRequest) {
         drifted++;
         logger.warn('[ReconcilePoints] Balance drift corrected', {
           userId: row.userId,
-          oldBalance: user.pointsBalance,
+          oldBalance: row.currentBalance,
           newBalance: row.calculatedBalance,
         });
       }

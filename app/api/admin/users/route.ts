@@ -6,6 +6,8 @@ import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const CreateUserSchema = z.object({
   name: z.string().min(2),

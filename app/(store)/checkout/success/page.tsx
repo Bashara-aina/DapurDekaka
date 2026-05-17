@@ -65,14 +65,14 @@ function SuccessContent() {
           </p>
         )}
 
-        {orderData?.order?.pointsEarned && orderData.order.pointsEarned > 0 ? (
+        {orderData?.order?.pointsEarned && orderData.order.pointsEarned > 0 && orderData.order.status === 'paid' ? (
           <div className="bg-gradient-to-r from-brand-gold/20 to-brand-gold/10 border border-brand-gold/30 rounded-xl p-4 mb-6">
             <p className="text-sm text-text-secondary mb-1">Kamu mendapat</p>
             <p className="text-2xl font-bold text-brand-gold">
               +{orderData.order.pointsEarned.toLocaleString('id-ID')} poin
             </p>
             <p className="text-xs text-text-secondary mt-1">
-              ({formatIDR(orderData.order.pointsEarned * 10)}) akan masuk setelah pembayaran dikonfirmasi
+              Poin akan dikreditkan setelah pembayaran dikonfirmasi oleh sistem
             </p>
           </div>
         ) : null}

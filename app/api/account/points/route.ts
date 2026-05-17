@@ -4,6 +4,8 @@ import { pointsHistory } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
 import { success, unauthorized, serverError } from '@/lib/utils/api-response';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   try {
@@ -46,13 +48,22 @@ export async function GET(req: NextRequest) {
       ),
     });
 
-    const expiringPointsSum = expiringEntries.reduce((sum, e) => sum + e.pointsAmount, 0);
+    const expiryDetails = expiringEntries.reduce(
+      (acc, e) => ({
+        totalPoints: acc.totalPoints + e.pointsAmount,
+        earliestExpiry: !acc.earliestExpiry || (e.expiresAt && e.expiresAt < acc.earliestExpiry)
+          ? e.expiresAt
+          : acc.earliestExpiry,
+      }),
+      { totalPoints: 0, earliestExpiry: null as Date | null }
+    );
 
     return success({
       balance: user?.pointsBalance || 0,
       history,
       expiringCount: expiringEntries.length,
-      expiringPoints: expiringPointsSum,
+      expiringPoints: expiryDetails.totalPoints,
+      earliestExpiryDate: expiryDetails.earliestExpiry?.toISOString() ?? null,
       page,
       hasMore: history.length === limit,
     });

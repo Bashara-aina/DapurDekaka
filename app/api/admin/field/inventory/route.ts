@@ -5,6 +5,8 @@ import { eq, sql } from 'drizzle-orm';
 import { success, serverError, forbidden, notFound, validationError } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
 import { z } from 'zod';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   try {

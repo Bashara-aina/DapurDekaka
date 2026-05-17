@@ -5,6 +5,8 @@ import { desc, eq } from 'drizzle-orm';
 import { success, forbidden, serverError } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
 import { formatWIB } from '@/lib/utils/format-date';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   try {

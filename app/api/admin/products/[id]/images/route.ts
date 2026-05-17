@@ -6,6 +6,8 @@ import { productImages, products } from '@/lib/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import { serverSideUpload } from '@/lib/cloudinary/upload';
 import type { CloudinaryFolder } from '@/lib/cloudinary/upload';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function POST(
   req: NextRequest,

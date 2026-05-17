@@ -3,6 +3,8 @@ import { ALLOWED_COURIERS, MIN_WEIGHT_GRAM } from '@/lib/constants/couriers';
 import { success, serverError, validationError } from '@/lib/utils/api-response';
 import { z } from 'zod';
 import { getSetting } from '@/lib/settings/get-settings';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const costSchema = z.object({
   destination: z.string(),

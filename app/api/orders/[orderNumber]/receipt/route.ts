@@ -6,6 +6,8 @@ import { orders } from '@/lib/db/schema';
 import { success, serverError, notFound, unauthorized } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
 import { OrderReceiptPDF } from '@/components/email/OrderReceiptPDF';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 interface Props {
   params: Promise<{ orderNumber: string }>;

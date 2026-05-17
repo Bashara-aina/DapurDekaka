@@ -11,6 +11,8 @@ import { OrderDeliveredEmail } from '@/lib/resend/templates/OrderDelivered';
 import { OrderCancellationEmail } from '@/lib/resend/templates/OrderCancellation';
 import { formatWIB } from '@/lib/utils/format-date';
 import { logAdminActivity } from '@/lib/services/audit.service';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const statusUpdateSchema = z.object({
   status: z.enum(['processing', 'packed', 'shipped', 'delivered', 'cancelled']),
@@ -122,8 +124,19 @@ export async function PATCH(
     // All status transitions (including cancellation) happen in a transaction
     // to ensure order update, status history, and financial reversals are atomic
     await db.transaction(async (tx) => {
-      // Apply status update
-      await tx.update(orders).set(updateData).where(eq(orders.id, orderId));
+      // Apply status update with optimistic lock — fails if status changed concurrently
+      const [updatedOrder] = await tx
+        .update(orders)
+        .set(updateData)
+        .where(and(
+          eq(orders.id, orderId),
+          eq(orders.status, currentStatus as any),
+        ))
+        .returning({ id: orders.id, status: orders.status });
+
+      if (!updatedOrder) {
+        throw new Error('ORDER_STATUS_CHANGED_CONCURRENTLY');
+      }
 
       // Write order status history for every transition
       await tx.insert(orderStatusHistory).values({
@@ -188,23 +201,59 @@ export async function PATCH(
             }
           }
 
-          await tx
+          const [updatedUser] = await tx
             .update(users)
             .set({ pointsBalance: sql`points_balance + ${order.pointsUsed}` })
-            .where(eq(users.id, order.userId));
+            .where(eq(users.id, order.userId))
+            .returning({ pointsBalance: users.pointsBalance });
 
-          // BUG-12: Use type 'adjust' not 'expire' for cancellation reversal
+          const newBalance = updatedUser?.pointsBalance ?? 0;
+
           await tx.insert(pointsHistory).values({
             userId: order.userId,
             type: 'adjust',
             pointsAmount: order.pointsUsed,
-            pointsBalanceAfter: sql`points_balance + ${order.pointsUsed}`,
+            pointsBalanceAfter: newBalance,
             descriptionId: `Pembatalan pesanan ${order.orderNumber} — poin dikembalikan`,
             descriptionEn: `Order ${order.orderNumber} cancelled — points returned`,
             orderId: orderId,
             expiresAt: null,
             isExpired: false,
           });
+        }
+
+        // Reverse pointsEarned if order was already paid (BUG-02)
+        const statusesThatEarnedPoints = ['paid', 'processing', 'packed', 'shipped', 'delivered'];
+        if (order.userId && order.pointsEarned > 0 && statusesThatEarnedPoints.includes(currentStatus)) {
+          const earnRecord = await tx.query.pointsHistory.findFirst({
+            where: and(
+              eq(pointsHistory.orderId, orderId),
+              eq(pointsHistory.type, 'earn'),
+              eq(pointsHistory.userId, order.userId),
+            ),
+          });
+
+          if (earnRecord && !earnRecord.consumedAt) {
+            const [updatedUser] = await tx
+              .update(users)
+              .set({ pointsBalance: sql`GREATEST(points_balance - ${order.pointsEarned}, 0)` })
+              .where(eq(users.id, order.userId))
+              .returning({ pointsBalance: users.pointsBalance });
+
+            await tx.insert(pointsHistory).values({
+              userId: order.userId,
+              type: 'adjust',
+              pointsAmount: -order.pointsEarned,
+              pointsBalanceAfter: updatedUser?.pointsBalance ?? 0,
+              descriptionId: `Poin dicabut — pembatalan pesanan ${order.orderNumber}`,
+              descriptionEn: `Points reversed — order ${order.orderNumber} cancelled`,
+              orderId: orderId,
+            });
+
+            await tx.update(pointsHistory)
+              .set({ consumedAt: new Date() })
+              .where(eq(pointsHistory.id, earnRecord.id));
+          }
         }
 
         // Reverse coupon usage
@@ -322,6 +371,9 @@ export async function PATCH(
     });
   } catch (error) {
     console.error('[admin/orders/status]', error);
+    if (error instanceof Error && error.message === 'ORDER_STATUS_CHANGED_CONCURRENTLY') {
+      return conflict('Status pesanan telah diubah oleh другого пользователя. Silakan refresh dan coba lagi.');
+    }
     return serverError(error);
   }
 }

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Minus, Plus, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
@@ -96,7 +97,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
       unitPrice: selectedVariant.price,
       weightGram: selectedVariant.weightGram,
       stock: selectedVariant.stock,
-    }, quantity);
+    });
     toast.success(`${product.nameId} ditambahkan ke keranjang`, {
       action: {
         label: 'Lihat Keranjang',

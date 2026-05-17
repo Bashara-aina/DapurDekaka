@@ -4,6 +4,8 @@ import { db } from '@/lib/db';
 import { products } from '@/lib/db/schema';
 import { inArray } from 'drizzle-orm';
 import { success, unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function PATCH(req: NextRequest) {
   try {

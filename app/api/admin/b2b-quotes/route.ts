@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db';
-import { b2bQuotes, b2bQuoteItems, b2bProfiles } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { b2bQuotes, b2bQuoteItems, b2bProfiles, b2bQuoteCounters } from '@/lib/db/schema';
+import { eq, sql } from 'drizzle-orm';
 import { success, validationError, serverError, notFound, unauthorized, forbidden } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const CreateQuoteSchema = z.object({
   b2bProfileId: z.string().uuid('ID profil B2B tidak valid'),
@@ -18,14 +20,6 @@ const CreateQuoteSchema = z.object({
   validDays: z.number().min(1).default(14),
 });
 
-function generateQuoteNumber(): string {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const random = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
-  return `DDK-B2B-${year}${month}${day}-${random}`;
-}
 
 export async function GET() {
   try {
@@ -91,8 +85,26 @@ export async function POST(req: NextRequest) {
     const subtotal = items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
     const totalAmount = Math.max(0, subtotal - discountAmount);
 
-    // Generate quote number
-    const quoteNumber = generateQuoteNumber();
+    // Generate quote number using atomic counter
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+
+    const quoteNumber = await db.transaction(async (tx) => {
+      const result = await tx
+        .insert(b2bQuoteCounters)
+        .values({ date: dateStr, lastSequence: 1 })
+        .onConflictDoUpdate({
+          target: b2bQuoteCounters.date,
+          set: {
+            lastSequence: sql`${b2bQuoteCounters.lastSequence} + 1`,
+            updatedAt: new Date(),
+          },
+        })
+        .returning({ newSequence: b2bQuoteCounters.lastSequence });
+
+      const seq = result[0]?.newSequence ?? 1;
+      return `BBQ-${dateStr}-${String(seq).padStart(4, '0')}`;
+    });
 
     // Calculate valid until date
     const validUntil = new Date();

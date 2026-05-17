@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import {
@@ -290,16 +292,14 @@ export const POST = withRateLimit(
     let pointsDeducted = false;
     const userId = session?.user?.id ?? null;
 
-    // FIX 3: Guest checkout idempotency — check for very recent order (30 seconds) with same email + subtotal for guest users
-    // NOTE: totalAmount cannot be used here because it requires coupon validation (discountAmount) first.
-    // Using subtotal as a proxy for amount since shipping is 0 for guests at this stage.
+    // FIX 6: Guest checkout idempotency — 60-second dedup window
     if (!userId && recipientEmail) {
-      const thirtySecsAgo = new Date(Date.now() - 30 * 1000);
+      const sixtySecsAgo = new Date(Date.now() - 60 * 1000);
       const recentGuestOrder = await db.query.orders.findFirst({
         where: and(
           eq(orders.recipientEmail, recipientEmail.toLowerCase()),
           eq(orders.status, 'pending_payment'),
-          gte(orders.createdAt, thirtySecsAgo),
+          gte(orders.createdAt, sixtySecsAgo),
           eq(orders.subtotal, subtotal)
         ),
         orderBy: [desc(orders.createdAt)],

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 import { db } from '@/lib/db';
 import { users, passwordResetTokens } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -55,6 +57,9 @@ export const POST = withRateLimit(
             userName: user.name,
           }),
         });
+      } else {
+        // Constant-time baseline — compute dummy hash to prevent timing enumeration
+        await bcrypt.hash(crypto.randomBytes(16).toString('hex'), 10);
       }
 
       return success({ message: 'Link reset password telah dikirim ke email kamu' });

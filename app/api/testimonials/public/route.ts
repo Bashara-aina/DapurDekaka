@@ -3,6 +3,8 @@ import { db } from '@/lib/db';
 import { testimonials } from '@/lib/db/schema';
 import { eq, sql, asc, and } from 'drizzle-orm';
 import { success, serverError } from '@/lib/utils/api-response';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET(_req: NextRequest) {
   try {

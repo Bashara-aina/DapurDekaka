@@ -6,6 +6,9 @@ import { auth } from '@/lib/auth';
 import { success, created, unauthorized, badRequest, serverError, notFound, validationError } from '@/lib/utils/api-response';
 import { z } from 'zod';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 const addressSchema = z.object({
   label: z.string().max(100).optional(),
   recipientName: z.string().min(2, 'Nama penerima minimal 2 karakter'),

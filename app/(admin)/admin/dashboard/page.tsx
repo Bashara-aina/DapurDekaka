@@ -160,10 +160,10 @@ const LIVE_FEED_FILTERS = [
 ];
 
 const DATE_PRESETS = [
-  { label: 'Hari Ini', getValue: () => { const t = new Date(); return { from: t.toISOString().split('T')[0], to: t.toISOString().split('T')[0] }; } },
-  { label: 'Minggu Ini', getValue: () => { const t = new Date(); const start = new Date(t); start.setDate(t.getDate() - 6); return { from: start.toISOString().split('T')[0], to: t.toISOString().split('T')[0] }; } },
-  { label: 'Bulan Ini', getValue: () => { const t = new Date(); const start = new Date(t.getFullYear(), t.getMonth(), 1); return { from: start.toISOString().split('T')[0], to: t.toISOString().split('T')[0] }; } },
-  { label: '30 Hari', getValue: () => { const t = new Date(); const start = new Date(t); start.setDate(t.getDate() - 29); return { from: start.toISOString().split('T')[0], to: t.toISOString().split('T')[0] }; } },
+  { label: 'Hari Ini', getValue: () => { const t = new Date(); return { from: t.toISOString().split('T')[0]!, to: t.toISOString().split('T')[0]! }; } },
+  { label: 'Minggu Ini', getValue: () => { const t = new Date(); const start = new Date(t); start.setDate(t.getDate() - 6); return { from: start.toISOString().split('T')[0]!, to: t.toISOString().split('T')[0]! }; } },
+  { label: 'Bulan Ini', getValue: () => { const t = new Date(); const start = new Date(t.getFullYear(), t.getMonth(), 1); return { from: start.toISOString().split('T')[0]!, to: t.toISOString().split('T')[0]! }; } },
+  { label: '30 Hari', getValue: () => { const t = new Date(); const start = new Date(t); start.setDate(t.getDate() - 29); return { from: start.toISOString().split('T')[0]!, to: t.toISOString().split('T')[0]! }; } },
 ];
 
 export default function SuperadminDashboardPage() {

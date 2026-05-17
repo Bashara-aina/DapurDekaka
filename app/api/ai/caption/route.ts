@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth';
 import { generateProductCaption } from '@/lib/services/minimax';
 import { IntegrationError } from '@/lib/utils/integration-helpers';
 import { z } from 'zod';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {

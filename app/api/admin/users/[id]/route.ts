@@ -6,6 +6,8 @@ import { db } from '@/lib/db';
 import { users, sessions } from '@/lib/db/schema';
 import { z } from 'zod';
 import { logAdminActivity } from '@/lib/services/audit.service';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const UpdateUserRoleSchema = z.object({
   role: z.enum(['customer', 'b2b', 'warehouse', 'owner', 'superadmin']),

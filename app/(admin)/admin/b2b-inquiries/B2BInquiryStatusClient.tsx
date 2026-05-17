@@ -34,6 +34,10 @@ export function B2BInquiryStatusClient({ inquiryId, currentStatus }: B2BInquiryS
       if (res.ok) {
         setStatus(newStatus);
         router.refresh();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        console.error('Failed to update inquiry status:', err.error || 'Unknown error');
+        setStatus(currentStatus); // revert optimistic update
       }
     } catch (error) {
       console.error('Failed to update inquiry status:', error);

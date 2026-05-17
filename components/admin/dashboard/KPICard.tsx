@@ -45,9 +45,10 @@ export function KPICard({
       const y = h - ((v - min) / range) * h;
       return `${x},${y}`;
     });
-    const lastY = h - ((data[data.length - 1] - min) / range) * h;
+    const lastValue = data[data.length - 1] ?? data[0]!;
+    const lastY = h - ((lastValue - min) / range) * h;
     const lastX = w;
-    const color = data[data.length - 1] >= data[0] ? '#16A34A' : '#DC2626';
+    const color = lastValue >= data[0]! ? '#16A34A' : '#DC2626';
     return (
       <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="flex-shrink-0">
         <polyline

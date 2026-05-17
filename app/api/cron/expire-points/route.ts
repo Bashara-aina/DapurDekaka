@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { pointsHistory, users } from '@/lib/db/schema';
-import { eq, and, lt, inArray, isNull } from 'drizzle-orm';
+import { eq, and, lt, inArray, isNull, sql } from 'drizzle-orm';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { serverError, success } from '@/lib/utils/api-response';
 import { logger } from '@/lib/utils/logger';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 /**
  * Expire points older than 365 days.
@@ -20,7 +22,6 @@ export async function GET(req: NextRequest) {
     }
 
     const now = new Date();
-    const expiryThreshold = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
 
     // Find all non-expired, non-redeemed earn points past expiry
     const expiringRecords = await db.query.pointsHistory.findMany({

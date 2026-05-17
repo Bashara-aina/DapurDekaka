@@ -6,6 +6,8 @@ import { eq, desc } from 'drizzle-orm';
 import { z } from 'zod';
 import { success, serverError, unauthorized, forbidden } from '@/lib/utils/api-response';
 import DOMPurify from 'isomorphic-dompurify';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const CreatePostSchema = z.object({
   titleId: z.string().min(1),

@@ -7,6 +7,8 @@ import { success, serverError, notFound, forbidden } from '@/lib/utils/api-respo
 import { auth } from '@/lib/auth';
 import { B2BQuotePDF } from '@/components/pdf/B2BQuotePDF';
 import { uploadBuffer } from '@/lib/cloudinary/upload';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 interface Props {
   params: Promise<{ id: string }>;

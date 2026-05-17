@@ -3,6 +3,8 @@ import { db } from '@/lib/db';
 import { systemSettings } from '@/lib/db/schema';
 import { inArray } from 'drizzle-orm';
 import { success, serverError } from '@/lib/utils/api-response';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const PUBLIC_SETTING_KEYS = [
   'store_open_days',

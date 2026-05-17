@@ -6,6 +6,8 @@ import { orders, productVariants, b2bInquiries } from '@/lib/db/schema';
 import { eq, sql, and, lt, gt } from 'drizzle-orm';
 import { success, unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
 import { getSetting } from '@/lib/settings/get-settings';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 interface Alert {
   priority: number;

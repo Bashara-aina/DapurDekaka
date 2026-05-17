@@ -330,7 +330,7 @@ export default function AccountProfilePage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmitPassword} className="space-y-5">
+        <form onSubmit={handleSubmitPasswordBase(handleSubmitPassword)} className="space-y-5">
           {passwordSuccess && (
             <div className="bg-success-light border border-success/30 rounded-card p-4 flex items-start gap-3">
               <CheckCircle className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
@@ -352,17 +352,17 @@ export default function AccountProfilePage() {
             <input
               type="password"
               placeholder="Masukkan password saat ini"
-              {...register('currentPassword')}
+              {...registerPassword('currentPassword')}
               className={cn(
                 'w-full h-11 px-3 border rounded-lg outline-none transition-colors',
                 'focus:border-brand-red focus:ring-2 focus:ring-brand-red/10',
-                errors.currentPassword
+                passwordErrors.currentPassword
                   ? 'border-error'
                   : 'border-brand-cream-dark'
               )}
             />
-            {errors.currentPassword && (
-              <p className="text-error text-xs mt-1">{errors.currentPassword.message}</p>
+            {passwordErrors.currentPassword && (
+              <p className="text-error text-xs mt-1">{passwordErrors.currentPassword.message}</p>
             )}
           </div>
 
@@ -373,17 +373,17 @@ export default function AccountProfilePage() {
             <input
               type="password"
               placeholder="Minimal 8 karakter"
-              {...register('newPassword')}
+              {...registerPassword('newPassword')}
               className={cn(
                 'w-full h-11 px-3 border rounded-lg outline-none transition-colors',
                 'focus:border-brand-red focus:ring-2 focus:ring-brand-red/10',
-                errors.newPassword
+                passwordErrors.newPassword
                   ? 'border-error'
                   : 'border-brand-cream-dark'
               )}
             />
-            {errors.newPassword && (
-              <p className="text-error text-xs mt-1">{errors.newPassword.message}</p>
+            {passwordErrors.newPassword && (
+              <p className="text-error text-xs mt-1">{passwordErrors.newPassword.message}</p>
             )}
           </div>
 
@@ -394,17 +394,17 @@ export default function AccountProfilePage() {
             <input
               type="password"
               placeholder="Masukkan password baru lagi"
-              {...register('confirmPassword')}
+              {...registerPassword('confirmPassword')}
               className={cn(
                 'w-full h-11 px-3 border rounded-lg outline-none transition-colors',
                 'focus:border-brand-red focus:ring-2 focus:ring-brand-red/10',
-                errors.confirmPassword
+                passwordErrors.confirmPassword
                   ? 'border-error'
                   : 'border-brand-cream-dark'
               )}
             />
-            {errors.confirmPassword && (
-              <p className="text-error text-xs mt-1">{errors.confirmPassword.message}</p>
+            {passwordErrors.confirmPassword && (
+              <p className="text-error text-xs mt-1">{passwordErrors.confirmPassword.message}</p>
             )}
           </div>
 

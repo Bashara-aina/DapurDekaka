@@ -18,6 +18,8 @@ import { logger } from '@/lib/utils/logger';
 import { sendEmail } from '@/lib/resend/send-email';
 import { OrderConfirmationEmail } from '@/lib/resend/templates/OrderConfirmation';
 import { formatWIB } from '@/lib/utils/format-date';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 /**
  * Payment reconciliation cron job.
@@ -84,42 +86,48 @@ export async function GET(req: NextRequest) {
               throw new Error('ORDER_ALREADY_PROCESSED');
             }
 
+            // BUG-02: Stock was already deducted at initiate time — log only, no re-deduction
             for (const item of fullOrder.items) {
-              const result = await tx
-                .update(productVariants)
-                .set({ stock: sql`GREATEST(stock - ${item.quantity}, 0)`, updatedAt: new Date() })
-                .where(and(
-                  eq(productVariants.id, item.variantId),
-                ))
-                .returning({ newStock: productVariants.stock });
+              const [currentVariant] = await tx
+                .select({ stock: productVariants.stock })
+                .from(productVariants)
+                .where(eq(productVariants.id, item.variantId));
 
-              const updatedItem = result[0];
-              await tx.insert(inventoryLogs).values({
-                variantId: item.variantId,
-                changeType: 'sale',
-                quantityBefore: (updatedItem?.newStock ?? 0) + item.quantity,
-                quantityAfter: updatedItem?.newStock ?? 0,
-                quantityDelta: -item.quantity,
-                orderId: fullOrder.id,
-                note: '[Reconcile] Stock deducted via cron recovery',
-              });
+              if (currentVariant) {
+                await tx.insert(inventoryLogs).values({
+                  variantId: item.variantId,
+                  changeType: 'sale',
+                  quantityBefore: currentVariant.stock + item.quantity,
+                  quantityAfter: currentVariant.stock,
+                  quantityDelta: -item.quantity,
+                  orderId: fullOrder.id,
+                  note: '[Reconcile] Inventory sale log — stock already deducted at initiate',
+                });
+              }
             }
 
-            if (fullOrder.userId && fullOrder.pointsEarned && fullOrder.pointsEarned > 0) {
-              await tx.update(users)
+            // BUG-08: Read updated balance after points update via RETURNING clause
+            if (fullOrder.userId) {
+              const [updatedUser] = await tx
+                .update(users)
                 .set({ pointsBalance: sql`points_balance + ${fullOrder.pointsEarned}` })
-                .where(eq(users.id, fullOrder.userId));
+                .where(eq(users.id, fullOrder.userId))
+                .returning({ pointsBalance: users.pointsBalance });
 
-              await tx.insert(pointsHistory).values({
-                userId: fullOrder.userId,
-                type: 'earn',
-                pointsAmount: fullOrder.pointsEarned,
-                pointsBalanceAfter: sql`(SELECT points_balance FROM users WHERE id = ${fullOrder.userId})`,
-                descriptionId: `Pembelian ${fullOrder.orderNumber} (reconcile)`,
-                descriptionEn: `Purchase ${fullOrder.orderNumber} (reconcile)`,
-                orderId: fullOrder.id,
-                expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-              });
+              const newBalance = updatedUser?.pointsBalance ?? 0;
+
+              if (fullOrder.pointsEarned && fullOrder.pointsEarned > 0) {
+                await tx.insert(pointsHistory).values({
+                  userId: fullOrder.userId,
+                  type: 'earn',
+                  pointsAmount: fullOrder.pointsEarned,
+                  pointsBalanceAfter: newBalance,
+                  descriptionId: `Pembelian ${fullOrder.orderNumber} (reconcile)`,
+                  descriptionEn: `Purchase ${fullOrder.orderNumber} (reconcile)`,
+                  orderId: fullOrder.id,
+                  expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+                });
+              }
             }
 
             if (fullOrder.couponId) {

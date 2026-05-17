@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { success, serverError, forbidden } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
 import { checkExpiringPoints } from '@/lib/points/expiry-check';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function POST() {
   try {

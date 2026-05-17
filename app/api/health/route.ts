@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { sql } from 'drizzle-orm';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 /**
  * Health check endpoint for load balancers and monitoring.

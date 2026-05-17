@@ -54,7 +54,7 @@ export function ProductCard({ product, variant, className }: ProductCardProps) {
       unitPrice: variant.price,
       weightGram: variant.weightGram,
       stock: variant.stock,
-    }, 1);
+    });
     toast.success(`${product.nameId} ditambahkan ke keranjang`, {
       action: {
         label: 'Lihat Keranjang',
