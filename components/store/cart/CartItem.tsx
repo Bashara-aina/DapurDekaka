@@ -85,7 +85,7 @@ export function CartItemComponent({ item, stockValidation }: CartItemProps) {
               className="w-11 h-11 flex items-center justify-center text-brand-red hover:bg-brand-cream transition-colors"
               aria-label="Kurangi jumlah"
             >
-              <Minus className="w-3 h-3" />
+              <Minus className="w-4 h-4" />
             </button>
             <span className="w-8 md:w-10 text-center text-sm md:text-base font-bold">
               {item.quantity}
@@ -96,7 +96,7 @@ export function CartItemComponent({ item, stockValidation }: CartItemProps) {
               disabled={item.quantity >= maxQty}
               aria-label="Tambah jumlah"
             >
-              <Plus className="w-3 h-3" />
+              <Plus className="w-4 h-4" />
             </button>
           </div>
         </div>

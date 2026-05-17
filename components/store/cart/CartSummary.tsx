@@ -57,7 +57,7 @@ export function CartSummary({ shippingCost = 0, discount = 0, pointsRedemption =
         ) : !addressEntered ? (
           <div className="flex justify-between">
             <span className="text-text-secondary">Ongkos Kirim</span>
-            <span className="font-medium text-text-muted text-xs">Masukkan alamat</span>
+            <span className="font-medium text-text-disabled text-xs">Masukkan alamat</span>
           </div>
         ) : null}
 
@@ -77,7 +77,7 @@ export function CartSummary({ shippingCost = 0, discount = 0, pointsRedemption =
 
         <div className="border-t border-brand-cream-dark pt-3 flex justify-between">
           <span className="font-semibold text-text-primary">Total</span>
-          <span className="font-body font-bold text-brand-red text-lg">{formatIDR(total)}</span>
+          <span className="font-body font-bold text-brand-red text-xl">{formatIDR(total)}</span>
         </div>
       </div>
 

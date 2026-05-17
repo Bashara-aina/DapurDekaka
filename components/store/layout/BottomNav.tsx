@@ -6,6 +6,8 @@ import { useTranslations } from 'next-intl';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useCartStore } from '@/store/cart.store';
+import { Home, Package, ShoppingCart, User, FileText } from 'lucide-react';
+import { cn } from '@/lib/utils/cn';
 
 export function BottomNav() {
   const t = useTranslations('nav');
@@ -25,17 +27,12 @@ export function BottomNav() {
   const isB2bUser = session?.user?.role === 'b2b' || session?.user?.role === 'superadmin';
 
   const navItems = [
-    { href: '/', icon: '🏠', label: t('home') },
-    { href: '/products', icon: '📦', label: t('products') },
-    { href: '/cart', icon: '🛒', label: t('cart'), badge: totalItems },
-    ...(isB2bUser ? [{ href: '/b2b/account', icon: '🏢', label: 'B2B' }] : []),
-    { href: '/account', icon: '👤', label: t('account') },
-    {
-      href: `https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '6281234567890'}`,
-      icon: '💬',
-      label: 'WA',
-      external: true,
-    },
+    { href: '/', Icon: Home, label: t('home') },
+    { href: '/products', Icon: Package, label: t('products') },
+    { href: '/blog', Icon: FileText, label: 'Blog' },
+    { href: '/cart', Icon: ShoppingCart, label: t('cart'), badge: totalItems },
+    ...(isB2bUser ? [{ href: '/b2b/account', Icon: Package, label: 'B2B' }] : []),
+    { href: '/account', Icon: User, label: t('account') },
   ];
 
   return (
@@ -45,14 +42,13 @@ export function BottomNav() {
           const isActive = pathname === item.href;
           const content = (
             <>
-              <span className="text-2xl relative">
-                {item.icon}
-                {item.badge && item.badge > 0 && (
-                  <span className="absolute -top-1 -right-2 w-5 h-5 bg-brand-red text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                    {item.badge > 99 ? '99+' : item.badge}
-                  </span>
+              <item.Icon
+                className={cn(
+                  'w-6 h-6 transition-colors',
+                  isActive ? 'text-brand-red' : 'text-text-secondary'
                 )}
-              </span>
+                strokeWidth={isActive ? 2.5 : 2}
+              />
               <span
                 className={`text-[10px] font-medium ${
                   isActive ? 'text-brand-red' : 'text-text-secondary'
@@ -63,20 +59,6 @@ export function BottomNav() {
             </>
           );
 
-          if (item.external) {
-            return (
-              <a
-                key={index}
-                href={item.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex flex-col items-center gap-0.5 py-2 px-3 text-text-secondary"
-              >
-                {content}
-              </a>
-            );
-          }
-
           return (
             <Link
               key={index}
@@ -86,6 +68,11 @@ export function BottomNav() {
               }`}
             >
               {content}
+              {item.badge && item.badge > 0 && (
+                <span className="absolute -top-1 -right-2 w-5 h-5 bg-brand-red text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {item.badge > 99 ? '99+' : item.badge}
+                </span>
+              )}
             </Link>
           );
         })}

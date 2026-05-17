@@ -57,7 +57,7 @@ export function Testimonials() {
       onMouseLeave={() => setIsPaused(false)}
     >
       <div className="container mx-auto">
-        <h2 className="font-display text-xl md:text-2xl font-semibold text-center mb-8">
+        <h2 className="font-display text-2xl md:text-3xl font-semibold text-center mb-8">
           Kata Mereka yang Sudah Percaya
         </h2>
 
@@ -77,7 +77,7 @@ export function Testimonials() {
                         </span>
                       ))}
                     </div>
-                    <p className="text-text-primary mb-4 italic">&quot;{t.contentId}&quot;</p>
+                    <p className="font-display text-text-primary mb-4 italic text-base leading-relaxed">&quot;{t.contentId}&quot;</p>
                     <p className="font-semibold text-brand-red">
                       {t.customerName}
                       {t.customerLocation && <span className="font-normal text-text-secondary text-sm">, {t.customerLocation}</span>}
@@ -91,14 +91,14 @@ export function Testimonials() {
           {/* Navigation arrows */}
           <button
             onClick={prev}
-            className="absolute left-0 top-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow flex items-center justify-center text-brand-red hover:bg-brand-cream transition-colors"
+            className="absolute left-0 top-1/2 -translate-y-1/2 w-11 h-11 bg-white rounded-full shadow flex items-center justify-center text-brand-red hover:bg-brand-cream transition-colors"
             aria-label="Previous testimonial"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
           <button
             onClick={next}
-            className="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow flex items-center justify-center text-brand-red hover:bg-brand-cream transition-colors"
+            className="absolute right-0 top-1/2 -translate-y-1/2 w-11 h-11 bg-white rounded-full shadow flex items-center justify-center text-brand-red hover:bg-brand-cream transition-colors"
             aria-label="Next testimonial"
           >
             <ChevronRight className="w-5 h-5" />

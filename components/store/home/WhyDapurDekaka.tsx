@@ -1,20 +1,21 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { CheckCircle, Snowflake, Truck } from 'lucide-react';
 
 const features = [
   {
-    icon: '✓',
+    Icon: CheckCircle,
     title: '100% Halal',
     description: 'Bersertifikat dan terjamin kehalalannya',
   },
   {
-    icon: '❄️',
+    Icon: Snowflake,
     title: 'Dikemas Frozen Fresh',
     description: 'Kualitas terjaga sampai tujuan',
   },
   {
-    icon: '🚚',
+    Icon: Truck,
     title: 'Kirim ke Seluruh Indonesia',
     description: 'Dari Bandung untuk Nusantara',
   },
@@ -44,7 +45,7 @@ export function WhyDapurDekaka() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-50px' }}
           transition={{ duration: 0.5 }}
-          className="font-display text-xl md:text-2xl font-semibold text-center mb-8"
+          className="font-display text-2xl md:text-3xl font-semibold text-center mb-8"
         >
           Kenapa Dapur Dekaka?
         </motion.h2>
@@ -58,7 +59,7 @@ export function WhyDapurDekaka() {
           {features.map((feature, index) => (
             <motion.div key={index} variants={itemVariants} className="text-center">
               <div className="w-14 h-14 md:w-16 md:h-16 bg-brand-red/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl md:text-3xl">{feature.icon}</span>
+                <feature.Icon className="w-7 h-7 md:w-8 md:h-8 text-brand-red" strokeWidth={1.5} />
               </div>
               <h3 className="font-display font-semibold text-lg mb-2 text-text-primary">
                 {feature.title}

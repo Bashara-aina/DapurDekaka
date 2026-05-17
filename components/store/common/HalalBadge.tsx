@@ -1,19 +1,16 @@
-import Image from 'next/image';
-
 interface HalalBadgeProps {
   className?: string;
 }
 
 export function HalalBadge({ className }: HalalBadgeProps) {
   return (
-    <span className={className}>
-      <Image
-        src="/assets/logo/halal.png"
-        alt="Halal"
-        width={48}
-        height={20}
-        className="h-5 w-auto object-contain"
-      />
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 bg-[#DCFCE7] text-[#16A34A] text-[10px] font-bold rounded-badge ${className ?? ''}`}
+    >
+      <svg className="w-3 h-3" viewBox="0 0 12 12" fill="currentColor">
+        <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+      </svg>
+      HALAL
     </span>
   );
 }

@@ -105,19 +105,24 @@ export function ProductCard({ product, variant, className }: ProductCardProps) {
           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
         />
         {/* Badges */}
-        <div className="absolute top-2 right-2 flex flex-col gap-1">
-          <HalalBadge />
-          {product.isHalal && (
-            <span className="text-[8px] text-text-muted bg-white/60 px-1 rounded text-center">
-              MUI 001/2020
-            </span>
-          )}
-          {isOutOfStock && (
-            <span className="px-2 py-1 bg-text-secondary text-white text-xs font-bold rounded">
+        {!isOutOfStock && (
+          <div className="absolute top-2 right-2 flex flex-col gap-1">
+            <HalalBadge />
+            {product.isHalal && (
+              <span className="text-[8px] text-text-disabled bg-white/60 px-1 rounded text-center">
+                MUI 001/2020
+              </span>
+            )}
+          </div>
+        )}
+        {/* Out of stock overlay */}
+        {isOutOfStock && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-t-card">
+            <span className="px-3 py-1.5 bg-white/90 text-text-primary text-xs font-bold rounded-badge tracking-wide">
               HABIS
             </span>
-          )}
-        </div>
+          </div>
+        )}
         {!isOutOfStock && variant.stock < 5 && (
           <div className="absolute top-2 left-2">
             <StockBadge stock={variant.stock} />
@@ -127,7 +132,7 @@ export function ProductCard({ product, variant, className }: ProductCardProps) {
         {canQuickAdd && (
           <button
             onClick={handleQuickAdd}
-            className="absolute bottom-2 right-2 w-8 h-8 bg-brand-red rounded-full flex items-center justify-center text-white shadow-lg hover:bg-brand-red-dark transition-colors"
+            className="absolute bottom-2 right-2 w-11 h-11 bg-brand-red rounded-full flex items-center justify-center text-white shadow-lg hover:bg-brand-red-dark transition-colors"
             aria-label="Tambah ke keranjang"
           >
             <Plus className="w-4 h-4" />
@@ -137,10 +142,10 @@ export function ProductCard({ product, variant, className }: ProductCardProps) {
 
       {/* Content */}
       <div className="p-4">
-        <h3 className="font-display font-medium text-text-primary line-clamp-2 mb-1">
+        <h3 className="font-display font-medium text-base text-text-primary line-clamp-2 mb-1 leading-snug">
           {product.nameId}
         </h3>
-        <p className="text-text-secondary text-xs mb-3">{variant.nameId}</p>
+        <p className="text-text-secondary text-xs mb-2">{variant.nameId}</p>
 
         <div className="flex items-center justify-between">
           <div>

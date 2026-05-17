@@ -40,10 +40,10 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
 
   if (!MotionComp) {
     return (
-      <section className="py-8 px-4 container mx-auto">
+      <section className="py-8 section-container">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="font-display text-xl md:text-2xl font-semibold text-text-primary">
+            <h2 className="font-display text-2xl md:text-3xl font-semibold text-text-primary">
               Produk Unggulan
             </h2>
             <p className="text-text-secondary text-sm">Pilihan terbaik dari dapur kami</p>
@@ -90,10 +90,10 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
 
   if (!products || products.length === 0) {
     return (
-      <section className="py-8 px-4 container mx-auto">
+      <section className="py-8 section-container">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="font-display text-xl md:text-2xl font-semibold text-text-primary">
+            <h2 className="font-display text-2xl md:text-3xl font-semibold text-text-primary">
               Produk Unggulan
             </h2>
             <p className="text-text-secondary text-sm">Pilihan terbaik dari dapur kami</p>
@@ -121,7 +121,7 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
         className="flex items-center justify-between mb-6"
       >
         <div>
-          <h2 className="font-display text-xl md:text-2xl font-semibold text-text-primary">
+          <h2 className="font-display text-2xl md:text-3xl font-semibold text-text-primary">
             Produk Unggulan
           </h2>
           <p className="text-text-secondary text-sm">Pilihan terbaik dari dapur kami</p>
@@ -149,7 +149,7 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
             const image = product.images[0];
             if (!variant) return null;
             return (
-              <MotionFn.div key={product.id} variants={itemVariants} className="w-40 flex-shrink-0">
+              <MotionFn.div key={product.id} variants={itemVariants} className="w-44 flex-shrink-0">
                 <ProductCard
                   product={{
                     id: product.id,

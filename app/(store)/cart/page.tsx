@@ -9,6 +9,13 @@ import { CartItemComponent } from '@/components/store/cart/CartItem';
 import { CartSummary } from '@/components/store/cart/CartSummary';
 import { EmptyCart } from '@/components/store/cart/EmptyCart';
 import { cn } from '@/lib/utils/cn';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 interface StockValidation {
   variantId: string;
@@ -26,6 +33,7 @@ export default function CartPage() {
   const [stockValidations, setStockValidations] = useState<StockValidation[]>([]);
   const [isValidating, setIsValidating] = useState(false);
   const [hasValidated, setHasValidated] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const validateCartStock = useCallback(async () => {
     if (items.length === 0) return;
@@ -77,20 +85,16 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-brand-cream pb-32">
+    <div className="min-h-screen bg-brand-cream">
       <div className="bg-white border-b border-brand-cream-dark py-6 px-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-display text-2xl font-bold">Keranjang</h1>
+            <h1 className="font-display text-2xl md:text-3xl font-bold">Keranjang</h1>
             <p className="text-text-secondary text-sm mt-1">{getTotalItems()} item</p>
           </div>
           {items.length > 0 && (
             <button
-              onClick={() => {
-                if (confirm('Hapus semua item dari keranjang?')) {
-                  clearCart();
-                }
-              }}
+              onClick={() => setShowClearConfirm(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-button transition-colors"
               aria-label="Hapus semua item di keranjang"
             >
@@ -179,6 +183,32 @@ export default function CartPage() {
           </div>
         </div>
       </div>
+
+      {/* Clear Cart Confirmation Dialog */}
+      <Dialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display">Hapus Semua Item?</DialogTitle>
+          </DialogHeader>
+          <p className="text-text-secondary text-sm">
+            Semua item akan dihapus dari keranjang. Tindakan ini tidak bisa dibatalkan.
+          </p>
+          <DialogFooter className="flex gap-3">
+            <button
+              onClick={() => setShowClearConfirm(false)}
+              className="flex-1 h-11 border border-brand-cream-dark rounded-button font-medium hover:bg-brand-cream transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              onClick={() => { clearCart(); setShowClearConfirm(false); }}
+              className="flex-1 h-11 bg-brand-red text-white rounded-button font-bold hover:bg-brand-red-dark transition-colors"
+            >
+              Hapus
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { ShoppingCart, User, Search, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils/cn';
 import { useCartStore } from '@/store/cart.store';
+import { usePathname } from 'next/navigation';
 // LanguageSwitcher is commented out — i18n not yet implemented
 // import { LanguageSwitcher } from './LanguageSwitcher';
 
@@ -20,6 +21,7 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const cartItems = useCartStore((s) => s.items);
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const pathname = usePathname();
 
   return (
     <>
@@ -34,15 +36,23 @@ export function Navbar() {
 
           {/* Nav Links */}
           <nav className="flex items-center gap-8">
-            {NAV_LINKS.map((link) => (
+            {NAV_LINKS.map((link) => {
+            const isActive = link.href === '/' ? pathname === '/' : pathname.startsWith(link.href);
+            return (
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-text-primary hover:text-brand-red font-medium transition-colors"
+                className={cn(
+                  'font-medium transition-colors relative pb-0.5',
+                  isActive
+                    ? 'text-brand-red after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-brand-red after:rounded-full'
+                    : 'text-text-primary hover:text-brand-red'
+                )}
               >
                 {link.label}
               </Link>
-            ))}
+            );
+          })}
           </nav>
 
           {/* Actions */}
@@ -112,28 +122,37 @@ export function Navbar() {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="absolute top-14 left-0 right-0 bg-white border-b border-brand-cream-dark shadow-lg z-40">
-            <nav className="p-4 space-y-1">
-              {NAV_LINKS.map((link) => (
+          <>
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 bg-black/20 z-30"
+              onClick={() => setMobileMenuOpen(false)}
+              aria-hidden="true"
+            />
+            {/* Menu */}
+            <div className="absolute top-14 left-0 right-0 bg-white border-b border-brand-cream-dark shadow-lg z-40 animate-slide-up">
+              <nav className="p-4 space-y-1">
+                {NAV_LINKS.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block py-3 px-4 text-text-primary hover:bg-brand-cream rounded-lg transition-colors min-h-[44px] flex items-center"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+                <hr className="my-2 border-brand-cream-dark" />
                 <Link
-                  key={link.href}
-                  href={link.href}
+                  href="/account"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block py-3 px-4 text-text-primary hover:bg-brand-cream rounded-lg transition-colors"
+                  className="block py-3 px-4 text-text-primary hover:bg-brand-cream rounded-lg transition-colors min-h-[44px] flex items-center"
                 >
-                  {link.label}
+                  Akun Saya
                 </Link>
-              ))}
-              <hr className="my-2 border-brand-cream-dark" />
-              <Link
-                href="/account"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block py-3 px-4 text-text-primary hover:bg-brand-cream rounded-lg transition-colors"
-              >
-                Akun Saya
-              </Link>
-            </nav>
-          </div>
+              </nav>
+            </div>
+          </>
         )}
       </header>
     </>

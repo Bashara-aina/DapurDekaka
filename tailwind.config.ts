@@ -4,6 +4,14 @@ const config: Config = {
   content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      fontSize: {
+        'display-2xl': ['4.5rem', { lineHeight: '1.1', letterSpacing: '-0.02em' }],
+        'display-xl':  ['3.75rem', { lineHeight: '1.1', letterSpacing: '-0.02em' }],
+        'display-lg':  ['3rem',    { lineHeight: '1.15', letterSpacing: '-0.02em' }],
+        'display-md':  ['2.25rem', { lineHeight: '1.2', letterSpacing: '-0.01em' }],
+        'display-sm':  ['1.875rem', { lineHeight: '1.25' }],
+        'display-xs':  ['1.5rem',  { lineHeight: '1.3' }],
+      },
       colors: {
         brand: {
           red: '#C8102E',
@@ -87,6 +95,11 @@ const config: Config = {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
         },
+      },
+      backgroundImage: {
+        'noise': "url('/textures/noise.png')",
+        'chinese-pattern': "url('/textures/chinese-pattern.svg')",
+        'hero-gradient': 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 100%)',
       },
     },
   },

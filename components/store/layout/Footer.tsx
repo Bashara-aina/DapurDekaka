@@ -3,7 +3,7 @@ import { MessageCircle } from 'lucide-react';
 
 export function Footer() {
   return (
-    <footer className="bg-[#1A1A1A] text-brand-cream/80 pt-12 pb-32 md:pb-12">
+    <footer className="bg-[#1A1A1A] text-brand-cream/80 pt-12 pb-24 md:pb-12">
       <div className="container mx-auto px-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           {/* Brand */}
@@ -17,13 +17,16 @@ export function Footer() {
             <h4 className="font-semibold text-brand-cream mb-4">Menu</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/products" className="hover:text-brand-cream">Produk</Link>
+                <Link href="/products" className="hover:text-brand-cream transition-colors duration-150">Produk</Link>
               </li>
               <li>
-                <Link href="/blog" className="hover:text-brand-cream">Blog</Link>
+                <Link href="/blog" className="hover:text-brand-cream transition-colors duration-150">Blog</Link>
               </li>
               <li>
-                <Link href="/b2b" className="hover:text-brand-cream">B2B</Link>
+                <Link href="/b2b" className="hover:text-brand-cream transition-colors duration-150">B2B</Link>
+              </li>
+              <li>
+                <Link href="/about" className="hover:text-brand-cream transition-colors duration-150">Tentang Kami</Link>
               </li>
             </ul>
           </div>
@@ -58,7 +61,7 @@ export function Footer() {
                 href="https://instagram.com/dapurdekaka"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-brand-cream"
+                className="hover:text-brand-cream transition-colors duration-150"
                 aria-label="Instagram"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
@@ -69,11 +72,32 @@ export function Footer() {
                 href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-brand-cream"
+                className="hover:text-brand-cream transition-colors duration-150"
               >
                 <MessageCircle className="w-5 h-5" />
               </a>
             </div>
+          </div>
+        </div>
+
+        {/* Payment Icons */}
+        <div className="border-t border-white/10 pt-6 mb-6">
+          <p className="text-xs text-brand-cream/50 mb-3">Metode Pembayaran</p>
+          <div className="flex flex-wrap gap-3 items-center">
+            {/* Visa */}
+            <div className="h-7 px-2 bg-white/10 rounded flex items-center">
+              <svg className="h-4 opacity-60" viewBox="0 0 48 16" fill="white">
+                <path d="M18.7 14.5h-3.5L17.3 1.5h3.5L18.7 14.5zm13.3-12.6c-.7-.3-1.7-.6-3.1-.6-3.4 0-5.8 1.8-5.8 4.4 0 1.9 1.7 3 3 3.6 1.3.6 1.8 1 1.8 1.6 0 .9-1.1 1.2-2.1 1.2-1.4 0-2.2-.2-3.3-.7l-.5-.2-.5 3c.8.4 2.3.7 3.8.7 3.6 0 6-1.8 6-4.5 0-1.5-.9-2.7-3-3.6-1.2-.6-2-1-2-1.6 0-.6.7-1.1 2.1-1.1 1.1 0 1.9.2 2.6.5l.3.1.5-2.8zm8.7-.4h-2.7c-.8 0-1.4.2-1.8 1L32.5 14.5h3.6s.6-1.6.7-2h4.4c.1.5.4 2 .4 2H45L42.7 1.5zm-4.3 8.4c.3-.7 1.3-3.6 1.3-3.6s.3-.8.5-1.3l.2 1.2 .7 3.7h-2.7zm-22.8-8.4L10 10l-.4-1.8c-.6-2-2.5-4.2-4.6-5.3l3.1 11.6h3.6L18.2 1.5H14.6z"/>
+              </svg>
+            </div>
+            {/* Text labels for other payment methods */}
+            {['GoPay', 'OVO', 'QRIS', 'BCA', 'BNI', 'Mandiri'].map(method => (
+              <div key={method} className="h-7 px-2.5 bg-white/10 rounded flex items-center">
+                <span className="text-[10px] font-bold text-brand-cream/60 tracking-wider">
+                  {method}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
 

@@ -51,6 +51,9 @@ function SadDimsumBowl({ className }: { className?: string }) {
         fill="none"
       />
 
+      {/* Tear drop */}
+      <ellipse cx="48" cy="56" rx="2" ry="3" fill="#2563EB" opacity="0.6" />
+
       {/* Steam lines (sad) */}
       <path d="M40 35 Q38 30, 40 25" stroke="#8A8A8A" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
       <path d="M60 32 Q58 27, 60 22" stroke="#8A8A8A" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />

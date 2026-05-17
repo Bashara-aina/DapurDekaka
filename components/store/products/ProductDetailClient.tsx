@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Minus, Plus, ShoppingCart } from 'lucide-react';
+import { Minus, Plus, ShoppingCart, ArrowLeft, X, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCartStore } from '@/store/cart.store';
 import { formatIDR } from '@/lib/utils/format-currency';
@@ -108,6 +108,36 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
 
   return (
     <div className="bg-brand-cream min-h-screen pb-24">
+      {/* Breadcrumb */}
+      <nav aria-label="Breadcrumb" className="bg-white px-4 py-3 border-b border-brand-cream-dark">
+        <ol className="flex items-center gap-2 text-sm text-text-secondary">
+          <li>
+            <Link href="/" className="hover:text-brand-red transition-colors">Beranda</Link>
+          </li>
+          <li><ChevronRight className="w-3.5 h-3.5" /></li>
+          <li>
+            <Link href="/products" className="hover:text-brand-red transition-colors">Produk</Link>
+          </li>
+          {product.category && (
+            <>
+              <li><ChevronRight className="w-3.5 h-3.5" /></li>
+              <li>
+                <Link
+                  href={`/products?category=${product.category.slug}`}
+                  className="hover:text-brand-red transition-colors"
+                >
+                  {product.category.nameId}
+                </Link>
+              </li>
+            </>
+          )}
+          <li><ChevronRight className="w-3.5 h-3.5" /></li>
+          <li className="text-text-primary font-medium truncate max-w-[140px]">
+            {product.nameId}
+          </li>
+        </ol>
+      </nav>
+
       {/* Image Gallery */}
       <div className="relative aspect-[4/3] bg-brand-cream-dark">
         {product.images[selectedImageIndex] ? (
@@ -140,9 +170,10 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
               router.push('/products');
             }
           }}
-          className="absolute top-4 left-4 w-10 h-10 bg-white/80 backdrop-blur rounded-full flex items-center justify-center"
+          className="absolute top-4 left-4 w-11 h-11 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm"
+          aria-label="Kembali"
         >
-          ←
+          <ArrowLeft className="w-5 h-5 text-text-primary" />
         </button>
 
         {/* Badges */}
@@ -179,7 +210,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
           )}
 
           {/* Name */}
-          <h1 className="font-display text-2xl font-bold text-text-primary mt-1">
+          <h1 className="font-display text-2xl font-bold text-text-primary mt-1 leading-tight">
             {product.nameId}
           </h1>
 
@@ -265,13 +296,8 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
                       </div>
                     )}
                     {related.isHalal && (
-                      <div className="absolute top-2 right-2 w-8 h-8">
-                        <Image
-                          src="/assets/logo/halal.png"
-                          alt="Halal"
-                          fill
-                          className="object-contain"
-                        />
+                      <div className="absolute top-2 right-2">
+                        <HalalBadge />
                       </div>
                     )}
                   </div>
@@ -301,7 +327,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
       )}
 
       {/* Sticky Bottom Bar */}
-      <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-0 left-0 right-0 bg-white border-t border-brand-cream-dark p-4 pb-[calc(1rem+env(safe-area-inset-bottom))">
+      <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] md:hidden left-0 right-0 bg-white border-t border-brand-cream-dark p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
         <div className="container mx-auto flex items-center gap-4">
           {/* Quantity Stepper */}
           <div className="flex items-center border border-brand-cream-dark rounded-button">
@@ -357,10 +383,10 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
             />
             <button
               onClick={() => setLightboxOpen(false)}
-              className="absolute top-4 right-4 w-10 h-10 bg-white/80 backdrop-blur rounded-full flex items-center justify-center text-text-primary text-2xl font-bold"
-              aria-label="Tutup"
+              className="absolute top-4 right-4 w-11 h-11 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm"
+              aria-label="Tutup lightbox"
             >
-              ×
+              <X className="w-5 h-5 text-text-primary" />
             </button>
           </div>
         </div>

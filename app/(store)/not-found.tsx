@@ -1,20 +1,38 @@
+import Link from 'next/link';
+import Image from 'next/image';
+
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-brand-cream flex flex-col items-center justify-center px-4">
-      <div className="text-8xl mb-6">🥟</div>
-      <h1 className="font-display text-4xl font-bold text-text-primary mb-2">404</h1>
-      <h2 className="font-display text-xl font-semibold text-text-primary mb-4">
+    <div className="min-h-screen bg-brand-cream flex flex-col items-center justify-center px-4 py-16 text-center">
+      <Image
+        src="/illustrations/dimsum-sad.svg"
+        alt="Halaman tidak ditemukan"
+        width={160}
+        height={160}
+        className="mb-8"
+        priority
+      />
+      <p className="text-text-secondary font-mono text-sm mb-4">404</p>
+      <h1 className="font-display text-2xl md:text-3xl font-bold text-text-primary mb-3">
         Halaman Tidak Ditemukan
-      </h2>
-      <p className="text-text-secondary text-center max-w-md mb-8">
-        Maaf, halaman yang kamu cari tidak tersedia. Mungkin sudah dipindahkan atau dihapus.
+      </h1>
+      <p className="text-text-secondary mb-8 max-w-xs">
+        Sepertinya dimsum ini sudah habis... atau halamannya memang tidak ada.
       </p>
-      <a
-        href="/"
-        className="inline-flex items-center h-12 px-6 bg-brand-red text-white font-bold rounded-button hover:bg-brand-red-dark transition-colors"
-      >
-        Kembali ke Beranda
-      </a>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Link
+          href="/"
+          className="h-12 px-6 bg-brand-red text-white font-bold rounded-button flex items-center justify-center hover:bg-brand-red-dark transition-colors"
+        >
+          ← Kembali ke Beranda
+        </Link>
+        <Link
+          href="/products"
+          className="h-12 px-6 border-2 border-brand-red text-brand-red font-bold rounded-button flex items-center justify-center hover:bg-brand-red/5 transition-colors"
+        >
+          Lihat Produk Kami
+        </Link>
+      </div>
     </div>
   );
 }
