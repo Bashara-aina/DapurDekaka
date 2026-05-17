@@ -659,23 +659,7 @@ export type OrderDailyCounter = typeof orderDailyCounters.$inferSelect;
 
 // ─────────────────────────────────────────
 // INDEXES
+// Note: Indexes should be defined inside the pgTable extra config callback
+// to avoid JSON.parse errors during build. Drizzle will create them automatically
+// when you define them within the table's extra config function.
 // ─────────────────────────────────────────
-
-export const ordersUserIdIdx = index('idx_orders_user_id').on(orders.userId);
-export const ordersStatusIdx = index('idx_orders_status').on(orders.status);
-export const ordersPaymentExpiresAtIdx = index('idx_orders_payment_expires_at').on(orders.paymentExpiresAt);
-export const ordersMidtransOrderIdIdx = index('idx_orders_midtrans_order_id').on(orders.midtransOrderId);
-export const orderItemsOrderIdIdx = index('idx_order_items_order_id').on(orderItems.orderId);
-export const productVariantsProductIdIdx = index('idx_product_variants_product_id').on(productVariants.productId);
-export const pointsHistoryUserIdIdx = index('idx_points_history_user_id').on(pointsHistory.userId);
-export const pointsHistoryOrderIdIdx = index('idx_points_history_order_id').on(pointsHistory.orderId);
-export const pointsHistoryExpiresAtIdx = index('idx_points_history_expires_at').on(pointsHistory.expiresAt);
-export const pointsHistoryTypeIdx = index('idx_points_history_type').on(pointsHistory.type);
-export const pointsHistoryIsExpiredIdx = index('idx_points_history_is_expired').on(pointsHistory.isExpired);
-export const couponUsagesCouponUserIdx = index('idx_coupon_usages_coupon_user').on(couponUsages.couponId, couponUsages.userId);
-export const adminLogsUserIdIdx = index('idx_admin_logs_user_id').on(adminActivityLogs.userId);
-export const adminLogsEntityIdx = index('idx_admin_logs_entity').on(adminActivityLogs.entityType, adminActivityLogs.entityId);
-export const b2bInquiriesStatusIdx = index('idx_b2b_inquiries_status').on(b2bInquiries.status);
-export const inventoryLogsVariantIdIdx = index('idx_inventory_logs_variant_id').on(inventoryLogs.variantId);
-export const passwordResetTokensTokenPrefixIdx = index('idx_password_reset_tokens_token_prefix').on(passwordResetTokens.tokenPrefix);
-export const passwordResetTokensExpiresAtIdx = index('idx_password_reset_tokens_expires_at').on(passwordResetTokens.expiresAt);
