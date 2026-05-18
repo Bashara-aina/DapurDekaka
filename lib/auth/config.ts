@@ -8,22 +8,7 @@ import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 
-// #region agent debug log
-fetch('http://127.0.0.1:7420/ingest/09d39df7-998a-468e-966d-456351968e13', {method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'38c573'},body:JSON.stringify({sessionId:'38c573',location:'lib/auth/config.ts:11',message:'config module loaded',data:{hasDb:!!db,hasGoogleId:!!process.env.AUTH_GOOGLE_ID,hasAuthSecret:!!process.env.AUTH_SECRET},timestamp:Date.now()})}).catch(()=>{});
-// #endregion
-
-let adapter: Adapter;
-try {
-  adapter = DrizzleAdapter(db) as Adapter;
-  // #region agent debug log
-  fetch('http://127.0.0.1:7420/ingest/09d39df7-998a-468e-966d-456351968e13', {method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'38c573'},body:JSON.stringify({sessionId:'38c573',location:'lib/auth/config.ts:19',message:'DrizzleAdapter created successfully',data:{},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
-} catch (err) {
-  // #region agent debug log
-  fetch('http://127.0.0.1:7420/ingest/09d39df7-998a-468e-966d-456351968e13', {method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'38c573'},body:JSON.stringify({sessionId:'38c573',location:'lib/auth/config.ts:23',message:'DrizzleAdapter FAILED',data:{error:String(err)},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
-  throw err;
-}
+const adapter = DrizzleAdapter(db) as Adapter;
 
 export const authConfig: NextAuthConfig = {
   adapter,

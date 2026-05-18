@@ -4,12 +4,15 @@ const IS_BUILD =
   typeof process.env.NEXT_PHASE !== 'undefined' &&
   (process.env.NEXT_PHASE === 'build' || process.env.NEXT_PHASE === 'phase-production-build');
 
-const stubResponse = () =>
-  new Response(JSON.stringify({ error: 'Unavailable' }), { status: 503 });
-
 export const handlers = {
-  GET: async (_req?: unknown) => stubResponse(),
-  POST: async (_req?: unknown) => stubResponse(),
+  GET: async (req?: unknown) => {
+    await initNextAuth();
+    return (_nextAuth as { handlers: { GET: (r: unknown) => Promise<Response> } }).handlers.GET(req);
+  },
+  POST: async (req?: unknown) => {
+    await initNextAuth();
+    return (_nextAuth as { handlers: { POST: (r: unknown) => Promise<Response> } }).handlers.POST(req);
+  },
 };
 
 let _signIn: () => Promise<void> = async () => {};
