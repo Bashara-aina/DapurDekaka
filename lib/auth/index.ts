@@ -22,24 +22,30 @@ export { _signIn as signIn, _signOut as signOut };
 let _auth: (() => Promise<Session | null>) | null = null;
 let _nextAuth: unknown = null;
 let _initialized = false;
+let _initPromise: Promise<void> | null = null;
 
 async function initNextAuth() {
   if (_initialized) return;
+  if (_initPromise) return _initPromise;
 
-  const { authConfig } = await import('./config');
-  const NextAuth = (await import('next-auth')).default;
+  _initPromise = (async () => {
+    const { authConfig } = await import('./config');
+    const NextAuth = (await import('next-auth')).default;
 
-  _nextAuth = NextAuth(authConfig);
+    _nextAuth = NextAuth(authConfig);
 
-  handlers.GET = (req: unknown) =>
-    (_nextAuth as { handlers: { GET: (r: unknown) => Promise<Response> } }).handlers.GET(req);
-  handlers.POST = (req: unknown) =>
-    (_nextAuth as { handlers: { POST: (r: unknown) => Promise<Response> } }).handlers.POST(req);
-  _signIn = () => (_nextAuth as { signIn: () => Promise<void> }).signIn();
-  _signOut = () => (_nextAuth as { signOut: () => Promise<void> }).signOut();
-  _auth = () => (_nextAuth as { auth: () => Promise<Session | null> }).auth();
+    handlers.GET = (req: unknown) =>
+      (_nextAuth as { handlers: { GET: (r: unknown) => Promise<Response> } }).handlers.GET(req);
+    handlers.POST = (req: unknown) =>
+      (_nextAuth as { handlers: { POST: (r: unknown) => Promise<Response> } }).handlers.POST(req);
+    _signIn = () => (_nextAuth as { signIn: () => Promise<void> }).signIn();
+    _signOut = () => (_nextAuth as { signOut: () => Promise<void> }).signOut();
+    _auth = () => (_nextAuth as { auth: () => Promise<Session | null> }).auth();
 
-  _initialized = true;
+    _initialized = true;
+  })();
+
+  return _initPromise;
 }
 
 /**
@@ -70,9 +76,11 @@ export function authMiddleware(
   func: (req: { auth: Session | null; nextUrl: URL }) => Response | Promise<Response>
 ): (req: unknown) => Promise<Response> {
   return async (req: unknown) => {
-    if (IS_BUILD) return func({ auth: null, nextUrl: new URL((req as { url?: string })?.url ?? '/', 'http://localhost') });
+    const nextUrl = new URL((req as { url?: string })?.url ?? '/', 'http://localhost');
+    if (IS_BUILD) return func({ auth: null, nextUrl });
     await initNextAuth();
-    const session = _auth ? await _auth() : null;
-    return func({ auth: session, nextUrl: new URL((req as { url?: string })?.url ?? '/', 'http://localhost') });
+    // Pass the request so NextAuth reads cookies from req (required in Edge/middleware context)
+    const session = await (_nextAuth as { auth: (r: unknown) => Promise<Session | null> }).auth(req);
+    return func({ auth: session, nextUrl });
   };
 }

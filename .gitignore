@@ -22,9 +22,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# local env files
-.env*.local
+# env files (all variants — never commit secrets)
 .env
+.env.*
+!.env.example
 
 # vercel
 .vercel
@@ -39,7 +40,4 @@ next-env.d.ts
 # uploads (source assets, not deployed)
 assets-source/
 
-# env files (contain secrets)
-.env
-.env.local
 .claude/worktrees/

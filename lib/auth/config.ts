@@ -4,11 +4,23 @@ import Google from 'next-auth/providers/google';
 import Credentials from 'next-auth/providers/credentials';
 import { DrizzleAdapter } from '@auth/drizzle-adapter';
 import { db } from '@/lib/db';
-import { users } from '@/lib/db/schema';
+import { users, accounts, sessions, verificationTokens } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 
-const adapter = DrizzleAdapter(db) as Adapter;
+const googleId = process.env.AUTH_GOOGLE_ID;
+const googleSecret = process.env.AUTH_GOOGLE_SECRET;
+if (!googleId || !googleSecret) {
+  throw new Error('AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET must be set');
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const adapter = DrizzleAdapter(db, {
+  usersTable: users,
+  accountsTable: accounts as any, // our schema uses camelCase keys; runtime access matches
+  sessionsTable: sessions as any, // our schema uses `id` PK; sessionToken has unique constraint
+  verificationTokensTable: verificationTokens,
+}) as Adapter;
 
 export const authConfig: NextAuthConfig = {
   adapter,
@@ -16,8 +28,8 @@ export const authConfig: NextAuthConfig = {
   pages: { signIn: '/login', error: '/login' },
   providers: [
     Google({
-      clientId: process.env.AUTH_GOOGLE_ID ?? '',
-      clientSecret: process.env.AUTH_GOOGLE_SECRET ?? '',
+      clientId: googleId,
+      clientSecret: googleSecret,
     }),
     Credentials({
       credentials: {
