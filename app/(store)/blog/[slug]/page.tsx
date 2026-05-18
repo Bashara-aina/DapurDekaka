@@ -76,12 +76,16 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
 export const revalidate = 86400;
 
 export async function generateStaticParams() {
-  const posts = await db.query.blogPosts.findMany({
-    where: eq(blogPosts.isPublished, true),
-    columns: { slug: true },
-  });
-
-  return posts.map((post) => ({ slug: post.slug }));
+  try {
+    const posts = await db.query.blogPosts.findMany({
+      where: eq(blogPosts.isPublished, true),
+      columns: { slug: true },
+    });
+    return posts.map((post) => ({ slug: post.slug }));
+  } catch {
+    // DB unavailable at build time (no DATABASE_URL); pages render on-demand via ISR
+    return [];
+  }
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {

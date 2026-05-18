@@ -5,7 +5,7 @@ import { WhatsAppButton } from '@/components/store/layout/WhatsAppButton';
 import { getSetting } from '@/lib/settings/get-settings';
 
 export default async function StoreLayout({ children }: { children: React.ReactNode }) {
-  const whatsappNumber = await getSetting('store_whatsapp_number');
+  const whatsappNumber = await getSetting('store_whatsapp_number').catch(() => null);
 
   return (
     <>

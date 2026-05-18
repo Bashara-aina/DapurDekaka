@@ -38,6 +38,7 @@ function LoginForm() {
         OAuthSignin: 'Terjadi kesalahan saat memulai login Google. Coba lagi.',
         OAuthCallback: 'Google menolak koneksi. Pastikan kamu memberi izin akses.',
         OAuthCreateAccount: 'Gagal membuat akun baru. Email mungkin sudah terdaftar.',
+        OAuthAccountNotLinked: 'Email ini sudah terdaftar dengan cara lain. Silakan masuk dengan email & password.',
         EmailSignin: 'Link masuk tidak valid atau sudah kadaluarsa.',
         CredentialsSignin: 'Email atau password salah.',
         SessionRequired: 'Silakan masuk untuk mengakses halaman ini.',

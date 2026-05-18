@@ -14,12 +14,21 @@ function escapeXml(unsafe: string): string {
 }
 
 export async function GET() {
-  const posts = await db.query.blogPosts.findMany({
-    where: eq(blogPosts.isPublished, true),
-    orderBy: [desc(blogPosts.publishedAt)],
-    limit: 20,
-    with: { category: true, author: true },
-  });
+  type PostWithRelations = Awaited<ReturnType<typeof db.query.blogPosts.findMany<{
+    with: { category: true; author: true };
+  }>>>[number];
+
+  let posts: PostWithRelations[] = [];
+  try {
+    posts = await db.query.blogPosts.findMany({
+      where: eq(blogPosts.isPublished, true),
+      orderBy: [desc(blogPosts.publishedAt)],
+      limit: 20,
+      with: { category: true, author: true },
+    });
+  } catch {
+    // DB unavailable at build/prerender time — serve empty feed
+  }
 
   const baseUrl = 'https://dapurdekaka.com';
 
