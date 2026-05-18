@@ -139,10 +139,10 @@ async function getPromoSettings() {
 
 export default async function HomePage() {
   const [featuredProducts, allCategories, activeSlides, promoSettings] = await Promise.all([
-    getFeaturedProducts(),
-    getCategories(),
-    getActiveCarouselSlides(),
-    getPromoSettings(),
+    getFeaturedProducts().catch(() => [] as Awaited<ReturnType<typeof getFeaturedProducts>>),
+    getCategories().catch(() => [] as Awaited<ReturnType<typeof getCategories>>),
+    getActiveCarouselSlides().catch(() => [] as Awaited<ReturnType<typeof getActiveCarouselSlides>>),
+    getPromoSettings().catch(() => ({ promoCode: 'SELAMATDATANG', promoTitle: 'Untuk pembelian pertama kamu', promoSubtitle: 'Gunakan kode:', carouselSpeedMs: 5000 })),
   ]);
 
   const organizationJsonLd = {
