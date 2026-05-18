@@ -14,7 +14,6 @@ if (!googleId || !googleSecret) {
   throw new Error('AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET must be set');
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const adapter = DrizzleAdapter(db, {
   usersTable: users,
   accountsTable: accounts as any, // our schema uses camelCase keys; runtime access matches
