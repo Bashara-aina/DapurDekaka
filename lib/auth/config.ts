@@ -54,17 +54,25 @@ export const authConfig: NextAuthConfig = {
   session: { strategy: 'database' },
   callbacks: {
     async session({ session, user }) {
+      if (typeof window === 'undefined') {
+        console.log('[Auth Session Callback]', { hasUser: !!user, hasSession: !!session, sessionUser: session?.user });
+      }
       if (!session.user) return session;
       if (user?.id) {
         session.user.id = user.id as string;
         const dbUser = await db.query.users.findFirst({
           where: eq(users.id, user.id),
-          columns: { role: true, isActive: true },
+          columns: { role: true, isActive: true, name: true },
         });
-        if (dbUser?.role) {
+        if (!dbUser) {
+          console.warn('[Auth] User not found in DB:', user.id);
+          return {} as typeof session;
+        }
+        if (dbUser.role) {
           session.user.role = dbUser.role;
         }
-        if (dbUser?.isActive === false) {
+        if (dbUser.isActive === false) {
+          console.warn('[Auth] User isActive=false, clearing session');
           return {} as typeof session;
         }
       }
