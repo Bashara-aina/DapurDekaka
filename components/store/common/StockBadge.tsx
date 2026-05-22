@@ -10,10 +10,10 @@ interface StockBadgeProps {
 }
 
 export function StockBadge({ stock: directStock, variantId, className }: StockBadgeProps) {
-  // Subscribe to cart store for live stock after validateStock() — local wins
-  const cartStock = variantId
-    ? useCartStore((s) => s.items.find((i) => i.variantId === variantId)?.stock)
-    : undefined;
+  // Always call the hook — derive the value from the result
+  const cartStock = useCartStore((s) =>
+    variantId ? s.items.find((i) => i.variantId === variantId)?.stock : undefined
+  );
 
   const stock = cartStock ?? directStock;
 

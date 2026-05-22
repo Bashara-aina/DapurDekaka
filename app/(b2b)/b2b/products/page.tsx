@@ -15,6 +15,7 @@ export const metadata: Metadata = {
 };
 
 export const revalidate = 300;
+export const dynamic = 'force-dynamic';
 
 async function getB2BProducts(isApproved: boolean) {
   return await db.query.products.findMany({

@@ -96,7 +96,7 @@ function PendingContent() {
     updateCountdown();
     const countdownInterval = setInterval(updateCountdown, 1000);
     return () => clearInterval(countdownInterval);
-  }, [orderDetails?.paymentExpiresAt]);
+  }, [orderDetails?.paymentExpiresAt, orderNumber, router]);
 
   const handleRetry = async () => {
     if (!orderNumber) return;

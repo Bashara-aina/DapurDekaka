@@ -3,6 +3,7 @@ import { blogPosts } from '@/lib/db/schema';
 import { eq, desc, and, isNull } from 'drizzle-orm';
 
 export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const posts = await db.query.blogPosts.findMany({
