@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { productVariants, inventoryLogs } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and, gte, sql } from 'drizzle-orm';
 import { success, serverError, forbidden, notFound, validationError } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
 import { z } from 'zod';
@@ -44,10 +44,28 @@ export async function POST(req: NextRequest) {
     }
 
     const quantityBefore = variant.stock;
-    const quantityAfter = Math.max(0, quantityBefore + delta);
-    const actualDelta = quantityAfter - quantityBefore;
+    const capped = delta < 0 && Math.abs(delta) > quantityBefore;
 
-    await db.update(productVariants).set({ stock: quantityAfter, updatedAt: new Date() }).where(eq(productVariants.id, variantId));
+    const result = await db
+      .update(productVariants)
+      .set({ stock: sql`GREATEST(stock + ${delta}, 0)`, updatedAt: new Date() })
+      .where(and(
+        eq(productVariants.id, variantId),
+        delta >= 0 ? sql`true` : gte(productVariants.stock, Math.abs(delta))
+      ))
+      .returning({ newStock: productVariants.stock });
+
+    if (result.length === 0) {
+      return validationError(new z.ZodError([{
+        message: 'STOCK_UPDATE_CONFLICT: Stok tidak mencukupi untuk pengurangan yang diminta',
+        path: ['delta'],
+        code: 'custom',
+        fatal: true,
+      }]));
+    }
+
+    const quantityAfter = result[0]!.newStock;
+    const actualDelta = quantityAfter - quantityBefore;
 
     await db.insert(inventoryLogs).values({
       variantId,
@@ -61,7 +79,7 @@ export async function POST(req: NextRequest) {
         : `[Manual Adjust] ${reason}${note ? ` - ${note}` : ''}`,
     });
 
-    return success({ variantId, stockBefore: quantityBefore, stockAfter: quantityAfter, actualDelta });
+    return success({ variantId, stockBefore: quantityBefore, stockAfter: quantityAfter, actualDelta, capped });
   } catch (error) {
     console.error('[admin/field/inventory/adjust POST]', error);
     return serverError(error);

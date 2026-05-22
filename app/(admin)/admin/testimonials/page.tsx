@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Star, Trash2, Edit2, Plus, X, Check } from 'lucide-react';
+import { Star, Trash2, Edit2, Plus, X, Check, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 interface Testimonial {
@@ -208,7 +208,7 @@ export default function TestimonialsAdminPage() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Testimonial | undefined>(undefined);
 
-  const { data: testimonials, isLoading } = useQuery<Testimonial[]>({
+  const { data: testimonials, isLoading, isError } = useQuery<Testimonial[]>({
     queryKey: ['admin-testimonials'],
     queryFn: async () => {
       const res = await fetch('/api/admin/testimonials');
@@ -217,6 +217,22 @@ export default function TestimonialsAdminPage() {
       return json.data;
     },
   });
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <AlertTriangle className="w-12 h-12 text-red-400 mb-4" />
+        <p className="text-lg font-semibold text-gray-700 mb-2">Gagal memuat testimoni</p>
+        <p className="text-sm text-gray-500 mb-4">Terjadi kesalahan saat mengambil data dari server.</p>
+        <button
+          onClick={() => queryClient.invalidateQueries({ queryKey: ['admin-testimonials'] })}
+          className="px-4 py-2 bg-brand-red text-white text-sm font-medium rounded-lg hover:bg-brand-red-dark transition-colors"
+        >
+          Coba Lagi
+        </button>
+      </div>
+    );
+  }
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {

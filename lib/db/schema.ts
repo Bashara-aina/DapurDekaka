@@ -144,8 +144,8 @@ export const savedCarts = pgTable('saved_carts', {
 export const passwordResetTokens = pgTable('password_reset_tokens', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  tokenPrefix: varchar('token_prefix', { length: 8 }).notNull(),
-  tokenHash: varchar('token_hash', { length: 255 }).notNull().unique(),
+  tokenKey: varchar('token_key', { length: 64 }).notNull().unique(), // full raw token for lookup (not hashed)
+  tokenHash: varchar('token_hash', { length: 255 }).notNull().unique(), // bcrypt hash for verification
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   usedAt: timestamp('used_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -343,6 +343,8 @@ export const coupons = pgTable('coupons', {
   maxUsesPerUser: integer('max_uses_per_user'),
   isActive: boolean('is_active').notNull().default(true),
   isPublic: boolean('is_public').notNull().default(false),
+  applicableProductIds: uuid('applicable_product_ids').array(),
+  applicableCategoryIds: uuid('applicable_category_ids').array(),
   startsAt: timestamp('starts_at', { withTimezone: true }),
   expiresAt: timestamp('expires_at', { withTimezone: true }),
   createdBy: uuid('created_by').notNull().references(() => users.id),
@@ -373,6 +375,7 @@ export const pointsHistory = pgTable('points_history', {
   expiresAt: timestamp('expires_at', { withTimezone: true }),
   isExpired: boolean('is_expired').notNull().default(false),
   consumedAt: timestamp('consumed_at', { withTimezone: true }),
+  warnedAt: timestamp('warned_at', { withTimezone: true }),
   // Self-reference without .references() to avoid circular type inference
   referencedEarnId: uuid('referenced_earn_id'),
   adjustedBy: uuid('adjusted_by').references(() => users.id),

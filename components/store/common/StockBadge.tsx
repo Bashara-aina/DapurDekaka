@@ -10,10 +10,10 @@ interface StockBadgeProps {
 }
 
 export function StockBadge({ stock: directStock, variantId, className }: StockBadgeProps) {
-  // Always call the hook — derive the value from the result
-  const cartStock = useCartStore((s) =>
-    variantId ? s.items.find((i) => i.variantId === variantId)?.stock : undefined
-  );
+  // Only call hook when variantId is present (client-side cart tracking)
+  const cartStock = variantId
+    ? useCartStore((s) => s.items.find((i) => i.variantId === variantId)?.stock)
+    : undefined;
 
   const stock = cartStock ?? directStock;
 
@@ -34,7 +34,7 @@ export function StockBadge({ stock: directStock, variantId, className }: StockBa
     return (
       <span
         className={cn(
-          'inline-flex items-center px-2 py-1 bg-warning-light text-warning text-xs font-semibold rounded',
+          'inline-flex items-center px-2 py-1 bg-amber-100 text-amber-700 text-xs font-semibold rounded',
           className
         )}
       >

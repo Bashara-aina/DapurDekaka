@@ -15,7 +15,7 @@ const handleAuth = authMiddleware(async ({ auth, nextUrl }) => {
       return NextResponse.redirect(new URL('/', base));
     }
     if (role === 'warehouse') {
-      const allowed = ['/admin/inventory', '/admin/shipments', '/admin/field', '/admin/orders'];
+      const allowed = ['/admin/inventory', '/admin/shipments', '/admin/field'];
       if (!allowed.some((p) => pathname.startsWith(p))) {
         return NextResponse.redirect(new URL('/admin/field', base));
       }
@@ -28,7 +28,7 @@ const handleAuth = authMiddleware(async ({ auth, nextUrl }) => {
     }
   }
 
-  if (pathname.startsWith('/b2b/account')) {
+  if (pathname.startsWith('/b2b/products') || pathname.startsWith('/b2b/account')) {
     if (!session?.user) {
       return NextResponse.redirect(new URL(`/login?callbackUrl=${encodeURIComponent(pathname)}`, base));
     }

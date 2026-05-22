@@ -70,7 +70,7 @@ export default async function AccountOrderDetailPage({ params }: OrderDetailPage
   } | null;
 
   if (!order) {
-    notFound();
+    return notFound();
   }
 
   const canView =

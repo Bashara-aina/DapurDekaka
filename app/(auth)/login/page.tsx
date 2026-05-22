@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -9,7 +9,8 @@ function getSafeCallbackUrl(raw: string | null): string {
   const fallback = '/account';
   if (!raw) return fallback;
   try {
-    if (!raw.startsWith('/') || raw.startsWith('//')) return fallback;
+    // Ensure path starts with / and contains no query string injection
+    if (!raw.startsWith('/') || raw.startsWith('//') || raw.includes('?')) return fallback;
     return raw;
   } catch {
     return fallback;
@@ -29,6 +30,7 @@ function LoginForm() {
     email: '',
     password: '',
   });
+  const isFormSubmitting = useRef(false);
 
   useEffect(() => {
     // Handle error query param from OAuth failures
@@ -52,7 +54,8 @@ function LoginForm() {
       setSuccessMessage('Akun berhasil dibuat! Silakan masuk.');
     }
 
-    if (session) {
+    // Only redirect if session exists AND we're not in the middle of a form submission
+    if (session && !isFormSubmitting.current) {
       const callbackUrl = getSafeCallbackUrl(searchParams.get('callbackUrl'));
       router.push(callbackUrl);
     }
@@ -62,6 +65,7 @@ function LoginForm() {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    isFormSubmitting.current = true;
 
     try {
       const callbackUrl = getSafeCallbackUrl(searchParams.get('callbackUrl'));
@@ -74,6 +78,7 @@ function LoginForm() {
 
       if (result?.error) {
         setError('Email atau password salah');
+        isFormSubmitting.current = false;
       } else if (result?.url) {
         try {
           const cartItems = JSON.parse(localStorage.getItem('cart-storage') || '{}');
@@ -87,20 +92,24 @@ function LoginForm() {
         } catch {
           // Cart merge is non-critical, don't block on failure
         }
+        isFormSubmitting.current = false;
         router.push(callbackUrl);
       }
     } catch {
       setError('Terjadi kesalahan. Silakan coba lagi.');
+      isFormSubmitting.current = false;
     }
     setIsLoading(false);
   };
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
-    const callbackUrl = getSafeCallbackUrl(searchParams.get('callbackUrl'));
-    await signIn('google', { callbackUrl });
-    // Note: if signIn redirects, this line never runs
-    setGoogleLoading(false);
+    try {
+      const callbackUrl = getSafeCallbackUrl(searchParams.get('callbackUrl'));
+      await signIn('google', { callbackUrl });
+    } catch {
+      setGoogleLoading(false);
+    }
   };
 
   return (

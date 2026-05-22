@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, lt, sql } from 'drizzle-orm';
 import { orders, orderItems, productVariants, inventoryLogs, coupons, couponUsages, pointsHistory, users, orderStatusHistory } from '@/lib/db/schema';
 import { success, serverError, notFound, conflict, unauthorized, forbidden } from '@/lib/utils/api-response';
 import { createMidtransTransaction } from '@/lib/midtrans/create-transaction';
@@ -44,8 +44,20 @@ export async function POST(req: NextRequest) {
       return conflict('Order tidak dapat diretry — status bukan pending_payment');
     }
 
-    if (order.paymentRetryCount >= 3) {
-      // BUG-04: Wrap cancellation in full transaction with stock restore, points reversal, coupon reversion
+    // Atomic conditional update: only increment if count is under 3
+    // This prevents TOCTOU race condition where two concurrent requests
+    // both pass the >= 3 check before either increments
+    const updated = await db
+      .update(orders)
+      .set({ paymentRetryCount: sql`payment_retry_count + 1` })
+      .where(and(
+        eq(orders.id, order.id),
+        lt(orders.paymentRetryCount, 3)
+      ))
+      .returning({ paymentRetryCount: orders.paymentRetryCount });
+
+    if (updated.length === 0) {
+      // Either already at 3 retries, or order status changed — cancel it
       await db.transaction(async (tx) => {
         // 1. Update order status
         await tx.update(orders)
@@ -119,7 +131,7 @@ export async function POST(req: NextRequest) {
       return conflict('Pembayaran sudah mencapai batas retry. Pesanan dibatalkan.');
     }
 
-    const retryCount = order.paymentRetryCount + 1;
+    const retryCount = updated[0]!.paymentRetryCount;
     const newMidtransOrderId = `${orderNumber}-retry-${retryCount}`;
 
     // Build item_details

@@ -18,6 +18,7 @@ const forgotPasswordSchema = z.object({
 
 export const POST = withRateLimit(
   async (req: NextRequest) => {
+    let emailSent = false;
     try {
       const body = await req.json();
       const parsed = forgotPasswordSchema.safeParse(body);
@@ -33,40 +34,72 @@ export const POST = withRateLimit(
       });
 
       if (user) {
-        const token = crypto.randomBytes(32).toString('hex');
-        const tokenPrefix = token.slice(0, 8);
-        const hashedToken = await bcrypt.hash(token, 10);
-        const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+        // Check if user registered via Google (no password)
+        const isGoogleOnlyAccount = !user.passwordHash;
 
-        await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, user.id));
+        if (isGoogleOnlyAccount) {
+          // Still generate token for security consistency, but note in email
+          const token = crypto.randomBytes(32).toString('hex');
+          const hashedToken = await bcrypt.hash(token, 10);
+          const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
 
-        await db.insert(passwordResetTokens).values({
-          userId: user.id,
-          tokenPrefix,
-          tokenHash: hashedToken,
-          expiresAt,
-        });
+          await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, user.id));
 
-        const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password/${token}`;
+          await db.insert(passwordResetTokens).values({
+            userId: user.id,
+            tokenKey: token,
+            tokenHash: hashedToken,
+            expiresAt,
+          });
 
-        await sendEmail({
-          to: user.email,
-          subject: 'Reset Password — Dapur Dekaka',
-          react: PasswordResetEmail({
-            resetUrl,
-            userName: user.name,
-          }),
-        });
-      } else {
-        // Timing normalization — simulate the time an email send would take
-        await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 100));
+          const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password/${token}`;
+
+          await sendEmail({
+            to: user.email,
+            subject: 'Reset Password — Dapur Dekaka',
+            react: PasswordResetEmail({
+              resetUrl,
+              userName: user.name,
+              isGoogleAccount: true,
+            }),
+          });
+        } else {
+          const token = crypto.randomBytes(32).toString('hex');
+          const hashedToken = await bcrypt.hash(token, 10);
+          const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+          await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, user.id));
+
+          await db.insert(passwordResetTokens).values({
+            userId: user.id,
+            tokenKey: token,
+            tokenHash: hashedToken,
+            expiresAt,
+          });
+
+          const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password/${token}`;
+
+          await sendEmail({
+            to: user.email,
+            subject: 'Reset Password — Dapur Dekaka',
+            react: PasswordResetEmail({
+              resetUrl,
+              userName: user.name,
+            }),
+          });
+        }
+        emailSent = true;
       }
 
       return success({ message: 'Link reset password telah dikirim ke email kamu' });
-
     } catch (error) {
       console.error('[auth/forgot-password]', error);
       return serverError(error);
+    } finally {
+      // Timing normalization — always delay, whether user exists or not
+      if (!emailSent) {
+        await new Promise(resolve => setTimeout(resolve, 400));
+      }
     }
   },
   { windowMs: 60000, maxRequests: 3 }

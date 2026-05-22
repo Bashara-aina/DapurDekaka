@@ -6,6 +6,7 @@ import { blogPosts, blogCategories } from '@/lib/db/schema';
 import { eq, desc, and, or, like, sql } from 'drizzle-orm';
 import { BlogCard } from '@/components/store/blog/BlogCard';
 import { BlogSearchForm } from '@/components/store/blog/BlogSearchForm';
+import { EmptyState } from '@/components/store/common/EmptyState';
 
 export const revalidate = 3600;
 
@@ -25,6 +26,9 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: 'https://dapurdekaka.com/blog',
+    types: {
+      'application/rss+xml': 'https://dapurdekaka.com/blog/rss.xml',
+    },
   },
   robots: {
     index: true,
@@ -125,8 +129,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
 
       {/* Search and Filter */}
       <div className="mb-8 flex flex-col sm:flex-row gap-3">
-        <BlogSearchForm defaultValue={search} />
-        {categorySlug && <input type="hidden" name="category" value={categorySlug} />}
+        <BlogSearchForm defaultValue={search} categorySlug={categorySlug} />
         {search && (
           <a href="/blog" className="h-11 px-4 flex items-center text-sm text-text-secondary hover:text-brand-red">
             Reset
@@ -171,17 +174,13 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
       )}
 
       {posts.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="w-24 h-24 mx-auto mb-4 bg-brand-cream rounded-full flex items-center justify-center">
-            <span className="text-4xl">📝</span>
-          </div>
-          <h2 className="font-display text-xl font-semibold mb-2">Artikel tidak ditemukan</h2>
-          <p className="text-text-secondary">
-            Coba gunakan kata kunci lain atau hapus filter.
-          </p>
-          <a href="/blog" className="mt-4 inline-block px-4 py-2 bg-brand-red text-white text-sm font-medium rounded-button hover:bg-brand-red-dark">
-            Lihat Semua Artikel
-          </a>
+        <div className="col-span-full">
+          <EmptyState
+            variant="blog"
+            title="Artikel tidak ditemukan"
+            description="Coba gunakan kata kunci lain atau hapus filter."
+            action={{ label: 'Lihat Semua Artikel', href: '/blog' }}
+          />
         </div>
       ) : (
         <>

@@ -6,6 +6,7 @@ import { Package, ChevronRight, ChevronLeft } from 'lucide-react';
 import type { Metadata } from 'next';
 import { count, desc, eq, and } from 'drizzle-orm';
 import { orders } from '@/lib/db/schema';
+import { formatIDR } from '@/lib/utils/format-currency';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +21,7 @@ interface OrdersPageProps {
 const STATUS_FILTERS = [
   { key: 'all', label: 'Semua' },
   { key: 'pending_payment', label: 'Menunggu Bayar' },
+  { key: 'paid', label: 'Dibayar' },
   { key: 'processing', label: 'Diproses' },
   { key: 'packed', label: 'Dikemas' },
   { key: 'shipped', label: 'Dikirim' },
@@ -46,10 +48,12 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
     ? statusParam as ValidStatus
     : undefined;
 
-  const [ordersResult, totalResult] = await Promise.all([
-    db.query.orders.findMany({
+  const ordersResult = await db.query.orders.findMany({
       where: validStatus
-        ? (o: ReturnType<typeof eq>, { and, eq }: any) => and(eq(o.userId, session.user.id!), eq(o.status, validStatus))
+        ? (o: ReturnType<typeof eq>, { and, eq }: any) => and(
+            eq(o.userId, session.user.id!),
+            eq(o.status, validStatus)
+          )
         : (o: any, { eq }: any) => eq(o.userId, session.user.id!),
       with: {
         items: true,
@@ -57,25 +61,19 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
       orderBy: (o, { desc }) => [desc(o.createdAt)],
       limit: perPage,
       offset,
-    }),
-    validStatus
-      ? db.select({ total: count() }).from(orders)
-        .where(and(eq(orders.userId, session.user.id!), eq(orders.status, validStatus)))
-      : db.select({ total: count() }).from(orders)
-        .where(eq(orders.userId, session.user.id!)),
-  ]);
+    });
 
-  const totalOrders = totalResult[0]?.total ?? 0;
+  const [totalResult] = validStatus
+    ? await db.select({ total: count() }).from(orders).where(and(
+        eq(orders.userId, session.user.id!),
+        eq(orders.status, validStatus)
+      ))
+    : await db.select({ total: count() }).from(orders).where(
+        eq(orders.userId, session.user.id!)
+      );
+
+  const totalOrders = totalResult?.total ?? 0;
   const totalPages = Math.ceil(totalOrders / perPage);
-
-  const formatIDR = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
 
   return (
     <div className="space-y-6">
@@ -164,6 +162,14 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
                     <div className="text-right">
                       <p className="font-bold text-brand-red">{formatIDR(order.totalAmount)}</p>
                     </div>
+                    {order.status === 'pending_payment' && (
+                      <Link
+                        href={`/checkout/pending?order=${order.orderNumber}`}
+                        className="px-3 py-1.5 bg-brand-red text-white text-xs font-bold rounded-lg hover:bg-brand-red-dark transition-colors"
+                      >
+                        Bayar Sekarang
+                      </Link>
+                    )}
                     <ChevronRight className="w-5 h-5 text-text-disabled flex-shrink-0" />
                   </div>
                 </div>

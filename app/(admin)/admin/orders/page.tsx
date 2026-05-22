@@ -15,19 +15,34 @@ interface PageProps {
 export default async function OrdersPage({ searchParams }: PageProps) {
   const session = await auth();
   const userRole = (session?.user as { role?: string })?.role ?? '';
+
+  if (!session?.user || !['superadmin', 'owner'].includes(userRole)) {
+    return (
+      <div className="p-6 text-center">
+        <p className="text-gray-500">Anda tidak memiliki akses ke halaman ini.</p>
+      </div>
+    );
+  }
+
   const params = await searchParams;
   const currentPage = Math.max(1, parseInt(params.page ?? '1', 10));
-  const statusFilter = params.status ?? null;
+  const statusFilter = params.status ?? 'active';
   const searchQuery = params.search ?? null;
   const offset = (currentPage - 1) * PAGE_SIZE;
 
+  const statusCondition = statusFilter === 'active'
+    ? sql`${orders.status} NOT IN ('delivered', 'cancelled')`
+    : statusFilter
+      ? sql`${orders.status} = ${statusFilter}`
+      : sql`true`;
+
   const whereClause = sql`
-    ${statusFilter ? sql`${orders.status} = ${statusFilter}` : sql`true`}
-    AND ${searchQuery ? sql`(
+    ${statusCondition}
+    AND (${searchQuery ? sql`(
       ${orders.orderNumber} ILIKE ${'%' + searchQuery + '%'}
       OR ${orders.recipientName} ILIKE ${'%' + searchQuery + '%'}
       OR ${orders.recipientEmail} ILIKE ${'%' + searchQuery + '%'}
-    )` : sql`true`}
+    )` : sql`true`})
   `;
 
   const [orderRows, countResult] = await Promise.all([
@@ -36,6 +51,7 @@ export default async function OrdersPage({ searchParams }: PageProps) {
       orderBy: [desc(orders.createdAt)],
       limit: PAGE_SIZE,
       offset,
+      with: { items: true },
     }),
     db
       .select({ total: count() })
@@ -54,21 +70,26 @@ export default async function OrdersPage({ searchParams }: PageProps) {
     totalAmount: o.totalAmount,
     createdAt: o.createdAt.toISOString(),
     deliveryMethod: o.deliveryMethod,
+    items: o.items?.map(item => ({
+      id: item.id,
+      productNameId: item.productNameId,
+      variantNameId: item.variantNameId,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+    })) ?? [],
   }));
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
-    <div className="space-y-6">
-      <OrdersClient
-        initialOrders={orderItems}
-        userRole={userRole}
-        totalPages={totalPages}
-        currentPage={currentPage}
-        totalOrders={Number(total)}
-        pageSize={PAGE_SIZE}
-        searchQuery={searchQuery}
-      />
-    </div>
+    <OrdersClient
+      initialOrders={orderItems}
+      userRole={userRole}
+      totalPages={totalPages}
+      currentPage={currentPage}
+      totalOrders={Number(total)}
+      pageSize={PAGE_SIZE}
+      searchQuery={searchQuery}
+    />
   );
 }

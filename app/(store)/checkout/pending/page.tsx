@@ -17,6 +17,7 @@ function PendingContent() {
   const [copied, setCopied] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [snapLoaded, setSnapLoaded] = useState(false);
+  const [snapTimeout, setSnapTimeout] = useState(false);
   const [countdown, setCountdown] = useState<string | null>(null);
   const [orderDetails, setOrderDetails] = useState<{
     totalAmount?: number;
@@ -80,11 +81,13 @@ function PendingContent() {
       const expiry = new Date(orderDetails.paymentExpiresAt!).getTime();
       const remaining = expiry - now;
 
-      if (remaining <= 0) {
-        setCountdown('00:00');
-        router.push(`/checkout/failed?order=${orderNumber}`);
-        return;
-      }
+        if (remaining <= 0) {
+          setCountdown('00:00');
+          if (orderNumber) {
+            router.push(`/checkout/failed?order=${orderNumber}`);
+          }
+          return;
+        }
 
       const minutes = Math.floor(remaining / 60000);
       const seconds = Math.floor((remaining % 60000) / 1000);
@@ -136,6 +139,13 @@ function PendingContent() {
   const handleSnapLoad = () => {
     setSnapLoaded(true);
   };
+
+  // BUG-09: 15s timeout when snap fails to load
+  useEffect(() => {
+    if (snapLoaded) return;
+    const timer = setTimeout(() => setSnapTimeout(true), 15000);
+    return () => clearTimeout(timer);
+  }, [snapLoaded]);
 
   if (!orderNumber) {
     return (
@@ -237,10 +247,9 @@ function PendingContent() {
                 <RefreshCw className="w-4 h-4 animate-spin" />
                 Memproses...
               </>
-            ) : !snapLoaded ? (
+            ) : snapTimeout ? (
               <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                Memuat...
+                Gagal memuat Midtrans
               </>
             ) : (
               <>

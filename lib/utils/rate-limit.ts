@@ -114,7 +114,7 @@ export interface RateLimitOptions {
 }
 
 export interface WithRateLimitOptions extends RateLimitOptions {
-  keyGenerator?: (req: NextRequest) => string;
+  keyGenerator?: (req: NextRequest) => string | Promise<string>;
 }
 
 export function withRateLimit<T = unknown>(
@@ -124,7 +124,7 @@ export function withRateLimit<T = unknown>(
   return async (req: NextRequest, context?: T): Promise<Response> => {
     const { windowMs, maxRequests, keyGenerator } = options;
     const identifier = keyGenerator
-      ? keyGenerator(req)
+      ? await Promise.resolve(keyGenerator(req))
       : req.ip || req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
 
     const window = windowMs <= 60000 ? '1 m' : windowMs <= 3600000 ? '1 h' : '1 d';

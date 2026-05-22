@@ -2,6 +2,7 @@ import { Playfair_Display, Inter } from 'next/font/google';
 import { Navbar } from '@/components/store/layout/Navbar';
 import { Footer } from '@/components/store/layout/Footer';
 import { WhatsAppButton } from '@/components/store/layout/WhatsAppButton';
+import { BottomNav } from '@/components/store/layout/BottomNav';
 import { Providers } from '../(store)/providers';
 import { getSetting } from '@/lib/settings/get-settings';
 import '../globals.css';
@@ -31,6 +32,7 @@ export default async function B2BLayout({ children }: { children: React.ReactNod
           <main className="min-h-screen pb-20 md:pb-0">{children}</main>
           <Footer />
           <WhatsAppButton whatsappNumber={whatsappNumber ?? undefined} />
+          <BottomNav />
         </Providers>
       </body>
     </html>

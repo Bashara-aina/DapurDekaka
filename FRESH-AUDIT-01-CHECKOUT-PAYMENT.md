@@ -210,3 +210,72 @@ The checkout form submit button doesn't disable/show loading state while the ini
 
 **Fix:**  
 Add `disabled={isSubmitting}` and a spinner to the checkout submit button. Set `isSubmitting = true` before the fetch call and `false` in the finally block.
+
+---
+
+## BUG-11 🚨 CRITICAL — Stock is NEVER decremented — unlimited overselling possible
+**File:** `app/api/webhooks/midtrans/route.ts` (settlement branch, ~lines 128–144)  
+**Severity:** P0 — any product can be oversold infinitely; cancellations inflate stock further.
+
+**What's wrong:**  
+The settlement webhook creates an `inventoryLog` of type `'sale'`, but NEVER executes an actual `UPDATE productVariants SET stock = stock - quantity`. The stock column on `productVariants` is never touched after checkout.
+
+Meanwhile, the cancellation paths (webhook cancel handler AND `app/api/cron/cancel-expired-orders/route.ts`) DO run:
+```ts
+.set({ stock: sql`${productVariants.stock} + ${item.quantity}` })
+```
+On stock that was never decremented — so every cancellation permanently inflates stock counts. Over time, stock numbers become meaninglessly large.
+
+**Fix — in `app/api/webhooks/midtrans/route.ts` settlement branch, inside the transaction:**
+```ts
+// After creating inventoryLog entries, add stock decrement:
+for (const item of order.items) {
+  await tx
+    .update(productVariants)
+    .set({ stock: sql`${productVariants.stock} - ${item.quantity}` })
+    .where(eq(productVariants.id, item.variantId));
+}
+```
+
+**Fix — in cancellation paths (webhook cancel + cron cancel):**  
+Keep the `stock + quantity` restoration, but ONLY run it if there's a corresponding `inventoryLog` of type `'sale'` for that order. Without the guard, cancelled-before-payment orders will inflate stock.
+```ts
+// Check if stock was ever decremented for this order:
+const salesLogs = await tx.query.inventoryLogs.findMany({
+  where: and(eq(inventoryLogs.orderId, order.id), eq(inventoryLogs.type, 'sale')),
+});
+if (salesLogs.length > 0) {
+  // Only then restore stock
+  for (const item of order.items) { ... }
+}
+```
+
+---
+
+## BUG-12 🚨 CRITICAL — Net-30 B2B checkout crashes: `order` referenced before assignment
+**File:** `app/api/checkout/initiate/route.ts` ~line 606  
+**Severity:** P0 — every Net-30 B2B order crashes at checkout initiation.
+
+**What's wrong:**  
+Inside the `db.transaction()` callback, the inserted order is returned as `created` (from the `.returning()` call). The variable `order` is only assigned AFTER the transaction block ends (~line 666). Inside the transaction, when building the `pointsHistory` record for Net-30 orders, the code references `order.pointsEarned`:
+
+```ts
+// INSIDE the transaction (WRONG - order is undefined here):
+pointsEarned: order.pointsEarned,
+
+// order is only assigned AFTER the transaction:
+const order = created; // line ~666
+```
+
+This throws `TypeError: Cannot read properties of undefined (reading 'pointsEarned')`, causing every Net-30 B2B checkout to fail with a 500 error.
+
+**Fix:**  
+```ts
+// CHANGE (inside transaction body):
+pointsEarned: order.pointsEarned,
+
+// TO:
+pointsEarned: created.pointsEarned,
+```
+
+Grep in `app/api/checkout/initiate/route.ts` for all occurrences of `order.` inside the transaction callback and confirm they all reference the correct in-scope variable.

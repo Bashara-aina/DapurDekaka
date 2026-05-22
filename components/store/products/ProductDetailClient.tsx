@@ -162,19 +162,13 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
         )}
         
         {/* Back Button */}
-        <button
-          onClick={() => {
-            if (window.history.length > 1) {
-              router.back();
-            } else {
-              router.push('/products');
-            }
-          }}
-          className="absolute top-4 left-4 w-11 h-11 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm"
-          aria-label="Kembali"
+        <a
+          href="/products"
+          className="absolute top-4 left-4 flex items-center gap-1 px-3 py-1.5 bg-white/80 backdrop-blur-sm rounded-full shadow-sm text-sm text-text-primary hover:text-brand-red transition-colors"
         >
-          <ArrowLeft className="w-5 h-5 text-text-primary" />
-        </button>
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Kembali ke Produk
+        </a>
 
         {/* Badges */}
         <div className="absolute top-4 right-4 flex flex-col gap-2">

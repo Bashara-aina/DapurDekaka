@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { Gift, AlertTriangle, TrendingUp, ChevronDown } from 'lucide-react';
 import { PointsHistoryCard } from '@/components/store/account/PointsHistoryCard';
 import type { PointsHistory } from '@/lib/db/schema';
+import { useQuery } from '@tanstack/react-query';
+import { POINTS_VALUE_IDR } from '@/lib/constants/points';
 
 interface PointsData {
   balance: number;
@@ -12,43 +14,40 @@ interface PointsData {
   expiringCount: number;
   expiringPoints: number;
   total: number;
+  earliestExpiryDate: string | null;
+  page: number;
+  hasMore: boolean;
 }
 
 export default function AccountPointsPage() {
-  const [data, setData] = useState<PointsData | null>(null);
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
+  const [allHistory, setAllHistory] = useState<PointsHistory[]>([]);
 
-  useEffect(() => {
-    fetchPoints(page);
-  }, [page]);
-
-  const fetchPoints = async (pageNum: number) => {
-    try {
-      const res = await fetch(`/api/account/points?page=${pageNum}&limit=20`);
+  const { data, isInitialLoading } = useQuery({
+    queryKey: ['account-points', page],
+    queryFn: async () => {
+      const res = await fetch(`/api/account/points?page=${page}&limit=20`);
       const response = await res.json();
-      if (response.success) {
-        setData(prev => pageNum === 1
-          ? response.data
-          : {
-            ...response.data,
-            history: [...(prev?.history || []), ...response.data.history]
-          }
-        );
-        setHasMore(response.data.history.length === 20);
-      }
-    } catch (error) {
-      console.error('Failed to fetch points:', error);
-    } finally {
-      if (pageNum === 1) {
-        setIsInitialLoading(false);
-      } else {
-        setIsLoadingMore(false);
-      }
+      if (!response.success) throw new Error(response.error);
+      return response.data as PointsData;
+    },
+  });
+
+  // Update accumulated history when new page data arrives
+  useEffect(() => {
+    if (!data?.history) return;
+    if (page === 1) {
+      setAllHistory(data.history);
+    } else {
+      setAllHistory(prev => {
+        const existingIds = new Set(prev.map(h => h.id));
+        const newItems = data.history.filter(h => !existingIds.has(h.id));
+        return [...prev, ...newItems];
+      });
     }
-  };
+  }, [data, page]);
+
+  const hasMore = data?.hasMore ?? false;
 
   const formatIDR = (points: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -83,7 +82,7 @@ export default function AccountPointsPage() {
             <p className="text-sm opacity-80">Saldo Poin</p>
             <p className="text-4xl font-bold mt-1">{data?.balance || 0}</p>
             <p className="text-sm opacity-70 mt-1">
-              ~{formatIDR((data?.balance || 0) * 10)} bisa ditukarkan
+              ~{formatIDR((data?.balance || 0) * POINTS_VALUE_IDR)} bisa ditukarkan
             </p>
           </div>
           <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
@@ -180,7 +179,7 @@ export default function AccountPointsPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {data?.history.map(transaction => (
+            {(page === 1 ? data?.history : allHistory)?.map(transaction => (
               <PointsHistoryCard
                 key={transaction.id}
                 transaction={transaction}
@@ -188,14 +187,10 @@ export default function AccountPointsPage() {
             ))}
             {hasMore && (
               <button
-                onClick={() => {
-                  setIsLoadingMore(true);
-                  setPage(p => p + 1);
-                }}
-                disabled={isLoadingMore}
+                onClick={() => setPage(p => p + 1)}
                 className="flex items-center justify-center gap-2 w-full h-11 border border-brand-cream-dark rounded-lg text-sm font-medium text-text-secondary hover:bg-brand-cream transition-colors disabled:opacity-50"
               >
-                {isLoadingMore ? 'Memuat...' : 'Tampilkan Lebih Banyak'}
+                Tampilkan Lebih Banyak
                 <ChevronDown className="w-4 h-4" />
               </button>
             )}

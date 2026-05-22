@@ -26,7 +26,11 @@ export default function ForgotPasswordPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || 'Gagal mengirim email reset');
+        if (res.status === 429) {
+          setError('Terlalu banyak percobaan. Coba lagi dalam beberapa menit.');
+        } else {
+          setError(data.error || 'Gagal mengirim email reset');
+        }
         return;
       }
 

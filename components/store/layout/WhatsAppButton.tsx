@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { MessageCircle, Info } from 'lucide-react';
+import { MessageCircle, Info, X } from 'lucide-react';
 
 export interface WhatsAppButtonProps {
   whatsappNumber?: string;
@@ -26,7 +26,7 @@ export function WhatsAppButton({ whatsappNumber, className }: WhatsAppButtonProp
             className="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-md"
             aria-label="Tutup"
           >
-            ×
+            <X className="w-3 h-3 text-text-primary" />
           </button>
           <div className="flex items-start gap-2">
             <Info className="w-4 h-4 text-brand-red mt-0.5 flex-shrink-0" />
@@ -40,7 +40,7 @@ export function WhatsAppButton({ whatsappNumber, className }: WhatsAppButtonProp
         href={whatsappUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="w-14 h-14 bg-[#25D366] rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform animate-pulse-soft"
+        className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform animate-pulse-soft"
         aria-label="Chat WhatsApp untuk pertanyaan tentang pesanan atau produk"
         onClick={() => setShowTooltip(true)}
         onMouseEnter={() => setShowTooltip(true)}

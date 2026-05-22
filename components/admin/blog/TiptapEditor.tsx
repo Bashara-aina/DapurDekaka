@@ -4,12 +4,27 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
-import { useEffect } from 'react';
-import { Toggle } from '@/components/ui/toggle';
+import { useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
 
 interface TiptapEditorProps {
   content: string;
   onChange: (html: string) => void;
+}
+
+async function uploadImageToCloudinary(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('folder', 'blog');
+
+  const res = await fetch('/api/admin/upload', {
+    method: 'POST',
+    body: formData,
+  });
+
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error || 'Upload gagal');
+  return json.data.url as string;
 }
 
 export default function TiptapEditor({ content, onChange }: TiptapEditorProps) {
@@ -32,6 +47,43 @@ export default function TiptapEditor({ content, onChange }: TiptapEditorProps) {
     editorProps: {
       attributes: {
         class: 'prose prose-sm max-w-none focus:outline-none min-h-[300px] px-4 py-3',
+      },
+      handlePaste: (view, event) => {
+        const items = Array.from(event.clipboardData?.items ?? []);
+        const imageItem = items.find(item => item.type.startsWith('image/'));
+        if (!imageItem) return false;
+
+        event.preventDefault();
+        const file = imageItem.getAsFile();
+        if (!file) return false;
+
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            const url = await uploadImageToCloudinary(file);
+            editor?.chain().focus().setImage({ src: url }).run();
+          } catch {
+            toast.error('Gagal upload gambar');
+          }
+        };
+        reader.readAsDataURL(file);
+        return true;
+      },
+      handleDrop: (view, event) => {
+        const files = Array.from(event.dataTransfer?.files ?? []);
+        const imageFile = files.find(f => f.type.startsWith('image/'));
+        if (!imageFile) return false;
+
+        event.preventDefault();
+        (async () => {
+          try {
+            const url = await uploadImageToCloudinary(imageFile);
+            editor?.chain().focus().setImage({ src: url }).run();
+          } catch {
+            toast.error('Gagal upload gambar');
+          }
+        })();
+        return true;
       },
     },
   });

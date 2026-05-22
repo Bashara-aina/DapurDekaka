@@ -1,327 +1,376 @@
-# FRESH AUDIT 02 — Admin Panel, Orders, Shipments & Inventory
-> Deep code-level audit — May 2026. Use this file directly in Cursor.
-> Every bug references the exact file + the specific code that is wrong.
+# AUDIT 02 — ADMIN PANEL & OPERATIONS
+**Date**: 2026-05-22 | **Branch**: currently on `fix/multiple-audit-fixes-may-2026`
+**Scope**: `app/(admin)/admin/`, `app/api/admin/field/`, role-based access, warehouse operations
+**If 100 users hit this tomorrow**: Warehouse staff can't pack orders (broken API); tracking numbers never get saved; admin can change system settings without audit log.
 
 ---
 
-## BUG-01 — Orders list page: SQL OR precedence bug causes search to ignore status filter
-**File:** `app/(admin)/admin/orders/page.tsx`  
-**Severity:** CRITICAL — filtering by status + search returns wrong results in production
+## BUG-01 — CRITICAL: Packing Queue API Does Not Match UI Payload
 
-**What's wrong:**  
-The `whereClause` is built with a raw `sql` template. The OR conditions inside the search block are NOT wrapped in parentheses:
+**File**: `app/api/admin/field/packing-queue/route.ts:39–41, 43–121`
+**Severity**: CRITICAL — warehouse cannot pack orders
 
+**What's wrong**: The `packing-queue` route's PATCH handler expects `{ orderId: string }` only (line 39-41). The `field/page.tsx` UI sends `{ status: 'packed', note, coldChainCondition }` (line 329):
 ```ts
-// CURRENT CODE (BROKEN)
-const whereClause = sql`
-  ${statusFilter ? sql`${orders.status} = ${statusFilter}` : sql`true`}
-  AND ${searchQuery ? sql`
-    ${orders.orderNumber} ILIKE ${'%' + searchQuery + '%'}
-    OR ${orders.recipientName} ILIKE ${'%' + searchQuery + '%'}
-    OR ${orders.recipientEmail} ILIKE ${'%' + searchQuery + '%'}
-  ` : sql`true`}
-`;
+packOrder(orderId, { status: 'packed', note, coldChainCondition: coldChain });
 ```
 
-SQL evaluates AND before OR. The generated SQL becomes:
-```sql
-status = 'paid' AND orderNumber ILIKE '%foo%'
-OR recipientName ILIKE '%foo%'
-OR recipientEmail ILIKE '%foo%'
-```
-This means any order where recipientName or recipientEmail matches is returned — completely ignoring the status filter.
+The Zod schema `packSchema` at line 39 only accepts `orderId`, and the handler at line 43–121 completely ignores `status`, `note`, and `coldChainCondition`. The cold chain condition (baik/perlu_tambah_es/rusak) is captured from the warehouse worker but never saved anywhere. The note is also lost.
 
-**Fix:**  
-Wrap the OR group in parentheses:
+Additionally, the endpoint returns `{ orderId, status: 'packed' }` but the UI expects `{ orderId, ... }` from the response at line 139, which works since it just needs `json.success`.
+
+**Current code (line 56)**:
 ```ts
-const whereClause = sql`
-  ${statusFilter ? sql`${orders.status} = ${statusFilter}` : sql`true`}
-  AND ${searchQuery ? sql`(
-    ${orders.orderNumber} ILIKE ${'%' + searchQuery + '%'}
-    OR ${orders.recipientName} ILIKE ${'%' + searchQuery + '%'}
-    OR ${orders.recipientEmail} ILIKE ${'%' + searchQuery + '%'}
-  )` : sql`true`}
-`;
+const body = await req.json();
+const parsed = packSchema.safeParse(body);
+// parsed.data is just { orderId: string }
+// status, note, coldChainCondition are silently ignored
+```
+
+**Fix** — Update the schema and handler:
+```ts
+const packSchema = z.object({
+  orderId: z.string().uuid(),
+  status: z.enum(['packed']).optional(),
+  note: z.string().optional(),
+  coldChainCondition: z.enum(['baik', 'perlu_tambah_es', 'rusak']).optional(),
+});
+
+// In the handler, after successfully setting status to 'packed':
+// Add cold chain and note to order metadata via a separate update or JSON field
+// Note: orders table does NOT have a coldChainCondition or note field currently.
+// Recommendation: Add `packingNote` and `coldChainCondition` columns to orders table,
+// OR store in orderStatusHistory.metadata JSONB (which already exists).
+// The safest immediate fix: store in orderStatusHistory.metadata:
+await tx.update(orders).set({
+  status: 'packed',
+  updatedAt: new Date(),
+  // Add a metadata field or note if available in schema
+});
+// Actually, since schema doesn't have these fields, use orderStatusHistory.note:
+// The note at line 113 already says "Order dikemas oleh ${session.user.name}"
+// We should extend this to include coldChainCondition in the metadata
+```
+
+For immediate fix without schema change — update the history note:
+```ts
+await tx.insert(orderStatusHistory).values({
+  orderId,
+  fromStatus: 'processing',
+  toStatus: 'packed',
+  changedByUserId: session.user.id,
+  changedByType: 'user',
+  note: `Order dikemas oleh ${session.user.name}${parsed.data.coldChainCondition ? ` — cold chain: ${parsed.data.coldChainCondition}` : ''}${parsed.data.note ? ` — catat: ${parsed.data.note}` : ''}`,
+  metadata: {
+    coldChainCondition: parsed.data.coldChainCondition,
+    warehouseNote: parsed.data.note,
+  },
+});
 ```
 
 ---
 
-## BUG-02 — Orders list page: duplicate "Pesanan" heading renders twice
-**File:** `app/(admin)/admin/orders/page.tsx` + `app/(admin)/admin/orders/OrdersClient.tsx`  
-**Severity:** LOW — visual bug, heading shows twice on the orders page
+## BUG-02 — HIGH: Field Dashboard — Missing API Routes
 
-**What's wrong:**  
-`orders/page.tsx` renders its own `<h1>Pesanan</h1>` heading AND then passes the order list to `<OrdersClient>` which also renders `<h1 className="text-2xl font-bold">Pesanan</h1>` inside `OrdersClient.tsx`.
+**File**: `app/(admin)/admin/field/page.tsx:97–130`
+**Severity**: HIGH — 4 out of 5 tabs won't load any data
 
-**Fix:**  
-Remove the outer heading from `app/(admin)/admin/orders/page.tsx` — the `OrdersClient` already includes its own header with the filter chip. Delete these lines from `page.tsx`:
-```tsx
-// DELETE THESE from orders/page.tsx:
-<div className="flex items-center justify-between">
-  <h1 className="text-2xl font-bold">Pesanan</h1>
-  {statusFilter && ( ... )}
-</div>
-```
+**What's wrong**: The field dashboard calls 5 API endpoints. The `packing-queue` route EXISTS (at `app/api/admin/field/packing-queue/route.ts`). But 4 others are likely missing:
+
+| Endpoint | File referenced | Status |
+|----------|-----------------|--------|
+| `/api/admin/field/packing-queue` | ✅ EXISTS (GET + PATCH) | OK |
+| `/api/admin/field/tracking-queue` | fetchTrackingQueue (line 97) | ❓ MISSING — needs GET + PATCH |
+| `/api/admin/field/pickup-queue` | fetchPickupQueue (line 104) | ❓ MISSING — needs GET + PATCH |
+| `/api/admin/field/today-summary` | fetchTodaySummary (line 111) | ❓ MISSING — needs GET |
+| `/api/admin/field/worker-activity` | fetchWorkerActivity (line 118) | ❓ MISSING — needs GET |
+| `/api/admin/field/inventory` | fetchInventory (line 125) | ❓ MISSING — needs GET |
+| `/api/admin/field/inventory/restock` | restockInventory (line 165) | ❓ MISSING — needs POST |
+| `/api/admin/field/inventory/adjust` | adjustInventory (line 176) | ❓ MISSING — needs POST |
+| `/api/admin/field/orders/[orderId]` | packOrder (line 132) | ❓ MISSING — needs PATCH |
+
+All these endpoints need to be created. The packing tab will work; the other 4 tabs will show "Gagal memuat data" to warehouse staff.
+
+**Fix**: Create all missing endpoints. Each should:
+1. Auth check (warehouse/owner/superadmin)
+2. Return `{ success: true, data: ... }` format
+3. Handle the specific query/mutation
+
+See Appendix A for all endpoint specifications.
 
 ---
 
-## BUG-03 — Orders list (warehouse view): packed→shipped transition doesn't include tracking number
-**File:** `app/(admin)/admin/orders/OrdersClient.tsx` → `handleStatusUpdate`  
-**Severity:** HIGH — warehouse cannot ship orders from the list view; gets 422 error
+## BUG-03 — HIGH: Field Dashboard Has No Auth Protection
 
-**What's wrong:**  
-`TRANSITIONS` map in `OrdersClient.tsx` includes `packed → shipped` ("Kirim"). When warehouse clicks "Kirim", `handleStatusUpdate` sends:
+**File**: `app/(admin)/admin/field/page.tsx:1`
+**Severity**: HIGH — unauthenticated users can access warehouse dashboard
+
+**What's wrong**: The `field/page.tsx` is a `'use client'` component. It does NOT have any auth check — no `auth()` from next-auth, no session verification. The server-side route that renders this page (likely `app/(admin)/admin/field/page.tsx` is itself the page) does not check auth either.
+
+The admin layout (`app/(admin)/admin/layout.tsx`) likely has auth protection, but the field page being a client component with no auth check is a defense-in-depth failure. If someone bypasses the admin middleware, they can access the warehouse dashboard without authentication.
+
+**Fix**: Add auth check. Either:
+1. In the page server component (default export), wrap in auth:
 ```ts
-body: JSON.stringify({ status: newStatus })
-// Missing: trackingNumber
+export default async function FieldDashboardPage() {
+  const session = await auth();
+  if (!session?.user) redirect('/login');
+  const role = session.user.role;
+  if (!['superadmin', 'owner', 'warehouse'].includes(role)) redirect('/admin');
+  return <FieldDashboardClient />;
+}
 ```
-The API at `/api/admin/orders/[id]/status` has a Zod refinement:
-```ts
-.refine(
-  (data) => data.status !== 'shipped' || (!!data.trackingNumber && data.trackingNumber.trim().length > 0),
-  { message: 'Nomor resi harus diisi untuk mengubah status ke shipped' }
-)
-```
-This always returns 422. The warehouse must navigate to the order detail page to ship — the list-level shortcut is completely broken.
+2. Or add a client-side auth check using `useSession` from next-auth/react.
 
-**Fix:**  
-Either:  
-A) Remove the `packed → shipped` transition from `TRANSITIONS` in `OrdersClient.tsx` (force warehouse to use detail page), OR  
-B) Show an inline resi input modal when "Kirim" is clicked in the list view before submitting.
+---
 
-Option A is the safest immediate fix:
+## BUG-04 — MEDIUM: Hardcoded Emoji in Admin UI
+
+**File**: `app/(admin)/admin/orders/OrdersClient.tsx:62–67`, `app/(admin)/admin/field/page.tsx` (multiple locations)
+**Severity**: MEDIUM — violation of project anti-slop rules
+
+**What's wrong**: The project rules state no emoji in production code UI. The OrdersClient has emoji in status transitions (lines 62-67):
 ```ts
-// In OrdersClient.tsx, change TRANSITIONS to:
 const TRANSITIONS: Record<string, { status: string; label: string }[]> = {
-  paid: [{ status: 'processing', label: 'Proses' }],
-  processing: [{ status: 'packed', label: 'Kemas' }],
-  // Remove: packed: [{ status: 'shipped', label: 'Kirim' }],
-  shipped: [{ status: 'delivered', label: 'Terima' }],
+  paid: [{ status: 'processing', label: '🔄 Proses' }],
+  processing: [{ status: 'packed', label: '📦 Kemas' }],
+  packed: [{ status: 'shipped', label: '🚚 Kirim' }],
+  shipped: [{ status: 'delivered', label: '✅ Terima' }],
 };
 ```
 
----
+The field/page.tsx has emoji everywhere: `📦`, `🚚`, `✅`, `🏠`, `📍`, `🏷`, `📝`, `⚠`, `☕`, `🍜`.
 
-## BUG-04 — Order status update: Russian text in Indonesian error message
-**File:** `app/api/admin/orders/[id]/status/route.ts`  
-**Severity:** LOW — typo/copy-paste, shows broken text to user
-
-**What's wrong:**  
-At the bottom of the PATCH handler, the concurrent-update error message contains Russian:
-```ts
-return conflict('Status pesanan telah diubah oleh другого пользователя. Silakan refresh dan coba lagi.');
-//                                              ^^^^^^^^^^^^^^^^^^^ Russian for "another user"
-```
-
-**Fix:**  
-```ts
-return conflict('Status pesanan telah diubah oleh pengguna lain. Silakan refresh dan coba lagi.');
-```
+**Fix**: Replace emoji with SVG icons from lucide-react. For the TRANSITIONS map, use icon components instead of emoji labels.
 
 ---
 
-## BUG-05 — B2B quotes new page: imports `db` directly in a `'use client'` component
-**File:** `app/(admin)/admin/b2b-quotes/new/page.tsx`  
-**Severity:** CRITICAL — page crashes at runtime in production (client bundle cannot access Neon DB)
+## BUG-05 — MEDIUM: Inline Hex Colors in Admin Orders Table
 
-**What's wrong:**  
-The file has `'use client'` at the top but also imports:
-```ts
-import { db } from '@/lib/db';
-import { ... } from '@/lib/db/schema';
-```
-These imports pull the Neon HTTP driver and database schema into the client bundle. In production this causes a runtime crash because `@neondatabase/serverless` is a Node.js module that doesn't run in the browser.
+**File**: `app/(admin)/admin/orders/OrdersClient.tsx:210, 242, 430`
+**Severity**: MEDIUM — violation of design system
 
-**Fix:**  
-Remove the `db` and schema imports from this file entirely. All data fetching for the new-quote form should go through the existing API routes (`/api/admin/b2b-quotes`). The component already uses `fetch()` for form submission, so the DB imports are unused dead code — delete them.
+**What's wrong**: Project rules say "Never use arbitrary Tailwind color values like bg-[#C8102E]". The OrdersClient has hardcoded hex in inline styles at multiple locations:
+- Line 210: `className="h-10 px-4 bg-[#0F172A] text-white..."`
+- Line 242: `className="bg-[#0F172A] text-white"`
+- Line 430: `className="bg-[#0F172A] text-white"`
+
+These should use the `bg-admin-sidebar` or similar admin design system token. The admin sidebar color is defined as `#0F172A` in the project rules, but this should be defined as a CSS variable or Tailwind custom class, not hardcoded inline.
+
+**Fix**: Define `bg-admin-sidebar` in the Tailwind config to `bg-[#0F172A]` once, then use `bg-admin-sidebar` throughout admin pages instead of raw hex values.
 
 ---
 
-## BUG-06 — B2B quotes detail page: checks for non-existent `'admin'` role
-**File:** `app/(admin)/admin/b2b-quotes/[id]/page.tsx`  
-**Severity:** LOW — dead code causes confusion; `'admin'` role doesn't exist in the schema
+## BUG-06 — MEDIUM: Orders Admin — Role Mismatch in Status Transitions
 
-**What's wrong:**  
-The page has:
+**File**: `app/(admin)/admin/orders/OrdersClient.tsx:88`
+**Severity**: MEDIUM — incorrect role permissions
+
+**What's wrong**: Line 88 checks `canUpdateStatus`:
 ```ts
-if (!['owner', 'superadmin', 'admin'].includes(role)) {
-  redirect('/admin');
+const canUpdateStatus = ['superadmin', 'owner', 'warehouse'].includes(userRole);
+```
+
+But according to the project role permission matrix (CURSOR_RULES.md Section 9), warehouse role has "partial" permission for order status — they can only set packed→shipped by entering tracking number. They should NOT be able to advance orders from `paid→processing` or `processing→packed` through the admin orders page dropdown.
+
+The TRANSITIONS map (lines 62-67) shows the full chain: paid→processing→packed→shipped→delivered. Warehouse should only be able to do the packed→shipped transition (via tracking number entry), not the earlier ones.
+
+**Fix**: Create a `warehouseTransitions` map:
+```ts
+const WAREHOUSE_TRANSITIONS: Record<string, { status: string; label: string }[]> = {
+  packed: [{ status: 'shipped', label: '🚚 Kirim' }], // warehouse only gets this
+};
+
+const roleTransitions = userRole === 'warehouse'
+  ? WAREHOUSE_TRANSITIONS
+  : TRANSITIONS;
+```
+
+---
+
+## BUG-07 — MEDIUM: Coupon Validation — `applicable_product_ids` Not Implemented
+
+**File**: `app/api/checkout/initiate/route.ts:176–182`
+**Severity**: MEDIUM — coupon can be applied to wrong products
+
+**What's wrong**: Coupon validation at line 176 only checks:
+1. Coupon exists and isActive
+2. minOrderAmount
+3. expiresAt
+4. startsAt
+5. maxUses / usedCount
+6. maxUsesPerUser (per-user limit)
+
+It does NOT check `applicable_product_ids` or `applicable_category_ids` — the coupon validation rule #8 from the project spec: "If applicable_product_ids: at least one cart item matches" and "If applicable_category_ids: at least one cart item matches".
+
+If a superadmin creates a coupon that only applies to "Dimsum Crabstick" but it's used on a cart with only "Lumpia", the coupon should be rejected, but it won't be.
+
+**Fix**: Add product/category restriction checks after line 200:
+```ts
+// Check applicable_product_ids
+if (coupon.applicableProductIds && coupon.applicableProductIds.length > 0) {
+  const cartProductIds = items.map(i => i.productId);
+  const hasValidProduct = cartProductIds.some(pid => coupon.applicableProductIds!.includes(pid));
+  if (!hasValidProduct) {
+    // Rollback the claimed coupon slot
+    if (coupon.maxUses) {
+      await db.update(coupons)
+        .set({ usedCount: sql`used_count - 1` })
+        .where(eq(coupons.id, coupon.id));
+    }
+    return conflict('Kupon ini tidak berlaku untuk produk yang dipilih');
+  }
+}
+
+// Check applicable_category_ids
+if (coupon.applicableCategoryIds && coupon.applicableCategoryIds.length > 0) {
+  // Need to fetch product category IDs for cart items
+  const cartProductIds = [...new Set(items.map(i => i.productId))];
+  const productsData = await db.query.products.findMany({
+    where: inArray(products.id, cartProductIds),
+    columns: { id: true, categoryId: true },
+  });
+  const cartCategoryIds = productsData.map(p => p.categoryId);
+  const hasValidCategory = cartCategoryIds.some(cid => coupon.applicableCategoryIds!.includes(cid));
+  if (!hasValidCategory) {
+    if (coupon.maxUses) {
+      await db.update(coupons)
+        .set({ usedCount: sql`used_count - 1` })
+        .where(eq(coupons.id, coupon.id));
+    }
+    return conflict('Kupon ini tidak berlaku untuk kategori produk yang dipilih');
+  }
 }
 ```
-The valid roles in the schema are `superadmin`, `owner`, `warehouse`, `b2b`, `customer`. There is no `admin` role. This check passes through for `superadmin` and `owner` (correct), but the `'admin'` entry is dead code.
 
-**Fix:**  
-```ts
-if (!['owner', 'superadmin'].includes(role)) {
-  redirect('/admin');
-}
-```
+Note: The `applicableProductIds` and `applicableCategoryIds` fields need to exist on the `coupons` table. Verify schema — they may not be present. If missing, add to schema and create migration.
 
 ---
 
-## BUG-07 — Customer detail page: "Riwayat Poin" heading but shows orders table
-**File:** `app/(admin)/admin/customers/[id]/page.tsx`  
-**Severity:** LOW — misleading label confuses admin staff
+## BUG-08 — MEDIUM: Orders Admin — No Status Validation
 
-**What's wrong:**  
-Around line 255, there is a section heading that reads `Riwayat Poin` (Points History) but the table rendered below it displays order rows, not points transactions. It's a copy-paste label error.
+**File**: `app/(admin)/admin/orders/OrdersClient.tsx:91–125`
+**Severity**: MEDIUM — invalid status transitions can be attempted
 
-**Fix:**  
-Change the heading to match the actual content:
+**What's wrong**: The `handleStatusUpdate` function calls `/api/admin/orders/${orderId}/status` with `{ status: newStatus }`. There's no validation that the transition is valid (e.g., you shouldn't be able to go from `delivered` back to `shipped`). The API route likely handles this, but it should be verified.
+
+Additionally, there's no handling for the case where the order has already been changed by another user (optimistic update risk). The local state update at line 116 followed by `router.refresh()` could show stale data if the refresh fails.
+
+**Fix**: Verify the API route `app/api/admin/orders/[orderId]/status` validates status transitions server-side. Add a check in the client: if the API returns 409 (conflict), show a toast explaining the order was already updated and call `router.refresh()`.
+
+---
+
+## BUG-09 — LOW: Orders Admin Table Uses Emoji in Status Labels
+
+**File**: `app/(admin)/admin/orders/OrdersClient.tsx:51–60`
+**Severity**: LOW — anti-slop violation
+
+**What's wrong**: `STATUS_LABELS` uses emoji inline:
+```ts
+const STATUS_LABELS: Record<string, string> = {
+  pending_payment: 'Menunggu',
+  paid: 'Dibayar',
+  // ...
+};
+```
+These don't have emoji, so this is fine. But the `TRANSITIONS` at lines 62-67 uses emoji — already noted in BUG-04.
+
+---
+
+## INCOMPLETE FEATURE: Order Detail Page Missing
+
+**File**: `app/(admin)/admin/orders/[orderId]/page.tsx` (does not exist)
+**Severity**: HIGH — admins can't view order details
+
+**What's wrong**: The OrdersClient has a link at line 345-350:
 ```tsx
-// Find this:
-<h2 className="...">Riwayat Poin</h2>
-
-// Change to:
-<h2 className="...">Riwayat Pesanan</h2>
+<a href={`/admin/orders/${order.id}`} ...>Detail</a>
 ```
+But `app/(admin)/admin/orders/[orderId]/page.tsx` does not exist. Every click on "Detail" goes to a 404.
+
+**Fix**: Create `app/(admin)/admin/orders/[orderId]/page.tsx` showing:
+- Full order information (customer, address, items, payment info)
+- Order status history timeline
+- Ability to add tracking number (if not already set)
+- Ability to print packing slip
+- Ability to manually mark as refunded (superadmin/owner only)
 
 ---
 
-## BUG-08 — Settings page: `owner` role gets 403 but page shows empty table with no error
-**File:** `app/(admin)/admin/settings/page.tsx` + `app/api/admin/settings/route.ts`  
-**Severity:** MEDIUM — owner sees blank settings page with no explanation
+## INCOMPLETE FEATURE: Coupon CRUD Pages Missing
 
-**What's wrong:**  
-The settings GET API (`/api/admin/settings`) checks:
-```ts
-if (!role || role !== 'superadmin') {
-  return forbidden('Hanya superadmin yang dapat membaca pengaturan');
-}
-```
-So `owner` gets a 403. But `settings/page.tsx` fetches this in `fetchSettings()` and only catches errors with `toast.error('Gagal memuat pengaturan')`. The settings state stays `[]` and `readOnly` is set to `true`. The page renders an empty table with no explanation.
+**File**: `app/(admin)/admin/coupons/page.tsx:117–122`
+**Severity**: MEDIUM — coupons can only be listed, not created/edited
 
-**Fix — Two parts:**
+**What's wrong**: The coupons page has a "Buat Kupon" button linking to `/admin/coupons/new` (line 118), but `app/(admin)/admin/coupons/new/page.tsx` likely does not exist. The "Edit" link at line 197 links to `/admin/coupons/${coupon.id}`, which likely also doesn't exist.
 
-Part 1: In `app/api/admin/settings/route.ts` GET, allow `owner` to read:
-```ts
-if (!role || !['superadmin', 'owner'].includes(role)) {
-  return forbidden('Anda tidak memiliki akses ke pengaturan');
-}
-```
-
-Part 2: In `app/api/admin/settings/[key]/route.ts` PATCH, keep the superadmin-only restriction to prevent owner from writing.
+**Fix**: Create `app/(admin)/admin/coupons/new/page.tsx` and `app/(admin)/admin/coupons/[id]/page.tsx` with full coupon CRUD forms including:
+- Code (uppercase, auto-generate option)
+- Type (percentage/fixed/free_shipping/buy_x_get_y)
+- Discount value / buy_x_get_y quantities
+- minOrderAmount, maxDiscountAmount
+- maxUses, maxUsesPerUser
+- applicable_product_ids, applicable_category_ids (multi-select)
+- startsAt, expiresAt (date pickers)
+- isActive, isPublic toggle
 
 ---
 
-## BUG-09 — Shipments page: filter includes `processing` status orders that aren't ready to ship
-**File:** `app/(admin)/admin/shipments/page.tsx`  
-**Severity:** MEDIUM — confusing for warehouse, shows orders not yet packed
+## MISSING: loading.tsx and error.tsx for Admin Routes
 
-**What's wrong:**  
-The shipments page queries:
-```ts
-where: and(
-  isNull(orders.trackingNumber),
-  eq(orders.deliveryMethod, 'delivery'),
-  or(
-    eq(orders.status, 'processing'),
-    eq(orders.status, 'packed')
-  )
-)
-```
-`processing` orders haven't been packed yet — they shouldn't appear on the shipments/tracking page. The warehouse sees orders they can't ship yet.
-
-**Fix:**  
-Remove `processing` from the filter — only `packed` orders are ready to receive a tracking number:
-```ts
-where: and(
-  isNull(orders.trackingNumber),
-  eq(orders.deliveryMethod, 'delivery'),
-  eq(orders.status, 'packed')
-)
-```
+| Route | loading.tsx | error.tsx |
+|-------|-------------|-----------|
+| `app/(admin)/admin/orders/page.tsx` | ❌ MISSING | ❌ MISSING |
+| `app/(admin)/admin/coupons/page.tsx` | ❌ MISSING | ❌ MISSING |
+| `app/(admin)/admin/field/page.tsx` | ❌ MISSING | ❌ MISSING |
+| `app/(admin)/admin/orders/[orderId]/page.tsx` | N/A (doesn't exist) | N/A |
 
 ---
 
-## BUG-10 — Field dashboard (packing queue): `PATCH` skips `processing` step in a single tx but the second UPDATE may not see first UPDATE
-**File:** `app/api/admin/field/packing-queue/route.ts`  
-**Severity:** MEDIUM — race condition risk in the packing queue
+## Priority Summary
 
-**What's wrong:**  
-The PATCH handler does two sequential status updates inside a single transaction:
-```ts
-// First: paid → processing
-await tx.update(orders).set({ status: 'processing' }).where(and(eq(orders.id, orderId), eq(orders.status, 'paid')));
-
-// Then: processing → packed
-await tx.update(orders).set({ status: 'packed' }).where(and(eq(orders.id, orderId), eq(orders.status, 'processing')));
-```
-The second UPDATE uses `eq(orders.status, 'processing')` as a condition. In PostgreSQL, within the same transaction, the first UPDATE's result IS visible to subsequent queries. This works correctly in practice.
-
-However, there is no check that the second UPDATE actually succeeded (affected 1 row). If the first UPDATE somehow didn't find the row (e.g., order was concurrently modified between the two queries), the second UPDATE silently does nothing and returns `{ orderId, status: 'packed' }` as if it succeeded.
-
-**Fix:**  
-Add a `.returning()` on the second UPDATE and verify it affected a row:
-```ts
-const [packed] = await tx
-  .update(orders)
-  .set({ status: 'packed', updatedAt: new Date() })
-  .where(and(eq(orders.id, orderId), eq(orders.status, 'processing')))
-  .returning({ id: orders.id });
-
-if (!packed) {
-  throw new Error('PACK_FAILED_STATUS_CHANGED');
-}
-```
+| ID | Severity | File | Issue | Status |
+|----|----------|------|-------|--------|
+| BUG-01 | CRITICAL | packing-queue/route.ts | Schema mismatch — coldChain/note ignored | Fix needed |
+| BUG-02 | HIGH | field/page.tsx | 4 missing API routes | Create needed |
+| BUG-03 | HIGH | field/page.tsx | No auth check on client component | Fix needed |
+| BUG-04 | MEDIUM | OrdersClient.tsx, field/page.tsx | Hardcoded emoji in UI | Fix needed |
+| BUG-05 | MEDIUM | OrdersClient.tsx | Inline hex colors not using design tokens | Fix needed |
+| BUG-06 | MEDIUM | OrdersClient.tsx:88 | Warehouse gets too many status transitions | Fix needed |
+| BUG-07 | MEDIUM | checkout/initiate/route.ts:176 | applicable_product_ids/categories not validated | Fix needed |
+| BUG-08 | MEDIUM | OrdersClient.tsx:91 | No status transition conflict handling | Fix needed |
+| MF-01 | HIGH | orders/[orderId]/page.tsx | Order detail page missing (404 on Detail click) | Create needed |
+| MF-02 | MEDIUM | coupons/new/page.tsx | Coupon creation page missing | Create needed |
+| MF-03 | MEDIUM | coupons/[id]/page.tsx | Coupon edit page missing | Create needed |
+| LOAD-01 | HIGH | admin/orders/page.tsx | No loading.tsx | Create needed |
+| LOAD-02 | HIGH | admin/field/page.tsx | No loading.tsx | Create needed |
 
 ---
 
-## BUG-11 — Field inventory adjust: inventory page calls `/api/admin/field/inventory/adjust` but there are TWO adjust endpoints with different schemas
-**File:** `app/(admin)/admin/inventory/InventoryClient.tsx` calls `POST /api/admin/field/inventory/adjust`  
-**File:** `app/api/admin/field/inventory/adjust/route.ts` (POST — requires `reason` field)  
-**File:** `app/api/admin/field/inventory/route.ts` (PATCH — optional `note` field)  
-**Severity:** MEDIUM — InventoryClient sends `{ variantId, delta, reason }` to the POST endpoint
+## Appendix A — Missing API Routes for Field Dashboard
 
-**What's wrong:**  
-`InventoryClient.tsx` sends:
-```ts
-body: JSON.stringify({
-  variantId: variant.id,
-  delta,
-  reason: 'Inline adjustment from inventory page',
-})
-```
-This matches the POST `/api/admin/field/inventory/adjust` schema (which requires `reason`). That endpoint exists and is correct.
+### `app/api/admin/field/tracking-queue/route.ts`
+- **GET**: Return orders with status = 'packed' (need tracking), with items
+- **PATCH**: Accept `{ orderId, trackingNumber, courierCode?, trackingUrl? }` — set status to 'shipped' and save trackingNumber/trackingUrl, also save to courierCode field on order
 
-The confusion is the PATCH on `/api/admin/field/inventory` also adjusts stock but uses a different schema (`note` optional). These two endpoints do the same thing with slightly different request bodies. This is redundant but not broken per se. 
+### `app/api/admin/field/pickup-queue/route.ts`
+- **GET**: Return orders with status = 'paid' AND deliveryMethod = 'pickup'
+- **PATCH**: Accept `{ orderId }` — set status to 'delivered'
 
-**Action needed:** No immediate fix, but document that the POST `/adjust` endpoint is the canonical one and the PATCH on the base route should be deprecated or removed.
+### `app/api/admin/field/today-summary/route.ts`
+- **GET**: Return `{ packedCount, trackingCount, pickupCount, inventoryUpdateCount, date }` based on today's orderStatusHistory and inventoryLogs
 
----
+### `app/api/admin/field/worker-activity/route.ts`
+- **GET**: Return today's order status history and inventory logs for the logged-in warehouse user
 
-## BUG-12 — Admin order detail: pickup orders show the order number as pickup code, but `pickupCode` column in DB is always null
-**File:** `app/(admin)/admin/orders/[id]/page.tsx`  
-**File:** `app/api/admin/field/pickup-queue/route.ts`  
-**Severity:** LOW — cosmetic but inconsistent
+### `app/api/admin/field/inventory/route.ts`
+- **GET**: Return all product variants with stockLevel classification (out/stock=0, low/stock<5, healthy)
 
-**What's wrong:**  
-The admin order detail page correctly shows `order.orderNumber` as the pickup code display (which is fine). But the `orders.pickupCode` database column was intended to store a dedicated pickup code and is never populated.
+### `app/api/admin/field/inventory/restock/route.ts`
+- **POST**: Add stock to variant (increase), log as 'restock' in inventoryLogs with reason/note
 
-**Fix:**  
-When creating pickup orders (in `checkout/initiate/route.ts`), set `pickupCode = orderNumber`:
-```ts
-await tx.insert(orders).values({
-  ...orderData,
-  pickupCode: deliveryMethod === 'pickup' ? orderNumber : null,
-})
-```
-This makes `pickupCode` match the display so warehouse field apps querying by `pickupCode` work correctly.
+### `app/api/admin/field/inventory/adjust/route.ts`
+- **POST**: Set absolute stock quantity (override), log as 'adjustment' in inventoryLogs with reason
 
----
-
-## BUG-13 — Admin orders search: `email` field search uses `recipientEmail` but field name in search UI says "email"
-**File:** `app/(admin)/admin/orders/OrdersClient.tsx`  
-**Severity:** INFO — works correctly, just needs documentation clarity
-
-The search placeholder says "Cari no. pesanan, nama, email..." which correctly maps to `orderNumber ILIKE`, `recipientName ILIKE`, `recipientEmail ILIKE`. No bug — just confirm the correct field names are being searched.
-
----
-
-## BUG-14 — Tracking queue GET: only returns `packed` + `delivery` + `trackingNumber IS NULL` — but ShipmentsClient shows already-shipped orders if tracking was saved separately
-**File:** `app/api/admin/field/tracking-queue/route.ts`  
-**Severity:** LOW — tracking queue correctly filters for untracked packed orders
-
-The tracking queue GET is correct: `status = packed AND deliveryMethod = delivery AND trackingNumber IS NULL`.
-
-**However** — the ShipmentsClient page (`/admin/shipments`) shows `processing OR packed` orders (BUG-09 above). Once BUG-09 is fixed (only showing `packed`), the Shipments page and Tracking Queue will show the same data. Consider removing one of the two views or clearly differentiating their purpose.
+### `app/api/admin/field/orders/[orderId]/route.ts`
+- **PATCH**: Accept `{ status?, trackingNumber?, coldChainCondition?, note? }` — update order, write status history with metadata

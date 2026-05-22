@@ -5,7 +5,15 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { formatWIB } from '@/lib/utils/format-date';
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Truck, X } from 'lucide-react';
+
+interface OrderItemDetail {
+  id: string;
+  productNameId: string;
+  variantNameId: string;
+  quantity: number;
+  unitPrice: number;
+}
 
 interface OrderItem {
   id: string;
@@ -16,6 +24,7 @@ interface OrderItem {
   totalAmount: number;
   createdAt: string;
   deliveryMethod: string;
+  items?: OrderItemDetail[];
 }
 
 interface OrdersClientProps {
@@ -51,9 +60,10 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const TRANSITIONS: Record<string, { status: string; label: string }[]> = {
-  paid: [{ status: 'processing', label: 'Proses' }],
-  processing: [{ status: 'packed', label: 'Kemas' }],
-  shipped: [{ status: 'delivered', label: 'Terima' }],
+  paid: [{ status: 'processing', label: '🔄 Proses' }],
+  processing: [{ status: 'packed', label: '📦 Kemas' }],
+  packed: [{ status: 'shipped', label: '🚚 Kirim' }],
+  shipped: [{ status: 'delivered', label: '✅ Terima' }],
 };
 
 export default function OrdersClient({
@@ -71,15 +81,32 @@ export default function OrdersClient({
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState(searchQuery ?? '');
+  const [trackingModal, setTrackingModal] = useState<{ orderId: string; orderNumber: string } | null>(null);
+  const [trackingNumber, setTrackingNumber] = useState('');
 
   const canUpdateStatus = ['superadmin', 'owner', 'warehouse'].includes(userRole);
   const statusFilter = searchParams.get('status');
 
   async function handleStatusUpdate(orderId: string, newStatus: string) {
-    if (!confirm(`Yakin ubah status ke "${STATUS_LABELS[newStatus]}"?`)) return;
+    if (newStatus === 'shipped') {
+      const order = orders.find(o => o.id === orderId);
+      if (!order) return;
+      setTrackingModal({ orderId, orderNumber: order.orderNumber });
+      setOpenDropdown(null);
+      return;
+    }
 
-    setUpdatingId(orderId);
+    toast.warning(`Yakin ubah status pesanan ke "${STATUS_LABELS[newStatus]}"?`, {
+      action: {
+        label: 'Ya, lanjutkan',
+        onClick: () => performStatusUpdate(orderId, newStatus),
+      },
+    });
     setOpenDropdown(null);
+  }
+
+  async function performStatusUpdate(orderId: string, newStatus: string) {
+    setUpdatingId(orderId);
     try {
       const res = await fetch(`/api/admin/orders/${orderId}/status`, {
         method: 'PATCH',
@@ -96,6 +123,36 @@ export default function OrdersClient({
         prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
       );
       router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal mengupdate status');
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  async function submitShippedWithTracking() {
+    if (!trackingModal || !trackingNumber.trim()) return;
+    if (trackingNumber.trim().length < 8) {
+      toast.error('Nomor resi minimal 8 karakter');
+      return;
+    }
+    setUpdatingId(trackingModal.orderId);
+    try {
+      const res = await fetch(`/api/admin/orders/${trackingModal.orderId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'shipped', trackingNumber: trackingNumber.trim() }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Gagal mengupdate status');
+      }
+      setOrders((prev) =>
+        prev.map((o) => (o.id === trackingModal.orderId ? { ...o, status: 'shipped' } : o))
+      );
+      router.refresh();
+      setTrackingModal(null);
+      setTrackingNumber('');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Gagal mengupdate status');
     } finally {
@@ -170,6 +227,33 @@ export default function OrdersClient({
           </button>
         )}
       </form>
+
+      {/* Quick Filter Tabs */}
+      <div className="flex flex-wrap gap-1.5">
+        {[
+          { key: 'active', label: 'Aktif' },
+          { key: 'pending_payment', label: 'Menunggu' },
+          { key: 'paid', label: 'Dibayar' },
+          { key: 'processing', label: 'Diproses' },
+          { key: 'packed', label: 'Dikemas' },
+          { key: 'shipped', label: 'Dikirim' },
+          { key: 'delivered', label: 'Selesai' },
+          { key: 'cancelled', label: 'Batal' },
+        ].map(f => (
+          <a
+            key={f.key}
+            href={`/admin/orders?status=${f.key}`}
+            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+              statusFilter === f.key
+                ? 'bg-[#0F172A] text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {f.label}
+          </a>
+        ))}
+      </div>
+
       {searchQuery && (
         <p className="text-sm text-gray-500">
           Hasil pencarian: <strong>&quot;{searchQuery}&quot;</strong> — {totalOrders.toLocaleString('id-ID')} pesanan ditemukan
@@ -206,6 +290,11 @@ export default function OrdersClient({
                         <span className="text-xs text-gray-400">
                           {order.deliveryMethod === 'pickup' ? 'Pickup' : 'Delivery'}
                         </span>
+                        {order.items && order.items.length > 0 && (
+                          <span className="text-xs text-gray-500 mt-0.5">
+                            {order.items.length} item{order.items[0] && ` · ${order.items[0].productNameId}`}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -228,10 +317,10 @@ export default function OrdersClient({
                       {formatWIB(order.createdAt)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                         <a
                           href={`/admin/orders/${order.id}`}
-                          onClick={e => { e.stopPropagation(); }}
+                          onClick={(e) => { e.stopPropagation(); }}
                           className="text-brand-red hover:underline"
                         >
                           Detail
@@ -267,7 +356,7 @@ export default function OrdersClient({
               })}
               {orders.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                     Belum ada pesanan
                   </td>
                 </tr>
@@ -335,6 +424,51 @@ export default function OrdersClient({
           </div>
         )}
       </div>
+
+      {trackingModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Truck className="w-5 h-5 text-brand-red" />
+                <h3 className="font-bold text-lg">Input Nomor Resi</h3>
+              </div>
+              <button onClick={() => { setTrackingModal(null); setTrackingNumber(''); }} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">Pesanan: <span className="font-mono font-semibold">{trackingModal.orderNumber}</span></p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Nomor Resi *</label>
+                <input
+                  type="text"
+                  value={trackingNumber}
+                  onChange={(e) => setTrackingNumber(e.target.value.toUpperCase())}
+                  placeholder="Contoh: JNE123456789"
+                  className="w-full h-11 px-3 rounded-lg border border-gray-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red"
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { setTrackingModal(null); setTrackingNumber(''); }}
+                  className="flex-1 h-11 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={submitShippedWithTracking}
+                  disabled={updatingId === trackingModal.orderId || trackingNumber.trim().length < 8}
+                  className="flex-1 h-11 bg-brand-red text-white rounded-lg text-sm font-medium hover:bg-brand-red-dark disabled:opacity-50"
+                >
+                  {updatingId === trackingModal.orderId ? 'Menyimpan...' : '✅ Kirim Sekarang'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

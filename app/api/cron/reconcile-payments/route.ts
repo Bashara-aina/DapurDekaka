@@ -1,31 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import {
-  orders,
-  orderItems,
-  productVariants,
-  inventoryLogs,
-  users,
-  pointsHistory,
-  coupons,
-  couponUsages,
-  orderStatusHistory,
-} from '@/lib/db/schema';
-import { eq, and, lt, sql } from 'drizzle-orm';
-import { success, serverError } from '@/lib/utils/api-response';
+import { orders, orderStatusHistory, orderItems, productVariants, inventoryLogs, coupons, couponUsages, pointsHistory, users } from '@/lib/db/schema';
+import { eq, and, lt, sql, gte } from 'drizzle-orm';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
+import { checkTransactionStatus } from '@/lib/midtrans/status';
+import { serverError, success } from '@/lib/utils/api-response';
 import { logger } from '@/lib/utils/logger';
-import { sendEmail } from '@/lib/resend/send-email';
-import { OrderConfirmationEmail } from '@/lib/resend/templates/OrderConfirmation';
-import { formatWIB } from '@/lib/utils/format-date';
+
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 /**
- * Payment reconciliation cron job.
- * Finds pending orders older than 30 minutes and checks Midtrans status.
- * Handles the case where Midtrans says paid but our DB still shows pending_payment.
- * Runs every 10 minutes via Vercel Cron.
+ * Reconcile pending_payment orders whose payment_expires_at has passed.
+ * Queries Midtrans for their current transaction status and updates accordingly.
+ * Runs every 15 minutes via Vercel Cron.
  */
 export async function GET(req: NextRequest) {
   try {
@@ -36,153 +24,136 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const thirtyMinsAgo = new Date(Date.now() - 30 * 60 * 1000);
+    const now = new Date();
+    const windowStart = new Date(now.getTime() - 30 * 60 * 1000); // 30 min ago
 
-    const pendingOrders = await db.query.orders.findMany({
+    // Find pending orders whose expiry window has closed but are still pending
+    const stuckOrders = await db.query.orders.findMany({
       where: and(
         eq(orders.status, 'pending_payment'),
-        lt(orders.createdAt, thirtyMinsAgo)
+        lt(orders.paymentExpiresAt, windowStart)
       ),
-      with: { user: true },
     });
 
-    const results = { checked: 0, reconciled: 0, cancelled: 0, errors: 0 };
+    let updated = 0;
+    let errors: string[] = [];
 
-    for (const order of pendingOrders) {
-      let orderStatus: 'settlement' | 'cancel' | 'skip' | 'error' = 'skip';
+    for (const order of stuckOrders) {
+      if (!order.midtransOrderId) continue;
+
       try {
-        results.checked++;
+        const midtransStatus = await checkTransactionStatus(order.midtransOrderId);
 
-        if (!order.midtransOrderId) {
-          continue;
-        }
-
-        const midtransStatus = await checkMidtransStatus(order.midtransOrderId);
-
-        if (midtransStatus === 'settlement') {
-          logger.warn('[Reconcile] Recovering missed settlement', { orderNumber: order.orderNumber });
-
-          const fullOrder = await db.query.orders.findFirst({
-            where: eq(orders.id, order.id),
-            with: { items: true },
-          });
-
-          if (!fullOrder || fullOrder.status !== 'pending_payment') {
-            continue;
-          }
-
+        if (
+          midtransStatus.transactionStatus === 'settlement' ||
+          midtransStatus.transactionStatus === 'capture'
+        ) {
+          // Payment actually went through — the webhook may have been missed.
+          // Perform full settlement processing: update order + deduct stock + award points + confirm coupon.
           await db.transaction(async (tx) => {
-            // BUG-11: Use conditional WHERE to prevent race with webhook
-            const [updated] = await tx.update(orders).set({
-              status: 'paid',
-              paidAt: new Date(),
-            }).where(and(
-              eq(orders.id, fullOrder.id),
-              eq(orders.status, 'pending_payment')
-            )).returning();
+            // 1. Update order status to paid
+            await tx
+              .update(orders)
+              .set({
+                status: 'paid',
+                paidAt: new Date(),
+                midtransPaymentType: midtransStatus.paymentType ?? null,
+              })
+              .where(eq(orders.id, order.id));
 
-            if (!updated) {
-              // Another process already handled this order — rollback
-              throw new Error('ORDER_ALREADY_PROCESSED');
-            }
+            // 2. Deduct stock for each item (atomic with GREATEST guard)
+            const orderItemsData = await tx
+              .select()
+              .from(orderItems)
+              .where(eq(orderItems.orderId, order.id));
 
-            // BUG-02: Stock was already deducted at initiate time — log only, no re-deduction
-            for (const item of fullOrder.items) {
-              const [currentVariant] = await tx
-                .select({ stock: productVariants.stock })
-                .from(productVariants)
-                .where(eq(productVariants.id, item.variantId));
+            for (const item of orderItemsData) {
+              const [updated] = await tx
+                .update(productVariants)
+                .set({ stock: sql`GREATEST(stock - ${item.quantity}, 0)` })
+                .where(and(
+                  eq(productVariants.id, item.variantId),
+                  gte(productVariants.stock, item.quantity)
+                ))
+                .returning({ newStock: productVariants.stock });
 
-              if (currentVariant) {
+              if (!updated) {
+                // Log but don't fail — order is paid, stock can be reconciled manually
+                logger.warn('[ReconcilePayments] Insufficient stock for variant during reconcile', {
+                  orderNumber: order.orderNumber,
+                  variantId: item.variantId,
+                });
+              } else {
+                // Log inventory movement
                 await tx.insert(inventoryLogs).values({
                   variantId: item.variantId,
                   changeType: 'sale',
-                  quantityBefore: currentVariant.stock + item.quantity,
-                  quantityAfter: currentVariant.stock,
+                  quantityBefore: updated.newStock + item.quantity,
+                  quantityAfter: updated.newStock,
                   quantityDelta: -item.quantity,
-                  orderId: fullOrder.id,
-                  note: '[Reconcile] Inventory sale log — stock already deducted at initiate',
+                  orderId: order.id,
                 });
               }
             }
 
-            // BUG-08: Read updated balance after points update via RETURNING clause
-            if (fullOrder.userId) {
-              const [updatedUser] = await tx
+            // 3. Award loyalty points if user has points earned
+            if (order.userId && order.pointsEarned && order.pointsEarned > 0) {
+              const earnedPoints = order.pointsEarned;
+              const updatedUsers = await tx
                 .update(users)
-                .set({ pointsBalance: sql`points_balance + ${fullOrder.pointsEarned}` })
-                .where(eq(users.id, fullOrder.userId))
+                .set({ pointsBalance: sql`points_balance + ${earnedPoints}` })
+                .where(eq(users.id, order.userId))
                 .returning({ pointsBalance: users.pointsBalance });
 
-              const newBalance = updatedUser?.pointsBalance ?? 0;
-
-              if (fullOrder.pointsEarned && fullOrder.pointsEarned > 0) {
-                await tx.insert(pointsHistory).values({
-                  userId: fullOrder.userId,
-                  type: 'earn',
-                  pointsAmount: fullOrder.pointsEarned,
-                  pointsBalanceAfter: newBalance,
-                  descriptionId: `Pembelian ${fullOrder.orderNumber} (reconcile)`,
-                  descriptionEn: `Purchase ${fullOrder.orderNumber} (reconcile)`,
-                  orderId: fullOrder.id,
-                  expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-                });
-              }
-            }
-
-            if (fullOrder.couponId) {
-              await tx.update(coupons)
-                .set({ usedCount: sql`used_count + 1` })
-                .where(eq(coupons.id, fullOrder.couponId));
-
-              await tx.insert(couponUsages).values({
-                couponId: fullOrder.couponId,
-                orderId: fullOrder.id,
-                userId: fullOrder.userId ?? null,
-                discountApplied: fullOrder.discountAmount,
+              const newBalance = updatedUsers[0]?.pointsBalance ?? earnedPoints;
+              await tx.insert(pointsHistory).values({
+                userId: order.userId,
+                type: 'earn',
+                pointsAmount: earnedPoints,
+                pointsBalanceAfter: newBalance,
+                descriptionId: `Pembelian ${order.orderNumber} (reconcile)`,
+                descriptionEn: `Purchase ${order.orderNumber} (reconcile)`,
+                orderId: order.id,
+                expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
               });
             }
 
+            // 4. Confirm coupon usage (upsert)
+            if (order.couponId) {
+              await tx
+                .update(coupons)
+                .set({ usedCount: sql`used_count + 1` })
+                .where(eq(coupons.id, order.couponId));
+
+              await tx
+                .insert(couponUsages)
+                .values({
+                  couponId: order.couponId,
+                  orderId: order.id,
+                  userId: order.userId ?? null,
+                  discountApplied: order.discountAmount ?? 0,
+                })
+                .onConflictDoNothing();
+            }
+
+            // 5. Record status history
             await tx.insert(orderStatusHistory).values({
-              orderId: fullOrder.id,
+              orderId: order.id,
               fromStatus: 'pending_payment',
               toStatus: 'paid',
+              changedByUserId: null,
               changedByType: 'system',
-              note: 'Pembayaran dikonfirmasi via reconcile cron',
+              note: `Reconcile: Midtrans status ${midtransStatus.transactionStatus}`,
             });
           });
 
-          sendEmail({
-            to: fullOrder.recipientEmail,
-            subject: `Pesanan ${fullOrder.orderNumber} telah dikonfirmasi!`,
-            react: OrderConfirmationEmail({
-              orderNumber: fullOrder.orderNumber,
-              customerName: fullOrder.recipientName,
-              items: fullOrder.items.map((item) => ({
-                name: item.productNameId,
-                variant: item.variantNameId,
-                quantity: item.quantity,
-                unitPrice: item.unitPrice,
-                subtotal: item.subtotal,
-              })),
-              subtotal: fullOrder.subtotal,
-              shippingCost: fullOrder.shippingCost,
-              discountAmount: fullOrder.discountAmount,
-              totalAmount: fullOrder.totalAmount,
-              deliveryMethod: fullOrder.deliveryMethod as 'delivery' | 'pickup',
-              courierName: fullOrder.courierName ?? undefined,
-              recipientName: fullOrder.recipientName,
-              recipientPhone: fullOrder.recipientPhone,
-              addressLine: fullOrder.addressLine ?? undefined,
-              city: fullOrder.city ?? undefined,
-              province: fullOrder.province ?? undefined,
-              paidAt: formatWIB(fullOrder.paidAt ?? new Date()),
-            }),
-          }).catch(console.error);
-
-          orderStatus = 'settlement';
-        } else if (['cancel', 'deny', 'expire'].includes(midtransStatus)) {
-          // Midtrans says cancelled, we say pending — trigger cancellation with full reversal
+          updated++;
+          logger.info('[ReconcilePayments] Marked paid via Midtrans', {
+            orderNumber: order.orderNumber,
+            midtransStatus: midtransStatus.transactionStatus,
+          });
+        } else if (['expire', 'cancel', 'deny'].includes(midtransStatus.transactionStatus)) {
+          // Payment definitely failed — cancel and restore everything
           await db.transaction(async (tx) => {
             await tx
               .update(orders)
@@ -192,33 +163,82 @@ export async function GET(req: NextRequest) {
               })
               .where(eq(orders.id, order.id));
 
-            if (order.userId) {
-              if (order.pointsUsed > 0) {
-                const redeemRecords = await tx
-                  .select()
-                  .from(pointsHistory)
-                  .where(and(
-                    eq(pointsHistory.userId, order.userId),
-                    eq(pointsHistory.type, 'redeem'),
-                    eq(pointsHistory.orderId, order.id)
-                  ));
+            await tx.insert(orderStatusHistory).values({
+              orderId: order.id,
+              fromStatus: 'pending_payment',
+              toStatus: 'cancelled',
+              changedByUserId: null,
+              changedByType: 'system',
+              note: `Reconcile: Midtrans status ${midtransStatus.transactionStatus}`,
+            });
 
-                for (const redeem of redeemRecords) {
-                  if (redeem.referencedEarnId) {
-                    await tx.update(pointsHistory)
-                      .set({ consumedAt: null })
-                      .where(eq(pointsHistory.id, redeem.referencedEarnId));
-                  }
+            // Restore stock if items were actually sold (check inventory logs)
+            const [salesLog] = await tx
+              .select({ count: sql<number>`count(*)::int` })
+              .from(inventoryLogs)
+              .where(and(
+                eq(inventoryLogs.orderId, order.id),
+                eq(inventoryLogs.changeType, 'sale')
+              ));
+
+            if ((salesLog?.count ?? 0) > 0) {
+              // Fetch items for this order
+              const orderItemsData = await tx
+                .select()
+                .from(orderItems)
+                .where(eq(orderItems.orderId, order.id));
+
+              for (const item of orderItemsData) {
+                const [updated] = await tx
+                  .update(productVariants)
+                  .set({ stock: sql`stock + ${item.quantity}`, updatedAt: new Date() })
+                  .where(eq(productVariants.id, item.variantId))
+                  .returning({ newStock: productVariants.stock });
+
+                if (updated) {
+                  await tx.insert(inventoryLogs).values({
+                    variantId: item.variantId,
+                    changeType: 'reversal',
+                    quantityBefore: updated.newStock - item.quantity,
+                    quantityAfter: updated.newStock,
+                    quantityDelta: item.quantity,
+                    orderId: order.id,
+                    note: `Pembatalan reconcile ${order.orderNumber} — stok dikembalikan`,
+                  });
                 }
-
-                await tx.update(users)
-                  .set({ pointsBalance: sql`points_balance + ${order.pointsUsed}` })
-                  .where(eq(users.id, order.userId));
               }
             }
 
+            // Reverse points if used (FIFO reversal)
+            if (order.userId && order.pointsUsed > 0) {
+              const redeemRecords = await tx
+                .select()
+                .from(pointsHistory)
+                .where(and(
+                  eq(pointsHistory.userId, order.userId),
+                  eq(pointsHistory.type, 'redeem'),
+                  eq(pointsHistory.orderId, order.id)
+                ));
+
+              for (const redeem of redeemRecords) {
+                if (redeem.referencedEarnId) {
+                  await tx
+                    .update(pointsHistory)
+                    .set({ consumedAt: null })
+                    .where(eq(pointsHistory.id, redeem.referencedEarnId));
+                }
+              }
+
+              await tx
+                .update(users)
+                .set({ pointsBalance: sql`points_balance + ${order.pointsUsed}` })
+                .where(eq(users.id, order.userId));
+            }
+
+            // Reverse coupon usage: decrement used_count and delete couponUsage row
             if (order.couponId) {
-              await tx.update(coupons)
+              await tx
+                .update(coupons)
                 .set({ usedCount: sql`GREATEST(used_count - 1, 0)` })
                 .where(eq(coupons.id, order.couponId));
 
@@ -226,54 +246,28 @@ export async function GET(req: NextRequest) {
             }
           });
 
-          orderStatus = 'cancel';
-        }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        if (message === 'ORDER_ALREADY_PROCESSED') {
-          logger.info('[Reconcile] Order already processed by webhook, skipping', { orderNumber: order.orderNumber });
-          orderStatus = 'skip';
-        } else {
-          logger.error('[Reconcile] Error processing order', {
+          updated++;
+          logger.info('[ReconcilePayments] Cancelled via Midtrans', {
             orderNumber: order.orderNumber,
-            error: message,
+            midtransStatus: midtransStatus.transactionStatus,
           });
-          orderStatus = 'error';
         }
+        // 'pending' status — no action, still waiting
+      } catch (orderError) {
+        const message = orderError instanceof Error ? orderError.message : String(orderError);
+        errors.push(`Failed to reconcile ${order.orderNumber}: ${message}`);
+        logger.error('[ReconcilePayments] Error', { orderNumber: order.orderNumber, error: message });
       }
-
-      if (orderStatus === 'settlement') results.reconciled++;
-      else if (orderStatus === 'cancel') results.cancelled++;
-      else if (orderStatus === 'error') results.errors++;
     }
 
-    logger.info('[Reconcile] Payment reconciliation complete', results);
-    return success(results);
+    logger.info('[ReconcilePayments] Completed', { updated, errorsCount: errors.length });
+    if (errors.length > 0) {
+      errors.forEach((e) => logger.error('[ReconcilePayments] Error', { message: e }));
+    }
+
+    return success({ updated, errors });
   } catch (error) {
-    logger.error('[Reconcile] Fatal error', { error: error instanceof Error ? error.message : String(error) });
+    logger.error('[ReconcilePayments] Fatal error', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
-  }
-}
-
-async function checkMidtransStatus(midtransOrderId: string): Promise<string> {
-  try {
-    const serverKey = process.env.MIDTRANS_SERVER_KEY!;
-    const auth = Buffer.from(serverKey + ':').toString('base64');
-
-    const res = await fetch(
-      `https://api.midtrans.com/v2/${midtransOrderId}/status`,
-      {
-        headers: {
-          Authorization: `Basic ${auth}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (!res.ok) return 'unknown';
-    const data = await res.json() as { transaction_status?: string };
-    return data.transaction_status ?? 'unknown';
-  } catch {
-    return 'unknown';
   }
 }

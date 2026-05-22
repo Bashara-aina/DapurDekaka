@@ -69,13 +69,12 @@ export async function POST(req: NextRequest) {
 
     // Create password reset token for first-time login
     const token = randomBytes(32).toString('hex');
-    const tokenPrefix = token.slice(0, 8);
     const hashedToken = await bcrypt.hash(token, 12);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
     await db.insert(passwordResetTokens).values({
       userId: newUser.id,
-      tokenPrefix,
+      tokenKey: token,
       tokenHash: hashedToken,
       expiresAt,
     });

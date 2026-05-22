@@ -4,12 +4,15 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
+import { Check } from 'lucide-react';
+import { cn } from '@/lib/utils/cn';
 
 export default function RegisterPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -28,6 +31,12 @@ export default function RegisterPage() {
       return;
     }
 
+    if (!termsAccepted) {
+      setError('Kamu harus menyetujui syarat dan ketentuan');
+      setIsLoading(false);
+      return;
+    }
+
     if (formData.password.length < 8) {
       setError('Password minimal 8 karakter');
       setIsLoading(false);
@@ -42,6 +51,7 @@ export default function RegisterPage() {
           name: formData.name,
           email: formData.email,
           password: formData.password,
+          termsAccepted,
         }),
       });
 
@@ -74,7 +84,8 @@ export default function RegisterPage() {
         } catch {
           // Cart merge is non-critical
         }
-        router.push('/account');
+        // Redirect to profile for phone onboarding
+        router.push('/account/profile?onboarding=true');
       } else {
         // Fallback to login page if auto-login failed
         router.push('/login?registered=true');
@@ -87,7 +98,12 @@ export default function RegisterPage() {
 
   const handleGoogleRegister = async () => {
     setGoogleLoading(true);
-    await signIn('google', { callbackUrl: '/account' });
+    try {
+      await signIn('google', { callbackUrl: '/account' });
+    } catch (error) {
+      console.error('Google sign-in failed:', error);
+      setGoogleLoading(false);
+    }
   };
 
   return (
@@ -189,9 +205,32 @@ export default function RegisterPage() {
               />
             </div>
 
+            {/* Terms Acceptance */}
+            <div className="flex items-start gap-3">
+              <button
+                type="button"
+                onClick={() => setTermsAccepted(!termsAccepted)}
+                className={cn(
+                  'flex-shrink-0 w-5 h-5 mt-0.5 rounded border flex items-center justify-center transition-colors',
+                  termsAccepted
+                    ? 'bg-brand-red border-brand-red text-white'
+                    : 'border-brand-cream-dark hover:border-brand-red'
+                )}
+              >
+                {termsAccepted && <Check className="w-3 h-3" />}
+              </button>
+              <p className="text-sm text-text-secondary">
+                Saya menyetujui{' '}
+                <Link href="/terms" className="text-brand-red hover:underline">Syarat & Ketentuan</Link>
+                {' '}dan{' '}
+                <Link href="/privacy" className="text-brand-red hover:underline">Kebijakan Privasi</Link>
+                {' '}Dapur Dekaka
+              </p>
+            </div>
+
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !termsAccepted}
               className="w-full h-12 bg-brand-red text-white font-bold rounded-button disabled:opacity-50 mt-4"
             >
               {isLoading ? 'Memproses...' : 'Daftar'}

@@ -30,18 +30,19 @@ interface ProductCardProps {
     stock: number;
     weightGram: number;
   };
+  isOutOfStock?: boolean;
   className?: string;
 }
 
-export function ProductCard({ product, variant, className }: ProductCardProps) {
+export function ProductCard({ product, variant, isOutOfStock, className }: ProductCardProps) {
   const addItem = useCartStore((s) => s.addItem);
   const router = useRouter();
-  const isOutOfStock = variant.stock === 0;
-  const canQuickAdd = !isOutOfStock;
+  const oos = isOutOfStock || variant.stock === 0;
+  const canQuickAdd = !oos;
 
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (isOutOfStock) return;
+    if (oos) return;
     addItem({
       variantId: variant.id,
       productId: product.id,
@@ -65,7 +66,7 @@ export function ProductCard({ product, variant, className }: ProductCardProps) {
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (isOutOfStock) return;
+    if (oos) return;
     addItem({
       variantId: variant.id,
       productId: product.id,
@@ -105,25 +106,18 @@ export function ProductCard({ product, variant, className }: ProductCardProps) {
           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
         />
         {/* Badges */}
-        {!isOutOfStock && (
+        {!oos && (
           <div className="absolute top-2 right-2 flex flex-col gap-1">
             <HalalBadge />
-            {product.isHalal && (
-              <span className="text-[8px] text-text-disabled bg-white/60 px-1 rounded text-center">
-                MUI 001/2020
-              </span>
-            )}
           </div>
         )}
         {/* Out of stock overlay */}
-        {isOutOfStock && (
+        {oos && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-t-card">
-            <span className="px-3 py-1.5 bg-white/90 text-text-primary text-xs font-bold rounded-badge tracking-wide">
-              HABIS
-            </span>
+            <StockBadge stock={0} />
           </div>
         )}
-        {!isOutOfStock && variant.stock < 5 && (
+        {!oos && variant.stock < 5 && (
           <div className="absolute top-2 left-2">
             <StockBadge stock={variant.stock} />
           </div>
@@ -155,10 +149,10 @@ export function ProductCard({ product, variant, className }: ProductCardProps) {
           </div>
           <button
             onClick={handleAddToCart}
-            disabled={isOutOfStock}
+            disabled={oos}
             className={cn(
               'h-11 w-11 rounded-full flex items-center justify-center transition-colors',
-              isOutOfStock
+              oos
                 ? 'bg-text-disabled text-white cursor-not-allowed'
                 : 'bg-brand-red text-white hover:bg-brand-red-dark'
             )}

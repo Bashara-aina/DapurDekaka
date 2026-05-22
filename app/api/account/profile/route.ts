@@ -46,7 +46,11 @@ export async function GET(req: NextRequest) {
 
 const UpdateProfileSchema = z.object({
   name: z.string().min(2, 'Nama minimal 2 karakter').max(255).optional(),
-  phone: z.string().min(5, 'Nomor telepon tidak valid').max(20).optional().nullable(),
+  phone: z
+    .string()
+    .regex(/^(\+62|62|0)[0-9]{8,13}$/, 'Masukkan nomor HP yang valid (contoh: 08123456789)')
+    .optional()
+    .nullable(),
   languagePreference: z.enum(['id', 'en']).optional(),
 });
 
@@ -181,11 +185,16 @@ export async function POST(req: NextRequest) {
       columns: {
         id: true,
         passwordHash: true,
+        isActive: true,
       },
     });
 
     if (!user) {
       return unauthorized('Silakan masuk terlebih dahulu');
+    }
+
+    if (!user.isActive) {
+      return unauthorized('Akun tidak aktif');
     }
 
     if (user.passwordHash) {

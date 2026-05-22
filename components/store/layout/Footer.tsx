@@ -1,7 +1,11 @@
 import Link from 'next/link';
 import { MessageCircle } from 'lucide-react';
+import { getSetting } from '@/lib/settings/get-settings';
 
-export function Footer() {
+export async function Footer() {
+  const showVatStatement = await getSetting('show_vat_statement') === 'true';
+  const vatRate = await getSetting('vat_rate') ?? '11';
+
   return (
     <footer className="bg-[#1A1A1A] text-brand-cream/80 pt-12 pb-20 md:pb-12">
       <div className="container mx-auto px-6">
@@ -104,8 +108,12 @@ export function Footer() {
         <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm">© 2026 Dapur Dekaka. All rights reserved.</p>
           <div className="flex gap-4 text-xs">
-            <span>Harga sudah termasuk PPN 11%</span>
-            <span>•</span>
+            {showVatStatement && (
+              <>
+                <span>Harga sudah termasuk PPN {vatRate}%</span>
+                <span>•</span>
+              </>
+            )}
             <span>Halal</span>
             <span>•</span>
             <span>Frozen Fresh</span>

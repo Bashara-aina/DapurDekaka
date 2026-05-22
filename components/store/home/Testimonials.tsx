@@ -45,7 +45,16 @@ export function Testimonials() {
   }, [isPaused, testimonials.length, next]);
 
   if (testimonials.length === 0) {
-    return null;
+    return (
+      <section className="py-12 px-4 bg-white">
+        <div className="container mx-auto">
+          <h2 className="font-display text-2xl md:text-3xl font-semibold text-center mb-8">
+            Kata Mereka yang Sudah Percaya
+          </h2>
+          <p className="text-center text-text-secondary">Testimonial akan segera hadir.</p>
+        </div>
+      </section>
+    );
   }
 
   const t = testimonials[current];

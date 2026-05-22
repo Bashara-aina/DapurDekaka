@@ -23,10 +23,13 @@ export async function GET(req: NextRequest) {
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 7, 0, 0);
     const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 7, 0, 0);
 
+    const userIdFilter = role === 'warehouse' ? session.user.id : undefined;
+
     const activities = await db.query.adminActivityLogs.findMany({
       where: and(
         gte(adminActivityLogs.createdAt, startOfDay),
-        lt(adminActivityLogs.createdAt, endOfDay)
+        lt(adminActivityLogs.createdAt, endOfDay),
+        userIdFilter ? eq(adminActivityLogs.userId, userIdFilter) : undefined
       ),
       orderBy: (logs, { desc }) => [desc(logs.createdAt)],
     });

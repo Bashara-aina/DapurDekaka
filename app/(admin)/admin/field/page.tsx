@@ -140,11 +140,11 @@ async function packOrder(orderId: string, data: { status: string; note?: string;
   return json.data;
 }
 
-async function addTracking(orderId: string, data: { trackingNumber: string; courierCode?: string }) {
-  const res = await fetch(`/api/admin/field/orders/${orderId}/tracking`, {
+async function addTracking(orderId: string, data: { trackingNumber: string; courierCode?: string; trackingUrl?: string }) {
+  const res = await fetch('/api/admin/field/tracking-queue', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify({ orderId, trackingNumber: data.trackingNumber, courierCode: data.courierCode, trackingUrl: data.trackingUrl }),
   });
   const json = await res.json();
   if (!json.success) throw new Error(json.error);
@@ -493,6 +493,11 @@ function TrackingTab() {
     const trimmed = trackingNumber.trim().toUpperCase();
     if (trimmed.length < 8) {
       setError('Nomor resi minimal 8 karakter');
+      return;
+    }
+    const ALLOWED_COURIER_CODES = ['sicepat', 'jne', 'anteraja'];
+    if (courierCode && !ALLOWED_COURIER_CODES.includes(courierCode.toLowerCase())) {
+      setError('Kurir tidak valid. Hanya cold-chain yang diperbolehkan (SiCepat, JNE, AnterAja).');
       return;
     }
     if (!selectedOrder) return;

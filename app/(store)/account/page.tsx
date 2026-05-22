@@ -4,10 +4,11 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { Package, Gift, MapPin, ChevronRight, ShoppingBag } from 'lucide-react';
+import { Package, Gift, MapPin, ChevronRight, ShoppingBag, User } from 'lucide-react';
 import { count, eq, and } from 'drizzle-orm';
-import { orders } from '@/lib/db/schema';
+import { orders, addresses } from '@/lib/db/schema';
 import { POINTS_VALUE_IDR } from '@/lib/constants/points';
+import { formatIDR } from '@/lib/utils/format-currency';
 import { users } from '@/lib/db/schema';
 
 export default async function AccountPage() {
@@ -50,18 +51,9 @@ export default async function AccountPage() {
     limit: 10,
   });
 
-  const addressCount = await db.query.addresses.findMany({
-    where: (addrs, { eq }) => eq(addrs.userId, session.user.id!),
-  });
+  const [countResult] = await db.select({ count: count() }).from(addresses).where(eq(addresses.userId, session.user.id!));
+  const addressCount = countResult?.count ?? 0;
 
-  const formatIDR = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
 
   return (
     <div className="space-y-6">
@@ -74,6 +66,26 @@ export default async function AccountPage() {
           Selamat datang di akun Dapur Dekaka kamu
         </p>
       </div>
+
+      {/* Profile Completion Banner */}
+      {!user.phone && (
+        <Link
+          href="/account/profile?onboarding=true"
+          className="block bg-amber-50 border border-amber-200 rounded-card p-4 hover:bg-amber-100 transition-colors"
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-amber-200 rounded-full flex items-center justify-center flex-shrink-0">
+              <User className="w-5 h-5 text-amber-700" />
+            </div>
+            <div>
+              <p className="font-medium text-text-primary">Lengkapi Profil Kamu</p>
+              <p className="text-sm text-text-secondary mt-1">
+                Tambahkan nomor HP untuk menerima notifikasi pesanan dan checkout lebih cepat.
+              </p>
+            </div>
+          </div>
+        </Link>
+      )}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -107,7 +119,7 @@ export default async function AccountPage() {
               <MapPin className="w-5 h-5 text-brand-red" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-text-primary">{addressCount.length || 0}</p>
+              <p className="text-2xl font-bold text-text-primary">{addressCount || 0}</p>
               <p className="text-xs text-text-secondary">Alamat Tersimpan</p>
             </div>
           </div>
@@ -210,7 +222,7 @@ export default async function AccountPage() {
               <p className="text-sm opacity-80">Poin Kamu</p>
               <p className="text-3xl font-bold">{user.pointsBalance} poin</p>
               <p className="text-xs opacity-70 mt-1">
-                {formatIDR(user.pointsBalance * 10)} bisa ditukarkan
+                {formatIDR(user.pointsBalance * POINTS_VALUE_IDR)} bisa ditukarkan
               </p>
             </div>
             <Link

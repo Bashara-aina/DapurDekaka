@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { User, CheckCircle, AlertCircle } from 'lucide-react';
 import { useSession } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils/cn';
 
 const profileFormSchema = z.object({
@@ -52,6 +53,8 @@ interface UserProfile {
 
 export default function AccountProfilePage() {
   const { data: session, update } = useSession();
+  const searchParams = useSearchParams();
+  const isOnboarding = searchParams.get('onboarding') === 'true';
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -303,7 +306,16 @@ export default function AccountProfilePage() {
           </div>
 
           {/* Google OAuth users with null phone */}
-          {!profile?.phone && (
+          {isOnboarding && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-700 font-medium">
+                Selamat! Akun kamu sudah dibuat. Tambahkan nomor HP untuk menyelesaikan pengaturan.
+              </p>
+            </div>
+          )}
+
+          {!profile?.phone && !isOnboarding && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-amber-700">
@@ -365,6 +377,7 @@ export default function AccountProfilePage() {
               <span>🇮🇩 Indonesia</span>
               <span className="ml-auto text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Bahasa Inggris segera hadir</span>
             </div>
+            <p className="text-xs text-text-disabled mt-1">Pilihan bahasa akan disimpan saat fitur tersedia</p>
           </div>
 
           {/* Submit */}
@@ -504,8 +517,8 @@ export default function AccountProfilePage() {
             </div>
           )}
 
-          <p className="text-sm text-text-secondary mb-4">
-            Buat password untuk bisa masuk dengan email juga.
+          <p className="text-sm text-text-secondary mb-2">
+            Akunmu terdaftar via Google. Kamu bisa menambahkan password untuk masuk dengan email juga.
           </p>
 
           <form onSubmit={handleSubmitSetPassword(handleSetPassword)} className="space-y-5">

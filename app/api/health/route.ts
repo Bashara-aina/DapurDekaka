@@ -9,7 +9,8 @@ export const runtime = 'nodejs';
  * Health check endpoint for load balancers and monitoring.
  * Verifies database connectivity and critical service status.
  */
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
+  const now = new Date();
   let latencyMs: number | null = null;
 
   try {
@@ -17,26 +18,11 @@ export async function GET(_req: NextRequest) {
     await db.select({ id: users.id }).from(users).limit(1);
     latencyMs = Date.now() - start;
   } catch {
-    // DB error - latencyMs stays null
-  }
-
-  if (latencyMs !== null) {
-    return NextResponse.json(
-      {
-        status: 'healthy',
-        checks: { database: { status: 'ok', latency: latencyMs } },
-        timestamp: new Date().toISOString(),
-      },
-      { status: 200 }
-    );
+    // DB error — latencyMs stays null
   }
 
   return NextResponse.json(
-    {
-      status: 'unhealthy',
-      checks: { database: { status: 'error', latency: null } },
-      timestamp: new Date().toISOString(),
-    },
-    { status: 503 }
+    { status: 'ok', timestamp: now.toISOString() },
+    { status: latencyMs !== null ? 200 : 503 }
   );
 }

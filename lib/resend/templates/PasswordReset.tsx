@@ -13,11 +13,13 @@ import {
 interface PasswordResetEmailProps {
   resetUrl: string;
   userName: string;
+  isGoogleAccount?: boolean;
 }
 
 export function PasswordResetEmail({
   resetUrl,
   userName,
+  isGoogleAccount = false,
 }: PasswordResetEmailProps) {
   return (
     <Html>
@@ -38,7 +40,10 @@ export function PasswordResetEmail({
           <Section style={styles.contentSection}>
             <Text style={styles.bodyText}>
               Kami menerima permintaan untuk reset password akun Dapur Dekaka kamu.
-              Klik tombol di bawah untuk membuat password baru:
+              {isGoogleAccount && (
+                <> Kamu mendaftar menggunakan akun Google, jadi password baru ini akan menjadi password alternatif selain login Google.</>
+              )}
+              {' '}Klik tombol di bawah untuk membuat password baru:
             </Text>
           </Section>
 

@@ -268,9 +268,12 @@ export default function SuperadminDashboardPage() {
   });
 
   const { data: revenueChartData } = useQuery<Array<{ date: string; label: string; revenue: number; orders: number }>>({
-    queryKey: ['revenue-chart'],
+    queryKey: ['revenue-chart', dateRange.from, dateRange.to],
     queryFn: async () => {
-      const res = await fetch('/api/admin/dashboard/revenue-chart');
+      const params = new URLSearchParams();
+      if (dateRange.from) params.set('from', dateRange.from);
+      if (dateRange.to) params.set('to', dateRange.to);
+      const res = await fetch(`/api/admin/dashboard/revenue-chart?${params.toString()}`);
       const json = await res.json();
       if (!json.success) throw new Error(json.error);
       return json.data;

@@ -8,6 +8,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { cn } from '@/lib/utils/cn';
 import { useCartStore } from '@/store/cart.store';
 import { usePathname, useRouter } from 'next/navigation';
+import { LanguageSwitcher } from '@/components/store/common/LanguageSwitcher';
 
 const NAV_LINKS = [
   { href: '/', label: 'Beranda' },
@@ -63,9 +64,9 @@ export function Navbar() {
 
           {/* Actions */}
           <div className="flex items-center gap-3">
-            {/* <LanguageSwitcher /> */}
+            <LanguageSwitcher />
             <Link
-              href="/products?q="
+              href="/products"
               className="p-2 text-text-secondary hover:text-brand-red transition-colors"
               aria-label="Cari produk"
             >
@@ -130,7 +131,7 @@ export function Navbar() {
           </Link>
 
           <div className="flex items-center gap-2">
-            {/* <LanguageSwitcher /> */}
+            <LanguageSwitcher />
             <Link
               href="/cart"
               className="relative p-2 text-text-secondary"

@@ -83,8 +83,8 @@ export async function generateStaticParams() {
       columns: { slug: true },
     });
     return posts.map((post) => ({ slug: post.slug }));
-  } catch {
-    // DB unavailable at build time (no DATABASE_URL); pages render on-demand via ISR
+  } catch (error) {
+    console.error('[blog/[slug]/generateStaticParams]', error);
     return [];
   }
 }

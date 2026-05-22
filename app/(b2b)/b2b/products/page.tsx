@@ -15,7 +15,6 @@ export const metadata: Metadata = {
 };
 
 export const revalidate = 300;
-export const dynamic = 'force-dynamic';
 
 async function getB2BProducts(isApproved: boolean) {
   return await db.query.products.findMany({
@@ -170,7 +169,7 @@ export default async function B2BProductsPage() {
 
       {/* CTA */}
       <div className="px-4 py-6 container mx-auto">
-        <div className="bg-gradient-to-br from-brand-navy to-brand-navy-light rounded-xl p-6 text-white text-center">
+        <div className="bg-gradient-to-br from-[#0F172A] to-[#1E293B] rounded-xl p-6 text-white text-center">
           <h3 className="font-display text-lg font-semibold mb-2">
             Butuh Penawaran Harga?
           </h3>

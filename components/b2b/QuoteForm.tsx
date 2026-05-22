@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Building2, User, Mail, Phone, MessageSquare, Send, CheckCircle } from 'lucide-react';
@@ -9,7 +8,7 @@ import { Building2, User, Mail, Phone, MessageSquare, Send, CheckCircle } from '
 const VOLUME_OPTIONS = [
   { value: '1-5-juta', label: 'Rp 1 - 5 juta/bulan' },
   { value: '5-10-juta', label: 'Rp 5 - 10 juta/bulan' },
-  { value: '10-20-juta', label: 'Rp 20 - 20 juta/bulan' },
+  { value: '10-20-juta', label: 'Rp 10 - 20 juta/bulan' },
   { value: '20-50-juta', label: 'Rp 20 - 50 juta/bulan' },
   { value: '50-juta-plus', label: 'Rp 50 juta+/bulan' },
 ];
@@ -33,6 +32,8 @@ interface QuoteFormData {
   estimatedVolume: string;
 }
 
+const PHONE_REGEX = /^(?:\+62|62|0)8[0-9]{9,11}$/;
+
 const initialFormData: QuoteFormData = {
   companyName: '',
   picName: '',
@@ -43,8 +44,16 @@ const initialFormData: QuoteFormData = {
   estimatedVolume: '',
 };
 
+function validateForm(data: QuoteFormData): string | null {
+  if (!data.companyName.trim()) return 'Nama perusahaan wajib diisi';
+  if (!data.picName.trim()) return 'Nama penanggung jawab wajib diisi';
+  if (!data.picEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.picEmail)) return 'Email valid wajib diisi';
+  if (!data.picPhone.trim() || !PHONE_REGEX.test(data.picPhone.replace(/\s/g, ''))) return 'Nomor WhatsApp valid wajib diisi (contoh: 081234567890)';
+  if (!data.message.trim()) return 'Pesan wajib diisi';
+  return null;
+}
+
 export function QuoteForm() {
-  const router = useRouter();
   const [formData, setFormData] = useState<QuoteFormData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -60,6 +69,13 @@ export function QuoteForm() {
     setIsSubmitting(true);
     setError(null);
 
+    const validationError = validateForm(formData);
+    if (validationError) {
+      setError(validationError);
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const response = await fetch('/api/b2b/inquiry', {
         method: 'POST',
@@ -71,9 +87,6 @@ export function QuoteForm() {
 
       if (result.success) {
         setIsSuccess(true);
-        setTimeout(() => {
-          router.push('/b2b');
-        }, 3000);
       } else {
         setError(result.error || 'Gagal mengirim permintaan. Silakan coba lagi.');
       }

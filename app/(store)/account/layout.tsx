@@ -30,10 +30,12 @@ const navItems = [
 
 export default function AccountLayout({ children }: AccountLayoutProps) {
   const pathname = usePathname();
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const handleSignOut = async () => {
+    const confirmed = confirm('Yakin ingin keluar dari akun?');
+    if (!confirmed) return;
     setIsSigningOut(true);
     await signOut({ callbackUrl: '/' });
   };

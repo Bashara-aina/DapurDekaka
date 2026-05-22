@@ -56,7 +56,7 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
             <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
-        <div className="md:grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {products.slice(0, 8).map((product) => {
             const variant = product.variants[0];
             const image = product.images[0];
@@ -172,27 +172,29 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: '-50px' }}
-        className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-4"
+        className="hidden md:block"
       >
-        {products.slice(0, 8).map((product) => {
-          const variant = product.variants[0];
-          const image = product.images[0];
-          if (!variant) return null;
-          return (
-            <MotionFn.div key={product.id} variants={itemVariants}>
-              <ProductCard
-                product={{
-                  id: product.id,
-                  nameId: product.nameId,
-                  nameEn: product.nameEn,
-                  slug: product.slug,
-                  imageUrl: image?.cloudinaryUrl,
-                } as never}
-                variant={variant as never}
-              />
-            </MotionFn.div>
-          );
-        })}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {products.slice(0, 8).map((product) => {
+            const variant = product.variants[0];
+            const image = product.images[0];
+            if (!variant) return null;
+            return (
+              <MotionFn.div key={product.id} variants={itemVariants}>
+                <ProductCard
+                  product={{
+                    id: product.id,
+                    nameId: product.nameId,
+                    nameEn: product.nameEn,
+                    slug: product.slug,
+                    imageUrl: image?.cloudinaryUrl,
+                  } as never}
+                  variant={variant as never}
+                />
+              </MotionFn.div>
+            );
+          })}
+        </div>
       </MotionFn.div>
     </section>
   );

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import { QuoteForm } from '@/components/b2b/QuoteForm';
@@ -6,6 +7,19 @@ import { db } from '@/lib/db';
 import { categories, products, productVariants } from '@/lib/db/schema';
 import { eq, and, isNull, sql, asc } from 'drizzle-orm';
 import { formatIDR } from '@/lib/utils/format-currency';
+
+export const metadata: Metadata = {
+  title: 'B2B - Kerjasama Bisnis Frozen Food - Dapur Dekaka',
+  description: 'Dapur Dekaka menyediakan produk frozen food berkualitas untuk hotel, restoran, catering, dan event organizer. Harga khusus untuk pemesanan dalam jumlah besar.',
+  keywords: ['b2b', 'frozen food grosir', 'catering Bandung', 'hotel supplier', 'bulk frozen food'],
+  openGraph: {
+    title: 'B2B Partnership - Dapur Dekaka',
+    description: 'Kerjasama bisnis frozen food berkualitas dengan harga khusus.',
+    url: 'https://dapurdekaka.com/b2b',
+    type: 'website',
+  },
+  robots: { index: true, follow: true },
+};
 
 export const dynamic = 'force-dynamic';
 
@@ -81,8 +95,8 @@ export default async function B2BLandingPage() {
   return (
     <div className="bg-brand-cream">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-brand-navy to-brand-navy-light text-white py-16 md:py-24">
-        <div className="absolute inset-0 bg-brand-navy" />
+      <section className="relative bg-gradient-to-br from-[#0F172A] to-[#1E293B] text-white py-16 md:py-24">
+        <div className="absolute inset-0 bg-[#0F172A]" />
         <div className="relative container mx-auto px-4">
           <div className="max-w-3xl">
             <p className="text-white/60 text-sm font-medium mb-3 tracking-wide">
@@ -200,17 +214,21 @@ export default async function B2BLandingPage() {
                   <thead>
                     <tr className="border-b border-brand-cream-dark">
                       <th className="text-left py-2 px-3 font-medium text-text-secondary">Produk</th>
+                      <th className="text-right py-2 px-3 font-medium text-text-secondary">Berat</th>
                       <th className="text-right py-2 px-3 font-medium text-text-secondary">Harga Retail</th>
                       <th className="text-right py-2 px-3 font-medium text-brand-red">Harga B2B</th>
                     </tr>
                   </thead>
                   <tbody>
                     {priceTeaserProducts.filter(p => p.variants[0]?.b2bPrice != null).slice(0, 5).map((product) => {
-                      const retailPrice = product.variants[0]?.price ?? 0;
-                      const b2bPrice = product.variants[0]?.b2bPrice;
+                      const variant = product.variants[0];
+                      const retailPrice = variant?.price ?? 0;
+                      const b2bPrice = variant?.b2bPrice;
+                      const weight = variant?.weightGram ?? 0;
                       return (
                         <tr key={product.id} className="border-b border-brand-cream/50">
                           <td className="py-2.5 px-3 font-medium">{product.nameId}</td>
+                          <td className="py-2.5 px-3 text-right text-text-secondary">{weight}g</td>
                           <td className="py-2.5 px-3 text-right text-text-secondary">
                             {formatIDR(retailPrice)}
                           </td>
@@ -269,7 +287,7 @@ export default async function B2BLandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-12 px-4 bg-gradient-to-br from-brand-navy to-brand-navy-light">
+      <section className="py-12 px-4 bg-gradient-to-br from-[#0F172A] to-[#1E293B]">
         <div className="container mx-auto text-center">
           <h2 className="font-display text-2xl font-bold text-white mb-3">
             Siap Bermitra dengan Dapur Dekaka?
@@ -281,7 +299,7 @@ export default async function B2BLandingPage() {
             href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER}?text=Halo%20Dapur%20Dekaka,%20saya%20tertarik%20untuk%20kerjasama%20B2B`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center h-12 px-6 bg-[#25D366] text-white font-bold rounded-lg hover:bg-[#20BD5A] transition-colors"
+            className="inline-flex items-center h-12 px-6 bg-green-500 text-white font-bold rounded-lg hover:bg-green-600 transition-colors"
           >
             Chat via WhatsApp
           </a>

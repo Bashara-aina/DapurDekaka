@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
 
     const role = (session.user as { role?: string }).role;
     if (!role || !['superadmin', 'owner'].includes(role)) {
-      return forbidden('Hanya superadmin yang dapat membaca pengaturan');
+      return forbidden('Anda tidak memiliki akses ke pengaturan');
     }
 
     const keysParam = req.nextUrl.searchParams.get('keys');
@@ -94,6 +94,16 @@ export async function PATCH(req: NextRequest) {
 
       updatedSettings.push(updated);
     }
+
+    await db.insert(adminActivityLogs).values({
+      userId: session.user.id,
+      action: 'UPDATE_SETTINGS',
+      entityType: 'system_settings',
+      entityId: null,
+      afterState: { updatedCount: updatedSettings.length, settings: updatedSettings },
+      ipAddress: req.headers.get('x-forwarded-for') ?? null,
+      userAgent: req.headers.get('user-agent') ?? null,
+    });
 
     return success({ updated: updatedSettings.length, settings: updatedSettings });
   } catch (error) {

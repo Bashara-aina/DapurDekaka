@@ -52,20 +52,14 @@ export async function GET(req: NextRequest) {
       : [];
     const couponsMap = new Map(couponsData.map(c => [c.id, c]));
 
-    const usedCouponsWithDetails = usedCouponsList.map(usage => ({
-      code: couponsMap.get(usage.couponId)?.code ?? '',
-      type: couponsMap.get(usage.couponId)?.type ?? 'percentage',
-      nameId: couponsMap.get(usage.couponId)?.nameId ?? '',
-      nameEn: couponsMap.get(usage.couponId)?.nameEn ?? '',
-      descriptionId: couponsMap.get(usage.couponId)?.descriptionId ?? '',
-      descriptionEn: couponsMap.get(usage.couponId)?.descriptionEn ?? '',
-      discountValue: couponsMap.get(usage.couponId)?.discountValue ?? 0,
-      minOrderAmount: couponsMap.get(usage.couponId)?.minOrderAmount ?? 0,
-      maxDiscountAmount: couponsMap.get(usage.couponId)?.maxDiscountAmount ?? null,
-      freeShipping: couponsMap.get(usage.couponId)?.freeShipping ?? false,
-      usedAt: usage.createdAt,
-      discountApplied: usage.discountApplied,
-    }));
+    const usedCouponsWithDetails = usedCouponsList.map(usage => {
+      const coupon = couponsMap.get(usage.couponId);
+      return {
+        ...coupon,
+        usedAt: usage.createdAt,
+        discountApplied: usage.discountApplied,
+      };
+    });
 
     // BUG-03: Check per-user usage limits using session.user.id (userId was never declared)
     const userUsageCounts = await db

@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { savedCarts } from '@/lib/db/schema';
+import { savedCarts, productVariants } from '@/lib/db/schema';
 import { eq, and, inArray, sql } from 'drizzle-orm';
 import { success, unauthorized, serverError } from '@/lib/utils/api-response';
 import { withRateLimit } from '@/lib/utils/rate-limit';
@@ -30,16 +30,34 @@ export const POST = withRateLimit(
       }
 
       await db.transaction(async (tx) => {
+        // Validate all variants exist and have sufficient stock before any writes
+        const variantIds = [...new Set(items.map(i => i.variantId))];
+        const variants = await tx.select({
+          id: productVariants.id,
+          stock: productVariants.stock,
+        }).from(productVariants).where(inArray(productVariants.id, variantIds));
+
+        const variantMap = new Map(variants.map(v => [v.id, v]));
+        for (const item of items) {
+          const variant = variantMap.get(item.variantId);
+          if (!variant) {
+            throw new Error('Varian produk tidak ditemukan');
+          }
+          if (variant.stock < item.quantity) {
+            throw new Error('Stok tidak mencukupi untuk salah satu item');
+          }
+        }
+
         // Delete user's existing saved cart
         await tx.delete(savedCarts).where(eq(savedCarts.userId, session.user.id));
 
-        // Insert incoming items
+        // Insert incoming items (cap at 99 per item)
         if (items.length > 0) {
           await tx.insert(savedCarts).values(
             items.map((item) => ({
               userId: session.user.id,
               variantId: item.variantId,
-              quantity: item.quantity,
+              quantity: Math.min(item.quantity, 99),
             }))
           );
         }

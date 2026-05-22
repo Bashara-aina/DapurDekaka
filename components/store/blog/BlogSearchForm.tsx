@@ -2,7 +2,12 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTransition } from 'react';
 
-export function BlogSearchForm({ defaultValue }: { defaultValue: string }) {
+interface BlogSearchFormProps {
+  defaultValue: string;
+  categorySlug?: string;
+}
+
+export function BlogSearchForm({ defaultValue, categorySlug }: BlogSearchFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -10,13 +15,19 @@ export function BlogSearchForm({ defaultValue }: { defaultValue: string }) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const q = formData.get('q') as string;
+    const cat = formData.get('category') as string;
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (cat) params.set('category', cat);
+    const search = params.toString();
     startTransition(() => {
-      router.push(q ? `/blog?q=${encodeURIComponent(q)}` : '/blog');
+      router.push(search ? `/blog?${search}` : '/blog');
     });
   };
 
   return (
     <form onSubmit={handleSubmit} className="flex-1 flex gap-2">
+      {categorySlug && <input type="hidden" name="category" value={categorySlug} />}
       <input
         type="text"
         name="q"

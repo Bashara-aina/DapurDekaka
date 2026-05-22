@@ -20,6 +20,8 @@ function SuccessContent() {
       totalAmount: number;
       pointsEarned: number;
       status: string;
+      userId: string | null;
+      recipientEmail: string;
     };
     verified: boolean;
   }>({
@@ -34,9 +36,7 @@ function SuccessContent() {
     staleTime: 60000,
   });
 
-  // FIX 15: Only fire confetti when order is verified (paid status), on initial transition only
   useEffect(() => {
-    // Only fire confetti once — when status first becomes 'paid'
     if (orderData?.order?.status === 'paid') {
       confetti({
         particleCount: 100,
@@ -73,7 +73,7 @@ function SuccessContent() {
               +{orderData.order.pointsEarned.toLocaleString('id-ID')} poin
             </p>
             <p className="text-xs text-text-secondary mt-1">
-              Poin akan dikreditkan setelah pembayaran dikonfirmasi oleh sistem
+              Poin sudah dikreditkan ke akun Anda
             </p>
           </div>
         ) : null}
@@ -87,7 +87,7 @@ function SuccessContent() {
           </Link>
           {orderNumber && (
             <a
-              href={`/api/orders/${orderNumber}/receipt`}
+              href={`/api/orders/${orderNumber}/receipt${orderData?.order?.userId ? '' : `?email=${encodeURIComponent(orderData?.order?.recipientEmail ?? '')}`}`}
               target="_blank"
               rel="noopener noreferrer"
               className="block w-full h-12 bg-white border border-brand-cream-dark text-text-primary font-medium rounded-button flex items-center justify-center gap-2"

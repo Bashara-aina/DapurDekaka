@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { productVariants } from '@/lib/db/schema';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, and } from 'drizzle-orm';
 import { success, serverError } from '@/lib/utils/api-response';
 import { checkRateLimitAsync } from '@/lib/utils/rate-limit';
 export const dynamic = 'force-dynamic';
@@ -21,8 +21,15 @@ async function handleValidate(req: NextRequest) {
     } else {
       const body = await req.json().catch(() => null);
       if (body?.items && Array.isArray(body.items)) {
-        variantIds = body.items.map((i: { variantId: string; quantity?: number }) => i.variantId).filter(Boolean);
-        cartQtys = body.items.map((i: { variantId: string; quantity?: number }) => i.quantity ?? 1);
+        const itemsWithVariant = body.items
+          .map((item: { variantId?: string; product?: { id?: string }; quantity?: number }) => {
+            const variantId = item.variantId ?? item.product?.id;
+            if (!variantId) return null;
+            return { variantId, quantity: item.quantity ?? 1 };
+          })
+          .filter(Boolean);
+        variantIds = itemsWithVariant.map((i: { variantId: string; quantity: number }) => i.variantId);
+        cartQtys = itemsWithVariant.map((i: { variantId: string; quantity: number }) => i.quantity);
       }
     }
 
@@ -31,7 +38,13 @@ async function handleValidate(req: NextRequest) {
     }
 
     const variants = await db.query.productVariants.findMany({
-      where: inArray(productVariants.id, variantIds),
+      where: and(
+        inArray(productVariants.id, variantIds),
+        eq(productVariants.isActive, true)
+      ),
+      with: {
+        product: true,
+      },
       columns: {
         id: true,
         stock: true,
@@ -41,31 +54,44 @@ async function handleValidate(req: NextRequest) {
 
     const variantMap = new Map(variants.map((v) => [v.id, v]));
 
-    const items = variantIds.map((variantId, index) => {
+    const resultItems: Array<{
+      variantId: string;
+      cartQty: number;
+      availableStock: number;
+      available: boolean;
+    }> = [];
+
+    for (let index = 0; index < variantIds.length; index++) {
+      const variantId = variantIds[index];
+      if (!variantId) {
+        resultItems.push({ variantId: '', cartQty: 0, availableStock: 0, available: false });
+        continue;
+      }
       const variant = variantMap.get(variantId);
       const cartQty = cartQtys[index] ?? 1;
 
-      if (!variant) {
-        return {
+      if (!variant || !variant.product || !variant.product.isActive || variant.product.deletedAt) {
+        resultItems.push({
           variantId,
           cartQty,
           availableStock: 0,
           available: false,
-        };
+        });
+        continue;
       }
 
       const availableStock = variant.isActive ? variant.stock : 0;
       const available = availableStock >= cartQty;
 
-      return {
+      resultItems.push({
         variantId,
         cartQty,
         availableStock,
         available,
-      };
-    });
+      });
+    }
 
-    return success({ items });
+    return success({ items: resultItems });
   } catch (error) {
     console.error('[cart/validate]', error);
     return serverError(error);

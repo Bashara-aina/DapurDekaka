@@ -1,79 +1,56 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { XCircle, RefreshCw, Home } from 'lucide-react';
-import { useCartStore } from '@/store/cart.store';
-
-interface FailedOrderItem {
-  variantId: string;
-  productId: string;
-  productNameId: string;
-  productNameEn: string;
-  variantNameId: string;
-  variantNameEn: string;
-  sku: string;
-  unitPrice: number;
-  quantity: number;
-  weightGram: number;
-  imageUrl?: string;
-}
 
 export default function CheckoutFailedPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderNumber = searchParams.get('order');
-  const [orderItems, setOrderItems] = useState<FailedOrderItem[] | null>(null);
-  const [isRestoring, setIsRestoring] = useState(false);
-  const addItem = useCartStore((s) => s.addItem);
-
-  useEffect(() => {
-    if (!orderNumber) return;
-
-    const restoreCart = async () => {
-      try {
-        const res = await fetch(`/api/orders/${orderNumber}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.data?.items) {
-            setOrderItems(data.data.items);
-          }
-        }
-      } catch {
-        // Silent fail — order items couldn't be fetched
-      }
-    };
-    restoreCart();
-  }, [orderNumber]);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   const handleRetry = async () => {
-    if (!orderItems?.length) {
+    if (!orderNumber) {
       router.push('/checkout');
       return;
     }
 
-    setIsRestoring(true);
+    setIsRetrying(true);
     try {
-      for (const item of orderItems) {
-        // FIX 8: Cart restored with stock=0 may block addItem — use 999 (will be re-validated at checkout)
-        // Alternatively, we could fetch current stock from /api/cart/validate but that adds complexity
-        // Since checkout initiate re-validates all prices/stock server-side anyway, high placeholder is safe
-        addItem({
-          variantId: item.variantId,
-          productId: item.productId,
-          productNameId: item.productNameId,
-          productNameEn: item.productNameEn ?? '',
-          variantNameId: item.variantNameId,
-          variantNameEn: item.variantNameEn ?? '',
-          sku: item.sku ?? '',
-          imageUrl: item.imageUrl ?? '',
-          unitPrice: item.unitPrice,
-          weightGram: item.weightGram,
-          stock: 999,
-        });
+      const retryRes = await fetch('/api/checkout/retry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderNumber }),
+      });
+      const retryData = await retryRes.json();
+
+      if (!retryData.success) {
+        router.push('/checkout');
+        return;
       }
-      router.push('/checkout');
+
+      if (retryData.data?.snapToken) {
+        const snapToken = retryData.data.snapToken;
+        if (typeof window !== 'undefined' && (window as Window & { snap?: { pay: (token: string, options: Record<string, unknown>) => void } }).snap) {
+          const snap = (window as Window & { snap?: { pay: (token: string, options: Record<string, unknown>) => void } }).snap;
+          snap?.pay(snapToken, {
+            onSuccess: () => {
+              router.push(`/checkout/success?order=${orderNumber}`);
+            },
+            onPending: () => {
+              router.push(`/checkout/pending?order=${orderNumber}`);
+            },
+            onError: () => {
+              router.push(`/checkout/failed?order=${orderNumber}`);
+            },
+            onClose: () => {
+              // User closed popup — stay on page
+            },
+          });
+        }
+      }
     } catch {
       router.push('/checkout');
     }
@@ -93,20 +70,20 @@ export default function CheckoutFailedPage() {
           Maaf, pembayaran Anda tidak dapat diproses.
         </p>
         <p className="text-sm text-text-secondary mb-8">
-          {orderItems?.length
-            ? 'Keranjang Anda telah dipulihkan. Silakan coba lagi.'
+          {orderNumber
+            ? 'Pembayaran tidak dapat diproses. Silakan coba lagi.'
             : 'Jangan khawatir — keranjang Anda masih tersimpan.'}
         </p>
 
         <div className="space-y-3">
-          {orderItems?.length ? (
+          {orderNumber ? (
             <button
               onClick={handleRetry}
-              disabled={isRestoring}
+              disabled={isRetrying}
               className="flex items-center justify-center gap-2 w-full h-12 bg-brand-red text-white font-bold rounded-button hover:bg-brand-red-dark transition-colors disabled:opacity-50"
             >
-              <RefreshCw className="w-4 h-4" />
-              {isRestoring ? 'Memulihkan...' : 'Coba Lagi'}
+              <RefreshCw className={`w-4 h-4 ${isRetrying ? 'animate-spin' : ''}`} />
+              {isRetrying ? 'Memuat...' : 'Coba Lagi'}
             </button>
           ) : (
             <Link

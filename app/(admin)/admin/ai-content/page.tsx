@@ -1,6 +1,13 @@
 import { CaptionGenerator } from '@/components/admin/ai/CaptionGenerator';
+import { auth } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 
-export default function AdminAIPage() {
+export default async function AdminAIPage() {
+  const session = await auth();
+  if (!session?.user || session.user.role !== 'superadmin') {
+    redirect('/admin/dashboard');
+  }
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">

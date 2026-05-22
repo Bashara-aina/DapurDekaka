@@ -4,27 +4,16 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSnapUrl } from '@/lib/midtrans/client';
 
-interface SnapApi {
-  pay: (token: string, callbacks?: SnapCallbacks) => void;
-  hide?: () => void;
-}
-
 interface SnapCallbacks {
-  onSuccess?: (result: unknown) => void;
-  onPending?: (result: unknown) => void;
-  onError?: (error: unknown) => void;
+  onSuccess?: () => void;
+  onPending?: () => void;
+  onError?: () => void;
   onClose?: () => void;
 }
 
 interface MidtransPaymentProps {
   snapToken: string;
   callbacks?: SnapCallbacks;
-}
-
-declare global {
-  interface Window {
-    snap?: SnapApi;
-  }
 }
 
 export function MidtransPayment({
@@ -34,24 +23,28 @@ export function MidtransPayment({
   const router = useRouter();
   const scriptLoaded = useRef(false);
 
-  const handleSuccess = useCallback((result: unknown) => {
-    callbacks?.onSuccess?.(result);
-    router.push(`/checkout/success?order=${new URLSearchParams(window.location.search).get('order') ?? ''}`);
+  const handleSuccess = useCallback(() => {
+    callbacks?.onSuccess?.();
+    const orderNumber = new URLSearchParams(window.location.search).get('order') ?? '';
+    router.push(`/checkout/success?order=${orderNumber}`);
   }, [callbacks, router]);
 
-  const handlePending = useCallback((result: unknown) => {
-    callbacks?.onPending?.(result);
-    router.push(`/checkout/pending?order=${new URLSearchParams(window.location.search).get('order') ?? ''}`);
+  const handlePending = useCallback(() => {
+    callbacks?.onPending?.();
+    const orderNumber = new URLSearchParams(window.location.search).get('order') ?? '';
+    router.push(`/checkout/pending?order=${orderNumber}`);
   }, [callbacks, router]);
 
-  const handleError = useCallback((error: unknown) => {
-    callbacks?.onError?.(error);
-    router.push(`/checkout/failed?order=${new URLSearchParams(window.location.search).get('order') ?? ''}`);
+  const handleError = useCallback(() => {
+    callbacks?.onError?.();
+    const orderNumber = new URLSearchParams(window.location.search).get('order') ?? '';
+    router.push(`/checkout/failed?order=${orderNumber}`);
   }, [callbacks, router]);
 
   const handleClose = useCallback(() => {
     callbacks?.onClose?.();
-    router.push(`/checkout/failed?order=${new URLSearchParams(window.location.search).get('order') ?? ''}`);
+    const orderNumber = new URLSearchParams(window.location.search).get('order') ?? '';
+    router.push(`/checkout/failed?order=${orderNumber}`);
   }, [callbacks, router]);
 
   useEffect(() => {
@@ -66,8 +59,9 @@ export function MidtransPayment({
       script.async = true;
       script.onload = () => {
         scriptLoaded.current = true;
-        if (window.snap) {
-          window.snap.pay(snapToken, {
+        const snap = (window as Window & { snap?: any }).snap;
+        if (snap) {
+          snap.pay(snapToken, {
             onSuccess: handleSuccess,
             onPending: handlePending,
             onError: handleError,
@@ -76,12 +70,14 @@ export function MidtransPayment({
         }
       };
       script.onerror = () => {
-        handleError(new Error('Failed to load Midtrans Snap'));
+        console.error('Failed to load Midtrans Snap');
+        router.push(`/checkout/failed?order=${new URLSearchParams(window.location.search).get('order') ?? ''}`);
       };
       document.head.appendChild(script);
     } else {
-      if (window.snap) {
-        window.snap.pay(snapToken, {
+      const snap = (window as Window & { snap?: any }).snap;
+      if (snap) {
+        snap.pay(snapToken, {
           onSuccess: handleSuccess,
           onPending: handlePending,
           onError: handleError,
@@ -91,11 +87,9 @@ export function MidtransPayment({
     }
 
     return () => {
-      if (window.snap) {
-        try { window.snap.hide?.(); } catch { /* ignore */ }
-      }
+      // Cleanup after payment popup closes
     };
-  }, [snapToken, handleSuccess, handlePending, handleError, handleClose]);
+  }, [snapToken, handleSuccess, handlePending, handleError, handleClose, router]);
 
   return null;
 }

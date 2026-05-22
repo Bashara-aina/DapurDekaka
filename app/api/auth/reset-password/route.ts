@@ -25,11 +25,11 @@ export const POST = withRateLimit(
       }
 
       const { token, password } = parsed.data;
-      const tokenPrefix = token.slice(0, 8);
 
+      // Look up by tokenKey (the raw token stored in DB) — not tokenPrefix which was truncated
       const record = await db.query.passwordResetTokens.findFirst({
         where: and(
-          eq(passwordResetTokens.tokenPrefix, tokenPrefix),
+          eq(passwordResetTokens.tokenKey, token),
           gt(passwordResetTokens.expiresAt, new Date())
         ),
       });

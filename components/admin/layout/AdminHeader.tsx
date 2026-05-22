@@ -113,6 +113,7 @@ export function AdminHeader() {
       <AdminSidebar
         mobileOpen={mobileMenuOpen}
         onMobileClose={() => setMobileMenuOpen(false)}
+        userRole="warehouse"
       />
     </>
   );

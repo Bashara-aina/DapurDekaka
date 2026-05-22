@@ -7,7 +7,6 @@ import { useCartStore } from '@/store/cart.store';
 
 export function HomePageCTA() {
   const { data: session } = useSession();
-  const hydrated = false;
 
   // We need to handle hydration safely
   const [mounted, setMounted] = useState(false);

@@ -156,7 +156,7 @@ export default function CartPage() {
         {/* Loading indicator for validation */}
         {isValidating && (
           <div className="text-center py-2 mb-4">
-            <span className="text-xs text-text-secondary">
+            <span className="text-xs text-text-muted">
               Memvalidasi stok...
             </span>
           </div>

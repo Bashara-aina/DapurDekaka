@@ -38,6 +38,8 @@ export async function GET(req: NextRequest) {
 
 const packSchema = z.object({
   orderId: z.string().uuid(),
+  note: z.string().optional(),
+  coldChainCondition: z.string().optional(),
 });
 
 export async function PATCH(req: NextRequest) {
@@ -58,7 +60,7 @@ export async function PATCH(req: NextRequest) {
       return validationError(parsed.error);
     }
 
-    const { orderId } = parsed.data;
+    const { orderId, note, coldChainCondition } = parsed.data;
 
     const order = await db.query.orders.findFirst({
       where: eq(orders.id, orderId),
@@ -72,11 +74,23 @@ export async function PATCH(req: NextRequest) {
       return conflict('Hanya order dengan status paid yang dapat dipack');
     }
 
+    const packedNote = [
+      `Order dikemas oleh ${session.user.name}`,
+      coldChainCondition ? `Cold chain: ${coldChainCondition}` : null,
+      note || null,
+    ].filter(Boolean).join(' | ');
+
     await db.transaction(async (tx) => {
       // First: paid → processing
-      await tx.update(orders)
+      const [first] = await tx
+        .update(orders)
         .set({ status: 'processing', updatedAt: new Date() })
-        .where(and(eq(orders.id, orderId), eq(orders.status, 'paid')));
+        .where(and(eq(orders.id, orderId), eq(orders.status, 'paid')))
+        .returning({ id: orders.id });
+
+      if (!first) {
+        throw new Error('PACK_FAILED_STATUS_CHANGED');
+      }
 
       await tx.insert(orderStatusHistory).values({
         orderId,
@@ -104,7 +118,7 @@ export async function PATCH(req: NextRequest) {
         toStatus: 'packed',
         changedByUserId: session.user.id,
         changedByType: 'user',
-        note: `Order dikemas oleh ${session.user.name}`,
+        note: packedNote,
       });
     });
 

@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { pointsHistory, users } from '@/lib/db/schema';
-import { eq, and, lte, gt, sql } from 'drizzle-orm';
+import { eq, and, lte, gt, isNull, sql } from 'drizzle-orm';
 import { sendEmail } from '@/lib/resend/send-email';
 import { PointsExpiringEmail } from '@/lib/resend/templates/PointsExpiring';
 import { POINTS_VALUE_IDR } from '@/lib/constants/points';
@@ -21,6 +21,7 @@ interface UserExpiringPoints {
   totalPoints: number;
   totalValue: number;
   items: ExpiringPointsItem[];
+  recordIds: string[];
 }
 
 export async function checkExpiringPoints(): Promise<{
@@ -39,7 +40,8 @@ export async function checkExpiringPoints(): Promise<{
         eq(pointsHistory.isExpired, false),
         gt(pointsHistory.expiresAt, now),
         lte(pointsHistory.expiresAt, expiryThreshold),
-        eq(pointsHistory.type, 'earn')
+        eq(pointsHistory.type, 'earn'),
+        isNull(pointsHistory.warnedAt)
       ),
       with: {
         user: true,
@@ -64,6 +66,7 @@ export async function checkExpiringPoints(): Promise<{
           totalPoints: 0,
           totalValue: 0,
           items: [],
+          recordIds: [],
         });
       }
 
@@ -75,6 +78,7 @@ export async function checkExpiringPoints(): Promise<{
         expiresAt: formatWIB(record.expiresAt!),
         description: record.descriptionId || record.descriptionEn || 'Poin dari pembelian',
       });
+      userGroup.recordIds.push(record.id);
     }
 
     for (const [, userData] of groupedByUser) {
@@ -92,6 +96,13 @@ export async function checkExpiringPoints(): Promise<{
           subject: `${userData.totalPoints.toLocaleString('id-ID')} poin kamu akan hangus dalam 30 hari!`,
           react: emailHtml,
         });
+
+        for (const recordId of userData.recordIds) {
+          await db
+            .update(pointsHistory)
+            .set({ warnedAt: now })
+            .where(eq(pointsHistory.id, recordId));
+        }
 
         processed++;
       } catch (emailError) {

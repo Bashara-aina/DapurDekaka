@@ -29,6 +29,7 @@ interface HeroCarouselProps {
 export function HeroCarousel({ slides, autoRotateSpeed = 5000 }: HeroCarouselProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [MotionComp, setMotionComp] = useState<typeof import('framer-motion') | null>(null);
+  const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     import('framer-motion').then((m) => setMotionComp(m));
@@ -45,7 +46,10 @@ export function HeroCarousel({ slides, autoRotateSpeed = 5000 }: HeroCarouselPro
     return () => clearInterval(timer);
   }, [nextSlide, activeSlides.length, autoRotateSpeed]);
 
-  const goToSlide = (index: number) => setCurrentSlide(index);
+  const goToSlide = (index: number) => {
+    setImgError(false);
+    setCurrentSlide(index);
+  };
 
   if (!activeSlides.length) {
     return (
@@ -83,12 +87,13 @@ export function HeroCarousel({ slides, autoRotateSpeed = 5000 }: HeroCarouselPro
     <>
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent z-10" />
       <Image
-        src={imageUrl}
+        src={imgError ? 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzNFM0UzRSIvPjx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1zaXplPSIzNCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiNFNkU2RTYiIHRleHQtYWxpZ249Im1pZGRsZSIgZHk9Ii40ZW0iPkRvbidUIEVycm9yPC90ZXh0Pjwvc3ZnPg==' : imageUrl}
         alt={activeSlide.titleId}
         fill
         className="object-cover"
         priority={currentSlide === 0}
         sizes="100vw"
+        onError={() => setImgError(true)}
       />
       <div className="relative z-20 h-full flex flex-col items-center justify-center text-center px-4 sm:px-6">
         <h1 className="font-display text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-2 sm:mb-3 whitespace-pre-line leading-tight">

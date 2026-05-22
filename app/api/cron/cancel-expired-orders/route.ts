@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { orders, orderItems, productVariants, inventoryLogs, coupons, couponUsages, pointsHistory, users, orderStatusHistory } from '@/lib/db/schema';
 import { eq, and, lt, sql } from 'drizzle-orm';
+import { getSetting } from '@/lib/settings/get-settings';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { checkTransactionStatus } from '@/lib/midtrans/status';
 import { serverError, success } from '@/lib/utils/api-response';
@@ -24,6 +25,7 @@ export async function GET(req: NextRequest) {
     }
 
     const now = new Date();
+    const expiryMinutes = await getSetting<number>('payment_expiry_minutes', 'integer') ?? 15;
     let cancelled = 0;
     let errors: string[] = [];
 
@@ -89,27 +91,37 @@ export async function GET(req: NextRequest) {
             toStatus: 'cancelled',
             changedByUserId: null,
             changedByType: 'system',
-            note: `Otomatis dibatalkan karena tidak dibayar dalam 15 menit`,
+            note: `Otomatis dibatalkan karena tidak dibayar dalam ${expiryMinutes} menit`,
           });
 
-          // BUG-01: Restore stock for all order items
-          for (const item of order.items) {
-            const [updated] = await tx
-              .update(productVariants)
-              .set({ stock: sql`stock + ${item.quantity}`, updatedAt: new Date() })
-              .where(eq(productVariants.id, item.variantId))
-              .returning({ newStock: productVariants.stock });
+          // BUG-01: Only restore stock if items were actually sold (not already reversed/cancelled)
+          const [salesLog] = await tx
+            .select({ count: sql<number>`count(*)::int` })
+            .from(inventoryLogs)
+            .where(and(
+              eq(inventoryLogs.orderId, order.id),
+              eq(inventoryLogs.changeType, 'sale')
+            ));
 
-            if (updated) {
-              await tx.insert(inventoryLogs).values({
-                variantId: item.variantId,
-                changeType: 'reversal',
-                quantityBefore: updated.newStock - item.quantity,
-                quantityAfter: updated.newStock,
-                quantityDelta: item.quantity,
-                orderId: order.id,
-                note: `Pembatalan expired order ${order.orderNumber} — stok dikembalikan`,
-              });
+          if ((salesLog?.count ?? 0) > 0) {
+            for (const item of order.items) {
+              const [updated] = await tx
+                .update(productVariants)
+                .set({ stock: sql`stock + ${item.quantity}`, updatedAt: new Date() })
+                .where(eq(productVariants.id, item.variantId))
+                .returning({ newStock: productVariants.stock });
+
+              if (updated) {
+                await tx.insert(inventoryLogs).values({
+                  variantId: item.variantId,
+                  changeType: 'reversal',
+                  quantityBefore: updated.newStock - item.quantity,
+                  quantityAfter: updated.newStock,
+                  quantityDelta: item.quantity,
+                  orderId: order.id,
+                  note: `Pembatalan expired order ${order.orderNumber} — stok dikembalikan`,
+                });
+              }
             }
           }
 

@@ -1,19 +1,20 @@
 import { NextRequest } from 'next/server';
-import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { orders } from '@/lib/db/schema';
-import { gte, sql, and } from 'drizzle-orm';
+import { gte, lte, sql, and } from 'drizzle-orm';
 import { success, forbidden, serverError } from '@/lib/utils/api-response';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const getRevenueChart = cache(async () => {
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-  const thirtyDaysAgo = new Date(today);
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
-  thirtyDaysAgo.setHours(0, 0, 0, 0);
+const getRevenueChart = unstable_cache(async (from: string, to: string) => {
+  const fromDate = from ? new Date(from) : new Date();
+  fromDate.setHours(0, 0, 0, 0);
+  const toDate = to ? new Date(to) : new Date();
+  toDate.setHours(23, 59, 59, 999);
+
+  const dayCount = Math.max(1, Math.ceil((toDate.getTime() - fromDate.getTime()) / 86400000));
 
   const rawData = await db
     .select({
@@ -24,17 +25,17 @@ const getRevenueChart = cache(async () => {
     .from(orders)
     .where(
       and(
-        gte(orders.paidAt, thirtyDaysAgo),
+        gte(orders.paidAt, fromDate),
+        lte(orders.paidAt, toDate),
         sql`${orders.status} IN ('paid','processing','packed','shipped','delivered')`
       )
     )
     .groupBy(sql`DATE(${orders.paidAt}::timestamptz AT TIME ZONE 'Asia/Jakarta')`)
     .orderBy(sql`DATE(${orders.paidAt}::timestamptz AT TIME ZONE 'Asia/Jakarta')`);
 
-  // Build all 30 days with zero-fill for missing days
   const filled: Array<{ date: string; label: string; revenue: number; orders: number }> = [];
-  for (let i = 0; i < 30; i++) {
-    const d = new Date(thirtyDaysAgo);
+  for (let i = 0; i < dayCount; i++) {
+    const d = new Date(fromDate);
     d.setDate(d.getDate() + i);
     const dateStr = d.toISOString().slice(0, 10);
     const dayMonth = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
@@ -48,16 +49,23 @@ const getRevenueChart = cache(async () => {
   }
 
   return filled;
-});
+}, ['revenue-chart'], { revalidate: 300 });
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
       return forbidden('Akses ditolak');
     }
 
-    const data = await getRevenueChart();
+    const role = session.user.role;
+    if (!role || !['superadmin', 'owner'].includes(role)) {
+      return forbidden('Akses ditolak');
+    }
+
+    const from = req.nextUrl.searchParams.get('from') ?? '';
+    const to = req.nextUrl.searchParams.get('to') ?? '';
+    const data = await getRevenueChart(from || '', to || '');
     return success(data);
   } catch (error) {
     console.error('[admin/dashboard/revenue-chart]', error);

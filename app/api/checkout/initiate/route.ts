@@ -26,6 +26,7 @@ import { createMidtransTransaction } from '@/lib/midtrans/create-transaction';
 import { POINTS_EARN_RATE } from '@/lib/constants/points';
 import { getSetting } from '@/lib/settings/get-settings';
 import { withRateLimit } from '@/lib/utils/rate-limit';
+import { ALLOWED_COURIERS } from '@/lib/constants/couriers';
 
 const initiateSchema = z.object({
   items: z
@@ -195,6 +196,10 @@ export const POST = withRateLimit(
         return conflict('Kupon sudah expired');
       }
 
+      if (coupon.startsAt && new Date(coupon.startsAt) > new Date()) {
+        return conflict('Kupon belum berlaku');
+      }
+
       if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
         return conflict('Kupon sudah mencapai batas penggunaan');
       }
@@ -362,7 +367,10 @@ export const POST = withRateLimit(
       }
     }
 
-    // FIX 10: Coupon per-user limit — check by userId for logged-in, by email for guests
+    // TODO (BUG-10): Current rate limit is per-IP only (withRateLimit).
+// For per-user rate limiting (when userId is available), consider using
+// an in-memory Map or Redis to track userId → request count within window.
+// Example: if (userId) await checkRateLimitAsync(userId, 5, '1 m');
     if (coupon && coupon.maxUsesPerUser) {
       if (userId) {
         const userUsageCount = await db
@@ -391,10 +399,75 @@ export const POST = withRateLimit(
       }
     }
 
+    // ── Validate courier code is in ALLOWED_COURIERS ──────────────────────
+    if (deliveryMethod === 'delivery' && addressData.courierCode) {
+      const isAllowedCourier = ALLOWED_COURIERS.some(c => c.code === addressData.courierCode);
+      if (!isAllowedCourier) {
+        return conflict('Kurir tidak valid');
+      }
+    }
+
+    // ── Re-calculate shipping cost server-side for delivery orders ────────
+    let serverCalculatedShippingCost = 0;
+    if (deliveryMethod === 'delivery' && addressData.courierCode && addressData.cityId && parsed.data.shippingCost !== undefined) {
+      const apiKey = process.env.RAJAONGKIR_API_KEY;
+      if (apiKey) {
+        try {
+          const originCityId = await getSetting('rajaongkir_origin_city_id') ?? '23';
+          const totalWeight = items.reduce((sum, item) => sum + item.weightGram * item.quantity, 0);
+          const billableWeight = Math.max(totalWeight, 100);
+          const weightInKg = Math.ceil(billableWeight / 100) * 100;
+
+          const response = await fetch('https://api.rajaongkir.com/starter/cost', {
+            method: 'POST',
+            headers: { 'key': apiKey, 'content-type': 'application/json' },
+            body: JSON.stringify({
+              origin: originCityId,
+              destination: addressData.cityId,
+              weight: weightInKg,
+              courier: addressData.courierCode,
+            }),
+          });
+
+          const data = await response.json();
+          if (data.rajaongkir?.results?.[0]?.costs) {
+            const courierData = data.rajaongkir.results[0];
+            let serviceFound = false;
+            for (const cost of courierData.costs) {
+              if (cost.service === addressData.courierService) {
+                serverCalculatedShippingCost = cost.cost[0].value;
+                serviceFound = true;
+                break;
+              }
+            }
+            if (!serviceFound) {
+              return conflict('Layanan kurir tidak ditemukan. Silakan refresh halaman.');
+            }
+          }
+        } catch (e) {
+          console.error('[checkout/initiate] Shipping cost recalculation failed:', e);
+        }
+      }
+
+      // Check for manipulation: server cost vs client cost must be within 10%
+      if (serverCalculatedShippingCost > 0) {
+        const diff = Math.abs(serverCalculatedShippingCost - parsed.data.shippingCost);
+        const diffPercent = diff / serverCalculatedShippingCost;
+        if (diffPercent > 0.10) {
+          return conflict('Biaya pengiriman tidak valid. Silakan refresh halaman dan coba lagi.');
+        }
+      }
+    }
+
     const baseShippingCost = deliveryMethod === 'pickup' ? 0 : (addressData.courierCode ? (parsed.data.shippingCost ?? 0) : 0);
-    const shippingCost = (coupon && (coupon.type === 'free_shipping' || coupon.freeShipping)) && deliveryMethod === 'delivery'
-      ? 0
-      : baseShippingCost;
+    const isFreeShippingCoupon = coupon && (coupon.type === 'free_shipping' || coupon.freeShipping) && deliveryMethod === 'delivery';
+    const shippingCost = isFreeShippingCoupon ? 0 : baseShippingCost;
+
+    // BUG-07: free_shipping discount must offset shipping cost in totalAmount formula
+    if (isFreeShippingCoupon) {
+      discountAmount = baseShippingCost;
+    }
+
     const totalAmount = subtotal - discountAmount - pointsDiscount + shippingCost;
     const pointsEarnedBase = Math.floor(subtotal / 1000) * POINTS_EARN_RATE;
     const pointsEarned = isB2bOrder ? pointsEarnedBase * 2 : pointsEarnedBase;
@@ -540,6 +613,25 @@ export const POST = withRateLimit(
         throw new Error('Failed to create order');
       }
 
+      // Claim coupon slot INSIDE transaction — prevents race condition where concurrent
+      // requests both see available slots and overclaim. If the server crashes after this
+      // but before the transaction commits, the transaction rolls back and no slot is wasted.
+      if (coupon) {
+        const [claimed] = await tx
+          .update(coupons)
+          .set({ usedCount: sql`used_count + 1` })
+          .where(
+            coupon.maxUses
+              ? and(eq(coupons.id, coupon.id), sql`used_count < ${coupon.maxUses}`)
+              : eq(coupons.id, coupon.id)
+          )
+          .returning({ usedCount: coupons.usedCount });
+
+        if (!claimed) {
+          throw new Error('Kupon sudah mencapai batas');
+        }
+      }
+
       // Insert redeem records now that orderId is available (FIFO consume)
       for (const { earnId, amountUsed } of redeemRecords) {
         await tx.insert(pointsHistory).values({
@@ -578,7 +670,7 @@ export const POST = withRateLimit(
           if (item.quantity <= 0) continue;
           const [updated] = await tx
             .update(productVariants)
-            .set({ stock: sql`stock - ${item.quantity}` })
+            .set({ stock: sql`GREATEST(stock - ${item.quantity}, 0)` })
             .where(
               and(
                 eq(productVariants.id, item.variantId),
@@ -603,8 +695,8 @@ export const POST = withRateLimit(
         }
 
         // Award loyalty points for B2B Net-30 order
-        if (userId && order.pointsEarned > 0) {
-          const earnedPoints = order.pointsEarned;
+        if (userId && created.pointsEarned > 0) {
+          const earnedPoints = created.pointsEarned;
           const updatedUsers = await tx
             .update(users)
             .set({ pointsBalance: sql`points_balance + ${earnedPoints}` })
@@ -618,8 +710,8 @@ export const POST = withRateLimit(
             type: 'earn',
             pointsAmount: earnedPoints,
             pointsBalanceAfter: newBalance,
-            descriptionId: `Pembelian ${orderNumber} (Net-30)`,
-            descriptionEn: `Purchase ${orderNumber} (Net-30)`,
+            descriptionId: `Pembelian ${created.orderNumber} (Net-30)`,
+            descriptionEn: `Purchase ${created.orderNumber} (Net-30)`,
             orderId: created.id,
             expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
           });
@@ -638,23 +730,21 @@ export const POST = withRateLimit(
             .onConflictDoNothing();
         }
 
-        // Increment coupon used_count for Net-30
-        if (coupon) {
-          await tx
-            .update(coupons)
-            .set({ usedCount: sql`used_count + 1` })
-            .where(eq(coupons.id, coupon.id));
-        }
+        // NOTE: For Net-30 orders, coupon slot is claimed atomically inside this
+        // transaction (above) before the order is created.
       }
 
-      // BUG-08: Insert provisional couponUsages row to enforce per-user limit under concurrency
+      // Insert provisional couponUsages row for ALL coupons to enforce max_uses under concurrency
       // If order is cancelled, this row is deleted by the cancel/expire webhook handler
       // NOTE: For Net-30 orders, we already inserted/confirmed above, skip duplicate
-      if (coupon && coupon.maxUsesPerUser && userId && !isNet30Order) {
+      // Insert provisional couponUsages row for ALL coupons (not just maxUsesPerUser)
+      // This enforces max_uses under concurrency — the atomic usedCount increment at initiate
+      // reserves the slot, and the row is confirmed at webhook settlement
+      if (coupon && !isNet30Order) {
         await tx.insert(couponUsages).values({
           couponId: coupon.id,
           orderId: created.id,
-          userId,
+          userId: userId ?? null,
           discountApplied: discountAmount,
         });
       }
@@ -760,5 +850,12 @@ export const POST = withRateLimit(
       return serverError(error);
     }
   },
-  { windowMs: 60000, maxRequests: 10 }
+  {
+    windowMs: 60000,
+    maxRequests: 10,
+    keyGenerator: async (req: NextRequest) => {
+      const session = await auth();
+      return session?.user?.id ?? req.ip ?? 'unknown';
+    },
+  }
 );

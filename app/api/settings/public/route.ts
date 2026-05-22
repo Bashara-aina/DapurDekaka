@@ -1,30 +1,63 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { systemSettings } from '@/lib/db/schema';
-import { inArray } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { success, serverError } from '@/lib/utils/api-response';
+
 export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
 
 const PUBLIC_SETTING_KEYS = [
-  'store_open_days',
-  'store_opening_hours',
-  'store_closing_hours',
-  'whatsapp_number',
-  'store_address',
   'store_name',
-];
+  'store_tagline',
+  'store_description',
+  'whatsapp_number',
+  'whatsapp_message_template',
+  'instagram_url',
+  'facebook_url',
+  'tiktok_url',
+  'address',
+  'city',
+  'province',
+  'postal_code',
+  'contact_email',
+  'shipping_origin_city',
+  'free_shipping_threshold',
+  'min_order_amount',
+  'max_order_quantity_per_item',
+] as const;
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    const settings = await db.query.systemSettings.findMany({
-      where: (s, { inArray: inArrayFn }) => inArrayFn(s.key, PUBLIC_SETTING_KEYS),
-    });
+    const keysParam = req.nextUrl.searchParams.get('keys');
+    let keys: string[];
 
-    const result = Object.fromEntries(settings.map((s) => [s.key, s.value]));
-    return success(result);
+    if (keysParam) {
+      keys = keysParam.split(',').map(k => k.trim()).filter(Boolean);
+    } else {
+      keys = [...PUBLIC_SETTING_KEYS];
+    }
+
+    if (keys.length === 0) {
+      return success([]);
+    }
+
+    const rows = await db
+      .select({
+        key: systemSettings.key,
+        value: systemSettings.value,
+        type: systemSettings.type,
+      })
+      .from(systemSettings)
+      .where(sql`${systemSettings.key} IN (${sql.join(keys.map(k => sql`${k}`), sql`, `)})`);
+
+    const settings = rows.map(s => ({
+      key: s.key,
+      value: s.type === 'boolean' ? s.value === 'true' : s.type === 'number' ? Number(s.value) : s.value,
+    }));
+
+    return success(settings);
   } catch (error) {
-    console.error('[api/settings/public]', error);
+    console.error('[PublicSettings/GET]', error);
     return serverError(error);
   }
 }

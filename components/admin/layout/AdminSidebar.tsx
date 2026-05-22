@@ -15,29 +15,38 @@ const NAV_ITEMS = [
   { href: '/admin/team-dashboard', label: 'Tim Dashboard', icon: BarChart3, roles: ['superadmin', 'owner'] },
   { href: '/admin/field', label: 'Gudang', icon: ClipboardList, roles: ['superadmin', 'owner', 'warehouse'] },
   { separator: true },
-  { href: '/admin/orders', label: 'Pesanan', icon: ShoppingCart },
-  { href: '/admin/products', label: 'Produk', icon: Package },
-  { href: '/admin/categories', label: 'Kategori', icon: Layers },
-  { href: '/admin/inventory', label: 'Inventori', icon: Box },
-  { href: '/admin/shipments', label: 'Pengiriman', icon: Truck },
-  { href: '/admin/customers', label: 'Pelanggan', icon: Users },
+  { href: '/admin/orders', label: 'Pesanan', icon: ShoppingCart, roles: ['superadmin', 'owner', 'warehouse'] },
+  { href: '/admin/products', label: 'Produk', icon: Package, roles: ['superadmin', 'owner'] },
+  { href: '/admin/categories', label: 'Kategori', icon: Layers, roles: ['superadmin', 'owner'] },
+  { href: '/admin/inventory', label: 'Inventori', icon: Box, roles: ['superadmin', 'owner', 'warehouse'] },
+  { href: '/admin/shipments', label: 'Pengiriman', icon: Truck, roles: ['superadmin', 'owner', 'warehouse'] },
+  { href: '/admin/customers', label: 'Pelanggan', icon: Users, roles: ['superadmin', 'owner'] },
   { separator: true },
-  { href: '/admin/coupons', label: 'Kupon', icon: Tag },
-  { href: '/admin/blog', label: 'Blog', icon: FileText },
-  { href: '/admin/testimonials', label: 'Testimoni', icon: Star },
-  { href: '/admin/carousel', label: 'Carousel', icon: Image },
-  { href: '/admin/b2b-inquiries', label: 'B2B', icon: MessageSquare },
-  { href: '/admin/ai-content', label: 'AI Content', icon: Bot },
+  { href: '/admin/coupons', label: 'Kupon', icon: Tag, roles: ['superadmin'] },
+  { href: '/admin/blog', label: 'Blog', icon: FileText, roles: ['superadmin', 'owner'] },
+  { href: '/admin/testimonials', label: 'Testimoni', icon: Star, roles: ['superadmin', 'owner'] },
+  { href: '/admin/carousel', label: 'Carousel', icon: Image, roles: ['superadmin', 'owner'] },
+  { href: '/admin/b2b-inquiries', label: 'B2B', icon: MessageSquare, roles: ['superadmin', 'owner'] },
+  { href: '/admin/ai-content', label: 'AI Content', icon: Bot, roles: ['superadmin'] },
   { separator: true },
-  { href: '/admin/settings', label: 'Pengaturan', icon: Settings },
+  { href: '/admin/settings', label: 'Pengaturan', icon: Settings, roles: ['superadmin'] },
 ];
+
+interface NavItemType {
+  href?: string;
+  label?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  roles?: string[];
+  separator?: boolean;
+}
 
 interface AdminSidebarProps {
   mobileOpen?: boolean;
   onMobileClose?: () => void;
+  userRole?: string;
 }
 
-export function AdminSidebar({ mobileOpen = false, onMobileClose }: AdminSidebarProps) {
+export function AdminSidebar({ mobileOpen = false, onMobileClose, userRole = 'warehouse' }: AdminSidebarProps) {
   const pathname = usePathname();
 
   // Prevent body scroll when mobile menu is open
@@ -49,6 +58,14 @@ export function AdminSidebar({ mobileOpen = false, onMobileClose }: AdminSidebar
     }
     return () => { document.body.style.overflow = ''; };
   }, [mobileOpen]);
+
+  // Filter nav items by user role
+  const filteredNavItems = NAV_ITEMS.filter((item) => {
+    if ('separator' in item && item.separator) return true;
+    const itemWithRoles = item as NavItemType;
+    if (!itemWithRoles.roles || itemWithRoles.roles.length === 0) return true;
+    return itemWithRoles.roles.includes(userRole);
+  });
 
   const NavContent = () => (
     <>
@@ -70,12 +87,13 @@ export function AdminSidebar({ mobileOpen = false, onMobileClose }: AdminSidebar
 
       {/* Nav */}
       <nav className="flex-1 p-4 space-y-0.5 overflow-y-auto">
-        {NAV_ITEMS.map((item, idx) => {
+        {filteredNavItems.map((item, idx) => {
           if ('separator' in item && item.separator) {
             return <div key={`sep-${idx}`} className="my-2 border-t border-white/10" />;
           }
 
-          const navItem = item as { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
+          const navItem = item as NavItemType;
+          if (!navItem.href || !navItem.label || !navItem.icon) return null;
           const Icon = navItem.icon;
           const isActive = pathname === navItem.href || pathname.startsWith(`${navItem.href}/`);
 

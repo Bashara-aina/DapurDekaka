@@ -6,6 +6,7 @@ const REQUIRED = [
   'CLOUDINARY_API_SECRET',
   'RESEND_API_KEY',
   'CRON_SECRET',
+  'MINIMAX_API_KEY',
 ] as const;
 
 /**

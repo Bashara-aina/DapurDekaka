@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ProductCard } from '@/components/store/products/ProductCard';
+import { EmptyState } from '@/components/store/common/EmptyState';
 import type { Product, ProductVariant } from '@/lib/db/schema';
 import { productImages } from '@/lib/db/schema';
 
@@ -188,25 +189,19 @@ export function ProductCatalog({ products, categories, initialCategory = '', ini
                     imageUrl: primaryImage?.cloudinaryUrl,
                   }}
                   variant={primaryVariant}
+                  isOutOfStock={!product.variants.some((v) => v.stock > 0)}
                 />
               );
             })}
           </div>
         ) : (
           <div className="text-center py-16 col-span-full">
-            <p className="text-5xl mb-4">😕</p>
-            <h3 className="font-display text-lg font-semibold text-text-primary mb-2">
-              Produk tidak ditemukan
-            </h3>
-            <p className="text-text-secondary text-sm mb-4">
-              Coba kategori lain atau hapus filter
-            </p>
-            <button
-              onClick={() => handleCategoryChange(null)}
-              className="px-4 py-2 bg-brand-red text-white text-sm font-bold rounded-button hover:bg-brand-red-dark transition-colors"
-            >
-              Tampilkan Semua Produk
-            </button>
+            <EmptyState
+              variant="search"
+              title="Produk tidak ditemukan"
+              description="Coba kategori lain atau hapus filter."
+              action={{ label: 'Tampilkan Semua Produk', onClick: () => handleCategoryChange(null) }}
+            />
           </div>
         )}
       </div>

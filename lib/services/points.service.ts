@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { users, pointsHistory } from '@/lib/db/schema';
-import { eq, and, lt, gt } from 'drizzle-orm';
+import { eq, and, lt, gt, sql } from 'drizzle-orm';
 import { addYears } from 'date-fns';
 
 /**
@@ -39,7 +39,7 @@ export async function earnPoints(
 
     await tx
       .update(users)
-      .set({ pointsBalance: newBalance })
+      .set({ pointsBalance: sql`points_balance + ${pointsEarned}` })
       .where(eq(users.id, userId));
   });
 

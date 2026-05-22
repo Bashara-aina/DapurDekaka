@@ -137,12 +137,24 @@ async function getPromoSettings() {
   };
 }
 
+async function getStoreHours() {
+  const settings = await db.query.systemSettings.findMany({
+    where: sql`${systemSettings.key} IN ('store_opening_hours', 'store_closing_hours', 'store_open_days')`,
+  });
+  return {
+    openDays: settings.find(s => s.key === 'store_open_days')?.value ?? 'Monday-Tuesday-Wednesday-Thursday-Friday-Saturday',
+    openTime: settings.find(s => s.key === 'store_opening_hours')?.value ?? '09:00',
+    closeTime: settings.find(s => s.key === 'store_closing_hours')?.value ?? '17:00',
+  };
+}
+
 export default async function HomePage() {
-  const [featuredProducts, allCategories, activeSlides, promoSettings] = await Promise.all([
+  const [featuredProducts, allCategories, activeSlides, promoSettings, storeHours] = await Promise.all([
     getFeaturedProducts().catch(() => [] as Awaited<ReturnType<typeof getFeaturedProducts>>),
     getCategories().catch(() => [] as Awaited<ReturnType<typeof getCategories>>),
     getActiveCarouselSlides().catch(() => [] as Awaited<ReturnType<typeof getActiveCarouselSlides>>),
     getPromoSettings().catch(() => ({ promoCode: 'SELAMATDATANG', promoTitle: 'Untuk pembelian pertama kamu', promoSubtitle: 'Gunakan kode:', carouselSpeedMs: 5000 })),
+    getStoreHours().catch(() => ({ openDays: 'Monday-Tuesday-Wednesday-Thursday-Friday-Saturday', openTime: '09:00', closeTime: '17:00' })),
   ]);
 
   const organizationJsonLd = {
@@ -213,20 +225,12 @@ export default async function HomePage() {
       latitude: -6.9175,
       longitude: 107.6191,
     },
-    openingHoursSpecification: [
-      {
-        '@type': 'OpeningHoursSpecification',
-        dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-        opens: '09:00',
-        closes: '17:00',
-      },
-      {
-        '@type': 'OpeningHoursSpecification',
-        dayOfWeek: ['Sunday'],
-        opens: '09:00',
-        closes: '15:00',
-      },
-    ],
+    openingHoursSpecification: storeHours.openDays.split('-').map((day) => ({
+      '@type': 'OpeningHoursSpecification',
+      dayOfWeek: [day],
+      opens: storeHours.openTime,
+      closes: storeHours.closeTime,
+    })),
   };
 
   return (

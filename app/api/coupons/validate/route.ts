@@ -1,30 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-import { z } from 'zod';
 import { db } from '@/lib/db';
 import { coupons, couponUsages } from '@/lib/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { withRateLimit } from '@/lib/utils/rate-limit';
-import { success, serverError, validationError, notFound, conflict, badRequest } from '@/lib/utils/api-response';
-
-const ValidateCouponSchema = z.object({
-  code: z.string().min(1),
-  subtotal: z.number().int().nonnegative(),
-  userId: z.string().uuid().optional().nullable(),
-});
+import { success, serverError, conflict, validationError } from '@/lib/utils/api-response';
+import { CouponValidationSchema } from '@/lib/validations/coupon.schema';
 
 export const POST = withRateLimit(
   async (req: NextRequest) => {
     try {
       const body = await req.json();
-      const parsed = ValidateCouponSchema.safeParse(body);
+      const parsed = CouponValidationSchema.safeParse(body);
 
       if (!parsed.success) {
         return validationError(parsed.error);
       }
 
-      const { code, subtotal, userId } = parsed.data;
+      const { code, subtotal, userId, productIds } = parsed.data;
       const normalizedCode = code.toUpperCase().trim();
 
       const coupon = await db.query.coupons.findFirst({
@@ -40,11 +34,11 @@ export const POST = withRateLimit(
 
       const now = new Date();
       if (coupon.expiresAt && coupon.expiresAt < now) {
-        return conflict('Kupon tidak valid');
+        return conflict('Kupon sudah expired');
       }
 
       if (coupon.startsAt && coupon.startsAt > now) {
-        return conflict('Kupon tidak valid');
+        return conflict('Kupon belum berlaku');
       }
 
       if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
@@ -66,6 +60,36 @@ export const POST = withRateLimit(
 
         if (usageCount[0] && Number(usageCount[0].count) >= coupon.maxUsesPerUser) {
           return conflict('Kupon tidak valid');
+        }
+      }
+
+      // Validate applicable_category_ids — check if cart products belong to allowed categories
+      if (coupon.applicableCategoryIds && coupon.applicableCategoryIds.length > 0 && productIds && productIds.length > 0) {
+        const cartProducts = await db.query.products.findMany({
+          where: (products, { inArray }) => inArray(products.id, productIds),
+        });
+
+        const cartCategoryIds = cartProducts
+          .map((p) => p.categoryId)
+          .filter((cid): cid is string => cid !== null);
+
+        const hasMatchingCategory = cartCategoryIds.some((cid) =>
+          coupon.applicableCategoryIds!.includes(cid)
+        );
+
+        if (!hasMatchingCategory) {
+          return conflict('Kupon tidak berlaku untuk produk di keranjang');
+        }
+      }
+
+      // Validate applicable_product_ids — check if cart contains allowed products
+      if (coupon.applicableProductIds && coupon.applicableProductIds.length > 0 && productIds && productIds.length > 0) {
+        const hasMatchingProduct = productIds.some((pid) =>
+          coupon.applicableProductIds!.includes(pid)
+        );
+
+        if (!hasMatchingProduct) {
+          return conflict('Kupon tidak berlaku untuk produk di keranjang');
         }
       }
 

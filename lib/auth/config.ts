@@ -54,9 +54,6 @@ export const authConfig: NextAuthConfig = {
   session: { strategy: 'database' },
   callbacks: {
     async session({ session, user }) {
-      if (typeof window === 'undefined') {
-        console.log('[Auth Session Callback]', { hasUser: !!user, hasSession: !!session, sessionUser: session?.user });
-      }
       if (!session.user) return session;
       if (user?.id) {
         session.user.id = user.id as string;
@@ -66,17 +63,37 @@ export const authConfig: NextAuthConfig = {
         });
         if (!dbUser) {
           console.warn('[Auth] User not found in DB:', user.id);
-          return {} as typeof session;
+          // Return session without user properties — NextAuth will issue empty session
+          return { ...session, user: { ...session.user, id: undefined, role: undefined, name: undefined } };
         }
         if (dbUser.role) {
           session.user.role = dbUser.role;
         }
         if (dbUser.isActive === false) {
           console.warn('[Auth] User isActive=false, clearing session');
-          return {} as typeof session;
+          // Return session without user properties — NextAuth will issue empty session
+          return { ...session, user: { ...session.user, id: undefined, role: undefined, name: undefined } };
         }
       }
       return session;
+    },
+  },
+  events: {
+    async signIn({ user, account }) {
+      if (account?.provider === 'google') {
+        // Ensure languagePreference is set to 'id' for new OAuth users
+        if (user?.id) {
+          const dbUser = await db.query.users.findFirst({
+            where: eq(users.id, user.id),
+            columns: { id: true, languagePreference: true },
+          });
+          if (dbUser && !dbUser.languagePreference) {
+            await db.update(users)
+              .set({ languagePreference: 'id' })
+              .where(eq(users.id, dbUser.id));
+          }
+        }
+      }
     },
   },
 };

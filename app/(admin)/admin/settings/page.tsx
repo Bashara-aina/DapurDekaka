@@ -133,7 +133,7 @@ export default function SettingsPage() {
         const promoActive = settings.find(s => s.key === 'promo_active')?.value === 'true';
         if (!promoTitle && !promoSubtitle) return null;
         return (
-          <div className="border rounded-xl p-5 bg-brand-cream">
+          <div className="border rounded-xl p-5 bg-gray-50">
             <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Preview Promo Banner</p>
             <div className="bg-brand-red rounded-lg p-4 text-white">
               {promoActive && <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full mb-2 inline-block">ACTIVE</span>}

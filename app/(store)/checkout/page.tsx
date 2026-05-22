@@ -25,7 +25,7 @@ import { OrderSummaryCard } from '@/components/store/checkout/OrderSummaryCard';
 import { EmptyState } from '@/components/store/common/EmptyState';
 import { SavedAddressPicker } from '@/components/store/checkout/SavedAddressPicker';
 import type { SavedAddress } from '@/components/store/checkout/SavedAddressPicker';
-import { ChevronDown, Loader2 } from 'lucide-react';
+import { ChevronDown, Loader2, RefreshCw } from 'lucide-react';
 
 const MidtransPayment = nextDynamic(
   () => import('@/components/store/checkout/MidtransPayment').then((m) => m.MidtransPayment),
@@ -82,7 +82,7 @@ export default function CheckoutPage() {
   const clearCart = useCartStore((s) => s.clearCart);
 
   const [step, setStep] = useState<CheckoutStep>('identity');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [snapToken, setSnapToken] = useState<string | null>(null);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const [storeHours, setStoreHours] = useState<StoreHours>({ openDays: 'Senin - Sabtu', openHours: '08.00 - 17.00 WIB' });
@@ -138,7 +138,6 @@ export default function CheckoutPage() {
   const [usePoints, setUsePoints] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string | null>(null);
-  const [showAddressPicker, setShowAddressPicker] = useState(false);
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
   const [showOrderReview, setShowOrderReview] = useState(false);
 
@@ -265,7 +264,17 @@ export default function CheckoutPage() {
 
   // Step 2: Delivery method
   const handleDeliveryMethodChange = async (method: 'delivery' | 'pickup') => {
-    updateForm({ deliveryMethod: method, shippingCost: 0 });
+    if (method === 'pickup') {
+      updateForm({
+        deliveryMethod: method,
+        shippingCost: 0,
+        courierCode: '',
+        courierService: '',
+        courierName: '',
+      });
+    } else {
+      updateForm({ deliveryMethod: method, shippingCost: 0 });
+    }
     if (method === 'pickup' && step === 'courier') {
       setStep('delivery');
     }
@@ -379,9 +388,9 @@ export default function CheckoutPage() {
     if (!use) {
       updateForm({ pointsUsed: 0 });
     } else {
-      // Calculate max points based on 50% of subtotal-cap, converted from IDR to points (1pt = 10 IDR)
+      // Calculate max points based on 50% of subtotal-cap, converted from IDR to points
       const maxPointsInIDR = Math.floor((subtotal - couponDiscount) * 0.5);
-      const maxPointsFromIDR = Math.floor(maxPointsInIDR / 10); // 1pt = 10 IDR
+      const maxPointsFromIDR = Math.floor(maxPointsInIDR / POINTS_VALUE_IDR);
       const maxPoints = Math.min(pointsBalance, maxPointsFromIDR);
       const pointsToUse = Math.floor(maxPoints / POINTS_MIN_REDEEM) * POINTS_MIN_REDEEM; // Round to min 100
       updateForm({ pointsUsed: pointsToUse });
@@ -389,7 +398,8 @@ export default function CheckoutPage() {
   };
 
   const handlePlaceOrder = async () => {
-    setIsLoading(true);
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
     try {
       const res = await fetch('/api/checkout/initiate', {
@@ -420,7 +430,6 @@ export default function CheckoutPage() {
 
       if (!data.success) {
         toast.error(data.error || 'Gagal membuat pesanan');
-        setIsLoading(false);
         return;
       }
 
@@ -436,7 +445,8 @@ export default function CheckoutPage() {
       setServerTotalAmount(data.data.totalAmount);
     } catch {
       toast.error('Gagal membuat pesanan');
-      setIsLoading(false);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -594,14 +604,13 @@ export default function CheckoutPage() {
                           setShowNewAddressForm(false);
                           handleAddressSubmit(data);
                         }}
-                        onBack={() => {
-                          if (session?.user && savedAddresses.length > 0) {
-                            setShowNewAddressForm(false);
-                            setShowAddressPicker(true);
-                          } else {
-                            handleBack();
-                          }
-                        }}
+        onBack={() => {
+          if (session?.user && savedAddresses.length > 0) {
+            setShowNewAddressForm(false);
+          } else {
+            handleBack();
+          }
+        }}
                       />
                     )}
                   </div>
@@ -782,17 +791,26 @@ export default function CheckoutPage() {
                   onClick={handleBack}
                   className="text-sm text-text-secondary hover:underline mb-4 text-left"
                 >
-                  ← Kembali ke Kurir
+                  ← Kembali ke {formData.deliveryMethod === 'pickup' ? 'Pengiriman' : 'Kurir'}
                 </button>
 
                 <button
                   type="button"
                   onClick={handlePlaceOrder}
-                  disabled={isLoading}
-                  className="w-full h-14 bg-brand-red text-white font-bold rounded-button disabled:opacity-50"
+                  disabled={isSubmitting}
+                  className="w-full h-14 bg-brand-red text-white font-bold rounded-button disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {isLoading ? 'Memproses...' : `Bayar Sekarang — ${formatIDR(totalAmount)}`}
-                  <span className="block text-xs font-normal mt-0.5 opacity-80">(dikonfirmasi setelah pesanan dibuat)</span>
+                  {isSubmitting ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Memproses...
+                    </>
+                  ) : (
+                    <>
+                      Bayar Sekarang — {formatIDR(totalAmount)}
+                      <span className="block text-xs font-normal mt-0.5 opacity-80">(dikonfirmasi setelah pesanan dibuat)</span>
+                    </>
+                  )}
                 </button>
               </div>
             )}
@@ -821,12 +839,10 @@ export default function CheckoutPage() {
             onPending: () => router.push(`/checkout/pending?order=${orderNumber}`),
             onError: () => {
               setSnapToken(null);
-              setIsLoading(false);
               toast.error('Pembayaran gagal. Silakan coba lagi.');
             },
             onClose: () => {
               setSnapToken(null);
-              setIsLoading(false);
             },
           }}
         />

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 const STATUS_OPTIONS = [
   { value: 'new', label: 'Baru' },
@@ -22,7 +23,9 @@ export function InquiryStatusUpdate({ inquiryId, currentStatus }: InquiryStatusU
   const [isUpdating, setIsUpdating] = useState(false);
 
   const handleStatusChange = async (newStatus: string) => {
+    const prevStatus = status;
     setIsUpdating(true);
+    setStatus(newStatus);
     try {
       const response = await fetch(`/api/admin/b2b-inquiries/${inquiryId}`, {
         method: 'PATCH',
@@ -30,10 +33,16 @@ export function InquiryStatusUpdate({ inquiryId, currentStatus }: InquiryStatusU
         body: JSON.stringify({ status: newStatus }),
       });
 
-      if (response.ok) {
-        setStatus(newStatus);
-        router.refresh();
+      if (!response.ok) {
+        setStatus(prevStatus);
+        const err = await response.json();
+        throw new Error(err.error || 'Gagal mengupdate status');
       }
+
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal mengupdate status');
+      setStatus(prevStatus);
     } finally {
       setIsUpdating(false);
     }

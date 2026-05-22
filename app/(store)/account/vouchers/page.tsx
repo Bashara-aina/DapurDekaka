@@ -53,16 +53,22 @@ export default function AccountVouchersPage() {
         <p className="text-text-secondary text-sm mt-1">Kupon dan promo untukmu</p>
       </div>
 
-      {/* Available Vouchers */}
+      {/* Available Coupons */}
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-display text-lg font-semibold text-text-primary flex items-center gap-2">
             <Tag className="w-5 h-5 text-brand-gold" />
-            Voucher Tersedia
+            Kupon Publik
           </h2>
           <span className="px-2 py-1 bg-brand-gold/10 text-brand-gold text-xs font-medium rounded-full">
             {availableCount}
           </span>
+        </div>
+
+        <div className="bg-brand-cream rounded-lg p-4 mb-4">
+          <p className="text-sm text-text-secondary">
+            <span className="font-medium text-text-primary">Kupon otomatis</span> — Kupon di bawah aktif secara otomatis saat checkout memenuhi syarat. Tidak perlu memasukkan kode manual.
+          </p>
         </div>
 
         {availableCount === 0 ? (
@@ -90,7 +96,7 @@ export default function AccountVouchersPage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-display text-lg font-semibold text-text-primary flex items-center gap-2">
             <Check className="w-5 h-5 text-success" />
-            Voucher Terpakai
+            Kupon Saya
           </h2>
           <span className="px-2 py-1 bg-success-light text-success text-xs font-medium rounded-full">
             {usedCount}

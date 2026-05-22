@@ -122,9 +122,7 @@ export async function POST(req: NextRequest) {
           })
           .where(eq(orders.id, order.id));
 
-        // BUG-07: Stock was already decremented at initiate time to prevent overselling.
-        // At settlement we only need to log the sale — no stock deduction needed here.
-        // We still log the inventory movement for audit trail.
+        // BUG-07: Log inventory movement for sale (quantityBefore = stock before sale)
         for (const item of order.items) {
           const [currentVariant] = await tx
             .select({ stock: productVariants.stock })
@@ -143,13 +141,23 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // Increment coupon used_count
-        if (order.couponId) {
-          await tx
-            .update(coupons)
-            .set({ usedCount: sql`used_count + 1` })
-            .where(eq(coupons.id, order.couponId));
+        // BUG-11: CRITICAL — NOW decrement stock after logging using atomic pattern
+        // Track which items failed to deduct stock
+        const failedItems: string[] = [];
+        for (const item of order.items) {
+          const [updated] = await tx
+            .update(productVariants)
+            .set({ stock: sql`GREATEST(stock - ${item.quantity}, 0)` })
+            .where(and(eq(productVariants.id, item.variantId), gte(productVariants.stock, item.quantity)))
+            .returning({ newStock: productVariants.stock });
+
+          if (!updated) {
+            failedItems.push(item.variantId);
+          }
         }
+
+        // BUG-17: Remove coupon increment here — initiate already atomically incremented usedCount
+        // The couponUsages row (inserted at initiate) is confirmed via ON CONFLICT DO NOTHING
 
         // Award loyalty points (order.pointsEarned already includes 2x for B2B, set at checkout initiate)
         if (order.userId && order.pointsEarned > 0) {
@@ -181,11 +189,14 @@ export async function POST(req: NextRequest) {
           fromStatus: 'pending_payment',
           toStatus: 'paid',
           changedByType: 'system',
-          note: 'Pembayaran berhasil dikonfirmasi via Midtrans',
+          note: failedItems.length > 0
+            ? `Pembayaran berhasil — ${failedItems.length} item gagal diproses (stok habis)`
+            : 'Pembayaran berhasil dikonfirmasi via Midtrans',
           metadata: {
             paymentType: body.payment_type ?? null,
             vaNumber: body.va_numbers?.[0]?.va_number ?? null,
             transactionId: body.transaction_id ?? null,
+            failedItems,
           },
         });
 
@@ -264,6 +275,20 @@ export async function POST(req: NextRequest) {
         });
       }
 
+    } else if (transaction_status === 'pending') {
+      // ── Step 6b: Payment is pending — save VA/payment info for admin visibility ─
+      await db
+        .update(orders)
+        .set({
+          midtransPaymentType: body.payment_type ?? null,
+          midtransVaNumber: body.va_numbers?.[0]?.va_number ?? null,
+          midtransTransactionId: body.transaction_id ?? null,
+        })
+        .where(eq(orders.id, order.id));
+
+      logger.info('[Midtrans Webhook] Payment pending', { orderNumber: order.orderNumber });
+      return success({ received: true, note: 'payment_pending' });
+
     } else if (['cancel', 'deny', 'expire'].includes(transaction_status)) {
       // ── Step 6: Payment failed — restore stock + reverse points + coupon ─────────
       await db.transaction(async (tx) => {
@@ -275,24 +300,35 @@ export async function POST(req: NextRequest) {
           })
           .where(eq(orders.id, order.id));
 
-        // BUG-07: Restore stock that was reserved at initiate time
-        for (const item of order.items) {
-          const [updated] = await tx
-            .update(productVariants)
-            .set({ stock: sql`stock + ${item.quantity}`, updatedAt: new Date() })
-            .where(eq(productVariants.id, item.variantId))
-            .returning({ newStock: productVariants.stock });
+        // BUG-11: Only restore stock if there were inventory log entries (stock was actually decremented)
+        // Check if this order has any sale logs — if not, stock was never decremented so skip restoration
+        const [salesLog] = await tx
+          .select({ count: sql<number>`count(*)::int` })
+          .from(inventoryLogs)
+          .where(and(
+            eq(inventoryLogs.orderId, order.id),
+            eq(inventoryLogs.changeType, 'sale')
+          ));
 
-          if (updated) {
-            await tx.insert(inventoryLogs).values({
-              variantId: item.variantId,
-              changeType: 'reversal',
-              quantityBefore: updated.newStock - item.quantity,
-              quantityAfter: updated.newStock,
-              quantityDelta: item.quantity,
-              orderId: order.id,
-              note: `Pembatalan pesanan ${order.orderNumber} — stok dikembalikan`,
-            });
+        if ((salesLog?.count ?? 0) > 0) {
+          for (const item of order.items) {
+            const [updated] = await tx
+              .update(productVariants)
+              .set({ stock: sql`stock + ${item.quantity}`, updatedAt: new Date() })
+              .where(eq(productVariants.id, item.variantId))
+              .returning({ newStock: productVariants.stock });
+
+            if (updated) {
+              await tx.insert(inventoryLogs).values({
+                variantId: item.variantId,
+                changeType: 'reversal',
+                quantityBefore: updated.newStock - item.quantity,
+                quantityAfter: updated.newStock,
+                quantityDelta: item.quantity,
+                orderId: order.id,
+                note: `Pembatalan pesanan ${order.orderNumber} — stok dikembalikan`,
+              });
+            }
           }
         }
 

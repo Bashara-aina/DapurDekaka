@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { formatWIB } from '@/lib/utils/format-date';
 import { Shield, UserX, RefreshCw, UserPlus, X, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
 
 interface UserItem {
   id: string;
@@ -36,118 +38,119 @@ const INVITE_ROLE_OPTIONS = ROLE_OPTIONS.filter((r) =>
   ['warehouse', 'owner', 'b2b', 'customer'].includes(r.value)
 );
 
+async function fetchUsers(): Promise<UserItem[]> {
+  const res = await fetch('/api/admin/users');
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error || 'Failed to fetch users');
+  return json.data ?? [];
+}
+
+async function updateUserRole(userId: string, role: string): Promise<void> {
+  const res = await fetch(`/api/admin/users/${userId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to update role');
+}
+
+async function updateUserStatus(userId: string, isActive: boolean): Promise<void> {
+  const res = await fetch(`/api/admin/users/${userId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ isActive }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to update status');
+}
+
+async function inviteUser(data: { email: string; name: string; role: string }): Promise<{ message: string }> {
+  const res = await fetch('/api/admin/users/invite', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to invite user');
+  return json.data;
+}
+
 export default function UsersPage() {
-  const [users, setUsers] = useState<UserItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editingRole, setEditingRole] = useState<string>('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteForm, setInviteForm] = useState({ email: '', name: '', role: 'warehouse' });
-  const [inviteLoading, setInviteLoading] = useState(false);
 
-  useEffect(() => {
-    async function fetchUsers() {
-      try {
-        const res = await fetch('/api/admin/users');
-        if (!res.ok) throw new Error('Failed to fetch users');
-        const result = await res.json();
-        setUsers(result.data ?? []);
-      } catch {
-        toast.error('Gagal memuat data pengguna');
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchUsers();
-  }, []);
+  const { data: users = [], isLoading, error } = useQuery({
+    queryKey: ['admin-users'],
+    queryFn: fetchUsers,
+  });
 
-  async function handleRoleUpdate(userId: string, newRole: string) {
-    setIsSubmitting(true);
-    try {
-      const res = await fetch(`/api/admin/users/${userId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: newRole }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Gagal mengupdate role');
-      }
-
-      setUsers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
-      );
+  const roleMutation = useMutation({
+    mutationFn: ({ userId, role }: { userId: string; role: string }) => updateUserRole(userId, role),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       setEditingUserId(null);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Gagal mengupdate role');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
+      toast.success('Role berhasil diupdate');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
 
-  async function handleDeactivate(userId: string, currentStatus: boolean) {
-    const action = currentStatus ? 'nonaktifkan' : 'aktifkan';
-    if (!confirm(`Yakin ${action} pengguna ini?`)) return;
+  const statusMutation = useMutation({
+    mutationFn: ({ userId, isActive }: { userId: string; isActive: boolean }) => updateUserStatus(userId, isActive),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      toast.success('Status berhasil diupdate');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
 
-    try {
-      const res = await fetch(`/api/admin/users/${userId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive: !currentStatus }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || `Gagal ${action} pengguna`);
-      }
-
-      setUsers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, isActive: !currentStatus } : u))
-      );
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : `Gagal ${action} pengguna`);
-    }
-  }
-
-  async function handleInvite() {
-    if (!inviteForm.email || !inviteForm.name || !inviteForm.role) {
-      toast.error('Lengkapi semua field');
-      return;
-    }
-
-    setInviteLoading(true);
-    try {
-      const res = await fetch('/api/admin/users/invite', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(inviteForm),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Gagal mengundang pengguna');
-      }
-
-      toast.success(data.data.message);
+  const inviteMutation = useMutation({
+    mutationFn: inviteUser,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      toast.success(data.message);
       setShowInviteModal(false);
       setInviteForm({ email: '', name: '', role: 'warehouse' });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
 
-      // Refresh user list
-      const userRes = await fetch('/api/admin/users');
-      const userResult = await userRes.json();
-      setUsers(userResult.data ?? []);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Gagal mengundang pengguna');
-    } finally {
-      setInviteLoading(false);
-    }
+  function handleRoleEdit(user: UserItem) {
+    toast.warning(`Yakin ubah role "${user.name || user.email}" menjadi "${ROLE_OPTIONS.find(r => r.value === editingRole)?.label}"?`, {
+      action: {
+        label: 'Ya, lanjutkan',
+        onClick: () => roleMutation.mutate({ userId: user.id, role: editingRole }),
+      },
+    });
+    setEditingUserId(null);
   }
 
-  if (loading) {
+  function handleDeactivate(user: UserItem) {
+    const action = user.isActive ? 'nonaktifkan' : 'aktifkan';
+    toast.warning(`Yakin ${action} pengguna "${user.name || user.email}"?`, {
+      action: {
+        label: 'Ya, lanjutkan',
+        onClick: () => statusMutation.mutate({ userId: user.id, isActive: !user.isActive }),
+      },
+    });
+  }
+
+  if (isLoading) {
     return <div className="p-6 text-gray-500">Memuat...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 text-center">
+        <p className="text-red-500">Gagal memuat data pengguna</p>
+        <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['admin-users'] })} className="mt-2">
+          Coba Lagi
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -203,8 +206,8 @@ export default function UsersPage() {
                           ))}
                         </select>
                         <button
-                          onClick={() => handleRoleUpdate(user.id, editingRole)}
-                          disabled={isSubmitting}
+                          onClick={() => handleRoleEdit(user)}
+                          disabled={roleMutation.isPending}
                           className="p-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
                         >
                           <Check className="w-3 h-3" />
@@ -248,7 +251,7 @@ export default function UsersPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <button
-                      onClick={() => handleDeactivate(user.id, user.isActive)}
+                      onClick={() => handleDeactivate(user)}
                       className={`p-1.5 rounded hover:bg-admin-content ${
                         user.isActive ? 'text-red-500' : 'text-green-600'
                       }`}
@@ -303,6 +306,7 @@ export default function UsersPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input
                   type="email"
+                  required
                   value={inviteForm.email}
                   onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
                   placeholder="john@example.com"
@@ -338,11 +342,11 @@ export default function UsersPage() {
                 Batal
               </button>
               <button
-                onClick={handleInvite}
-                disabled={inviteLoading}
+                onClick={() => inviteMutation.mutate(inviteForm)}
+                disabled={inviteMutation.isPending}
                 className="flex-1 h-10 bg-[#0F172A] text-white rounded-lg text-sm font-medium hover:bg-[#1E293B] transition-colors disabled:opacity-50"
               >
-                {inviteLoading ? 'Memproses...' : 'Undang'}
+                {inviteMutation.isPending ? 'Memproses...' : 'Undang'}
               </button>
             </div>
           </div>

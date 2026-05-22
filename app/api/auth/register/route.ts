@@ -13,6 +13,9 @@ const registerSchema = z.object({
   name: z.string().min(2, 'Nama minimal 2 karakter'),
   email: z.string().email('Format email tidak valid'),
   password: z.string().min(8, 'Password minimal 8 karakter'),
+  termsAccepted: z.literal(true, {
+    errorMap: () => ({ message: 'Kamu harus menyetujui syarat dan ketentuan' }),
+  }),
 });
 
 export const POST = withRateLimit(
@@ -25,7 +28,7 @@ export const POST = withRateLimit(
         return validationError(parsed.error);
       }
 
-      const { name, email, password } = parsed.data;
+      const { name, email, password, termsAccepted } = parsed.data;
 
       const existing = await db.query.users.findFirst({
         where: eq(users.email, email.toLowerCase()),
