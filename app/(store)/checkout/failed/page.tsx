@@ -36,8 +36,8 @@ export default function CheckoutFailedPage() {
         const res = await fetch(`/api/orders/${orderNumber}`);
         if (res.ok) {
           const data = await res.json();
-          if (data.data?.order?.items) {
-            setOrderItems(data.data.order.items);
+          if (data.data?.items) {
+            setOrderItems(data.data.items);
           }
         }
       } catch {

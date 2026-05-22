@@ -55,10 +55,20 @@ export default async function AdminCouponsPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm">{coupon.nameId}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm capitalize">{coupon.type.replace('_', ' ')}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-brand-red">
-                      {coupon.type === 'percentage' && coupon.discountValue ? `${coupon.discountValue}%` : ''}
-                      {coupon.type === 'fixed' && coupon.discountValue ? formatIDR(coupon.discountValue) : ''}
-                      {coupon.type === 'free_shipping' ? 'Free Ship' : ''}
-                      {coupon.type === 'buy_x_get_y' ? `Beli ${coupon.buyQuantity} Get ${coupon.getQuantity}` : ''}
+                      {(() => {
+                        switch (coupon.type) {
+                          case 'percentage':
+                            return coupon.discountValue ? `${coupon.discountValue}%` : '-';
+                          case 'fixed':
+                            return coupon.discountValue ? formatIDR(coupon.discountValue) : '-';
+                          case 'free_shipping':
+                            return 'Free Ongkir';
+                          case 'buy_x_get_y':
+                            return `Beli ${coupon.buyQuantity ?? '?'} Get ${coupon.getQuantity ?? '?'}`;
+                          default:
+                            return '-';
+                        }
+                      })()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatIDR(coupon.minOrderAmount)}

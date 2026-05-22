@@ -23,8 +23,13 @@ export default function B2BAccountOrdersPage() {
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login?callbackUrl=/b2b/account/orders');
+    } else if (status === 'authenticated') {
+      const role = session?.user?.role;
+      if (role !== 'b2b' && role !== 'superadmin') {
+        router.push('/b2b');
+      }
     }
-  }, [status, router]);
+  }, [status, session, router]);
 
   if (status === 'loading' || isLoading) {
     return (

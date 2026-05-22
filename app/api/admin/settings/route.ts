@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     }
 
     const role = (session.user as { role?: string }).role;
-    if (!role || role !== 'superadmin') {
+    if (!role || !['superadmin', 'owner'].includes(role)) {
       return forbidden('Hanya superadmin yang dapat membaca pengaturan');
     }
 

@@ -41,7 +41,7 @@ export function WhatsAppButton({ whatsappNumber, className }: WhatsAppButtonProp
         target="_blank"
         rel="noopener noreferrer"
         className="w-14 h-14 bg-[#25D366] rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform animate-pulse-soft"
-        aria-label="Chat WhatsApp"
+        aria-label="Chat WhatsApp untuk pertanyaan tentang pesanan atau produk"
         onClick={() => setShowTooltip(true)}
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}

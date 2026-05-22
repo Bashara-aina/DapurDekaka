@@ -372,7 +372,7 @@ export async function PATCH(
   } catch (error) {
     console.error('[admin/orders/status]', error);
     if (error instanceof Error && error.message === 'ORDER_STATUS_CHANGED_CONCURRENTLY') {
-      return conflict('Status pesanan telah diubah oleh другого пользователя. Silakan refresh dan coba lagi.');
+      return conflict('Status pesanan telah diubah oleh pengguna lain. Silakan refresh dan coba lagi.');
     }
     return serverError(error);
   }

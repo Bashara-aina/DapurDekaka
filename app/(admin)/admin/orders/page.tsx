@@ -23,11 +23,11 @@ export default async function OrdersPage({ searchParams }: PageProps) {
 
   const whereClause = sql`
     ${statusFilter ? sql`${orders.status} = ${statusFilter}` : sql`true`}
-    AND ${searchQuery ? sql`
+    AND ${searchQuery ? sql`(
       ${orders.orderNumber} ILIKE ${'%' + searchQuery + '%'}
       OR ${orders.recipientName} ILIKE ${'%' + searchQuery + '%'}
       OR ${orders.recipientEmail} ILIKE ${'%' + searchQuery + '%'}
-    ` : sql`true`}
+    )` : sql`true`}
   `;
 
   const [orderRows, countResult] = await Promise.all([
@@ -60,18 +60,6 @@ export default async function OrdersPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Pesanan</h1>
-        {statusFilter && (
-          <span className="text-sm text-gray-500">
-            Filter: <strong>{statusFilter}</strong>{' '}
-            <a href="/admin/orders" className="text-brand-red hover:underline ml-1">
-              (clear)
-            </a>
-          </span>
-        )}
-      </div>
-
       <OrdersClient
         initialOrders={orderItems}
         userRole={userRole}

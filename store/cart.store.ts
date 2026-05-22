@@ -25,7 +25,7 @@ interface CartStore {
   getTotalItems: () => number;
   getSubtotal: () => number;
   getTotalWeight: () => number;
-  validateStock: () => Promise<void>;
+  validateStock: () => Promise<{ valid: boolean; errors: string[] }>;
   syncToDb: () => Promise<void>;
   loadFromDb: () => Promise<void>;
 }
@@ -81,7 +81,9 @@ export const useCartStore = create<CartStore>()(
 
       validateStock: async () => {
         const items = get().items;
-        if (items.length === 0) return;
+        if (items.length === 0) return { valid: true, errors: [] };
+
+        const errors: string[] = [];
 
         try {
           const res = await fetch('/api/cart/validate', {
@@ -91,7 +93,6 @@ export const useCartStore = create<CartStore>()(
           });
           const json = await res.json();
           if (json.success && json.data) {
-            // Fix cart.store.ts stock mapping type issue
             const stockMap = new Map<string, number>(json.data.map((s: { variantId: string; stock: number }) => [s.variantId, s.stock]));
             set({
               items: items.map(i => ({
@@ -101,8 +102,15 @@ export const useCartStore = create<CartStore>()(
             });
           }
         } catch {
-          // Silently fail - cart stock will remain stale but cart is still functional
+          errors.push('Gagal memvalidasi stok. Silakan coba lagi.');
         }
+
+        const insufficientItems = get().items.filter(i => i.quantity > i.stock);
+        for (const item of insufficientItems) {
+          errors.push(`"${item.productNameId}" - stok tidak mencukupi (tersedia ${item.stock})`);
+        }
+
+        return { valid: errors.length === 0, errors };
       },
 
       syncToDb: async () => {
@@ -121,8 +129,29 @@ export const useCartStore = create<CartStore>()(
       },
 
       loadFromDb: async () => {
-        // This is a placeholder — actual DB→Zustand sync happens
-        // via the /api/auth/merge-cart response in the login flow
+        try {
+          const res = await fetch('/api/auth/cart');
+          if (!res.ok) return;
+
+          const json = await res.json();
+          if (!json.success || !Array.isArray(json.data?.items)) return;
+
+          const dbItems: CartItem[] = json.data.items;
+          const localItems = get().items;
+
+          // Merge: local quantity wins if DB stock differs, else use DB
+          const merged = dbItems.map(dbItem => {
+            const localItem = localItems.find(l => l.variantId === dbItem.variantId);
+            if (localItem) {
+              return { ...dbItem, quantity: localItem.quantity > dbItem.stock ? dbItem.stock : localItem.quantity };
+            }
+            return dbItem;
+          }).filter(item => item.stock > 0);
+
+          set({ items: merged });
+        } catch {
+          // Silently fail - local cart remains
+        }
       },
     }),
     {

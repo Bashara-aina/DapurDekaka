@@ -65,7 +65,7 @@ export const metadata: Metadata = {
 
 async function getFeaturedProducts() {
   const featured = await db.query.products.findMany({
-    where: and(eq(products.isActive, true), eq(products.isFeatured, true)),
+    where: and(eq(products.isActive, true), eq(products.isFeatured, true), isNull(products.deletedAt)),
     with: {
       variants: { where: eq(productVariants.isActive, true), limit: 1 },
       images: { limit: 1 },

@@ -9,16 +9,6 @@ import { Input } from '@/components/ui/input';
 interface CouponInputProps {
   code: string;
   onCodeChange: (code: string) => void;
-  onApply: () => void;
-  discountAmount: number;
-  error?: string;
-  isLoading?: boolean;
-  className?: string;
-}
-
-interface CouponInputProps {
-  code: string;
-  onCodeChange: (code: string) => void;
   onClearError?: () => void;
   onApply: () => void;
   discountAmount: number;

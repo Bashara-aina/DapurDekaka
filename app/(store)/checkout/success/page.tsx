@@ -34,8 +34,9 @@ function SuccessContent() {
     staleTime: 60000,
   });
 
-  // FIX 15: Only fire confetti after order is verified (paid status)
+  // FIX 15: Only fire confetti when order is verified (paid status), on initial transition only
   useEffect(() => {
+    // Only fire confetti once — when status first becomes 'paid'
     if (orderData?.order?.status === 'paid') {
       confetti({
         particleCount: 100,

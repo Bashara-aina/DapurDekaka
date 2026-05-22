@@ -1,12 +1,23 @@
 import { cn } from '@/lib/utils/cn';
+import { useCartStore } from '@/store/cart.store';
 
 interface StockBadgeProps {
-  stock: number;
+  /** Direct stock value — used for product pages (static display) */
+  stock?: number;
+  /** When provided, subscribes to cart store for live stock after validateStock() */
+  variantId?: string;
   className?: string;
 }
 
-export function StockBadge({ stock, className }: StockBadgeProps) {
-  if (stock === 0) {
+export function StockBadge({ stock: directStock, variantId, className }: StockBadgeProps) {
+  // Subscribe to cart store for live stock after validateStock() — local wins
+  const cartStock = variantId
+    ? useCartStore((s) => s.items.find((i) => i.variantId === variantId)?.stock)
+    : undefined;
+
+  const stock = cartStock ?? directStock;
+
+  if (stock === undefined || stock === 0) {
     return (
       <span
         className={cn(

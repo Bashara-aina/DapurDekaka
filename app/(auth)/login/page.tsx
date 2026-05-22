@@ -44,7 +44,6 @@ function LoginForm() {
         SessionRequired: 'Silakan masuk untuk mengakses halaman ini.',
       };
       const msg = errorMessages[errorParam];
-      fetch('http://127.0.0.1:7420/ingest/09d39df7-998a-468e-966d-456351968e13',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'561006'},body:JSON.stringify({sessionId:'561006',location:'login/page.tsx:47',message:'OAuth error param detected',data:{errorParam,msg:msg??'unknown'},timestamp:Date.now()})}).catch(()=>{});
       setError(msg ?? 'Terjadi kesalahan. Silakan coba lagi.');
     }
 

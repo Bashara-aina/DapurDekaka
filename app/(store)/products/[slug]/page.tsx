@@ -84,6 +84,18 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
 
 export const revalidate = 60;
 
+export async function generateStaticParams() {
+  try {
+    const activeProducts = await db.query.products.findMany({
+      where: and(eq(products.isActive, true), isNull(products.deletedAt)),
+      columns: { slug: true },
+    });
+    return activeProducts.map((p) => ({ slug: p.slug }));
+  } catch {
+    return [];
+  }
+}
+
 export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
   const { slug } = await params;
 
@@ -132,7 +144,8 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
       where: and(
         eq(products.categoryId, product.category.id),
         eq(products.isActive, true),
-        ne(products.slug, slug)
+        ne(products.slug, slug),
+        isNull(products.deletedAt)
       ),
       with: {
         variants: { where: eq(productVariants.isActive, true) },

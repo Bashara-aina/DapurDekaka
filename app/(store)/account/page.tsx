@@ -10,44 +10,20 @@ import { orders } from '@/lib/db/schema';
 import { POINTS_VALUE_IDR } from '@/lib/constants/points';
 import { users } from '@/lib/db/schema';
 
-// #region debug log
-function log(label: string, data: unknown) {
-  console.log(`[DEBUG:account:page] ${label}`, data);
-}
-// #endregion
-
 export default async function AccountPage() {
   const session = await auth();
-  log('session', { hasSession: !!session, hasUser: !!session?.user, userId: session?.user?.id });
 
-if (!session?.user?.id) {
-    log('redirect', 'no session, redirecting to /login');
+  if (!session?.user?.id) {
     redirect('/login');
   }
 
   const user = await db.query.users.findFirst({
     where: (users, { eq }) => eq(users.id, session.user.id! as string),
   });
-  log('user query', { found: !!user, userId: user?.id, deletedAt: user?.deletedAt });
 
   if (!user) {
-    log('redirect', 'no user found, redirecting to /login');
     redirect('/login');
   }
-
-  // #region debug log
-  fetch('http://127.0.0.1:7420/ingest/09d39df7-998a-468e-966d-456351968e13', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '561006' },
-    body: JSON.stringify({
-      sessionId: '561006',
-      location: 'account/page.tsx:user_validated',
-      message: 'User validated, proceeding to fetch orders',
-      data: { userId: user.id, role: user.role },
-      timestamp: Date.now()
-    })
-  }).catch(() => {});
-  // #endregion
 
   const recentOrders = await db.query.orders.findMany({
     where: (orders, { eq, and }) => and(

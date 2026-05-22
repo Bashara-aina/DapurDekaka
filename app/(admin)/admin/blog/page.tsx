@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import { db } from '@/lib/db';
 import { blogPosts } from '@/lib/db/schema';
-import { desc } from 'drizzle-orm';
+import { desc, isNull } from 'drizzle-orm';
 import { formatWIB } from '@/lib/utils/format-date';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminBlogPage() {
   const allPosts = await db.query.blogPosts.findMany({
+    where: isNull(blogPosts.deletedAt),
     orderBy: [desc(blogPosts.createdAt)],
   });
 

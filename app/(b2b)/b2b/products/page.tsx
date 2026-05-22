@@ -5,11 +5,9 @@ import { db } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { products, productVariants, productImages, b2bProfiles } from '@/lib/db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, isNull } from 'drizzle-orm';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
-
-export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Katalog B2B - Dapur Dekaka',
@@ -18,11 +16,9 @@ export const metadata: Metadata = {
 
 export const revalidate = 300;
 
-async function getB2BProducts(b2bProfileId: string | null) {
-  if (!b2bProfileId) return [];
-
+async function getB2BProducts(isApproved: boolean) {
   return await db.query.products.findMany({
-    where: and(eq(products.isActive, true), eq(products.isB2bAvailable, true)),
+    where: and(eq(products.isActive, true), eq(products.isB2bAvailable, true), isNull(products.deletedAt)),
     with: {
       variants: {
         where: eq(productVariants.isActive, true),
@@ -53,7 +49,7 @@ interface ProductCardProps {
   };
 }
 
-function B2BProductCard({ product }: ProductCardProps) {
+function B2BProductCard({ product, isApproved }: ProductCardProps & { isApproved: boolean }) {
   const primaryImage = product.images[0];
   const hasB2BPrice = product.variants.some(v => v.b2bPrice && v.b2bPrice > 0);
 
@@ -88,9 +84,11 @@ function B2BProductCard({ product }: ProductCardProps) {
             <div key={variant.id} className="flex items-center justify-between text-sm">
               <span className="text-text-secondary">{variant.nameId}</span>
               <span className="font-bold text-brand-red">
-                {hasB2BPrice && variant.b2bPrice
+                {isApproved && hasB2BPrice && variant.b2bPrice
                   ? formatIDR(variant.b2bPrice)
-                  : formatIDR(variant.price)}
+                  : isApproved
+                    ? formatIDR(variant.price)
+                    : 'Hubungi Kami'}
               </span>
             </div>
           ))}
@@ -100,7 +98,7 @@ function B2BProductCard({ product }: ProductCardProps) {
           <div className="mt-3 pt-3 border-t border-brand-cream-dark">
             <div className="flex items-center gap-1 text-xs text-success">
               <CheckCircle className="w-3 h-3" />
-              <span>Harga B2B tersedia</span>
+              <span>{isApproved ? 'Harga B2B tersedia' : 'Harga Grosir tersedia'}</span>
             </div>
           </div>
         )}
@@ -111,7 +109,6 @@ function B2BProductCard({ product }: ProductCardProps) {
 
 export default async function B2BProductsPage() {
   const session = await auth();
-  let b2bProfileId: string | null = null;
   let isApproved = false;
 
   if (session?.user?.id) {
@@ -119,48 +116,11 @@ export default async function B2BProductsPage() {
       where: eq(b2bProfiles.userId, session.user.id),
     });
     if (profile) {
-      b2bProfileId = profile.id;
       isApproved = profile.isApproved;
     }
   }
 
-  // Unapproved B2B users see pending state
-  if (session?.user && !isApproved) {
-    return (
-      <div className="bg-brand-cream min-h-screen pb-20">
-        <div className="bg-white border-b border-brand-cream-dark py-6 px-4">
-          <div className="container mx-auto">
-            <div className="flex items-center gap-4 mb-2">
-              <Link href="/b2b" className="p-2 -ml-2 hover:bg-brand-cream rounded-lg transition-colors">
-                <ArrowLeft className="w-5 h-5" />
-              </Link>
-              <div>
-                <h1 className="font-display text-xl font-bold">Katalog B2B</h1>
-                <p className="text-text-secondary text-sm">Akun Anda belum disetujui</p>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="px-4 py-16 container mx-auto text-center">
-          <div className="w-24 h-24 mx-auto mb-4 bg-white rounded-full flex items-center justify-center">
-            <span className="text-4xl">⏳</span>
-          </div>
-          <h2 className="font-display text-lg font-semibold mb-2">Menunggu Persetujuan</h2>
-          <p className="text-text-secondary text-sm mb-6 max-w-sm mx-auto">
-            Akun B2B Anda sedang dalam proses peninjauan. Tim kami akan menghubungi Anda setelah persetujuan diberikan.
-          </p>
-          <Link
-            href="/b2b/account"
-            className="inline-flex items-center h-10 px-5 bg-brand-red text-white font-medium rounded-lg hover:bg-brand-red-dark transition-colors"
-          >
-            Kembali ke Akun
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const b2bProducts = await getB2BProducts(b2bProfileId);
+  const b2bProducts = await getB2BProducts(isApproved);
 
   return (
     <div className="bg-brand-cream min-h-screen pb-20">
@@ -188,7 +148,7 @@ export default async function B2BProductsPage() {
       <div className="px-4 py-6 container mx-auto">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {b2bProducts.map(product => (
-            <B2BProductCard key={product.id} product={product} />
+            <B2BProductCard key={product.id} product={product} isApproved={isApproved} />
           ))}
         </div>
 

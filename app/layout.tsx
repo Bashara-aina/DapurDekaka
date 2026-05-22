@@ -38,9 +38,29 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const organizationJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'Dapur Dekaka',
+    url: 'https://dapurdekaka.com',
+    logo: 'https://dapurdekaka.com/assets/logo/logo.png',
+    contactPoint: {
+      '@type': 'ContactPoint',
+      contactType: 'customer service',
+      availableLanguage: 'Indonesian',
+    },
+    sameAs: [
+      'https://instagram.com/dapurdekaka',
+    ],
+  };
+
   return (
     <html lang="id" className={`${playfair.variable} ${inter.variable}`}>
       <body className="font-body antialiased bg-brand-cream text-text-primary">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
         <Providers>{children}</Providers>
         <Analytics />
       </body>

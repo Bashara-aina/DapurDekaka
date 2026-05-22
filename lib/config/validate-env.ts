@@ -8,6 +8,22 @@ const REQUIRED = [
   'CRON_SECRET',
 ] as const;
 
+/**
+ * Validates that AUTH_SECRET is at least 32 characters.
+ * Called on module load to fail fast at startup.
+ */
+export function validateAuthSecret(): void {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) {
+    throw new Error('AUTH_SECRET environment variable is not set');
+  }
+  if (secret.length < 32) {
+    throw new Error(
+      'AUTH_SECRET must be at least 32 characters. Run: openssl rand -base64 32'
+    );
+  }
+}
+
 interface EnvValidationResult {
   valid: boolean;
   missing: string[];

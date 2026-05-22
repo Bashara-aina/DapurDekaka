@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 import { db } from '@/lib/db';
-import { users, passwordResetTokens } from '@/lib/db/schema';
+import { users, passwordResetTokens, sessions } from '@/lib/db/schema';
 import { eq, and, gt } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
@@ -43,6 +43,9 @@ export const POST = withRateLimit(
       await db.update(users)
         .set({ passwordHash, updatedAt: new Date() })
         .where(eq(users.id, record.userId));
+
+      // Delete all existing sessions for this user so they must re-login
+      await db.delete(sessions).where(eq(sessions.userId, record.userId));
 
       await db.update(passwordResetTokens)
         .set({ usedAt: new Date() })

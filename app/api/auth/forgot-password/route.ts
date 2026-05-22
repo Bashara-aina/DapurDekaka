@@ -47,7 +47,7 @@ export const POST = withRateLimit(
           expiresAt,
         });
 
-        const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password/${token}`;
+        const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password/${token}`;
 
         await sendEmail({
           to: user.email,
@@ -58,8 +58,8 @@ export const POST = withRateLimit(
           }),
         });
       } else {
-        // Constant-time baseline — compute dummy hash to prevent timing enumeration
-        await bcrypt.hash(crypto.randomBytes(16).toString('hex'), 10);
+        // Timing normalization — simulate the time an email send would take
+        await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 100));
       }
 
       return success({ message: 'Link reset password telah dikirim ke email kamu' });

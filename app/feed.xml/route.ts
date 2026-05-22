@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { blogPosts } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and, isNull } from 'drizzle-orm';
 
 export const revalidate = 3600;
 
@@ -21,7 +21,7 @@ export async function GET() {
   let posts: PostWithRelations[] = [];
   try {
     posts = await db.query.blogPosts.findMany({
-      where: eq(blogPosts.isPublished, true),
+      where: and(eq(blogPosts.isPublished, true), isNull(blogPosts.deletedAt)),
       orderBy: [desc(blogPosts.publishedAt)],
       limit: 20,
       with: { category: true, author: true },

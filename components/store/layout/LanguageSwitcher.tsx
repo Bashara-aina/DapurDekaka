@@ -1,27 +1,19 @@
 'use client';
 
-import { useState } from 'react';
 import { cn } from '@/lib/utils/cn';
-import { useRouter, usePathname } from 'next/navigation';
+import { useUIStore } from '@/store/ui.store';
 
 export function LanguageSwitcher({ className }: { className?: string }) {
-  const [locale, setLocale] = useState<'id' | 'en'>('id');
-  const router = useRouter();
-  const pathname = usePathname();
-
-  const switchLocale = (newLocale: 'id' | 'en') => {
-    setLocale(newLocale);
-    // Persist locale preference in a cookie
-    document.cookie = `NEXT_LOCALE=${newLocale};path=${pathname};max-age=31536000`;
-  };
+  const language = useUIStore((s) => s.language);
+  const setLanguage = useUIStore((s) => s.setLanguage);
 
   return (
     <div className={cn('flex items-center gap-1', className)}>
       <button
-        onClick={() => switchLocale('id')}
+        onClick={() => setLanguage('id')}
         className={cn(
           'px-2 py-1 text-xs font-medium rounded transition-colors',
-          locale === 'id'
+          language === 'id'
             ? 'bg-brand-red text-white'
             : 'text-text-secondary hover:text-brand-red'
         )}
@@ -31,10 +23,10 @@ export function LanguageSwitcher({ className }: { className?: string }) {
       </button>
       <span className="text-text-muted">/</span>
       <button
-        onClick={() => switchLocale('en')}
+        onClick={() => setLanguage('en')}
         className={cn(
           'px-2 py-1 text-xs font-medium rounded transition-colors',
-          locale === 'en'
+          language === 'en'
             ? 'bg-brand-red text-white'
             : 'text-text-secondary hover:text-brand-red'
         )}

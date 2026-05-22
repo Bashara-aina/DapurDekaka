@@ -80,12 +80,17 @@ export async function GET(
       return unauthorized('Verifikasi diperlukan untuk mengunduh struk');
     }
 
-    const pdfBuffer = await renderToBuffer(
-      OrderReceiptPDF({
-        order,
-        logoUrl: `${process.env.NEXT_PUBLIC_APP_URL}/assets/logo/logo.png`,
-      })
-    );
+    const pdfBuffer = await Promise.race([
+      renderToBuffer(
+        OrderReceiptPDF({
+          order,
+          logoUrl: `${process.env.NEXT_PUBLIC_APP_URL}/assets/logo/logo.png`,
+        })
+      ),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('PDF_TIMEOUT')), 8000)
+      ),
+    ]);
 
     const filename = `struk-pesanan-${orderNumber}.pdf`;
 
@@ -99,6 +104,13 @@ export async function GET(
     });
   } catch (error) {
     console.error('[orders/[orderNumber]/receipt]', error);
+    const isTimeout = error instanceof Error && error.message === 'PDF_TIMEOUT';
+    if (isTimeout) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'PDF generation timed out. Silakan coba beberapa saat lagi.' }),
+        { status: 503, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
     return serverError(error);
   }
 }

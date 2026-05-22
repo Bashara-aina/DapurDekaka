@@ -34,8 +34,8 @@ export const metadata: Metadata = {
 
 const POSTS_PER_PAGE = 12;
 
-async function getPosts(search?: string, categoryId?: string, page: number = 1) {
-  const conditions = [eq(blogPosts.isPublished, true)];
+async function getPosts(search?: string, categorySlug?: string, page: number = 1) {
+  const conditions = [eq(blogPosts.isPublished, true), sql`${blogPosts.deletedAt} IS NULL`];
 
   if (search) {
     conditions.push(or(
@@ -45,8 +45,13 @@ async function getPosts(search?: string, categoryId?: string, page: number = 1) 
     ) as NonNullable<typeof conditions[number]>);
   }
 
-  if (categoryId) {
-    conditions.push(eq(blogPosts.blogCategoryId, categoryId) as NonNullable<typeof conditions[number]>);
+  if (categorySlug) {
+    const cat = await db.query.blogCategories.findFirst({
+      where: eq(blogCategories.slug, categorySlug),
+    });
+    if (cat) {
+      conditions.push(eq(blogPosts.blogCategoryId, cat.id) as NonNullable<typeof conditions[number]>);
+    }
   }
 
   return await db.query.blogPosts.findMany({
@@ -58,8 +63,8 @@ async function getPosts(search?: string, categoryId?: string, page: number = 1) 
   });
 }
 
-async function getTotalCount(search?: string, categoryId?: string): Promise<number> {
-  const conditions = [eq(blogPosts.isPublished, true)];
+async function getTotalCount(search?: string, categorySlug?: string): Promise<number> {
+  const conditions = [eq(blogPosts.isPublished, true), sql`${blogPosts.deletedAt} IS NULL`];
 
   if (search) {
     conditions.push(or(
@@ -69,8 +74,13 @@ async function getTotalCount(search?: string, categoryId?: string): Promise<numb
     ) as NonNullable<typeof conditions[number]>);
   }
 
-  if (categoryId) {
-    conditions.push(eq(blogPosts.blogCategoryId, categoryId) as NonNullable<typeof conditions[number]>);
+  if (categorySlug) {
+    const cat = await db.query.blogCategories.findFirst({
+      where: eq(blogCategories.slug, categorySlug),
+    });
+    if (cat) {
+      conditions.push(eq(blogPosts.blogCategoryId, cat.id) as NonNullable<typeof conditions[number]>);
+    }
   }
 
   const result = await db
@@ -89,12 +99,12 @@ async function getCategories() {
 export default async function BlogPage({ searchParams }: BlogPageProps) {
   const params = await searchParams;
   const search = params.q || '';
-  const categoryId = params.category || '';
+  const categorySlug = params.category || '';
   const page = Math.max(1, parseInt(params.page || '1', 10));
   const [posts, categories, totalCount] = await Promise.all([
-    getPosts(search, categoryId, page),
+    getPosts(search, categorySlug, page),
     getCategories(),
-    getTotalCount(search, categoryId),
+    getTotalCount(search, categorySlug),
   ]);
 
   const totalPages = Math.ceil(totalCount / POSTS_PER_PAGE);
@@ -116,7 +126,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
       {/* Search and Filter */}
       <div className="mb-8 flex flex-col sm:flex-row gap-3">
         <BlogSearchForm defaultValue={search} />
-        {categoryId && <input type="hidden" name="category" value={categoryId} />}
+        {categorySlug && <input type="hidden" name="category" value={categorySlug} />}
         {search && (
           <a href="/blog" className="h-11 px-4 flex items-center text-sm text-text-secondary hover:text-brand-red">
             Reset
@@ -127,7 +137,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
             <a
               href="/blog"
               className={`h-11 px-4 rounded-button border text-sm font-medium transition-colors flex items-center ${
-                !categoryId ? 'border-brand-red bg-brand-red text-white' : 'border-brand-cream-dark bg-white text-text-primary hover:border-brand-red'
+                !categorySlug ? 'border-brand-red bg-brand-red text-white' : 'border-brand-cream-dark bg-white text-text-primary hover:border-brand-red'
               }`}
             >
               Semua
@@ -135,9 +145,9 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
             {categories.map((cat) => (
               <a
                 key={cat.id}
-                href={`/blog?category=${cat.id}`}
+                href={`/blog?category=${cat.slug}`}
                 className={`h-11 px-4 rounded-button border text-sm font-medium transition-colors flex items-center ${
-                  categoryId === cat.id ? 'border-brand-red bg-brand-red text-white' : 'border-brand-cream-dark bg-white text-text-primary hover:border-brand-red'
+                  categorySlug === cat.slug ? 'border-brand-red bg-brand-red text-white' : 'border-brand-cream-dark bg-white text-text-primary hover:border-brand-red'
                 }`}
               >
                 {cat.nameId}
@@ -148,13 +158,13 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
       </div>
 
       {/* Active filters display */}
-      {(search || categoryId) && (
+      {(search || categorySlug) && (
         <div className="mb-4 flex items-center gap-2 text-sm text-text-secondary">
           <span>Menampilkan:</span>
           {search && <span className="px-2 py-1 bg-brand-cream rounded">Pencarian: &quot;{search}&quot;</span>}
-          {categoryId && categories.find(c => c.id === categoryId) && (
+          {categorySlug && categories.find(c => c.slug === categorySlug) && (
             <span className="px-2 py-1 bg-brand-cream rounded">
-              Kategori: {categories.find(c => c.id === categoryId)?.nameId}
+              Kategori: {categories.find(c => c.slug === categorySlug)?.nameId}
             </span>
           )}
         </div>
@@ -246,7 +256,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
             <div className="mt-8 flex items-center justify-center gap-2">
               {hasPrevPage ? (
                 <a
-                  href={`/blog?${new URLSearchParams({ ...(search ? { q: search } : {}), ...(categoryId ? { category: categoryId } : {}), page: String(page - 1) }).toString()}`}
+                  href={`/blog?${new URLSearchParams({ ...(search ? { q: search } : {}), ...(categorySlug ? { category: categorySlug } : {}), page: String(page - 1) }).toString()}`}
                   className="px-4 py-2 border border-brand-cream-dark rounded-button text-sm font-medium text-text-primary hover:border-brand-red hover:text-brand-red transition-colors"
                 >
                   ← Sebelumnya
@@ -261,7 +271,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
               </span>
               {hasNextPage ? (
                 <a
-                  href={`/blog?${new URLSearchParams({ ...(search ? { q: search } : {}), ...(categoryId ? { category: categoryId } : {}), page: String(page + 1) }).toString()}`}
+                  href={`/blog?${new URLSearchParams({ ...(search ? { q: search } : {}), ...(categorySlug ? { category: categorySlug } : {}), page: String(page + 1) }).toString()}`}
                   className="px-4 py-2 border border-brand-cream-dark rounded-button text-sm font-medium text-text-primary hover:border-brand-red hover:text-brand-red transition-colors"
                 >
                   Selanjutnya →

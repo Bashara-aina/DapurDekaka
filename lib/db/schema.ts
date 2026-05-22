@@ -451,6 +451,18 @@ export const testimonials = pgTable('testimonials', {
 });
 
 // ─────────────────────────────────────────
+// BLOG ANALYTICS
+// ─────────────────────────────────────────
+
+export const blogPostViews = pgTable('blog_post_views', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  blogPostId: uuid('blog_post_id').notNull().references(() => blogPosts.id, { onDelete: 'cascade' }),
+  visitorId: varchar('visitor_id', { length: 255 }),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  viewedAt: timestamp('viewed_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ─────────────────────────────────────────
 // B2B TABLES
 // ─────────────────────────────────────────
 
@@ -618,9 +630,15 @@ export const pointsHistoryRelations = relations(pointsHistory, ({ one }) => ({
   order: one(orders, { fields: [pointsHistory.orderId], references: [orders.id] }),
 }));
 
-export const blogPostsRelations = relations(blogPosts, ({ one }) => ({
+export const blogPostsRelations = relations(blogPosts, ({ one, many }) => ({
   category: one(blogCategories, { fields: [blogPosts.blogCategoryId], references: [blogCategories.id] }),
   author: one(users, { fields: [blogPosts.authorId], references: [users.id] }),
+  views: many(blogPostViews),
+}));
+
+export const blogPostViewsRelations = relations(blogPostViews, ({ one }) => ({
+  post: one(blogPosts, { fields: [blogPostViews.blogPostId], references: [blogPosts.id] }),
+  user: one(users, { fields: [blogPostViews.userId], references: [users.id] }),
 }));
 
 export const b2bProfilesRelations = relations(b2bProfiles, ({ one, many }) => ({

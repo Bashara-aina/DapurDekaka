@@ -4,8 +4,9 @@ import Link from 'next/link';
 import DOMPurify from 'isomorphic-dompurify';
 import { db } from '@/lib/db';
 import { blogPosts } from '@/lib/db/schema';
-import { eq, desc, and, ne } from 'drizzle-orm';
+import { eq, desc, and, ne, isNull } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
+import { recordBlogView } from '@/lib/services/blog-view.service';
 import { BlogCard } from '@/components/store/blog/BlogCard';
 import { ReadingProgress } from '@/components/store/blog/ReadingProgress';
 import { BackToTop } from '@/components/store/blog/BackToTop';
@@ -78,7 +79,7 @@ export const revalidate = 86400;
 export async function generateStaticParams() {
   try {
     const posts = await db.query.blogPosts.findMany({
-      where: eq(blogPosts.isPublished, true),
+      where: and(eq(blogPosts.isPublished, true), isNull(blogPosts.deletedAt)),
       columns: { slug: true },
     });
     return posts.map((post) => ({ slug: post.slug }));
@@ -86,6 +87,12 @@ export async function generateStaticParams() {
     // DB unavailable at build time (no DATABASE_URL); pages render on-demand via ISR
     return [];
   }
+}
+
+function estimateReadingTime(html: string): number {
+  const text = html.replace(/<[^>]+>/g, '');
+  const wordCount = text.split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.ceil(wordCount / 200));
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
@@ -98,13 +105,18 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       author: true,
     },
   }) as (Omit<typeof blogPosts.$inferSelect, 'deletedAt' | 'updatedAt' | 'createdAt' | 'contentEn' | 'excerptEn' | 'metaTitleEn' | 'metaDescriptionEn' | 'coverImagePublicId'> & {
-    category: { id: string; nameId: string } | null;
+    category: { id: string; nameId: string; slug: string } | null;
     author: { id: string; name: string; image: string | null } | null;
   } | null);
 
   if (!post || !post.isPublished) {
     notFound();
   }
+
+  const readingMinutes = estimateReadingTime(post.contentId || '');
+
+  // Record view asynchronously (non-blocking)
+  recordBlogView({ blogPostId: post.id }).catch(() => {});
 
   const sanitizedContent = DOMPurify.sanitize(post.contentId || '', {
     ALLOWED_TAGS: ['p', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'em', 'u', 'ul', 'ol', 'li', 'a', 'img', 'blockquote', 'code', 'pre'],
@@ -143,6 +155,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     where: and(
       eq(blogPosts.isPublished, true),
       ne(blogPosts.id, post.id),
+      isNull(blogPosts.deletedAt),
       post.category ? eq(blogPosts.blogCategoryId, post.category.id) : undefined,
     ),
     orderBy: [desc(blogPosts.publishedAt)],
@@ -181,7 +194,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 <li className="text-text-muted">/</li>
                 <li>
                   <a
-                    href={`/blog?category=${post.category.id}`}
+                    href={`/blog?category=${post.category.slug}`}
                     className="hover:text-brand-red transition-colors"
                   >
                     {post.category.nameId}
@@ -234,6 +247,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                   {post.excerptId}
                 </p>
               )}
+              <p className="text-sm text-text-muted">{readingMinutes} menit baca</p>
             </header>
 
             <div

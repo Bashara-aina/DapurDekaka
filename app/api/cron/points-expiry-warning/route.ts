@@ -10,7 +10,7 @@ export const runtime = 'nodejs';
  * Runs daily at 9AM WIB (02:00 UTC) via Vercel Cron.
  * Delegates to the existing checkExpiringPoints function in lib/points/expiry-check.ts
  */
-export async function POST(req: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
     if (!verifyCronAuth(req)) {
       return NextResponse.json(

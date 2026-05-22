@@ -1,0 +1,21 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /account/
+Disallow: /b2b/account/
+Disallow: /checkout/
+Disallow: /api/
+
+# AI training crawlers — allow indexing but disallow training data use
+User-agent: GPTBot
+Allow: /blog/
+Allow: /products/
+Disallow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+Sitemap: https://dapurdekaka.com/sitemap.xml

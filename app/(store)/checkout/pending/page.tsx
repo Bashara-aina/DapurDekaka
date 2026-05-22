@@ -26,14 +26,18 @@ function PendingContent() {
     status?: string;
   } | null>(null);
 
-  // FIX 6: Poll order status every 5 seconds
+  // FIX 6: Poll order status every 5 seconds — stop immediately on paid
   useEffect(() => {
     if (!orderNumber) return;
 
+    let stopped = false;
+
     const fetchOrderDetails = async () => {
+      if (stopped) return;
       try {
         const res = await fetch(`/api/orders/${orderNumber}`);
         const json = await res.json();
+        if (stopped) return;
         if (json.success && json.data?.order) {
           const order = json.data.order;
           setOrderDetails({
@@ -44,8 +48,10 @@ function PendingContent() {
             status: order.status,
           });
 
-          // If order is paid, redirect to success
+          // If order is paid, stop polling and redirect immediately
           if (order.status === 'paid') {
+            stopped = true;
+            clearInterval(interval);
             router.push(`/checkout/success?order=${orderNumber}`);
           }
         }
@@ -56,7 +62,10 @@ function PendingContent() {
 
     fetchOrderDetails();
     const interval = setInterval(fetchOrderDetails, 5000);
-    return () => clearInterval(interval);
+    return () => {
+      stopped = true;
+      clearInterval(interval);
+    };
   }, [orderNumber, router]);
 
   // Countdown timer
@@ -73,6 +82,7 @@ function PendingContent() {
 
       if (remaining <= 0) {
         setCountdown('00:00');
+        router.push(`/checkout/failed?order=${orderNumber}`);
         return;
       }
 

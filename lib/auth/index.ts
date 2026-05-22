@@ -1,5 +1,7 @@
 import type { Session } from 'next-auth';
 
+import { validateAuthSecret } from '@/lib/config/validate-env';
+
 const IS_BUILD =
   typeof process.env.NEXT_PHASE !== 'undefined' &&
   (process.env.NEXT_PHASE === 'build' || process.env.NEXT_PHASE === 'phase-production-build');
@@ -53,6 +55,11 @@ async function initNextAuth() {
  */
 export async function auth(): Promise<Session | null> {
   if (IS_BUILD) return null;
+
+  // Validate AUTH_SECRET at startup
+  if (typeof process.env.AUTH_SECRET !== 'undefined') {
+    validateAuthSecret();
+  }
 
   await initNextAuth();
 
