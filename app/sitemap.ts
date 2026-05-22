@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { db } from '@/lib/db';
 import { products, blogPosts } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://dapurdekaka.com';
 
@@ -48,7 +48,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Get active products
   try {
     const allProducts = await db.query.products.findMany({
-      where: eq(products.isActive, true),
+      where: and(eq(products.isActive, true), isNull(products.deletedAt)),
       columns: {
         slug: true,
         updatedAt: true,
@@ -70,7 +70,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Get published blog posts
   try {
     const allPosts = await db.query.blogPosts.findMany({
-      where: eq(blogPosts.isPublished, true),
+      where: and(eq(blogPosts.isPublished, true), isNull(blogPosts.deletedAt)),
       columns: {
         slug: true,
         updatedAt: true,

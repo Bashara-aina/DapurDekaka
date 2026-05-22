@@ -15,7 +15,7 @@ const handleAuth = authMiddleware(async ({ auth, nextUrl }) => {
       return NextResponse.redirect(new URL('/', base));
     }
     if (role === 'warehouse') {
-      const allowed = ['/admin/inventory', '/admin/shipments', '/admin/field'];
+      const allowed = ['/admin/inventory', '/admin/shipments', '/admin/field', '/admin/orders'];
       if (!allowed.some((p) => pathname.startsWith(p))) {
         return NextResponse.redirect(new URL('/admin/field', base));
       }

@@ -252,9 +252,9 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
           )}
         </div>
 
-        {/* Points History */}
+        {/* Order History */}
         <div className="bg-white rounded-lg border border-admin-border p-6 lg:col-span-2">
-          <h2 className="font-semibold text-gray-700 mb-4">Riwayat Poin</h2>
+          <h2 className="font-semibold text-gray-700 mb-4">Riwayat Pesanan</h2>
           {customer.orders.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">

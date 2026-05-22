@@ -15,15 +15,19 @@ export async function GET(req: NextRequest, { params }: Props) {
   try {
     const session = await auth();
     if (!session?.user) return unauthorized('Login diperlukan');
-    if (session.user.role !== 'b2b') return forbidden('Akses ditolak');
+    const allowedRoles = ['b2b', 'superadmin', 'owner'];
+    if (!allowedRoles.includes(session.user.role ?? '')) {
+      return forbidden('Akses ditolak');
+    }
 
+    const isAdmin = ['superadmin', 'owner'].includes(session.user.role ?? '');
     const { orderNumber } = await params;
 
     const order = await db.query.orders.findFirst({
       where: and(
-        eq(orders.userId, session.user.id),
         eq(orders.orderNumber, orderNumber),
-        eq(orders.isB2b, true)
+        eq(orders.isB2b, true),
+        isAdmin ? undefined : eq(orders.userId, session.user.id)
       ),
       with: {
         items: true,

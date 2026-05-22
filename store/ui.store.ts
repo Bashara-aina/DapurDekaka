@@ -15,5 +15,9 @@ export const useUIStore = create<UIStore>((set) => ({
   closeCart: () => set({ isCartOpen: false }),
   toggleCart: () => set((state) => ({ isCartOpen: !state.isCartOpen })),
   language: 'id',
-  setLanguage: (lang) => set({ language: lang }),
+  setLanguage: (lang) => {
+    // Persist to cookie so next-intl and other components can read it
+    document.cookie = `NEXT_LOCALE=${lang};path=/;max-age=31536000;SameSite=Lax`;
+    set({ language: lang });
+  },
 }));

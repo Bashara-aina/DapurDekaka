@@ -176,7 +176,7 @@ export default function B2BAccountPage() {
                       Net-30 Aktif
                     </span>
                   ) : (
-                    <span className="text-text-muted">Bayar di места</span>
+                    <span className="text-text-muted">Bayar di Tempat</span>
                   )}
                 </p>
               </div>

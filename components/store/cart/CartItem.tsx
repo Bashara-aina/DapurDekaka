@@ -27,6 +27,11 @@ export function CartItemComponent({ item, stockValidation }: CartItemProps) {
   const availableStock = stockValidation?.availableStock ?? item.stock;
   const maxQty = Math.min(99, availableStock);
 
+  const handleRemove = (variantId: string) => {
+    removeItem(variantId);
+    // Close cart drawer if removing the last item (checked in parent via items.length)
+  };
+
   return (
     <div className={cn(
       'bg-white rounded-card shadow-card overflow-hidden',
@@ -68,7 +73,7 @@ export function CartItemComponent({ item, stockValidation }: CartItemProps) {
         {/* Actions */}
         <div className="flex flex-col items-end justify-between">
           <button
-            onClick={() => removeItem(item.variantId)}
+            onClick={() => handleRemove(item.variantId)}
             className="p-1.5 text-text-secondary hover:text-red-600 transition-colors"
             aria-label="Hapus item"
           >

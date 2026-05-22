@@ -88,9 +88,15 @@ export async function PATCH(req: NextRequest) {
       });
 
       // Then: processing → packed
-      await tx.update(orders)
+      const [packed] = await tx
+        .update(orders)
         .set({ status: 'packed', updatedAt: new Date() })
-        .where(and(eq(orders.id, orderId), eq(orders.status, 'processing')));
+        .where(and(eq(orders.id, orderId), eq(orders.status, 'processing')))
+        .returning({ id: orders.id });
+
+      if (!packed) {
+        throw new Error('PACK_FAILED_STATUS_CHANGED');
+      }
 
       await tx.insert(orderStatusHistory).values({
         orderId,

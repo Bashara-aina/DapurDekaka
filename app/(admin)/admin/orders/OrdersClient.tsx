@@ -53,7 +53,6 @@ const STATUS_LABELS: Record<string, string> = {
 const TRANSITIONS: Record<string, { status: string; label: string }[]> = {
   paid: [{ status: 'processing', label: 'Proses' }],
   processing: [{ status: 'packed', label: 'Kemas' }],
-  packed: [{ status: 'shipped', label: 'Kirim' }],
   shipped: [{ status: 'delivered', label: 'Terima' }],
 };
 

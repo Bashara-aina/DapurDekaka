@@ -37,6 +37,13 @@ next-env.d.ts
 # drizzle
 /drizzle
 
+# SQL exports & backups
+full_export.sql
+*.sql.backup
+
+# scripts
+/scripts/seed-production.ts
+
 # uploads (source assets, not deployed)
 assets-source/
 

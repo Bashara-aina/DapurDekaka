@@ -10,12 +10,14 @@ interface PointsData {
   balance: number;
   history: PointsHistory[];
   expiringCount: number;
+  expiringPoints: number;
   total: number;
 }
 
 export default function AccountPointsPage() {
   const [data, setData] = useState<PointsData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
 
@@ -40,7 +42,11 @@ export default function AccountPointsPage() {
     } catch (error) {
       console.error('Failed to fetch points:', error);
     } finally {
-      setIsLoading(false);
+      if (pageNum === 1) {
+        setIsInitialLoading(false);
+      } else {
+        setIsLoadingMore(false);
+      }
     }
   };
 
@@ -53,7 +59,7 @@ export default function AccountPointsPage() {
     }).format(points);
   };
 
-  if (isLoading) {
+  if (isInitialLoading) {
     return (
       <div className="space-y-6">
         <div className="bg-white rounded-card shadow-card p-6 animate-pulse">
@@ -101,14 +107,14 @@ export default function AccountPointsPage() {
       </div>
 
       {/* Expiring Alert */}
-      {data?.expiringCount && data.expiringCount > 0 && (
+      {data?.expiringPoints && data.expiringPoints > 0 && (
         <div className="bg-warning-light border border-warning/30 rounded-card p-4">
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-6 h-6 text-warning flex-shrink-0 mt-0.5" />
             <div>
               <p className="font-medium text-text-primary">Poin Segera Kedaluwarsa</p>
               <p className="text-sm text-text-secondary mt-1">
-                {data.expiringCount} poin kamu akan kedaluwarsa dalam 30 hari ke depan.
+                {data.expiringPoints.toLocaleString('id-ID')} poin kamu akan kedaluwarsa dalam 30 hari ke depan.
                 Tukarkan sebelum habis!
               </p>
             </div>
@@ -182,11 +188,14 @@ export default function AccountPointsPage() {
             ))}
             {hasMore && (
               <button
-                onClick={() => setPage(p => p + 1)}
-                disabled={isLoading}
+                onClick={() => {
+                  setIsLoadingMore(true);
+                  setPage(p => p + 1);
+                }}
+                disabled={isLoadingMore}
                 className="flex items-center justify-center gap-2 w-full h-11 border border-brand-cream-dark rounded-lg text-sm font-medium text-text-secondary hover:bg-brand-cream transition-colors disabled:opacity-50"
               >
-                {isLoading ? 'Memuat...' : 'Tampilkan Lebih Banyak'}
+                {isLoadingMore ? 'Memuat...' : 'Tampilkan Lebih Banyak'}
                 <ChevronDown className="w-4 h-4" />
               </button>
             )}

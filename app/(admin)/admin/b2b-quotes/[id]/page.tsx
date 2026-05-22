@@ -43,7 +43,7 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
 
 export default async function B2BQuoteDetailPage({ params }: PageProps) {
   const session = await auth();
-  if (!session?.user || !['owner', 'superadmin', 'admin'].includes(session.user.role as string)) {
+  if (!session?.user || !['owner', 'superadmin'].includes(session.user.role as string)) {
     redirect('/admin');
   }
 

@@ -4,13 +4,34 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SessionProvider } from 'next-auth/react';
 import { NextIntlClientProvider } from 'next-intl';
 import { Toaster } from 'sonner';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCartMerge } from '@/hooks/use-cart-merge';
 import idMessages from '@/i18n/messages/id.json';
+import enMessages from '@/i18n/messages/en.json';
 
 function CartMergeHandler() {
   useCartMerge();
   return null;
+}
+
+function LocaleProvider({ children }: { children: React.ReactNode }) {
+  const [locale, setLocale] = useState<'id' | 'en'>('id');
+
+  useEffect(() => {
+    // Read persisted locale from cookie on mount
+    const match = document.cookie.match(/(?:^|;\s*)NEXT_LOCALE=(id|en)/);
+    if (match) {
+      setLocale(match[1] as 'id' | 'en');
+    }
+  }, []);
+
+  const messages = locale === 'en' ? enMessages : idMessages;
+
+  return (
+    <NextIntlClientProvider locale={locale} messages={messages} timeZone="Asia/Jakarta">
+      {children}
+    </NextIntlClientProvider>
+  );
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -31,7 +52,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       refetchOnWindowFocus={true}
     >
       <QueryClientProvider client={queryClient}>
-        <NextIntlClientProvider locale="id" messages={idMessages} timeZone="Asia/Jakarta">
+        <LocaleProvider>
           <CartMergeHandler />
           {children}
           <Toaster
@@ -44,7 +65,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
               },
             }}
           />
-        </NextIntlClientProvider>
+        </LocaleProvider>
       </QueryClientProvider>
     </SessionProvider>
   );

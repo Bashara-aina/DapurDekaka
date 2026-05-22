@@ -1,12 +1,12 @@
 import { db } from '@/lib/db';
 import { blogPosts } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and, isNull } from 'drizzle-orm';
 import Link from 'next/link';
 import { BlogCard } from '@/components/store/blog/BlogCard';
 
 export async function LatestBlogPosts() {
   const posts = await db.query.blogPosts.findMany({
-    where: eq(blogPosts.isPublished, true),
+    where: and(eq(blogPosts.isPublished, true), isNull(blogPosts.deletedAt)),
     orderBy: [desc(blogPosts.publishedAt)],
     limit: 3,
     with: { category: true },

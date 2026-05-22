@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
-import { success, notFound, unauthorized, forbidden, serverError, conflict } from '@/lib/utils/api-response';
+import { success, notFound, unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { b2bProfiles } from '@/lib/db/schema';
 import { z } from 'zod';
+import { sendEmail } from '@/lib/resend/send-email';
+import { B2BApprovalEmail } from '@/lib/resend/templates/B2BApprovalEmail';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -67,6 +69,21 @@ export async function POST(
       })
       .where(eq(b2bProfiles.id, id))
       .returning();
+
+    // Send approval email if account was approved
+    if (parsed.data.isApproved && profile.user) {
+      sendEmail({
+        to: profile.user.email,
+        subject: 'Akun B2B Dapur Dekaka Disetujui',
+        react: B2BApprovalEmail({
+          userName: profile.user.name,
+          companyName: profile.companyName,
+          loginUrl: `${process.env.NEXT_PUBLIC_APP_URL}/b2b/account`,
+        }),
+      }).catch((err) => {
+        console.error('[B2B Approval Email] Failed to send:', err);
+      });
+    }
 
     return success(updated);
   } catch (error) {

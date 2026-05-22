@@ -16,6 +16,7 @@ import {
   pointsHistory,
   orderStatusHistory,
   b2bProfiles,
+  inventoryLogs,
 } from '@/lib/db/schema';
 import { eq, and, inArray, sql, or, desc, gte, gt } from 'drizzle-orm';
 import { success, serverError, validationError, conflict, unauthorized } from '@/lib/utils/api-response';
@@ -426,6 +427,8 @@ export const POST = withRateLimit(
       const orderNumber = generateOrderNumber(seq);
 
       // Deduct points using FIFO inside transaction (rollback-safe)
+      const redeemRecords: { earnId: string; amountUsed: number }[] = [];
+      let pointsBalanceForRedeem = 0;
       if (pointsDeducted && userId && pointsUsed) {
         // Fetch ALL eligible earn records without a row limit.
         // .limit(pointsUsed) limits by row count, not points total — the accumulating
@@ -472,8 +475,10 @@ export const POST = withRateLimit(
           throw new Error('Poin tidak mencukupi atau terjadi kesalahan');
         }
         const pointsBalanceAfterDeduct = updatedUsers[0]!.pointsBalance;
+        pointsBalanceForRedeem = pointsBalanceAfterDeduct;
 
         // Create redeem records referencing specific earn IDs (FIFO)
+        // Collect data first — insert AFTER order is created so orderId is available
         for (const { id, amountUsed } of toConsume) {
           // Mark the earn record as consumed
           await tx
@@ -481,17 +486,7 @@ export const POST = withRateLimit(
             .set({ consumedAt: new Date() })
             .where(eq(pointsHistory.id, id));
 
-          // Create redeem record referencing this earn
-          await tx.insert(pointsHistory).values({
-            userId,
-            type: 'redeem',
-            pointsAmount: -amountUsed,
-            pointsBalanceAfter: pointsBalanceAfterDeduct,
-            orderId: null,
-            descriptionId: `Tukar poin untuk pesanan (FIFO)`,
-            descriptionEn: `Redeem points for order (FIFO)`,
-            referencedEarnId: id,
-          });
+          redeemRecords.push({ earnId: id, amountUsed });
         }
       }
 
@@ -545,6 +540,20 @@ export const POST = withRateLimit(
         throw new Error('Failed to create order');
       }
 
+      // Insert redeem records now that orderId is available (FIFO consume)
+      for (const { earnId, amountUsed } of redeemRecords) {
+        await tx.insert(pointsHistory).values({
+          userId: userId!,
+          type: 'redeem',
+          pointsAmount: -amountUsed,
+          pointsBalanceAfter: pointsBalanceForRedeem,
+          orderId: created.id,
+          descriptionId: `Tukar poin untuk pesanan ${created.orderNumber}`,
+          descriptionEn: `Redeem points for order ${created.orderNumber}`,
+          referencedEarnId: earnId,
+        });
+      }
+
       // Create order items
       const itemsWithOrderId = orderItemsData.map((item) => ({
         ...item,
@@ -561,51 +570,93 @@ export const POST = withRateLimit(
         await tx.insert(orderItems).values(freeItemsWithOrderId);
       }
 
-      // BUG-07: Reserve stock at initiate time to prevent overselling from concurrent checkouts
-      // Uses atomic conditional update — only succeeds if sufficient stock exists
-      const allOrderItems = [...orderItemsData, ...freeItems];
-      for (const item of allOrderItems) {
-        if (item.quantity <= 0) continue;
-        const [updated] = await tx
-          .update(productVariants)
-          .set({ stock: sql`stock - ${item.quantity}` })
-          .where(
-            and(
-              eq(productVariants.id, item.variantId),
-              gte(productVariants.stock, item.quantity)
+      // For Net-30 B2B orders: deduct stock + award points + confirm coupon in same transaction
+      // because there is no Midtrans webhook to trigger these later
+      if (isNet30Order) {
+        const allOrderItems = [...orderItemsData, ...freeItems];
+        for (const item of allOrderItems) {
+          if (item.quantity <= 0) continue;
+          const [updated] = await tx
+            .update(productVariants)
+            .set({ stock: sql`stock - ${item.quantity}` })
+            .where(
+              and(
+                eq(productVariants.id, item.variantId),
+                gte(productVariants.stock, item.quantity)
+              )
             )
-          )
-          .returning({ newStock: productVariants.stock });
+            .returning({ newStock: productVariants.stock });
 
-        if (!updated) {
-          throw new Error(`Insufficient stock for variant ${item.variantId}`);
+          if (!updated) {
+            throw new Error(`Insufficient stock for variant ${item.variantId}`);
+          }
+
+          // Log inventory movement for Net-30 B2B sale
+          await tx.insert(inventoryLogs).values({
+            variantId: item.variantId,
+            changeType: 'sale',
+            quantityBefore: updated.newStock + item.quantity,
+            quantityAfter: updated.newStock,
+            quantityDelta: -item.quantity,
+            orderId: created.id,
+          });
+        }
+
+        // Award loyalty points for B2B Net-30 order
+        if (userId && order.pointsEarned > 0) {
+          const earnedPoints = order.pointsEarned;
+          const updatedUsers = await tx
+            .update(users)
+            .set({ pointsBalance: sql`points_balance + ${earnedPoints}` })
+            .where(eq(users.id, userId))
+            .returning({ pointsBalance: users.pointsBalance });
+
+          const newBalance = updatedUsers[0]?.pointsBalance ?? earnedPoints;
+
+          await tx.insert(pointsHistory).values({
+            userId,
+            type: 'earn',
+            pointsAmount: earnedPoints,
+            pointsBalanceAfter: newBalance,
+            descriptionId: `Pembelian ${orderNumber} (Net-30)`,
+            descriptionEn: `Purchase ${orderNumber} (Net-30)`,
+            orderId: created.id,
+            expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+          });
+        }
+
+        // Confirm coupon usage for Net-30 (upsert the provisional row if per-user limit was enforced)
+        if (coupon && coupon.maxUsesPerUser && userId) {
+          await tx
+            .insert(couponUsages)
+            .values({
+              couponId: coupon.id,
+              orderId: created.id,
+              userId,
+              discountApplied: discountAmount,
+            })
+            .onConflictDoNothing();
+        }
+
+        // Increment coupon used_count for Net-30
+        if (coupon) {
+          await tx
+            .update(coupons)
+            .set({ usedCount: sql`used_count + 1` })
+            .where(eq(coupons.id, coupon.id));
         }
       }
 
       // BUG-08: Insert provisional couponUsages row to enforce per-user limit under concurrency
       // If order is cancelled, this row is deleted by the cancel/expire webhook handler
-      if (coupon && coupon.maxUsesPerUser && userId) {
+      // NOTE: For Net-30 orders, we already inserted/confirmed above, skip duplicate
+      if (coupon && coupon.maxUsesPerUser && userId && !isNet30Order) {
         await tx.insert(couponUsages).values({
           couponId: coupon.id,
           orderId: created.id,
           userId,
           discountApplied: discountAmount,
         });
-      }
-
-      // FIX 2: Back-fill orderId on points redeem records created during this transaction
-      if (userId && pointsDeducted) {
-        await tx
-          .update(pointsHistory)
-          .set({ orderId: created.id })
-          .where(
-            and(
-              eq(pointsHistory.userId, userId),
-              eq(pointsHistory.type, 'redeem'),
-              sql`${pointsHistory.orderId} IS NULL`,
-              gte(pointsHistory.createdAt, sql`NOW() - INTERVAL '30 seconds'`)
-            )
-          );
       }
 
       return [created];

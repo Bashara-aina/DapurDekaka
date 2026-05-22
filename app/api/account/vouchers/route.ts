@@ -25,9 +25,14 @@ export async function GET(req: NextRequest) {
     const usedCouponIds = usedCouponsList.map(u => u.couponId);
 
     const availableCouponsList = await db.query.coupons.findMany({
-      where: (c, { and, eq, or, isNull, gte }) => and(
+      where: (c, { and, eq, or, isNull, gte, lte }) => and(
         eq(c.isActive, true),
         eq(c.isPublic, true),
+        // BUG-06: Filter out coupons that haven't started yet
+        or(
+          isNull(c.startsAt),
+          lte(c.startsAt, now)
+        ),
         or(
           isNull(c.expiresAt),
           gte(c.expiresAt, now)

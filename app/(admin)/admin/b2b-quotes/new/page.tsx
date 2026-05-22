@@ -3,9 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { db } from '@/lib/db';
-import { products, productVariants, b2bProfiles } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react';

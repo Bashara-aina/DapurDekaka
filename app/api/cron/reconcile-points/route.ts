@@ -35,16 +35,18 @@ export async function GET(req: NextRequest) {
     let drifted = 0;
 
     for (const row of results) {
-      if (row.currentBalance !== row.calculatedBalance) {
+      // BUG-02: Sanity check — never let calculatedBalance go below 0
+      const safeBalance = Math.max(0, row.calculatedBalance);
+      if (row.currentBalance !== safeBalance) {
         await db
           .update(users)
-          .set({ pointsBalance: row.calculatedBalance })
+          .set({ pointsBalance: safeBalance })
           .where(eq(users.id, row.userId));
         drifted++;
         logger.warn('[ReconcilePoints] Balance drift corrected', {
           userId: row.userId,
           oldBalance: row.currentBalance,
-          newBalance: row.calculatedBalance,
+          newBalance: safeBalance,
         });
       }
       reconciled++;

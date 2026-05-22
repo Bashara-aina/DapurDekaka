@@ -60,7 +60,7 @@ export default function RegisterPage() {
         callbackUrl: '/account',
       });
 
-      if (loginResult?.url) {
+      if (loginResult && !loginResult.error) {
         // Merge guest cart after successful login
         try {
           const cartItems = JSON.parse(localStorage.getItem('cart-storage') || '{}');
