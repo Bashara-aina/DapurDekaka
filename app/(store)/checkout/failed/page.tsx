@@ -7,6 +7,8 @@ import { useTranslations } from 'next-intl';
 import { XCircle, RefreshCw, Home } from 'lucide-react';
 import { useCartStore } from '@/store/cart.store';
 
+export const dynamic = 'force-dynamic';
+
 interface FailedOrderItem {
   variantId: string;
   productId: string;

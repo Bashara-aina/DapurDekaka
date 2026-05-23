@@ -31,7 +31,6 @@
     }
   ],
   "functions": {
-    "region": "jakarta",
     "app/api/webhooks/midtrans/route.ts": {
       "maxDuration": 30
     },

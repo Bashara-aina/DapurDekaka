@@ -9,6 +9,8 @@ import confetti from 'canvas-confetti';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { CheckCircle } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 function SuccessContent() {
   const t = useTranslations('checkout');
   const searchParams = useSearchParams();

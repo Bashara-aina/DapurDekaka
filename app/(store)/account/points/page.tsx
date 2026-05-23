@@ -9,6 +9,8 @@ import { PointsHistoryCard } from '@/components/store/account/PointsHistoryCard'
 import type { PointsHistory } from '@/lib/db/schema';
 import { formatIDR } from '@/lib/utils/format-currency';
 
+export const dynamic = 'force-dynamic';
+
 interface PointsData {
   balance: number;
   history: PointsHistory[];

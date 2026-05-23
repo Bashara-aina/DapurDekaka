@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils/cn';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { formatWIB } from '@/lib/utils/format-date';
 
+export const dynamic = 'force-dynamic';
+
 function PendingContent() {
   const t = useTranslations('checkout');
   const router = useRouter();

@@ -12,6 +12,7 @@ import { db } from '@/lib/db';
 import { products, productVariants, productImages, categories, carouselSlides, systemSettings } from '@/lib/db/schema';
 import { eq, and, desc, isNull, lte, gte, isNull as isNullCond, sql } from 'drizzle-orm';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 1800;
 
 export async function generateMetadata(): Promise<Metadata> {

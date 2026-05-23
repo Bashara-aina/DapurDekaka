@@ -1,62 +1,80 @@
+import createMiddleware from 'next-intl/middleware';
+import { routing } from '@/i18n/routing';
 import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-export default auth((req) => {
+const intlMiddleware = createMiddleware(routing);
+
+export default async function middleware(req: NextRequest) {
+  // Step 1: Run next-intl locale detection (handles redirect if locale prefix needed)
+  let response = intlMiddleware(req);
+
+  // If intl middleware issued a redirect (e.g. to add locale prefix), return it
+  if (response.status === 307 || response.status === 308) {
+    return response;
+  }
+
+  // Step 2: Run auth on the same request (intl already processed locale)
   const { pathname } = req.nextUrl;
-  const session = req.auth;
-  const base = req.url;
+  const session = await auth() as { user?: { isActive?: boolean; role?: string; id?: string } } | null;
 
-  // Security headers for all responses
-  const response = NextResponse.next();
+  // Inactive user check
+  if (session?.user?.isActive === false) {
+    const redirectUrl = pathname.startsWith('/admin')
+      ? '/login?inactive=1'
+      : `/login?inactive=1&callbackUrl=${encodeURIComponent(pathname)}`;
+    return NextResponse.redirect(new URL(redirectUrl, req.url));
+  }
 
-  // Security headers
+  // Admin role guard
+  if (pathname.startsWith('/admin')) {
+    if (!session?.user) {
+      return NextResponse.redirect(new URL('/login', req.url));
+    }
+    const role = session.user.role;
+    if (!role || !['superadmin', 'owner', 'warehouse'].includes(role)) {
+      return NextResponse.redirect(new URL('/', req.url));
+    }
+    if (role === 'warehouse') {
+      const allowed = ['/admin/inventory', '/admin/shipments', '/admin/field', '/admin/orders'];
+      if (!allowed.some((p) => pathname.startsWith(p))) {
+        return NextResponse.redirect(new URL('/admin/inventory', req.url));
+      }
+    }
+  }
+
+  // Account guard
+  if (pathname.startsWith('/account')) {
+    if (!session?.user) {
+      return NextResponse.redirect(new URL(`/login?callbackUrl=${encodeURIComponent(pathname)}`, req.url));
+    }
+  }
+
+  // B2B account guard
+  if (pathname.startsWith('/b2b/account')) {
+    if (!session?.user) {
+      return NextResponse.redirect(new URL(`/login?callbackUrl=${encodeURIComponent(pathname)}`, req.url));
+    }
+    if (session.user.role !== 'b2b' && session.user.role !== 'superadmin') {
+      return NextResponse.redirect(new URL('/b2b', req.url));
+    }
+  }
+
+  // Add security headers (preserve any headers set by intlMiddleware)
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
-  // BUG-02 FIX: Inactive user session not invalidated — redirect inactive users
-  if (session?.user?.isActive === false) {
-    const inactiveRedirectUrl = pathname.startsWith('/admin')
-      ? '/login?inactive=1'
-      : `/login?inactive=1&callbackUrl=${encodeURIComponent(pathname)}`;
-    return NextResponse.redirect(new URL(inactiveRedirectUrl, base));
-  }
-
-  if (pathname.startsWith('/admin')) {
-    if (!session?.user) {
-      return NextResponse.redirect(new URL('/login', base));
-    }
-    const role = session.user.role;
-    if (!role || !['superadmin', 'owner', 'warehouse'].includes(role)) {
-      return NextResponse.redirect(new URL('/', base));
-    }
-    if (role === 'warehouse') {
-      const allowed = ['/admin/inventory', '/admin/shipments', '/admin/field', '/admin/orders'];
-      if (!allowed.some((p) => pathname.startsWith(p))) {
-        return NextResponse.redirect(new URL('/admin/inventory', base));
-      }
-    }
-  }
-
-  if (pathname.startsWith('/account')) {
-    if (!session?.user) {
-      return NextResponse.redirect(new URL(`/login?callbackUrl=${encodeURIComponent(pathname)}`, base));
-    }
-  }
-
-  if (pathname.startsWith('/b2b/account')) {
-    if (!session?.user) {
-      return NextResponse.redirect(new URL(`/login?callbackUrl=${encodeURIComponent(pathname)}`, base));
-    }
-    if (session.user.role !== 'b2b' && session.user.role !== 'superadmin') {
-      return NextResponse.redirect(new URL('/b2b', base));
-    }
-  }
-
-  return NextResponse.next();
-});
+  return response;
+}
 
 export const config = {
-  matcher: ['/admin/:path*', '/account/:path*', '/b2b/account/:path*'],
+  // Match all pathnames except for paths that start with:
+  // - api (API routes)
+  // - _next/static (static files)
+  // - _next/image (image optimization)
+  // - favicon.ico, robots.txt, sitemap etc (files with dots)
+  matcher: ['/((?!api|_next/static|_next/image|_vercel|favicon|robots|sitemap|.*\\..*).*)'],
 };

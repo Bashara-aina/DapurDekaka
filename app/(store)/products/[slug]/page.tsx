@@ -5,6 +5,8 @@ import { eq, and, ne, isNull } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import { ProductDetailClient } from '@/components/store/products/ProductDetailClient';
 
+export const dynamic = 'force-dynamic';
+
 interface ProductDetailPageProps {
   params: Promise<{ slug: string }>;
 }

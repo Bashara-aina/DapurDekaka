@@ -4,6 +4,8 @@ import Footer from '@/components/store/layout/Footer';
 import { WhatsAppButton } from '@/components/store/layout/WhatsAppButton';
 import { getSetting } from '@/lib/settings/get-settings';
 
+export const dynamic = 'force-dynamic';
+
 export default async function StoreLayout({ children }: { children: React.ReactNode }) {
   const whatsappNumber = await getSetting('store_whatsapp_number').catch(() => null);
 

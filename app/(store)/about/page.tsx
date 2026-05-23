@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { MessageCircle } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('metadata');
   return {

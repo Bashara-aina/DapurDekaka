@@ -19,6 +19,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 
+export const dynamic = 'force-dynamic';
+
 interface StockValidation {
   variantId: string;
   cartQty: number;

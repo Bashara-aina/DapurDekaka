@@ -13,6 +13,8 @@ import { formatIDR } from '@/lib/utils/format-currency';
 import { cn } from '@/lib/utils/cn';
 import { POINTS_MIN_REDEEM, POINTS_VALUE_IDR } from '@/lib/constants/points';
 
+export const dynamic = 'force-dynamic';
+
 import { CheckoutStepper } from '@/components/store/checkout/CheckoutStepper';
 import { IdentityForm } from '@/components/store/checkout/IdentityForm';
 import type { IdentityFormData } from '@/components/store/checkout/IdentityForm';

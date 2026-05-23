@@ -15,6 +15,8 @@ import { TableOfContents } from '@/components/store/blog/TableOfContents';
 import { BlogCTA } from '@/components/store/blog/BlogCTA';
 import { CopyLinkButton } from '@/components/store/blog/CopyLinkButton';
 
+export const dynamic = 'force-dynamic';
+
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
 }

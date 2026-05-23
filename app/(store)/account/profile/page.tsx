@@ -9,6 +9,8 @@ import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils/cn';
 
+export const dynamic = 'force-dynamic';
+
 const profileFormSchema = z.object({
   name: z.string().min(2, 'Nama minimal 2 karakter').max(255),
   phone: z

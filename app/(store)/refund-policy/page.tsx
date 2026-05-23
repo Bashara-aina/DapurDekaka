@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Kebijakan Pengembalian - Dapur Dekaka',
   description: 'Kebijakan pengembalian dan refund produk frozen food Dapur Dekaka. Makanan frozen tidak dapat dikembalikan karena alasan keamanan pangan.',

@@ -9,6 +9,8 @@ import { AddressForm } from '@/components/store/account/AddressForm';
 import type { Address } from '@/lib/db/schema';
 import type { AddressFormData } from '@/components/store/account/AddressForm';
 
+export const dynamic = 'force-dynamic';
+
 interface Province {
   id: string;
   name: string;

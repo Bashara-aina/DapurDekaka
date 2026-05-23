@@ -7,6 +7,8 @@ import { toast } from 'sonner';
 import { VoucherCard } from '@/components/store/account/VoucherCard';
 import type { Coupon } from '@/lib/db/schema';
 
+export const dynamic = 'force-dynamic';
+
 interface VoucherData {
   usedCoupons: (Coupon & { usedAt: Date; discountApplied: number })[];
   availableCoupons: Coupon[];

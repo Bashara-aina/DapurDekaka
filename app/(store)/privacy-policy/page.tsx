@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Kebijakan Privasi - Dapur Dekaka',
   description: 'Kebijakan privasi Dapur Dekaka sesuai UU Pelindungan Data Pribadi (UU PDP) No. 27 Tahun 2022. Bagaimana kami mengumpulkan, menggunakan, dan melindungi data Anda.',
