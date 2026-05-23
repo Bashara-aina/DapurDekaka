@@ -21,6 +21,13 @@ export interface CreateMidtransTransactionParams {
 export async function createMidtransTransaction(
   params: CreateMidtransTransactionParams
 ): Promise<{ snapToken: string; midtransOrderId: string }> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (!appUrl) {
+    throw new Error(
+      'NEXT_PUBLIC_APP_URL environment variable is not set. ' +
+        'Expected value: https://dapurdekaka.com'
+    );
+  }
   const midtransOrderId = getMidtransOrderId(params.orderNumber, params.retryCount);
 
   const transactionParams = {
@@ -37,6 +44,11 @@ export async function createMidtransTransaction(
     expiry: {
       unit: 'minute' as const,
       duration: 15,
+    },
+    callbacks: {
+      finish: `${appUrl}/checkout/success`,
+      error: `${appUrl}/checkout/failed`,
+      pending: `${appUrl}/checkout/pending`,
     },
   };
 

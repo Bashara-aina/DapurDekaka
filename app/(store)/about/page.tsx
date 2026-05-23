@@ -1,22 +1,29 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
+import { MessageCircle } from 'lucide-react';
 
-export const metadata: Metadata = {
-  title: 'Tentang Kami | Dapur Dekaka',
-  description: 'Dapur Dekaka adalah produsen frozen food premium Chinese-Indonesia dari Bandung. Dimsum, siomay, bakso halal bersertifikat MUI.',
-  alternates: {
-    canonical: 'https://dapurdekaka.com/about',
-  },
-  openGraph: {
-    title: 'Tentang Kami | Dapur Dekaka',
-    description: 'Dapur Dekaka adalah produsen frozen food premium Chinese-Indonesia dari Bandung.',
-    url: 'https://dapurdekaka.com/about',
-    type: 'website',
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('metadata');
+  return {
+    title: t('aboutTitle'),
+    description: t('aboutDescription'),
+    alternates: {
+      canonical: 'https://dapurdekaka.com/about',
+    },
+    openGraph: {
+      title: t('aboutTitle'),
+      description: t('aboutDescription'),
+      url: 'https://dapurdekaka.com/about',
+      type: 'website',
+    },
+  };
+}
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const t = await getTranslations('about');
+
   const organizationJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'AboutPage',
@@ -69,17 +76,17 @@ export default function AboutPage() {
       />
 
       {/* Hero */}
-      <section className="relative bg-[#1A1A1A] text-white py-20 md:py-28">
+      <section className="relative bg-brand-navy text-white py-20 md:py-28">
         <div className="container">
           <div className="max-w-2xl">
             <p className="text-brand-gold font-medium text-sm tracking-wider uppercase mb-3">
-              Tentang Kami
+              {t('heroTagline')}
             </p>
-            <h1 className="font-display text-4xl md:text-5xl font-bold mb-4">
-              Cita Rasa Warisan,<br />Kini di Rumahmu
+            <h1 className="font-display text-4xl md:text-5xl font-bold mb-4 whitespace-pre-line">
+              {t('heroTitle')}
             </h1>
             <p className="text-white/70 text-lg">
-              Dapur Dekaka (德卡) adalah produsen frozen food premium Chinese-Indonesia dari Bandung, membawa resep turun-temurun dengan standar halal MUI untuk seluruh Indonesia.
+              {t('heroDesc')}
             </p>
           </div>
         </div>
@@ -90,16 +97,16 @@ export default function AboutPage() {
         <div className="container">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="font-display text-3xl font-bold mb-6">Cerita Dapur Dekaka</h2>
+              <h2 className="font-display text-3xl font-bold mb-6">{t('storyTitle')}</h2>
               <div className="space-y-4 text-text-secondary leading-relaxed">
                 <p>
-                  Berawal dari sebuah dapur kecil di Turangga, Bandung, Dapur Dekaka lahir dari mimpi untuk membawa cita rasa authentic Chinese-Indonesian ke setiap rumah tangga Indonesia.
+                  {t('storyP1')}
                 </p>
                 <p>
-                  Dengan pengalaman puluhan tahun meracik frozen food berkualitas, kami menyajikan produk-produk seperti dimsum, siomay, bakso, dan lumpia yang dibuat dari bahan-bahan pilihan dan proses produksi higienis.
+                  {t('storyP2')}
                 </p>
                 <p>
-                  Setiap produk Dapur Dekaka dilengkapi sertifikasi halal dari MUI, sehingga Anda tidak perlu khawatir tentang kehalalan produk yang kami buat. Kami percaya bahwa kualitas dan keyakinan agama bukanlah pilihan — keduanya adalah standar.
+                  {t('storyP3')}
                 </p>
               </div>
             </div>
@@ -118,33 +125,33 @@ export default function AboutPage() {
       {/* Values */}
       <section className="py-16 bg-brand-cream">
         <div className="container">
-          <h2 className="font-display text-3xl font-bold text-center mb-12">Nilai-Nilai Kami</h2>
+          <h2 className="font-display text-3xl font-bold text-center mb-12">{t('valuesTitle')}</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="bg-white rounded-2xl p-6 text-center">
               <div className="w-16 h-16 bg-brand-red/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-3xl">🍖</span>
               </div>
-              <h3 className="font-display text-lg font-bold mb-2">Bahan Pilihan</h3>
+              <h3 className="font-display text-lg font-bold mb-2">{t('qualityTitle')}</h3>
               <p className="text-sm text-text-secondary">
-                Kami hanya menggunakan bahan-bahan berkualitas tinggi, dipilih langsung oleh tenaga ahli kami untuk memastikan rasa dan tekstur yang sempurna.
+                {t('qualityDesc')}
               </p>
             </div>
             <div className="bg-white rounded-2xl p-6 text-center">
               <div className="w-16 h-16 bg-brand-red/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-3xl">✅</span>
               </div>
-              <h3 className="font-display text-lg font-bold mb-2">Halal Terjamin</h3>
+              <h3 className="font-display text-lg font-bold mb-2">{t('halalTitle')}</h3>
               <p className="text-sm text-text-secondary">
-                Semua produk bersertifikat halal MUI. Kehalalan bukan sekadar label, tapi adalah janji kami kepada setiap pelanggan.
+                {t('halalDesc')}
               </p>
             </div>
             <div className="bg-white rounded-2xl p-6 text-center">
               <div className="w-16 h-16 bg-brand-red/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-3xl">❄️</span>
               </div>
-              <h3 className="font-display text-lg font-bold mb-2">Cold Chain Terjaga</h3>
+              <h3 className="font-display text-lg font-bold mb-2">{t('coldChainTitle')}</h3>
               <p className="text-sm text-text-secondary">
-                Dari dapur hingga pintu rumah Anda, rantai dingin kami terjaga ketat untuk memastikan kesegaran dan kualitas produk.
+                {t('coldChainDesc')}
               </p>
             </div>
           </div>
@@ -155,21 +162,21 @@ export default function AboutPage() {
       <section className="py-16 bg-white">
         <div className="container">
           <div className="max-w-3xl mx-auto text-center">
-            <h2 className="font-display text-3xl font-bold mb-6">Diproduksi di Bandung</h2>
+            <h2 className="font-display text-3xl font-bold mb-6">{t('productionTitle')}</h2>
             <p className="text-text-secondary leading-relaxed mb-8">
-              Semua produk Dapur Dekaka diproduksi di fasilitas kami di Jl. Sinom V No. 7, Turangga, Bandung. Bandung dipilih bukan tanpa alasan — kota ini dikenal sebagai pusat kuliner Chinese-Indonesia terbaik di Indonesia, dan kami bangga menjadi bagian dari tradisi kuliner tersebut.
+              {t('productionDesc')}
             </p>
             <div className="flex items-center justify-center gap-4">
               <Image
                 src="/assets/logo/halal.png"
-                alt="Sertifikat Halal MUI"
+                alt={t('halalCert')}
                 width={64}
                 height={64}
                 className="rounded-lg"
               />
               <div className="text-left">
-                <p className="font-semibold text-sm">Sertifikasi Halal</p>
-                <p className="text-xs text-text-secondary">Majelis Ulama Indonesia (MUI)</p>
+                <p className="font-semibold text-sm">{t('halalCert')}</p>
+                <p className="text-xs text-text-secondary">{t('halalCertOrg')}</p>
               </div>
             </div>
           </div>
@@ -180,25 +187,25 @@ export default function AboutPage() {
       <section className="py-16 bg-brand-red">
         <div className="container text-center">
           <h2 className="font-display text-3xl font-bold text-white mb-4">
-            Siap mencicipi frozen food premium kami?
+            {t('ctaTitle')}
           </h2>
           <p className="text-white/80 mb-8 max-w-lg mx-auto">
-            Pesan sekarang dan nikmati gratis ongkir untuk pembelian pertama. Dikirim ke seluruh Indonesia dengan cold chain terjaga.
+            {t('ctaDesc')}
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
             <Link
               href="/products"
               className="inline-flex items-center px-6 py-3 bg-white text-brand-red font-semibold rounded-button hover:bg-brand-cream transition-colors"
             >
-              Lihat Produk
+              {t('viewProducts')}
             </Link>
             <a
               href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER}?text=Halo! Saya ingin tahu lebih lanjut tentang produk Dapur Dekaka`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-[#25D366] text-white font-semibold rounded-button hover:bg-[#20BD5A] transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-whatsapp-green text-white font-semibold rounded-button hover:bg-whatsapp-green-dark transition-colors"
             >
-              <span>💬</span> Chat WhatsApp
+              <MessageCircle className="w-5 h-5" /> {t('chatWhatsApp')}
             </a>
           </div>
         </div>

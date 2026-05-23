@@ -33,18 +33,25 @@ export default function ShipmentsClient({ initialOrders }: ShipmentsClientProps)
   const [submittingIds, setSubmittingIds] = useState<Set<string>>(new Set());
 
   async function handleSubmitTracking(orderId: string) {
-    const trackingNumber = trackingInputs[orderId]?.trim();
-    if (!trackingNumber) {
-      toast.error('Nomor resi harus diisi');
+    const rawTracking = trackingInputs[orderId] ?? '';
+    const trimmedTracking = rawTracking.trim();
+    if (!trimmedTracking) {
+      toast.error('Nomor resi tidak boleh kosong');
       return;
     }
+    if (trimmedTracking.length < 5) {
+      toast.error('Nomor resi terlalu pendek');
+      return;
+    }
+    // M-02: Sanitize — strip internal whitespace for courier API compatibility
+    const cleanTracking = trimmedTracking.replace(/\s+/g, '');
 
     setSubmittingIds((prev) => new Set(prev).add(orderId));
     try {
       const res = await fetch('/api/admin/field/tracking-queue', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId, trackingNumber }),
+        body: JSON.stringify({ orderId, trackingNumber: cleanTracking }),
       });
 
       if (!res.ok) {
@@ -167,7 +174,7 @@ export default function ShipmentsClient({ initialOrders }: ShipmentsClientProps)
               })}
               {orders.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                     Tidak ada pesanan yang perlu dikirim
                   </td>
                 </tr>

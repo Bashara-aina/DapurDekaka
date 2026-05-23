@@ -3,10 +3,12 @@ import Image from 'next/image';
 import { db } from '@/lib/db';
 import { carouselSlides } from '@/lib/db/schema';
 import { desc } from 'drizzle-orm';
+import { requireRole } from '@/lib/auth/check-role';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminCarouselPage() {
+  await requireRole(['superadmin', 'owner']);
   const allSlides = await db.query.carouselSlides.findMany({
     orderBy: [carouselSlides.sortOrder],
   });

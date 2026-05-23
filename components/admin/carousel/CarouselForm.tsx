@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -7,7 +8,16 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import Image from 'next/image';
+import { Upload, Loader2, X, ImageIcon } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface CarouselFormProps {
   initialData?: {
@@ -59,6 +69,11 @@ const CarouselSchema = z.object({
 export type CarouselFormData = z.infer<typeof CarouselSchema>;
 
 export function CarouselForm({ initialData, onSubmit, isSubmitting }: CarouselFormProps) {
+  const [imageUrl, setImageUrl] = useState(initialData?.imageUrl ?? '');
+  const [imagePublicId, setImagePublicId] = useState(initialData?.imagePublicId ?? '');
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+
   const form = useForm<CarouselFormData>({
     resolver: zodResolver(CarouselSchema),
     defaultValues: {
@@ -80,20 +95,88 @@ export function CarouselForm({ initialData, onSubmit, isSubmitting }: CarouselFo
     },
   });
 
+  const handleImageUpload = useCallback(async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Hanya file gambar yang diperbolehkan');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Ukuran file maksimal 10MB');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'carousel');
+
+      const res = await fetch('/api/admin/upload', { method: 'POST', body: formData });
+      const result = await res.json();
+
+      if (!result.success) throw new Error(result.error);
+
+      setImageUrl(result.data.url);
+      setImagePublicId(result.data.publicId);
+      form.setValue('imageUrl', result.data.url);
+      form.setValue('imagePublicId', result.data.publicId);
+      toast.success('Gambar berhasil diupload');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Upload gagal');
+    } finally {
+      setIsUploading(false);
+    }
+  }, [form]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleImageUpload(file);
+  }, [handleImageUpload]);
+
+  const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleImageUpload(file);
+  }, [handleImageUpload]);
+
+  const handleRemoveImage = () => {
+    setImageUrl('');
+    setImagePublicId('');
+    form.setValue('imageUrl', '');
+    form.setValue('imagePublicId', '');
+  };
+
+  const handleSubmit = form.handleSubmit(async (data) => {
+    if (!imageUrl) {
+      toast.error('Gambar slide wajib diupload');
+      return;
+    }
+    try {
+      await onSubmit({ ...data, imageUrl, imagePublicId });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Terjadi kesalahan saat menyimpan');
+    }
+  });
+
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
           <Label htmlFor="type">Tipe Slide</Label>
-          <select
-            id="type"
-            {...form.register('type')}
-            className="w-full h-10 px-3 rounded-md border border-input bg-white text-sm"
+          <Select
+            value={form.watch('type')}
+            onValueChange={(v) => form.setValue('type', v as 'product_hero' | 'promo' | 'brand_story')}
           >
-            {CAROUSEL_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CAROUSEL_TYPES.map((t) => (
+                <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-2">
@@ -131,12 +214,73 @@ export function CarouselForm({ initialData, onSubmit, isSubmitting }: CarouselFo
           <Input id="subtitleEn" {...form.register('subtitleEn')} />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="imageUrl">Image URL</Label>
-          <Input id="imageUrl" {...form.register('imageUrl')} placeholder="https://..." />
-          {form.formState.errors.imageUrl && (
-            <p className="text-sm text-red-500">{form.formState.errors.imageUrl.message}</p>
-          )}
+        {/* Image Upload */}
+        <div className="space-y-2 md:col-span-2">
+          <Label>Gambar Slide *</Label>
+          <div
+            className={`relative border-2 border-dashed rounded-xl transition-colors ${
+              isDragOver ? 'border-brand-red bg-red-50' : 'border-gray-300 bg-gray-50'
+            }`}
+            onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+            onDragLeave={() => setIsDragOver(false)}
+            onDrop={handleDrop}
+          >
+            {imageUrl ? (
+              <div className="relative aspect-[4/3] w-full rounded-xl overflow-hidden">
+                <Image
+                  src={imageUrl}
+                  alt="Carousel slide preview"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                />
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"
+                  aria-label="Hapus gambar"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <div className="absolute bottom-2 left-2">
+                  <label className="flex items-center gap-2 px-3 py-1.5 bg-white/90 text-brand-red text-xs font-medium rounded-lg cursor-pointer hover:bg-white shadow-sm">
+                    <Upload className="w-3.5 h-3.5" />
+                    Ganti Gambar
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleFileInputChange}
+                      disabled={isUploading}
+                    />
+                  </label>
+                </div>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center w-full h-48 cursor-pointer">
+                {isUploading ? (
+                  <div className="flex flex-col items-center gap-2 text-gray-400">
+                    <Loader2 className="w-8 h-8 animate-spin" />
+                    <p className="text-sm">Mengupload...</p>
+                  </div>
+                ) : (
+                  <>
+                    <ImageIcon className="w-10 h-10 text-gray-300 mb-3" />
+                    <p className="text-sm font-medium text-gray-600">
+                      Drag & drop gambar di sini, atau klik untuk pilih
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP maksimal 10MB</p>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleFileInputChange}
+                    />
+                  </>
+                )}
+              </label>
+            )}
+          </div>
         </div>
 
         <div className="space-y-2">
@@ -179,20 +323,20 @@ export function CarouselForm({ initialData, onSubmit, isSubmitting }: CarouselFo
         <Label htmlFor="isActive">Aktif</Label>
       </div>
 
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" disabled={isSubmitting || !imageUrl}>
         {isSubmitting ? 'Menyimpan...' : initialData?.id ? 'Update Slide' : 'Buat Slide'}
       </Button>
 
       {/* Live Preview */}
       <div className="border border-admin-border rounded-lg overflow-hidden">
-        <div className="bg-admin-content px-3 py-2 border-b border-admin-border">
+        <div className="bg-gray-50 px-3 py-2 border-b border-admin-border">
           <p className="text-xs font-medium text-text-secondary">Preview — bagaimana slide akan terlihat di storefront</p>
         </div>
-        <div className="relative aspect-[4/3] bg-brand-cream overflow-hidden">
-          {form.watch('imageUrl') ? (
+        <div className="relative aspect-[4/3] bg-gray-100 overflow-hidden">
+          {imageUrl ? (
             <div className="relative w-full h-full">
               <Image
-                src={form.watch('imageUrl')}
+                src={imageUrl}
                 alt="Preview"
                 fill
                 className="object-cover"
@@ -222,7 +366,7 @@ export function CarouselForm({ initialData, onSubmit, isSubmitting }: CarouselFo
             </div>
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <p className="text-text-muted text-sm">Masukkan URL gambar untuk melihat preview</p>
+              <p className="text-text-muted text-sm">Upload gambar untuk melihat preview</p>
             </div>
           )}
         </div>

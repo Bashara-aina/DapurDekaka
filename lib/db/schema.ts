@@ -11,7 +11,7 @@ import {
   index,
   unique,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 
 // ─────────────────────────────────────────
 // ENUMS
@@ -85,7 +85,10 @@ export const users = pgTable('users', {
   languagePreference: varchar('language_preference', { length: 5 }).notNull().default('id'),
   ...timestamps,
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
-});
+}, (table) => ({
+  emailIdx: index('idx_users_email').on(table.email),
+  roleIdx: index('idx_users_role').on(table.role),
+}));
 
 export const accounts = pgTable('accounts', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -100,14 +103,18 @@ export const accounts = pgTable('accounts', {
   scope: text('scope'),
   idToken: text('id_token'),
   sessionState: text('session_state'),
-});
+}, (table) => ({
+  userIdIdx: index('idx_accounts_user_id').on(table.userId),
+}));
 
 export const sessions = pgTable('sessions', {
   id: uuid('id').primaryKey().defaultRandom(),
   sessionToken: varchar('session_token', { length: 255 }).notNull().unique(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   expires: timestamp('expires', { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  userIdIdx: index('idx_sessions_user_id').on(table.userId),
+}));
 
 export const verificationTokens = pgTable('verification_tokens', {
   identifier: varchar('identifier', { length: 255 }).notNull(),
@@ -130,16 +137,21 @@ export const addresses = pgTable('addresses', {
   postalCode: varchar('postal_code', { length: 10 }).notNull(),
   isDefault: boolean('is_default').notNull().default(false),
   ...timestamps,
-});
+}, (table) => ({
+  userIdIdx: index('idx_addresses_user_id').on(table.userId),
+}));
 
 export const savedCarts = pgTable('saved_carts', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  variantId: uuid('variant_id').notNull().references(() => productVariants.id),
+  variantId: uuid('variant_id').notNull().references(() => productVariants.id, { onDelete: 'cascade' }),
   quantity: integer('quantity').notNull().default(1),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => ({
+  userIdIdx: index('idx_saved_carts_user_id').on(table.userId),
+  uniqueUserVariant: unique('uq_saved_carts_user_variant').on(table.userId, table.variantId),
+}));
 
 export const passwordResetTokens = pgTable('password_reset_tokens', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -194,7 +206,11 @@ export const products = pgTable('products', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
-});
+}, (table) => ({
+  categoryIdIdx: index('idx_products_category_id').on(table.categoryId),
+  slugIdx: index('idx_products_slug').on(table.slug),
+  isActiveIdx: index('idx_products_is_active').on(table.isActive),
+}));
 
 export const productVariants = pgTable('product_variants', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -209,7 +225,12 @@ export const productVariants = pgTable('product_variants', {
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   ...timestamps,
-});
+}, (table) => ({
+  productIdIdx: index('idx_product_variants_product_id').on(table.productId),
+  stockIdx: index('idx_product_variants_stock').on(table.stock),
+  skuIdx: index('idx_product_variants_sku').on(table.sku),
+  productActiveIdx: index('idx_product_variants_product_active').on(table.productId, table.isActive),
+}));
 
 export const productImages = pgTable('product_images', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -234,6 +255,20 @@ export const inventoryLogs = pgTable('inventory_logs', {
   note: text('note'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const stockAdjustments = pgTable('stock_adjustments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  variantId: uuid('variant_id').notNull().references(() => productVariants.id),
+  previousStock: integer('previous_stock').notNull(),
+  delta: integer('delta').notNull(),
+  newStock: integer('new_stock').notNull(),
+  reason: varchar('reason', { length: 255 }),
+  changedBy: uuid('changed_by').references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  variantIdIdx: index('idx_stock_adjustments_variant_id').on(table.variantId),
+  createdAtIdx: index('idx_stock_adjustments_created_at').on(table.createdAt),
+}));
 
 // ─────────────────────────────────────────
 // ORDER TABLES
@@ -287,7 +322,16 @@ export const orders = pgTable('orders', {
   shippedAt: timestamp('shipped_at', { withTimezone: true }),
   deliveredAt: timestamp('delivered_at', { withTimezone: true }),
   cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
-});
+}, (table) => ({
+  userIdIdx: index('idx_orders_user_id').on(table.userId),
+  statusExpiresIdx: index('idx_orders_status_expires').on(table.status, table.paymentExpiresAt),
+  midtransOrderIdUnique: unique('uq_orders_midtrans_order_id').on(table.midtransOrderId),
+  orderNumberIdx: index('idx_orders_order_number').on(table.orderNumber),
+  paidAtIdx: index('idx_orders_paid_at').on(table.paidAt),
+  createdAtIdx: index('idx_orders_created_at').on(table.createdAt),
+  recipientEmailIdx: index('idx_orders_recipient_email').on(table.recipientEmail),
+  userIdStatusIdx: index('idx_orders_user_id_status').on(table.userId, table.status),
+}));
 
 export const orderItems = pgTable('order_items', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -306,7 +350,9 @@ export const orderItems = pgTable('order_items', {
   weightGram: integer('weight_gram').notNull(),
   variantOptions: jsonb('variant_options'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => ({
+  orderIdIdx: index('idx_order_items_order_id').on(table.orderId),
+}));
 
 export const orderStatusHistory = pgTable('order_status_history', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -345,20 +391,26 @@ export const coupons = pgTable('coupons', {
   isPublic: boolean('is_public').notNull().default(false),
   startsAt: timestamp('starts_at', { withTimezone: true }),
   expiresAt: timestamp('expires_at', { withTimezone: true }),
+  applicableProductIds: jsonb('applicable_product_ids').$type<string[]>(),
+  applicableCategoryIds: jsonb('applicable_category_ids').$type<string[]>(),
   createdBy: uuid('created_by').notNull().references(() => users.id),
   ...timestamps,
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
-});
+}, (table) => ({
+  codeIdx: index('idx_coupons_code').on(table.code),
+}));
 
 export const couponUsages = pgTable('coupon_usages', {
   id: uuid('id').primaryKey().defaultRandom(),
   couponId: uuid('coupon_id').notNull().references(() => coupons.id),
   orderId: uuid('order_id').notNull().references(() => orders.id),
-  userId: uuid('user_id').references(() => users.id),
+  userId: uuid('user_id'), // nullable — guests can use coupons (tracked by email via orders.recipientEmail)
   discountApplied: integer('discount_applied').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   couponOrderUnique: unique('uq_coupon_usages_coupon_order').on(table.couponId, table.orderId),
+  couponIdIdx: index('idx_coupon_usages_coupon_id').on(table.couponId),
+  couponUserIdx: index('idx_coupon_usages_coupon_user').on(table.couponId, table.userId),
 }));
 
 export const pointsHistory = pgTable('points_history', {
@@ -377,7 +429,13 @@ export const pointsHistory = pgTable('points_history', {
   referencedEarnId: uuid('referenced_earn_id'),
   adjustedBy: uuid('adjusted_by').references(() => users.id),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => ({
+  userIdIdx: index('idx_points_user_id').on(table.userId),
+  typeExpiresIdx: index('idx_points_type_expires').on(table.type, table.expiresAt),
+  createdAtIdx: index('idx_points_created_at').on(table.createdAt),
+  referencedEarnIdx: index('idx_points_history_referenced_earn').on(table.referencedEarnId),
+  expireCandidatesIdx: index('idx_points_expire_candidates').on(table.userId, table.expiresAt).where(sql`${table.type} = 'earn' AND ${table.isExpired} = false AND ${table.consumedAt} IS NULL`),
+}));
 
 // ─────────────────────────────────────────
 // CONTENT TABLES
@@ -413,7 +471,11 @@ export const blogPosts = pgTable('blog_posts', {
   publishedAt: timestamp('published_at', { withTimezone: true }),
   ...timestamps,
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
-});
+}, (table) => ({
+  slugIdx: index('idx_blog_posts_slug').on(table.slug),
+  publishedIdx: index('idx_blog_posts_published').on(table.isPublished, table.publishedAt),
+  authorIdIdx: index('idx_blog_posts_author_id').on(table.authorId),
+}));
 
 export const carouselSlides = pgTable('carousel_slides', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -434,7 +496,9 @@ export const carouselSlides = pgTable('carousel_slides', {
   endsAt: timestamp('ends_at', { withTimezone: true }),
   ...timestamps,
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
-});
+}, (table) => ({
+  sortOrderIdx: index('idx_carousel_slides_order').on(table.sortOrder),
+}));
 
 export const testimonials = pgTable('testimonials', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -523,7 +587,7 @@ export const b2bQuotes = pgTable('b2b_quotes', {
 export const b2bQuoteItems = pgTable('b2b_quote_items', {
   id: uuid('id').primaryKey().defaultRandom(),
   quoteId: uuid('quote_id').notNull().references(() => b2bQuotes.id, { onDelete: 'cascade' }),
-  variantId: uuid('variant_id').notNull().references(() => productVariants.id),
+  variantId: uuid('variant_id').notNull().references(() => productVariants.id, { onDelete: 'set null' }),
   productNameId: varchar('product_name_id', { length: 255 }).notNull(),
   variantNameId: varchar('variant_name_id', { length: 100 }).notNull(),
   sku: varchar('sku', { length: 100 }).notNull(),

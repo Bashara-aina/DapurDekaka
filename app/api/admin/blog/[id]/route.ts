@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { blogPosts } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import { z } from 'zod';
+import { success, notFound, serverError, unauthorized, forbidden, validationError, conflict } from '@/lib/utils/api-response';
 import DOMPurify from 'isomorphic-dompurify';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -15,16 +16,10 @@ export async function GET(
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return unauthorized('Silakan login terlebih dahulu');
     }
     if (!['superadmin', 'owner'].includes(session.user.role as string)) {
-      return NextResponse.json(
-        { success: false, error: 'Forbidden', code: 'FORBIDDEN' },
-        { status: 403 }
-      );
+      return forbidden('Anda tidak memiliki akses');
     }
 
     const post = await db.query.blogPosts.findFirst({
@@ -32,19 +27,13 @@ export async function GET(
     });
 
     if (!post) {
-      return NextResponse.json(
-        { success: false, error: 'Post not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      );
+      return notFound('Post tidak ditemukan');
     }
 
-    return NextResponse.json({ success: true, data: post });
+    return success(post);
   } catch (error) {
     console.error('[Admin Blog GET:id]', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    );
+    return serverError(error);
   }
 }
 
@@ -55,20 +44,14 @@ export async function PUT(
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return unauthorized('Silakan login terlebih dahulu');
     }
     if (!['superadmin', 'owner'].includes(session.user.role as string)) {
-      return NextResponse.json(
-        { success: false, error: 'Forbidden', code: 'FORBIDDEN' },
-        { status: 403 }
-      );
+      return forbidden('Anda tidak memiliki akses');
     }
 
     const body = await req.json();
-    const schema = z.object({
+    const BlogUpdateSchema = z.object({
       titleId: z.string().min(1).optional(),
       titleEn: z.string().min(1).optional(),
       slug: z.string().min(1).optional(),
@@ -86,22 +69,16 @@ export async function PUT(
       metaDescriptionId: z.string().optional(),
       metaDescriptionEn: z.string().optional(),
     });
-    const parsed = schema.safeParse(body);
+    const parsed = BlogUpdateSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
-        { success: false, error: 'Validation failed', code: 'VALIDATION_ERROR', details: parsed.error.flatten().fieldErrors },
-        { status: 422 }
-      );
+      return validationError(parsed.error);
     }
 
     const existing = await db.query.blogPosts.findFirst({
       where: eq(blogPosts.id, params.id),
     });
     if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'Post not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      );
+      return notFound('Post tidak ditemukan');
     }
 
     const data = parsed.data;
@@ -121,11 +98,35 @@ export async function PUT(
       });
     }
 
-    if (data.titleId !== undefined) updateData.titleId = data.titleId;
-    if (data.titleEn !== undefined) updateData.titleEn = data.titleEn;
-    if (data.slug !== undefined) updateData.slug = data.slug;
-    if (data.excerptId !== undefined) updateData.excerptId = data.excerptId;
-    if (data.excerptEn !== undefined) updateData.excerptEn = data.excerptEn;
+    if (data.titleId !== undefined) updateData.titleId = DOMPurify.sanitize(data.titleId, { ALLOWED_TAGS: [] });
+    if (data.titleEn !== undefined) updateData.titleEn = DOMPurify.sanitize(data.titleEn, { ALLOWED_TAGS: [] });
+    if (data.slug !== undefined) {
+      updateData.slug = data.slug;
+      // M-05: Check slug uniqueness excluding current post
+      if (data.slug !== existing.slug) {
+        const slugConflict = await db.query.blogPosts.findFirst({
+          where: and(
+            eq(blogPosts.slug, data.slug),
+            isNull(blogPosts.deletedAt),
+          ),
+        });
+        if (slugConflict && slugConflict.id !== params.id) {
+          return conflict('Slug sudah digunakan oleh post lain');
+        }
+      }
+    }
+    if (data.excerptId !== undefined) {
+      updateData.excerptId = DOMPurify.sanitize(data.excerptId, {
+        ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h2', 'h3', 'a', 'blockquote', 'code', 'pre'],
+        ALLOWED_ATTR: ['href', 'class', 'target', 'rel'],
+      });
+    }
+    if (data.excerptEn !== undefined) {
+      updateData.excerptEn = DOMPurify.sanitize(data.excerptEn, {
+        ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h2', 'h3', 'a', 'blockquote', 'code', 'pre'],
+        ALLOWED_ATTR: ['href', 'class', 'target', 'rel'],
+      });
+    }
     if (data.coverImageUrl !== undefined) updateData.coverImageUrl = data.coverImageUrl;
     if (data.coverImagePublicId !== undefined) updateData.coverImagePublicId = data.coverImagePublicId;
     if (data.blogCategoryId !== undefined) updateData.blogCategoryId = data.blogCategoryId;
@@ -136,10 +137,10 @@ export async function PUT(
       }
     }
     if (data.isAiAssisted !== undefined) updateData.isAiAssisted = data.isAiAssisted;
-    if (data.metaTitleId !== undefined) updateData.metaTitleId = data.metaTitleId;
-    if (data.metaTitleEn !== undefined) updateData.metaTitleEn = data.metaTitleEn;
-    if (data.metaDescriptionId !== undefined) updateData.metaDescriptionId = data.metaDescriptionId;
-    if (data.metaDescriptionEn !== undefined) updateData.metaDescriptionEn = data.metaDescriptionEn;
+    if (data.metaTitleId !== undefined) updateData.metaTitleId = DOMPurify.sanitize(data.metaTitleId ?? '', { ALLOWED_TAGS: [] });
+    if (data.metaTitleEn !== undefined) updateData.metaTitleEn = DOMPurify.sanitize(data.metaTitleEn ?? '', { ALLOWED_TAGS: [] });
+    if (data.metaDescriptionId !== undefined) updateData.metaDescriptionId = DOMPurify.sanitize(data.metaDescriptionId ?? '', { ALLOWED_TAGS: [] });
+    if (data.metaDescriptionEn !== undefined) updateData.metaDescriptionEn = DOMPurify.sanitize(data.metaDescriptionEn ?? '', { ALLOWED_TAGS: [] });
 
     const [updated] = await db
       .update(blogPosts)
@@ -147,13 +148,10 @@ export async function PUT(
       .where(eq(blogPosts.id, params.id))
       .returning();
 
-    return NextResponse.json({ success: true, data: updated });
+    return success(updated);
   } catch (error) {
     console.error('[Admin Blog PUT]', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    );
+    return serverError(error);
   }
 }
 
@@ -164,36 +162,27 @@ export async function DELETE(
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return unauthorized('Silakan login terlebih dahulu');
     }
     if (!['superadmin', 'owner'].includes(session.user.role as string)) {
-      return NextResponse.json(
-        { success: false, error: 'Forbidden', code: 'FORBIDDEN' },
-        { status: 403 }
-      );
+      return forbidden('Anda tidak memiliki akses');
     }
 
     const existing = await db.query.blogPosts.findFirst({
-      where: eq(blogPosts.id, params.id),
+      where: and(eq(blogPosts.id, params.id), isNull(blogPosts.deletedAt)),
     });
     if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'Post not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      );
+      return notFound('Post tidak ditemukan');
     }
 
-    await db.delete(blogPosts).where(eq(blogPosts.id, params.id));
+    await db
+      .update(blogPosts)
+      .set({ deletedAt: new Date() })
+      .where(eq(blogPosts.id, params.id));
 
-    return NextResponse.json({ success: true, data: { id: params.id } });
+    return success({ id: params.id });
   } catch (error) {
     console.error('[Admin Blog DELETE]', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    );
+    return serverError(error);
   }
 }

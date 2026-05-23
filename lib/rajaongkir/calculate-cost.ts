@@ -1,6 +1,6 @@
 import { rajaOngkirPost } from './client';
 import { withRetry } from '@/lib/utils/integration-helpers';
-import { ALLOWED_COURIERS, MIN_WEIGHT_GRAM } from '@/lib/constants/couriers';
+import { ALLOWED_COURIERS, MIN_WEIGHT_GRAM, RAJAONGKIR_STARTER_ORIGIN_ID } from '@/lib/constants/couriers';
 import { getSetting } from '@/lib/settings/get-settings';
 
 export interface ShippingCostResult {
@@ -33,6 +33,13 @@ interface RajaOngkirCostResult {
   costs: RajaOngkirCostItem[];
 }
 
+/**
+ * Calculate shipping cost for a destination city and weight.
+ *
+ * Note: RajaOngkir Starter tier only supports origin_id 501 (Jakarta).
+ * The system_settings `rajaongkir_origin_city_id` MUST be set to '501' for Starter accounts.
+ * If not set, we default to 501 (Jakarta) — NOT 23 (Bandung) which would cause API errors.
+ */
 export async function calculateShippingCost(
   destinationCityId: string,
   weightGram: number
@@ -45,7 +52,10 @@ export async function calculateShippingCost(
     getSetting('store_whatsapp_number'),
   ]);
 
-  const origin = originCityId ?? '23'; // fallback to Bandung
+  // RajaOngkir Starter only supports origin 501 (Jakarta).
+  // If the setting is 23 (Bandung) for a Starter account, the API will error.
+  // Default to 501 to ensure the API call succeeds.
+  const origin = originCityId ?? RAJAONGKIR_STARTER_ORIGIN_ID;
   const waNumber = whatsappNumber ?? process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '6281234567890';
 
   const allResults: ShippingCostResult[] = [];

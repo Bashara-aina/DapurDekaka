@@ -6,6 +6,11 @@ const REQUIRED = [
   'CLOUDINARY_API_SECRET',
   'RESEND_API_KEY',
   'CRON_SECRET',
+  'CLOUDINARY_API_KEY',
+  'NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME',
+  'RAJAONGKIR_API_KEY',
+  'UPSTASH_REDIS_REST_URL',
+  'UPSTASH_REDIS_REST_TOKEN',
 ] as const;
 
 /**
@@ -19,7 +24,19 @@ export function validateAuthSecret(): void {
   }
   if (secret.length < 32) {
     throw new Error(
-      'AUTH_SECRET must be at least 32 characters. Run: openssl rand -base64 32'
+      'AUTH_SECRET must be at least 32 characters. Generate with: openssl rand -base64 32'
+    );
+  }
+  // Basic entropy check: ensure the secret has mixed character types
+  const hasLower = /[a-z]/.test(secret);
+  const hasUpper = /[A-Z]/.test(secret);
+  const hasDigit = /[0-9]/.test(secret);
+  const hasSpecial = /[^a-zA-Z0-9]/.test(secret);
+  const entropyTypes = [hasLower, hasUpper, hasDigit, hasSpecial].filter(Boolean).length;
+  if (entropyTypes < 3) {
+    throw new Error(
+      'AUTH_SECRET lacks entropy (needs at least 3 of: lower, upper, digit, special). ' +
+        'Generate with: openssl rand -base64 32'
     );
   }
 }

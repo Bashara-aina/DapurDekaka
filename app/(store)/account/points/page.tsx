@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Gift, AlertTriangle, TrendingUp, ChevronDown } from 'lucide-react';
+import { toast } from 'sonner';
 import { PointsHistoryCard } from '@/components/store/account/PointsHistoryCard';
 import type { PointsHistory } from '@/lib/db/schema';
+import { formatIDR } from '@/lib/utils/format-currency';
 
 interface PointsData {
   balance: number;
@@ -15,6 +18,7 @@ interface PointsData {
 }
 
 export default function AccountPointsPage() {
+  const t = useTranslations('account');
   const [data, setData] = useState<PointsData | null>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -39,8 +43,8 @@ export default function AccountPointsPage() {
         );
         setHasMore(response.data.history.length === 20);
       }
-    } catch (error) {
-      console.error('Failed to fetch points:', error);
+    } catch {
+      toast.error(t('loadPointsError') || 'Gagal memuat poin');
     } finally {
       if (pageNum === 1) {
         setIsInitialLoading(false);
@@ -48,15 +52,6 @@ export default function AccountPointsPage() {
         setIsLoadingMore(false);
       }
     }
-  };
-
-  const formatIDR = (points: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(points);
   };
 
   if (isInitialLoading) {
@@ -70,20 +65,20 @@ export default function AccountPointsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20 md:pb-0">
       <div>
-        <h1 className="font-display text-2xl font-bold text-text-primary">Poin Saya</h1>
-        <p className="text-text-secondary text-sm mt-1">Kelola poin loyalty kamu</p>
+        <h1 className="font-display text-2xl font-bold text-text-primary">{t('myPoints')}</h1>
+        <p className="text-text-secondary text-sm mt-1">{t('pointsBalance')}</p>
       </div>
 
       {/* Balance Card */}
       <div className="bg-gradient-to-br from-brand-red to-brand-red-dark rounded-card p-6 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm opacity-80">Saldo Poin</p>
+            <p className="text-sm opacity-80">{t('pointsBalance')}</p>
             <p className="text-4xl font-bold mt-1">{data?.balance || 0}</p>
             <p className="text-sm opacity-70 mt-1">
-              ~{formatIDR((data?.balance || 0) * 10)} bisa ditukarkan
+              ~{formatIDR((data?.balance || 0) * 10)} {t('canRedeem')}
             </p>
           </div>
           <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
@@ -94,15 +89,15 @@ export default function AccountPointsPage() {
 
       {/* Redemption Info */}
       <div className="bg-white rounded-card shadow-card p-6">
-        <h2 className="font-display text-lg font-semibold text-text-primary mb-2">Cara Menukarkan Poin</h2>
+        <h2 className="font-display text-lg font-semibold text-text-primary mb-2">{t('howToRedeem')}</h2>
         <p className="text-sm text-text-secondary mb-4">
-          Poin dapat digunakan saat checkout. Pilih{`"`}Gunakan Poin Saya{`"`} di halaman pembayaran untuk redeem poin kamu.
+          {t('howToRedeemDesc')}
         </p>
         <Link
           href="/products"
           className="block w-full h-11 bg-brand-red text-white rounded-button text-center leading-[44px] font-bold hover:bg-brand-red-dark transition-colors"
         >
-          Belanja Sekarang
+          {t('shopNow')}
         </Link>
       </div>
 
@@ -112,10 +107,9 @@ export default function AccountPointsPage() {
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-6 h-6 text-warning flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-medium text-text-primary">Poin Segera Kedaluwarsa</p>
+              <p className="font-medium text-text-primary">{t('pointsWarningExpiring')}</p>
               <p className="text-sm text-text-secondary mt-1">
-                {data.expiringPoints.toLocaleString('id-ID')} poin kamu akan kedaluwarsa dalam 30 hari ke depan.
-                Tukarkan sebelum habis!
+                {t('pointsExpiringMessage', { points: data.expiringPoints.toLocaleString('id-ID') })}
               </p>
             </div>
           </div>
@@ -125,7 +119,7 @@ export default function AccountPointsPage() {
       {/* How to Earn */}
       <div className="bg-white rounded-card shadow-card p-6">
         <h2 className="font-display text-lg font-semibold text-text-primary mb-4">
-          Cara Mendapatkan Poin
+          {t('howToEarn')}
         </h2>
         <div className="space-y-4">
           <div className="flex items-start gap-3">
@@ -133,10 +127,9 @@ export default function AccountPointsPage() {
               <TrendingUp className="w-5 h-5 text-success" />
             </div>
             <div>
-              <p className="font-medium text-text-primary">1 poin per Rp 1.000</p>
+              <p className="font-medium text-text-primary">{t('pointsPerThousand')}</p>
               <p className="text-sm text-text-secondary mt-1">
-                Setiap pembelian akan mendapatkan poin loyalty sesuai total belanja
-                (tidak termasuk ongkir dan diskon).
+                {t('pointsPerThousandDesc')}
               </p>
             </div>
           </div>
@@ -145,9 +138,9 @@ export default function AccountPointsPage() {
               <Gift className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <p className="font-medium text-text-primary">Bonus Pendaftaran</p>
+              <p className="font-medium text-text-primary">{t('registrationBonus')}</p>
               <p className="text-sm text-text-secondary mt-1">
-                Poin langsung masuk saat akun dibuat (saat ada promo aktif).
+                {t('registrationBonusDesc')}
               </p>
             </div>
           </div>
@@ -156,9 +149,9 @@ export default function AccountPointsPage() {
               <Gift className="w-5 h-5 text-purple-600" />
             </div>
             <div>
-              <p className="font-medium text-text-primary">Pengguna B2B: 2x Poin</p>
+              <p className="font-medium text-text-primary">{t('b2bBonus')}</p>
               <p className="text-sm text-text-secondary mt-1">
-                Akun B2B mendapatkan poin ganda dari setiap transaksi.
+                {t('b2bBonusDesc')}
               </p>
             </div>
           </div>
@@ -168,7 +161,7 @@ export default function AccountPointsPage() {
       {/* Points History */}
       <div className="bg-white rounded-card shadow-card p-6">
         <h2 className="font-display text-lg font-semibold text-text-primary mb-4">
-          Riwayat Poin
+          {t('pointsHistory')}
         </h2>
 
         {data?.history && data.history.length === 0 ? (
@@ -176,7 +169,7 @@ export default function AccountPointsPage() {
             <div className="w-16 h-16 bg-brand-cream rounded-full flex items-center justify-center mx-auto mb-4">
               <Gift className="w-8 h-8 text-text-disabled" />
             </div>
-            <p className="text-text-secondary">Belum ada riwayat poin</p>
+            <p className="text-text-secondary">{t('noPointsHistory')}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -195,7 +188,7 @@ export default function AccountPointsPage() {
                 disabled={isLoadingMore}
                 className="flex items-center justify-center gap-2 w-full h-11 border border-brand-cream-dark rounded-lg text-sm font-medium text-text-secondary hover:bg-brand-cream transition-colors disabled:opacity-50"
               >
-                {isLoadingMore ? 'Memuat...' : 'Tampilkan Lebih Banyak'}
+                {isLoadingMore ? t('loading') : t('showMore')}
                 <ChevronDown className="w-4 h-4" />
               </button>
             )}

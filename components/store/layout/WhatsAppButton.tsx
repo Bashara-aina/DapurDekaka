@@ -1,21 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
-import { MessageCircle, Info } from 'lucide-react';
+import { useState } from 'react';
+import { MessageCircle, Info, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 export interface WhatsAppButtonProps {
   whatsappNumber?: string;
   className?: string;
 }
 
-export function WhatsAppButton({ whatsappNumber, className }: WhatsAppButtonProps) {
-  const number = whatsappNumber || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '6281234567890';
+export function WhatsAppButton({ whatsappNumber }: WhatsAppButtonProps) {
+  const t = useTranslations('whatsapp');
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  const rawNumber = whatsappNumber || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
+  if (!rawNumber) return null;
+
+  const number = rawNumber;
   const message = encodeURIComponent('Halo Dapur Dekaka, saya ingin bertanya tentang...');
   const whatsappUrl = `https://wa.me/${number}?text=${message}`;
-  const [showTooltip, setShowTooltip] = useState(false);
-  const pathname = usePathname();
-  const isCheckout = pathname?.startsWith('/checkout');
 
   return (
     <div className="fixed bottom-20 md:bottom-8 right-4 md:right-8 z-50">
@@ -24,14 +27,14 @@ export function WhatsAppButton({ whatsappNumber, className }: WhatsAppButtonProp
           <button
             onClick={() => setShowTooltip(false)}
             className="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-md"
-            aria-label="Tutup"
+            aria-label={t('close')}
           >
-            ×
+            <X className="w-4 h-4" />
           </button>
           <div className="flex items-start gap-2">
             <Info className="w-4 h-4 text-brand-red mt-0.5 flex-shrink-0" />
             <p className="text-xs leading-relaxed">
-              Anda akan diarahkan ke WhatsApp. Chat ini tercatat untuk keperluan CS kami.
+              {t('tooltipNote')}
             </p>
           </div>
         </div>
@@ -40,9 +43,8 @@ export function WhatsAppButton({ whatsappNumber, className }: WhatsAppButtonProp
         href={whatsappUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="w-14 h-14 bg-[#25D366] rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform animate-pulse-soft"
-        aria-label="Chat WhatsApp untuk pertanyaan tentang pesanan atau produk"
-        onClick={() => setShowTooltip(true)}
+        className="w-14 h-14 bg-whatsapp-green hover:bg-whatsapp-green-dark rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform animate-pulse-soft"
+        aria-label={t('chatForOrder')}
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
       >

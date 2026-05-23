@@ -7,6 +7,7 @@ import { useSession } from 'next-auth/react';
 import { useQuery } from '@tanstack/react-query';
 import nextDynamic from 'next/dynamic';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { useCartStore } from '@/store/cart.store';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { cn } from '@/lib/utils/cn';
@@ -37,19 +38,6 @@ interface StoreHours {
   openHours: string;
 }
 
-const STEPS = [
-  { id: 'identity', label: 'Identitas' },
-  { id: 'delivery', label: 'Pengiriman' },
-  { id: 'courier', label: 'Kurir' },
-  { id: 'payment', label: 'Bayar' },
-];
-
-const STEPS_PICKUP = [
-  { id: 'identity', label: 'Identitas' },
-  { id: 'delivery', label: 'Pengiriman' },
-  { id: 'payment', label: 'Bayar' },
-];
-
 type CheckoutStep = 'identity' | 'delivery' | 'courier' | 'payment';
 
 interface CheckoutFormData {
@@ -74,6 +62,7 @@ interface CheckoutFormData {
 }
 
 export default function CheckoutPage() {
+  const t = useTranslations('checkout');
   const router = useRouter();
   const { data: session } = useSession();
   const items = useCartStore((s) => s.items);
@@ -223,16 +212,29 @@ export default function CheckoutPage() {
     fetchStoreHours();
   }, []);
 
-  const activeSteps = formData.deliveryMethod === 'pickup' ? STEPS_PICKUP : STEPS;
+  const stepsDelivery = [
+    { id: 'identity', label: t('stepIdentity') },
+    { id: 'delivery', label: t('stepDelivery') },
+    { id: 'courier', label: t('stepCourier') },
+    { id: 'payment', label: t('stepPayment') },
+  ];
+
+  const stepsPickup = [
+    { id: 'identity', label: t('stepIdentity') },
+    { id: 'delivery', label: t('stepDelivery') },
+    { id: 'payment', label: t('stepPayment') },
+  ];
+
+  const activeSteps = formData.deliveryMethod === 'pickup' ? stepsPickup : stepsDelivery;
 
   if (items.length === 0) {
     return (
       <div className="min-h-screen bg-brand-cream">
         <EmptyState
           variant="cart"
-          title="Keranjangmu kosong"
-          description="Tambahkan produk terlebih dahulu"
-          action={{ label: 'Mulai Belanja', href: '/products' }}
+          title={t('cartEmpty')}
+          description={t('cartEmptySubtitle')}
+          action={{ label: t('startShopping'), href: '/products' }}
         />
       </div>
     );
@@ -298,7 +300,7 @@ export default function CheckoutPage() {
       const data = await res.json();
 
       if (!data.success) {
-        toast.error(data.error || 'Gagal menghitung ongkir');
+        toast.error(data.error || t('shippingCostError'));
         setLoadingShipping(false);
         return;
       }
@@ -306,7 +308,7 @@ export default function CheckoutPage() {
       setShippingOptions(data.data.services);
       setStep('courier');
     } catch {
-      toast.error('Gagal menghitung ongkir');
+      toast.error(t('shippingCostError'));
     }
     setLoadingShipping(false);
   };
@@ -320,14 +322,14 @@ export default function CheckoutPage() {
       });
       const data = await res.json();
       if (!data.success) {
-        toast.error(data.error || 'Gagal menghitung ongkir');
+        toast.error(data.error || t('shippingCostError'));
         setLoadingShipping(false);
         return;
       }
       setShippingOptions(data.data.services);
       setStep('courier');
     } catch {
-      toast.error('Gagal menghitung ongkir');
+      toast.error(t('shippingCostError'));
     }
     setLoadingShipping(false);
   };
@@ -356,7 +358,7 @@ export default function CheckoutPage() {
       const data = await res.json();
 
       if (!data.success) {
-        setCouponError(data.error || 'Kupon tidak valid');
+        setCouponError(data.error || t('couponNotValid'));
         setCouponDiscount(0);
         setCouponType(null);
         setCouponBuyXgetY(null);
@@ -370,7 +372,7 @@ export default function CheckoutPage() {
       setCouponError('');
       setIsFreeShippingCoupon(data.data.type === 'free_shipping');
     } catch {
-      setCouponError('Gagal validasi kupon');
+      setCouponError(t('couponValidateError'));
     }
   };
 
@@ -419,7 +421,7 @@ export default function CheckoutPage() {
       const data = await res.json();
 
       if (!data.success) {
-        toast.error(data.error || 'Gagal membuat pesanan');
+        toast.error(data.error || t('orderCreateError'));
         setIsLoading(false);
         return;
       }
@@ -435,7 +437,7 @@ export default function CheckoutPage() {
       setOrderNumber(data.data.orderNumber);
       setServerTotalAmount(data.data.totalAmount);
     } catch {
-      toast.error('Gagal membuat pesanan');
+      toast.error(t('orderCreateError'));
       setIsLoading(false);
     }
   };
@@ -456,18 +458,20 @@ export default function CheckoutPage() {
 
   const currentStepIndex = activeSteps.findIndex((s) => s.id === step);
 
+  const itemCount = items.reduce((acc, i) => acc + i.quantity, 0);
+
   return (
     <div className="min-h-screen bg-brand-cream pb-24 md:pb-0">
       {/* FIX 11: Mobile sticky total bar */}
       <div className="lg:hidden sticky top-[76px] z-10 bg-white border-b border-brand-cream-dark px-4 py-2 flex justify-between text-sm">
-        <span className="text-text-secondary">{items.reduce((acc, i) => acc + i.quantity, 0)} item</span>
+        <span className="text-text-secondary">{t('mobileStickyItem', { count: itemCount })}</span>
         <span className="font-bold text-brand-red">{formatIDR(totalAmount)}</span>
       </div>
 
       {/* Header with stepper */}
       <div className="bg-white border-b border-brand-cream-dark sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
-          <h1 className="font-display text-xl font-bold">Checkout</h1>
+          <h1 className="font-display text-xl font-bold">{t('title')}</h1>
           <div className="mt-4">
             <CheckoutStepper
               steps={activeSteps}
@@ -504,9 +508,9 @@ export default function CheckoutPage() {
                 />
                 {!session?.user && (
                   <p className="mt-4 text-center text-sm text-text-secondary">
-                    Sudah punya akun?{' '}
+                    {t('alreadyHaveAccount')}{' '}
                     <Link href={`/login?callbackUrl=${encodeURIComponent('/checkout')}`} className="text-brand-red font-medium hover:underline">
-                      Masuk di sini
+                      {t('loginHere')}
                     </Link>
                   </p>
                 )}
@@ -527,7 +531,7 @@ export default function CheckoutPage() {
                       <div className="bg-white rounded-card p-6 shadow-card mb-4">
                         <div className="flex items-center justify-center py-12">
                           <Loader2 className="w-6 h-6 animate-spin text-brand-red" />
-                          <span className="ml-2 text-text-secondary">Menghitung ongkir...</span>
+                          <span className="ml-2 text-text-secondary">{t('calculatingShipping')}</span>
                         </div>
                       </div>
                     )}
@@ -555,29 +559,29 @@ export default function CheckoutPage() {
                           onBack={handleBack}
                         />
                         <button
-                  type="button"
-                  onClick={() => {
-                    if (!selectedSavedAddressId) return;
-                    setLoadingShipping(true);
-                    const address = savedAddresses.find(a => a.id === selectedSavedAddressId);
-                    if (address) {
-                      updateForm({
-                        addressLine: address.addressLine,
-                        district: address.district,
-                        city: address.city,
-                        cityId: address.cityId,
-                        province: address.province,
-                        provinceId: address.provinceId,
-                        postalCode: address.postalCode,
-                      });
-                      fetchShippingCost(address.cityId);
-                    }
-                  }}
-                  disabled={!selectedSavedAddressId || loadingShipping}
-                  className="w-full h-12 bg-brand-red text-white font-bold rounded-button mt-4 disabled:opacity-50"
-                >
-                  {loadingShipping ? 'Menghitung ongkir...' : 'Lanjut ke Kurir'}
-                </button>
+                          type="button"
+                          onClick={() => {
+                            if (!selectedSavedAddressId) return;
+                            setLoadingShipping(true);
+                            const address = savedAddresses.find(a => a.id === selectedSavedAddressId);
+                            if (address) {
+                              updateForm({
+                                addressLine: address.addressLine,
+                                district: address.district,
+                                city: address.city,
+                                cityId: address.cityId,
+                                province: address.province,
+                                provinceId: address.provinceId,
+                                postalCode: address.postalCode,
+                              });
+                              fetchShippingCost(address.cityId);
+                            }
+                          }}
+                          disabled={!selectedSavedAddressId || loadingShipping}
+                          className="w-full h-12 bg-brand-red text-white font-bold rounded-button mt-4 disabled:opacity-50"
+                        >
+                          {loadingShipping ? t('calculatingShipping') : t('continueToCourier')}
+                        </button>
                       </>
                     ) : (
                       <AddressForm
@@ -610,20 +614,19 @@ export default function CheckoutPage() {
                 {formData.deliveryMethod === 'pickup' && (
                   <div className="mt-4">
                     <div className="bg-white rounded-card p-6 shadow-card">
-                      <h2 className="font-semibold text-lg mb-4">Ambil di Toko</h2>
+                      <h2 className="font-semibold text-lg mb-4">{t('pickupLocation')}</h2>
                       <p className="text-text-secondary mb-4">
-                        Setelah pembayaran berhasil, Anda akan mendapat instruksi pengambilan.
-                        Tunjukkan nomor pesanan ke staff toko.
+                        {t('pickupInstructions')}
                       </p>
                       <div className="mt-4 bg-green-50 border border-green-200 rounded-lg p-4">
-                        <h3 className="font-semibold text-green-800 mb-2">📍 Lokasi Pengambilan</h3>
+                        <h3 className="font-semibold text-green-800 mb-2">{t('pickupLocationTitle')}</h3>
                         <p className="text-sm text-green-700 mb-1">
-                          <strong>Dapur Dekaka</strong><br/>
-                          Jl. Sinom V No. 7, Turangga<br/>
-                          Bandung, Jawa Barat
+                          <strong>{t('storeName')}</strong><br/>
+                          {t('storeAddressLine')}<br/>
+                          {t('storeCity')}
                         </p>
                         <p className="text-xs text-green-600 mt-2">
-                          {storeHours.openDays}: {storeHours.openHours}<br/>
+                          {t('storeHours', { days: storeHours.openDays, hours: storeHours.openHours })}<br/>
                         </p>
                       </div>
                       <div className="flex gap-4 mt-4">
@@ -632,14 +635,14 @@ export default function CheckoutPage() {
                           onClick={handleBack}
                           className="flex-1 h-12 border border-brand-cream-dark text-text-primary font-medium rounded-button"
                         >
-                          Kembali
+                          {t('back')}
                         </button>
                         <button
                           type="button"
                           onClick={() => setStep('payment')}
                           className="flex-1 h-12 bg-brand-red text-white font-bold rounded-button"
                         >
-                          Lanjut ke Pembayaran
+                          {t('nextToPayment')}
                         </button>
                       </div>
                     </div>
@@ -670,7 +673,7 @@ export default function CheckoutPage() {
 
             {step === 'payment' && (
               <div className="bg-white rounded-card p-6 shadow-card">
-                <h2 className="font-semibold text-lg mb-4">Pembayaran</h2>
+                <h2 className="font-semibold text-lg mb-4">{t('payment')}</h2>
 
                 {/* Order Review Collapsible */}
                 <button
@@ -679,65 +682,65 @@ export default function CheckoutPage() {
                   className="w-full flex items-center justify-between py-3 border-b border-brand-cream-dark mb-4"
                   aria-expanded={showOrderReview}
                 >
-                  <span className="font-medium text-sm text-text-primary">Review Pesanan</span>
+                  <span className="font-medium text-sm text-text-primary">{t('orderReview')}</span>
                   <ChevronDown className={cn('w-4 h-4 text-text-secondary transition-transform', showOrderReview && 'rotate-180')} />
                 </button>
 
                 {showOrderReview && (
                   <div className="mb-6 p-4 bg-brand-cream rounded-lg text-sm space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-text-secondary">Penerima</span>
+                      <span className="text-text-secondary">{t('recipient')}</span>
                       <span className="font-medium">{formData.recipientName}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-text-secondary">No. HP</span>
+                      <span className="text-text-secondary">{t('phoneNumber')}</span>
                       <span className="font-medium">{formData.recipientPhone}</span>
                     </div>
                     {formData.deliveryMethod === 'delivery' && (
                       <>
                         <div className="flex justify-between">
-                          <span className="text-text-secondary">Alamat</span>
+                          <span className="text-text-secondary">{t('addressLabel')}</span>
                           <span className="font-medium text-right max-w-[60%]">
                             {formData.addressLine}, {formData.district}, {formData.city}, {formData.province}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-text-secondary">Kurir</span>
+                          <span className="text-text-secondary">{t('courierLabel')}</span>
                           <span className="font-medium">{formData.courierName} {formData.courierService}</span>
                         </div>
                       </>
                     )}
                     {formData.deliveryMethod === 'pickup' && (
                       <div className="flex justify-between">
-                        <span className="text-text-secondary">Metode</span>
-                        <span className="font-medium">Ambil di Toko</span>
+                        <span className="text-text-secondary">{t('method')}</span>
+                        <span className="font-medium">{t('pickupLocation')}</span>
                       </div>
                     )}
                     <div className="border-t border-brand-cream-dark pt-2 mt-2 space-y-1">
                       <div className="flex justify-between text-xs text-text-secondary">
-                        <span>Subtotal</span>
+                        <span>{t('subtotal')}</span>
                         <span>{formatIDR(subtotal)}</span>
                       </div>
                       {couponDiscount > 0 && (
                         <div className="flex justify-between text-xs text-success">
-                          <span>Diskon</span>
+                          <span>{t('discount')}</span>
                           <span>-{formatIDR(couponDiscount)}</span>
                         </div>
                       )}
                       {pointsDiscount > 0 && (
                         <div className="flex justify-between text-xs text-success">
-                          <span>Points ({formData.pointsUsed} pt)</span>
+                          <span>{t('pointsLabel', { used: formData.pointsUsed })}</span>
                           <span>-{formatIDR(pointsDiscount)}</span>
                         </div>
                       )}
                       {formData.shippingCost > 0 && (
                         <div className="flex justify-between text-xs text-text-secondary">
-                          <span>Ongkir</span>
+                          <span>{t('shippingCost')}</span>
                           <span>{formatIDR(formData.shippingCost)}</span>
                         </div>
                       )}
                       <div className="flex justify-between font-bold text-brand-red pt-1">
-                        <span>Total Bayar</span>
+                        <span>{t('totalPay')}</span>
                         <span>{formatIDR(totalAmount)}</span>
                       </div>
                     </div>
@@ -758,9 +761,9 @@ export default function CheckoutPage() {
                   {couponType === 'buy_x_get_y' && couponBuyXgetY && (
                     <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                       <p className="text-sm text-green-700">
-                        <span className="font-semibold">Kupon gratis item aktif!</span>
+                        <span className="font-semibold">{t('freeShippingCouponActive')}</span>
                         <br />
-                        Beli {couponBuyXgetY.buyQuantity} item, dapat {couponBuyXgetY.getQuantity} item gratis otomatis.
+                        {t('freeShippingCouponDesc', { buy: couponBuyXgetY.buyQuantity, get: couponBuyXgetY.getQuantity })}
                       </p>
                     </div>
                   )}
@@ -776,13 +779,13 @@ export default function CheckoutPage() {
                   />
                 </div>
 
-                {/* FIX 4: Payment button shows client total pre-order with note */}
+                {/* Back button - show different label based on delivery method */}
                 <button
                   type="button"
                   onClick={handleBack}
                   className="text-sm text-text-secondary hover:underline mb-4 text-left"
                 >
-                  ← Kembali ke Kurir
+                  {formData.deliveryMethod === 'pickup' ? t('backToDelivery') : t('backToCourier')}
                 </button>
 
                 <button
@@ -791,8 +794,8 @@ export default function CheckoutPage() {
                   disabled={isLoading}
                   className="w-full h-14 bg-brand-red text-white font-bold rounded-button disabled:opacity-50"
                 >
-                  {isLoading ? 'Memproses...' : `Bayar Sekarang — ${formatIDR(totalAmount)}`}
-                  <span className="block text-xs font-normal mt-0.5 opacity-80">(dikonfirmasi setelah pesanan dibuat)</span>
+                  {isLoading ? t('processing') : t('payNowButton', { amount: formatIDR(totalAmount) })}
+                  <span className="block text-xs font-normal mt-0.5 opacity-80">{t('payNowNote')}</span>
                 </button>
               </div>
             )}
@@ -822,7 +825,7 @@ export default function CheckoutPage() {
             onError: () => {
               setSnapToken(null);
               setIsLoading(false);
-              toast.error('Pembayaran gagal. Silakan coba lagi.');
+              toast.error(t('paymentFailed'));
             },
             onClose: () => {
               setSnapToken(null);

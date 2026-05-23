@@ -49,13 +49,16 @@ export const POST = withRateLimit(
 
         const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password/${token}`;
 
-        await sendEmail({
+        // Non-blocking email send — user sees success even if email fails
+        sendEmail({
           to: user.email,
           subject: 'Reset Password — Dapur Dekaka',
           react: PasswordResetEmail({
             resetUrl,
             userName: user.name,
           }),
+        }).catch((err: unknown) => {
+          console.error('[auth/forgot-password] Email send failed:', err);
         });
       } else {
         // Timing normalization — simulate the time an email send would take

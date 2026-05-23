@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Upload } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { toast } from 'sonner';
 
 interface CoverImageUploaderProps {
   onUpload: (url: string, publicId: string) => void;
@@ -28,7 +29,7 @@ export function CoverImageUploader({ onUpload, className }: CoverImageUploaderPr
       if (!result.success) throw new Error(result.error);
       onUpload(result.data.url, result.data.publicId);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Upload gagal');
+      toast.error(err instanceof Error ? err.message : 'Upload gagal');
     } finally {
       setUploading(false);
       e.target.value = '';

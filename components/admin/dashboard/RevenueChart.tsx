@@ -31,7 +31,7 @@ function CustomTooltip({ active, payload, label }: {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-white border border-brand-cream-dark rounded-lg shadow-card p-3 text-sm">
-      <p className="font-semibold text-[#1A1A1A] mb-1">{label}</p>
+      <p className="font-semibold text-text-primary mb-1">{label}</p>
       <p className="text-brand-red font-bold">{formatIDR(payload[0]?.value ?? 0)}</p>
       <p className="text-text-secondary text-xs">{payload[0]?.value ? `${Math.round(payload[0].value / 1000)}rb` : '0'} revenue</p>
     </div>

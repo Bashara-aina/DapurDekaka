@@ -6,6 +6,11 @@ export const COLD_CHAIN_COURIERS = [
 
 const RAJAONGKIR_BASE = 'https://api.rajaongkir.com/starter';
 
+// NOTE: RajaOngkir Starter tier only supports origin_id: 501 (Jakarta) as origin.
+    // This workaround uses Jakarta origin — shipping costs are calculated from Jakarta,
+    // not Bandung. This is a known limitation of the Starter tier.
+    // For accurate Bandung-origin shipping, RajaOngkir Pro account is required.
+
 async function rajaOngkirFetch(path: string, options?: RequestInit) {
   const res = await fetch(`${RAJAONGKIR_BASE}${path}`, {
     ...options,

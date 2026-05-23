@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { carouselSlides } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import { z } from 'zod';
+import { success, notFound, serverError, unauthorized, forbidden, validationError } from '@/lib/utils/api-response';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -14,36 +15,24 @@ export async function GET(
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return unauthorized('Silakan login terlebih dahulu');
     }
     if (!['superadmin', 'owner'].includes(session.user.role as string)) {
-      return NextResponse.json(
-        { success: false, error: 'Forbidden', code: 'FORBIDDEN' },
-        { status: 403 }
-      );
+      return forbidden('Anda tidak memiliki akses');
     }
 
     const slide = await db.query.carouselSlides.findFirst({
-      where: eq(carouselSlides.id, params.id),
+      where: and(eq(carouselSlides.id, params.id), isNull(carouselSlides.deletedAt)),
     });
 
     if (!slide) {
-      return NextResponse.json(
-        { success: false, error: 'Slide not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      );
+      return notFound('Slide tidak ditemukan');
     }
 
-    return NextResponse.json({ success: true, data: slide });
+    return success(slide);
   } catch (error) {
     console.error('[Admin Carousel GET:id]', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    );
+    return serverError(error);
   }
 }
 
@@ -54,16 +43,10 @@ export async function PUT(
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return unauthorized('Silakan login terlebih dahulu');
     }
     if (!['superadmin', 'owner'].includes(session.user.role as string)) {
-      return NextResponse.json(
-        { success: false, error: 'Forbidden', code: 'FORBIDDEN' },
-        { status: 403 }
-      );
+      return forbidden('Anda tidak memiliki akses');
     }
 
     const body = await req.json();
@@ -86,20 +69,14 @@ export async function PUT(
     });
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
-        { success: false, error: 'Validation failed', code: 'VALIDATION_ERROR', details: parsed.error.flatten().fieldErrors },
-        { status: 422 }
-      );
+      return validationError(parsed.error);
     }
 
     const existing = await db.query.carouselSlides.findFirst({
-      where: eq(carouselSlides.id, params.id),
+      where: and(eq(carouselSlides.id, params.id), isNull(carouselSlides.deletedAt)),
     });
     if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'Slide not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      );
+      return notFound('Slide tidak ditemukan');
     }
 
     const data = parsed.data;
@@ -127,13 +104,10 @@ export async function PUT(
       .where(eq(carouselSlides.id, params.id))
       .returning();
 
-    return NextResponse.json({ success: true, data: updated });
+    return success(updated);
   } catch (error) {
     console.error('[Admin Carousel PUT]', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    );
+    return serverError(error);
   }
 }
 
@@ -144,36 +118,27 @@ export async function DELETE(
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return unauthorized('Silakan login terlebih dahulu');
     }
     if (!['superadmin', 'owner'].includes(session.user.role as string)) {
-      return NextResponse.json(
-        { success: false, error: 'Forbidden', code: 'FORBIDDEN' },
-        { status: 403 }
-      );
+      return forbidden('Anda tidak memiliki akses');
     }
 
     const existing = await db.query.carouselSlides.findFirst({
-      where: eq(carouselSlides.id, params.id),
+      where: and(eq(carouselSlides.id, params.id), isNull(carouselSlides.deletedAt)),
     });
     if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'Slide not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      );
+      return notFound('Slide tidak ditemukan');
     }
 
-    await db.delete(carouselSlides).where(eq(carouselSlides.id, params.id));
+    await db
+      .update(carouselSlides)
+      .set({ deletedAt: new Date() })
+      .where(eq(carouselSlides.id, params.id));
 
-    return NextResponse.json({ success: true, data: { id: params.id } });
+    return success({ id: params.id });
   } catch (error) {
     console.error('[Admin Carousel DELETE]', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    );
+    return serverError(error);
   }
 }

@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { ShoppingCart } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 import { useCartStore } from '@/store/cart.store';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { StockBadge } from '@/components/store/common/StockBadge';
@@ -17,10 +18,12 @@ interface ProductCardHorizontalProps {
 }
 
 export function ProductCardHorizontal({ product, variant, className }: ProductCardHorizontalProps) {
+  const { data: session } = useSession();
   const addItem = useCartStore((s) => s.addItem);
+  const syncToDb = useCartStore((s) => s.syncToDb);
   const isOutOfStock = variant.stock === 0;
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (isOutOfStock) return;
     addItem({
@@ -36,6 +39,9 @@ export function ProductCardHorizontal({ product, variant, className }: ProductCa
       weightGram: variant.weightGram,
       stock: variant.stock,
     });
+    if (session?.user) {
+      await syncToDb();
+    }
   };
 
   return (

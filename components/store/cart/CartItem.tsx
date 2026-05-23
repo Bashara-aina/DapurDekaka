@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { Minus, Plus, Trash2, AlertTriangle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useCartStore } from '@/store/cart.store';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { cn } from '@/lib/utils/cn';
@@ -20,6 +21,7 @@ interface CartItemProps {
 }
 
 export function CartItemComponent({ item, stockValidation }: CartItemProps) {
+  const t = useTranslations('cart');
   const updateQuantity = useCartStore((s) => s.updateQuantity);
   const removeItem = useCartStore((s) => s.removeItem);
 
@@ -29,12 +31,11 @@ export function CartItemComponent({ item, stockValidation }: CartItemProps) {
 
   const handleRemove = (variantId: string) => {
     removeItem(variantId);
-    // Close cart drawer if removing the last item (checked in parent via items.length)
   };
 
   return (
     <div className={cn(
-      'bg-white rounded-card shadow-card overflow-hidden',
+      'bg-white rounded-card shadow-card overflow-hidden min-w-0',
       hasStockIssue && 'border-2 border-warning'
     )}>
       {/* Stock Warning Banner */}
@@ -42,7 +43,7 @@ export function CartItemComponent({ item, stockValidation }: CartItemProps) {
         <div className="bg-warning-light px-4 py-2 flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0" />
           <p className="text-xs font-medium text-warning">
-            Stok tidak mencukupi. Tersedia hanya {availableStock} pcs.
+            {t('stockInsufficientMessage', { count: availableStock })}
           </p>
         </div>
       )}
@@ -75,7 +76,7 @@ export function CartItemComponent({ item, stockValidation }: CartItemProps) {
           <button
             onClick={() => handleRemove(item.variantId)}
             className="p-1.5 text-text-secondary hover:text-red-600 transition-colors"
-            aria-label="Hapus item"
+            aria-label={t('delete')}
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -88,7 +89,7 @@ export function CartItemComponent({ item, stockValidation }: CartItemProps) {
             <button
               onClick={() => updateQuantity(item.variantId, item.quantity - 1)}
               className="w-11 h-11 flex items-center justify-center text-brand-red hover:bg-brand-cream transition-colors"
-              aria-label="Kurangi jumlah"
+              aria-label={t('cancel')}
             >
               <Minus className="w-4 h-4" />
             </button>
@@ -99,7 +100,7 @@ export function CartItemComponent({ item, stockValidation }: CartItemProps) {
               onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
               className="w-11 h-11 flex items-center justify-center text-brand-red hover:bg-brand-cream transition-colors disabled:opacity-40"
               disabled={item.quantity >= maxQty}
-              aria-label="Tambah jumlah"
+              aria-label={t('checkout').toLowerCase().includes('tambah') ? 'Tambah jumlah' : 'Increase quantity'}
             >
               <Plus className="w-4 h-4" />
             </button>

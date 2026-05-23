@@ -196,7 +196,7 @@ export default function InventoryClient({ initialVariants }: InventoryClientProp
           onClick={() => setSortStockFirst(v => !v)}
           className={`h-9 px-3 text-xs font-medium rounded-lg border transition-colors flex items-center gap-1.5 ${
             sortStockFirst
-              ? 'bg-[#0F172A] text-white border-[#0F172A]'
+              ? 'bg-slate-900 text-white border-slate-900'
               : 'border-admin-border text-gray-600 hover:bg-gray-50'
           }`}
         >

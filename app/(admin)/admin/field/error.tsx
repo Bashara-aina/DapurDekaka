@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 
 export default function FieldError() {
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-admin-content flex items-center justify-center p-4">
       <div className="bg-white rounded-xl p-8 text-center max-w-md w-full">
         <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
         <h2 className="text-lg font-semibold text-gray-900 mb-2">Terjadi Kesalahan</h2>

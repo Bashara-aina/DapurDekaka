@@ -3,12 +3,13 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { b2bInquiries, systemSettings } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { success, validationError, serverError } from '@/lib/utils/api-response';
+import { success, validationError, serverError, badRequest } from '@/lib/utils/api-response';
 import { sendEmail } from '@/lib/resend/send-email';
 import { B2BInquiryNotificationEmail } from '@/lib/resend/templates/B2BInquiryNotification';
 import { B2BInquiryAutoReplyEmail } from '@/lib/resend/templates/B2BInquiryAutoReply';
 import { formatWIB } from '@/lib/utils/format-date';
 import { logger } from '@/lib/utils/logger';
+import { checkRateLimitAsync } from '@/lib/utils/rate-limit';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -44,6 +45,12 @@ async function getVolumeLabel(volumeId: string | null): Promise<string> {
 }
 
 export async function POST(req: NextRequest) {
+  const ip = req.ip || req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
+  const rateLimit = await checkRateLimitAsync(ip, 10, '1 m');
+  if (!rateLimit.success) {
+    return badRequest('Terlalu banyak permintaan. Silakan coba lagi nanti.');
+  }
+
   try {
     const body = await req.json();
     const parsed = InquirySchema.safeParse(body);

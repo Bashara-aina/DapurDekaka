@@ -1,8 +1,5 @@
 import { withTimeout, IntegrationError } from '@/lib/utils/integration-helpers';
-import { createRequire } from 'module';
-
-const require = createRequire(import.meta.url);
-const Midtrans = require('midtrans-client');
+import Midtrans from 'midtrans-client';
 
 const isProduction = process.env.MIDTRANS_IS_PRODUCTION === 'true';
 
@@ -32,7 +29,8 @@ export async function checkTransactionStatus(
 ): Promise<TransactionStatusResult> {
   return withTimeout(
     async () => {
-      const response = await (coreApi.transaction as { status(orderId: string): Promise<Record<string, unknown>> }).status(orderId);
+      // @ts-ignore - midtrans-client types don't expose .transaction but it exists at runtime
+      const response = await (coreApi as unknown as { transaction: { status(orderId: string): Promise<Record<string, unknown>> } }).transaction.status(orderId);
 
       if (!response) {
         throw new IntegrationError('Midtrans', 404, `No transaction found for order ${orderId}`);
@@ -50,4 +48,42 @@ export async function checkTransactionStatus(
     TIMEOUT_MS,
     'Midtrans.checkTransactionStatus'
   );
+}
+
+/**
+ * Refund a Midtrans transaction.
+ * Only call this for paid orders that are being cancelled.
+ * Returns true if refund was successful, false otherwise.
+ */
+export async function refundTransaction(
+  orderId: string,
+  amount?: number
+): Promise<{ success: boolean; refundId?: string; error?: string }> {
+  try {
+    const params: Record<string, unknown> = {
+      order_id: orderId,
+    };
+    if (amount !== undefined) {
+      params.refund_amount = { amount };
+    }
+
+    const response = await withTimeout(
+      async () => {
+        // @ts-ignore - midtrans-client types don't expose .transaction but it exists at runtime
+        return (coreApi as unknown as { transaction: { refund(params: Record<string, unknown>): Promise<Record<string, unknown>> } }).transaction.refund(params);
+      },
+      TIMEOUT_MS,
+      'Midtrans.refundTransaction'
+    );
+
+    return {
+      success: true,
+      refundId: (response as Record<string, unknown>)?.refund_id
+        ? String((response as Record<string, unknown>).refund_id)
+        : undefined,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { success: false, error: message };
+  }
 }

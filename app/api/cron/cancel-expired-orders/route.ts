@@ -4,7 +4,7 @@ import { orders, orderItems, productVariants, inventoryLogs, coupons, couponUsag
 import { eq, and, lt, sql } from 'drizzle-orm';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { checkTransactionStatus } from '@/lib/midtrans/status';
-import { serverError, success } from '@/lib/utils/api-response';
+import { serverError, success, unauthorized } from '@/lib/utils/api-response';
 import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -17,10 +17,7 @@ export const runtime = 'nodejs';
 export async function GET(req: NextRequest) {
   try {
     if (!verifyCronAuth(req)) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return unauthorized('Cron auth diperlukan');
     }
 
     const now = new Date();
@@ -92,11 +89,12 @@ export async function GET(req: NextRequest) {
             note: `Otomatis dibatalkan karena tidak dibayar dalam 15 menit`,
           });
 
-          // BUG-01: Restore stock for all order items
+          // BUG-01 FIX: Restore stock atomically using GREATEST pattern
+          // This prevents stock going negative if there's a race condition
           for (const item of order.items) {
             const [updated] = await tx
               .update(productVariants)
-              .set({ stock: sql`stock + ${item.quantity}`, updatedAt: new Date() })
+              .set({ stock: sql`GREATEST(stock + ${item.quantity}, 0)`, updatedAt: new Date() })
               .where(eq(productVariants.id, item.variantId))
               .returning({ newStock: productVariants.stock });
 

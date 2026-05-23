@@ -1,4 +1,4 @@
-import { ALLOWED_COURIERS, ORIGIN_CITY_ID } from '@/lib/constants/couriers';
+import { ALLOWED_COURIERS } from '@/lib/constants/couriers';
 
 const RAJAONGKIR_BASE_URL = 'https://api.rajaongkir.com/starter';
 

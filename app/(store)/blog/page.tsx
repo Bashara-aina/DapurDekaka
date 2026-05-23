@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
+import { getTranslations } from 'next-intl/server';
 import { db } from '@/lib/db';
 import { blogPosts, blogCategories } from '@/lib/db/schema';
 import { eq, desc, and, or, like, sql } from 'drizzle-orm';
@@ -10,27 +11,31 @@ import { BlogSearchForm } from '@/components/store/blog/BlogSearchForm';
 export const revalidate = 3600;
 
 interface BlogPageProps {
+  params: Promise<Record<string, string>>;
   searchParams: Promise<{ q?: string; category?: string; page?: string }>;
 }
 
-export const metadata: Metadata = {
-  title: 'Blog - Dapur Dekaka',
-  description: 'Artikel dan tips seputar makanan frozen, resep, dan informasi menarik dari Dapur Dekaka. Temukan inspirasi memasak dengan produk frozen food premium.',
-  keywords: ['blog', 'resep', 'makanan frozen', 'tips memasak', 'dapur dekaka'],
-  openGraph: {
-    title: 'Blog - Dapur Dekaka',
-    description: 'Artikel dan tips seputar makanan frozen dan inspirasi memasak.',
-    url: 'https://dapurdekaka.com/blog',
-    type: 'website',
-  },
-  alternates: {
-    canonical: 'https://dapurdekaka.com/blog',
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-};
+export async function generateMetadata({ params }: BlogPageProps): Promise<Metadata> {
+  const t = await getTranslations('metadata');
+  return {
+    title: t('blogTitle'),
+    description: t('blogDescription'),
+    keywords: ['blog', 'resep', 'makanan frozen', 'tips memasak', 'dapur dekaka'],
+    openGraph: {
+      title: t('blogTitle'),
+      description: t('blogDescription'),
+      url: 'https://dapurdekaka.com/blog',
+      type: 'website',
+    },
+    alternates: {
+      canonical: 'https://dapurdekaka.com/blog',
+    },
+    robots: {
+      index: true,
+      follow: true,
+    },
+  };
+}
 
 const POSTS_PER_PAGE = 12;
 
@@ -115,7 +120,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
   const remainingPosts = posts.slice(1);
 
   return (
-    <div className="container py-8 md:py-12 pb-20 md:pb-12">
+    <div className="container pb-20 md:pb-0">
       <div className="mb-8">
         <h1 className="font-display text-3xl font-bold mb-2">Blog</h1>
         <p className="text-text-secondary">

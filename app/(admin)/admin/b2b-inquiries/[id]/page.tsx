@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { InquiryStatusUpdate } from '@/components/admin/b2b/InquiryStatusUpdate';
+import { requireRole } from '@/lib/auth/check-role';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -24,6 +25,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default async function B2BInquiryDetailPage({ params }: PageProps) {
+  await requireRole(['superadmin', 'owner']);
   const { id } = await params;
   const inquiry = await getInquiry(id);
 

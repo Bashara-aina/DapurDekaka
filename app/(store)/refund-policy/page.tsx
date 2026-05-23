@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 
 export const metadata: Metadata = {
   title: 'Kebijakan Pengembalian - Dapur Dekaka',
@@ -9,28 +10,26 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RefundPolicyPage() {
+export default async function RefundPolicyPage() {
+  const t = await getTranslations('policy');
+
   return (
     <div className="bg-brand-cream min-h-screen">
       <div className="container mx-auto px-4 py-8 max-w-3xl">
         <h1 className="font-display text-3xl font-bold text-text-primary mb-2">
-          Kebijakan Pengembalian
+          {t('refundTitle')}
         </h1>
         <p className="text-text-secondary text-sm mb-8">
-          Terakhir diperbarui: Mei 2026
+          {t('refundLastUpdated')}
         </p>
 
         <div className="bg-white rounded-card shadow-card p-6 md:p-8 space-y-6">
           <section>
             <h2 className="font-display text-xl font-semibold text-text-primary mb-3">
-              Makanan Frozen Tidak Dapat Dikembalikan
+              {t('noRefundTitle')}
             </h2>
             <p className="text-text-secondary leading-relaxed">
-              Mengingat sifat produk kami yang berupa makanan frozen (beku), 
-              <strong> semua produk Dapur Dekaka tidak dapat dikembalikan</strong> setelah 
-              diterima. Ini sesuai dengan regulasi keamanan pangan Indonesia yang tidak 
-              mengizinkan makanan beku yang telah meninggalkan rantai pendingin untuk 
-              dikembalikan ke peredaran commerce.
+              {t('noRefundDesc')}
             </p>
           </section>
 
@@ -38,19 +37,18 @@ export default function RefundPolicyPage() {
 
           <section>
             <h2 className="font-display text-xl font-semibold text-text-primary mb-3">
-              Kondisi yang Dapat Diklaim
+              {t('claimableTitle')}
             </h2>
             <p className="text-text-secondary leading-relaxed mb-4">
-              Kami menerima klaim dalam kondisi berikut:
+              {t('claimableDesc')}
             </p>
             <ul className="list-disc list-inside text-text-secondary space-y-2">
-              <li>Produk yang diterima salah atau tidak sesuai pesanan</li>
-              <li>Kemasan rusak atau tidak kedap yang menyebabkan produk mencair</li>
-              <li>Produk yang diterima tidak lengkap dari yang dipesan</li>
+              <li>{t('claimableItem1')}</li>
+              <li>{t('claimableItem2')}</li>
+              <li>{t('claimableItem3')}</li>
             </ul>
             <p className="text-text-secondary leading-relaxed mt-4">
-              <strong>Bukti foto wajib</strong> dilampirkan saat mengklaim: foto kemasan 
-              luar, foto produk, dan foto label pengiriman.
+              {t('claimablePhoto')}
             </p>
           </section>
 
@@ -58,20 +56,20 @@ export default function RefundPolicyPage() {
 
           <section>
             <h2 className="font-display text-xl font-semibold text-text-primary mb-3">
-              Cara Mengajukan Klaim
+              {t('howToClaimTitle')}
             </h2>
             <ol className="list-decimal list-inside text-text-secondary space-y-2">
               <li>
-                Hubungi kami via WhatsApp dalam <strong>24 jam</strong> setelah produk diterima
+                {t('howToClaimStep1')}
               </li>
               <li>
-                Lampirkan foto-foto yang diperlukan (kemasan, produk, label pengiriman)
+                {t('howToClaimStep2')}
               </li>
               <li>
-                Tim kami akan memverifikasi dalam 1x24 jam kerja
+                {t('howToClaimStep3')}
               </li>
               <li>
-                Jika klaim disetujui, refund atau pengiriman ulang akan diproses
+                {t('howToClaimStep4')}
               </li>
             </ol>
           </section>
@@ -80,13 +78,10 @@ export default function RefundPolicyPage() {
 
           <section>
             <h2 className="font-display text-xl font-semibold text-text-primary mb-3">
-              Timeline Refund
+              {t('refundTimelineTitle')}
             </h2>
             <p className="text-text-secondary leading-relaxed">
-              Setelah klaim disetujui, refund akan diproses dalam{' '}
-              <strong>1-7 hari kerja</strong> ke rekening pengirim atau melalui metode 
-              pembayaran semula. Jika pembayaran dilakukan via Midtrans (kartu kredit, 
-              VA, dll), refund akan masuk sesuai kebijakan Midtrans (3-14 hari kerja).
+              {t('refundTimelineDesc')}
             </p>
           </section>
 
@@ -94,12 +89,10 @@ export default function RefundPolicyPage() {
 
           <section>
             <h2 className="font-display text-xl font-semibold text-text-primary mb-3">
-              Produk Tidak Diterima karena Alamat Salah
+              {t('wrongAddressTitle')}
             </h2>
             <p className="text-text-secondary leading-relaxed">
-              Jika paket dikembalikan karena alamat penerima tidak valid atau无人认领, 
-              kami akan menghubungi Anda untuk konfirmasi ulang. Ongkos kirim kedua 
-              ditanggung oleh pembeli.
+              {t('wrongAddressDesc')}
             </p>
           </section>
 
@@ -107,18 +100,17 @@ export default function RefundPolicyPage() {
 
           <section>
             <h2 className="font-display text-xl font-semibold text-text-primary mb-3">
-              Hubungi Kami
+              {t('contactTitle')}
             </h2>
             <p className="text-text-secondary leading-relaxed">
-              Untuk setiap pertanyaan terkait kebijakan pengembalian, silakan hubungi 
-              tim kami via WhatsApp:{' '}
+              {t('contactDesc')}
               <a
                 href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-brand-red font-medium hover:underline"
               >
-                Klik di sini untuk chat WhatsApp
+                {t('contactWhatsAppLink')}
               </a>
             </p>
           </section>

@@ -1,61 +1,64 @@
 import Link from 'next/link';
 import { MessageCircle } from 'lucide-react';
+import { getTranslations } from 'next-intl/server';
 
-export function Footer() {
+export default async function Footer() {
+  const t = await getTranslations('footer');
+
   return (
-    <footer className="bg-[#1A1A1A] text-brand-cream/80 pt-12 pb-20 md:pb-12">
+    <footer className="bg-text-primary text-brand-cream/80 pt-12 pb-20 md:pb-12 px-4 md:px-0">
       <div className="container mx-auto px-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           {/* Brand */}
           <div>
-            <h3 className="font-display text-xl font-semibold text-brand-cream mb-4">Dapur Dekaka 德卡</h3>
-            <p className="text-sm">Jl. Sinom V no. 7, Turangga, Bandung</p>
+            <h3 className="font-display text-xl font-semibold text-brand-cream mb-4">{t('brandTitle')}</h3>
+            <p className="text-sm">{t('address')}</p>
           </div>
 
           {/* Links */}
           <div>
-            <h4 className="font-semibold text-brand-cream mb-4">Menu</h4>
+            <h4 className="font-semibold text-brand-cream mb-4">{t('menuTitle')}</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/products" className="hover:text-brand-cream transition-colors duration-150">Produk</Link>
+                <Link href="/products" className="hover:text-brand-cream transition-colors duration-150">{t('products')}</Link>
               </li>
               <li>
-                <Link href="/blog" className="hover:text-brand-cream transition-colors duration-150">Blog</Link>
+                <Link href="/blog" className="hover:text-brand-cream transition-colors duration-150">{t('blog')}</Link>
               </li>
               <li>
-                <Link href="/b2b" className="hover:text-brand-cream transition-colors duration-150">B2B</Link>
+                <Link href="/b2b" className="hover:text-brand-cream transition-colors duration-150">{t('b2b')}</Link>
               </li>
               <li>
-                <Link href="/about" className="hover:text-brand-cream transition-colors duration-150">Tentang Kami</Link>
+                <Link href="/about" className="hover:text-brand-cream transition-colors duration-150">{t('aboutUs')}</Link>
               </li>
             </ul>
           </div>
 
           <div>
-            <h4 className="font-semibold text-brand-cream mb-4">Bantuan</h4>
+            <h4 className="font-semibold text-brand-cream mb-4">{t('helpTitle')}</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/orders/DDK-TEST-0001" className="hover:text-brand-cream">Lacak Pesanan</Link>
+                <Link href="/orders/DDK-TEST-0001" className="hover:text-brand-cream">{t('trackOrder')}</Link>
               </li>
               <li>
-                <Link href="/refund-policy" className="hover:text-brand-cream">Kebijakan Pengembalian</Link>
+                <Link href="/refund-policy" className="hover:text-brand-cream">{t('refundPolicy')}</Link>
               </li>
               <li>
-                <Link href="/privacy-policy" className="hover:text-brand-cream">Kebijakan Privasi</Link>
+                <Link href="/privacy-policy" className="hover:text-brand-cream">{t('privacyPolicy')}</Link>
               </li>
               <li>
                 <a
                   href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER}`}
                   className="hover:text-brand-cream"
                 >
-                  WhatsApp
+                  {t('whatsapp')}
                 </a>
               </li>
             </ul>
           </div>
 
           <div>
-            <h4 className="font-semibold text-brand-cream mb-4">Ikuti Kami</h4>
+            <h4 className="font-semibold text-brand-cream mb-4">{t('followUs')}</h4>
             <div className="flex gap-4">
               <a
                 href="https://instagram.com/dapurdekaka"
@@ -82,7 +85,7 @@ export function Footer() {
 
         {/* Payment Icons */}
         <div className="border-t border-white/10 pt-6 mb-6">
-          <p className="text-xs text-brand-cream/50 mb-3">Metode Pembayaran</p>
+          <p className="text-xs text-brand-cream/50 mb-3">{t('paymentMethods')}</p>
           <div className="flex flex-wrap gap-3 items-center">
             {/* Visa */}
             <div className="h-7 px-2 bg-white/10 rounded flex items-center">
@@ -102,15 +105,15 @@ export function Footer() {
         </div>
 
         <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm">© 2026 Dapur Dekaka. All rights reserved.</p>
+          <p className="text-sm">{t('copyright')}</p>
           <div className="flex gap-4 text-xs">
-            <span>Harga sudah termasuk PPN 11%</span>
+            <span>{t('priceIncludesVat')}</span>
             <span>•</span>
-            <span>Halal</span>
+            <span>{t('halal')}</span>
             <span>•</span>
-            <span>Frozen Fresh</span>
+            <span>{t('frozenFresh')}</span>
             <span>•</span>
-            <span>Nationwide Delivery</span>
+            <span>{t('nationwideDelivery')}</span>
           </div>
         </div>
       </div>

@@ -1,10 +1,27 @@
-import { authMiddleware } from '@/lib/auth';
+import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 
-const handleAuth = authMiddleware(async ({ auth, nextUrl }) => {
-  const { pathname } = nextUrl;
-  const session = auth;
-  const base = nextUrl.href;
+export default auth((req) => {
+  const { pathname } = req.nextUrl;
+  const session = req.auth;
+  const base = req.url;
+
+  // Security headers for all responses
+  const response = NextResponse.next();
+
+  // Security headers
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+
+  // BUG-02 FIX: Inactive user session not invalidated — redirect inactive users
+  if (session?.user?.isActive === false) {
+    const inactiveRedirectUrl = pathname.startsWith('/admin')
+      ? '/login?inactive=1'
+      : `/login?inactive=1&callbackUrl=${encodeURIComponent(pathname)}`;
+    return NextResponse.redirect(new URL(inactiveRedirectUrl, base));
+  }
 
   if (pathname.startsWith('/admin')) {
     if (!session?.user) {
@@ -17,7 +34,7 @@ const handleAuth = authMiddleware(async ({ auth, nextUrl }) => {
     if (role === 'warehouse') {
       const allowed = ['/admin/inventory', '/admin/shipments', '/admin/field', '/admin/orders'];
       if (!allowed.some((p) => pathname.startsWith(p))) {
-        return NextResponse.redirect(new URL('/admin/field', base));
+        return NextResponse.redirect(new URL('/admin/inventory', base));
       }
     }
   }
@@ -39,8 +56,6 @@ const handleAuth = authMiddleware(async ({ auth, nextUrl }) => {
 
   return NextResponse.next();
 });
-
-export default handleAuth;
 
 export const config = {
   matcher: ['/admin/:path*', '/account/:path*', '/b2b/account/:path*'],

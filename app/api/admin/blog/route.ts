@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { blogPosts } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, isNull } from 'drizzle-orm';
 import { z } from 'zod';
-import { success, serverError, unauthorized, forbidden } from '@/lib/utils/api-response';
+import { success, serverError, unauthorized, forbidden, validationError, conflict } from '@/lib/utils/api-response';
 import DOMPurify from 'isomorphic-dompurify';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -18,7 +18,7 @@ const CreatePostSchema = z.object({
   contentId: z.string().optional(),
   contentEn: z.string().optional(),
   coverImageUrl: z.string().url().optional().nullable(),
-  categoryId: z.string().uuid().optional().nullable(),
+  blogCategoryId: z.string().uuid().optional().nullable(),
   metaTitleId: z.string().optional(),
   metaDescriptionId: z.string().optional(),
   metaTitleEn: z.string().optional(),
@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
     }
 
     const posts = await db.query.blogPosts.findMany({
+      where: isNull(blogPosts.deletedAt),
       orderBy: [desc(blogPosts.createdAt)],
     });
 
@@ -66,13 +67,24 @@ export async function POST(req: NextRequest) {
     const parsed = CreatePostSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { success: false, error: 'Validation failed', code: 'VALIDATION_ERROR', details: parsed.error.flatten().fieldErrors },
-        { status: 422 }
-      );
+      return validationError(parsed.error);
     }
 
-    // Sanitize HTML content to prevent XSS
+    // Sanitize ALL text fields to prevent XSS
+    const cleanTitleId = DOMPurify.sanitize(parsed.data.titleId, { ALLOWED_TAGS: [] });
+    const cleanTitleEn = DOMPurify.sanitize(parsed.data.titleEn, { ALLOWED_TAGS: [] });
+    const cleanExcerptId = parsed.data.excerptId
+      ? DOMPurify.sanitize(parsed.data.excerptId, {
+          ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h2', 'h3', 'a', 'blockquote', 'code', 'pre'],
+          ALLOWED_ATTR: ['href', 'class', 'target', 'rel'],
+        })
+      : '';
+    const cleanExcerptEn = parsed.data.excerptEn
+      ? DOMPurify.sanitize(parsed.data.excerptEn, {
+          ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h2', 'h3', 'a', 'blockquote', 'code', 'pre'],
+          ALLOWED_ATTR: ['href', 'class', 'target', 'rel'],
+        })
+      : '';
     const cleanContentId = parsed.data.contentId
       ? DOMPurify.sanitize(parsed.data.contentId, {
           ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h2', 'h3', 'a', 'img', 'blockquote', 'code', 'pre'],
@@ -86,13 +98,35 @@ export async function POST(req: NextRequest) {
         })
       : '';
 
+    const existingSlug = await db.query.blogPosts.findFirst({
+      where: eq(blogPosts.slug, parsed.data.slug),
+    });
+    if (existingSlug) {
+      return conflict('Slug sudah digunakan oleh post lain');
+    }
+
     const [post] = await db.insert(blogPosts).values({
-      ...parsed.data,
+      titleId: cleanTitleId,
+      titleEn: cleanTitleEn,
+      slug: parsed.data.slug,
+      excerptId: cleanExcerptId,
+      excerptEn: cleanExcerptEn,
       contentId: cleanContentId,
       contentEn: cleanContentEn,
+      coverImageUrl: parsed.data.coverImageUrl,
+      blogCategoryId: parsed.data.blogCategoryId,
+      metaTitleId: DOMPurify.sanitize(parsed.data.metaTitleId ?? '', { ALLOWED_TAGS: [] }),
+      metaDescriptionId: DOMPurify.sanitize(parsed.data.metaDescriptionId ?? '', { ALLOWED_TAGS: [] }),
+      metaTitleEn: DOMPurify.sanitize(parsed.data.metaTitleEn ?? '', { ALLOWED_TAGS: [] }),
+      metaDescriptionEn: DOMPurify.sanitize(parsed.data.metaDescriptionEn ?? '', { ALLOWED_TAGS: [] }),
+      isPublished: parsed.data.isPublished,
       publishedAt: parsed.data.publishedAt ? new Date(parsed.data.publishedAt) : null,
       authorId: session.user.id,
     }).returning();
+
+    if (!post) {
+      return serverError(new Error('Failed to create post'));
+    }
 
     return success(post, 201);
   } catch (error) {

@@ -2,21 +2,52 @@
  * Production-grade Redis-based rate limiter using Upstash.
  * Works correctly in Vercel serverless — each invocation shares the Redis state.
  *
- * Falls back to in-memory limiter when UPSTASH_REDIS_REST_URL is not set
- * (safe for development, but NOT effective in production serverless).
+ * NOTE: UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must be set in production.
+ * Without them, serverless rate limiting is DISABLED (in-memory fallback is dev-only).
  */
 
 import type { NextRequest } from 'next/server';
+import { logger } from '@/lib/utils/logger';
 
 // ── Upstash Redis Rate Limiter ────────────────────────────────────────────────
 
 // Upstash Redis and Ratelimit types are untyped — suppress linting for these declarations
 // @ts-ignore
-let redisInstance: any = null;
+let redisInstance: unknown = null;
+// Upstash Ratelimit instance — typed via @ts-ignore to bypass strict mode
 // @ts-ignore
-let globalLimiter: any = null;
+let globalLimiter: import('@upstash/ratelimit').Ratelimit | null = null;
 
-async function getRedis() {
+// ── Startup Validation ────────────────────────────────────────────────────────
+
+let validated = false;
+
+function validateRedisConfig(): void {
+  if (validated) return;
+  validated = true;
+
+  const hasUrl = Boolean(process.env.UPSTASH_REDIS_REST_URL);
+  const hasToken = Boolean(process.env.UPSTASH_REDIS_REST_TOKEN);
+
+  if (process.env.NODE_ENV === 'production') {
+    logger.error(
+      '[RateLimit] CRITICAL: Redis not configured. Rate limiting is disabled in production. ' +
+      'Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables.'
+    );
+    // Continue with in-memory fallback — less secure but prevents app crash
+  } else if (!hasUrl || !hasToken) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[RateLimit] WARNING: Upstash Redis not configured. ' +
+      'Rate limiting falls back to in-memory (not effective in serverless production). ' +
+      'Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN env vars.'
+    );
+  }
+}
+
+async function getRedis(): Promise<unknown | null> {
+  validateRedisConfig();
+
   if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
     return null;
   }
@@ -32,7 +63,9 @@ async function getRedis() {
   return redisInstance;
 }
 
-async function getLimiter(): Promise<import('@upstash/ratelimit').Ratelimit | null> {
+async function getLimiter(): Promise<unknown | null> {
+  validateRedisConfig();
+
   if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
     return null;
   }
@@ -43,7 +76,7 @@ async function getLimiter(): Promise<import('@upstash/ratelimit').Ratelimit | nu
 
     const { Ratelimit } = await import('@upstash/ratelimit');
     globalLimiter = new Ratelimit({
-      redis,
+      redis: redis as never,
       limiter: Ratelimit.slidingWindow(10, '1 m'),
       analytics: true,
     });
@@ -95,7 +128,7 @@ export async function checkRateLimitAsync(
   const limiter = await getLimiter();
 
   if (limiter) {
-    const result = await limiter.limit(identifier);
+    const result = await (limiter as { limit: (id: string) => Promise<{ success: boolean; remaining: number; reset: number }> }).limit(identifier);
     return {
       success: result.success,
       remaining: result.remaining,
@@ -125,7 +158,7 @@ export function withRateLimit<T = unknown>(
     const { windowMs, maxRequests, keyGenerator } = options;
     const identifier = keyGenerator
       ? keyGenerator(req)
-      : req.ip || req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
+      : req.ip || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
 
     const window = windowMs <= 60000 ? '1 m' : windowMs <= 3600000 ? '1 h' : '1 d';
     const result = await checkRateLimitAsync(identifier, maxRequests, window);

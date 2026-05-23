@@ -3,6 +3,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils/cn';
@@ -34,6 +35,7 @@ export function IdentityForm({
   isLoading,
   className,
 }: IdentityFormProps) {
+  const t = useTranslations('checkout');
   const {
     register,
     handleSubmit,
@@ -48,48 +50,48 @@ export function IdentityForm({
       onSubmit={handleSubmit(onSubmit)}
       className={cn('bg-white rounded-card p-6 shadow-card', className)}
     >
-      <h2 className="font-semibold text-lg mb-4">Data Diri</h2>
+      <h2 className="font-semibold text-lg mb-4">{t('identityTitle')}</h2>
 
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-1">Nama Lengkap</label>
+          <label className="block text-sm font-medium mb-1">{t('fullName')}</label>
           <Input
             {...register('recipientName')}
-            placeholder="Masukkan nama lengkap"
+            placeholder={t('fullNamePlaceholder')}
             error={errors.recipientName?.message}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Email</label>
+          <label className="block text-sm font-medium mb-1">{t('email')}</label>
           <Input
             {...register('recipientEmail')}
             type="email"
-            placeholder="email@contoh.com"
+            placeholder={t('emailPlaceholder')}
             error={errors.recipientEmail?.message}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">No. HP / WhatsApp</label>
+          <label className="block text-sm font-medium mb-1">{t('phone')}</label>
           <Input
             {...register('recipientPhone')}
             type="tel"
-            placeholder="081234567890"
+            placeholder={t('phonePlaceholder')}
             error={errors.recipientPhone?.message}
           />
           <p className="text-xs text-text-secondary mt-1">
-            Contoh: 081234567890 atau +6281234567890
+            {t('phoneHint')}
           </p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Catatan Pesanan (opsional)</label>
+          <label className="block text-sm font-medium mb-1">{t('noteOptional')}</label>
           <textarea
             {...register('customerNote')}
             rows={2}
             className="w-full px-3 py-2 border border-brand-cream-dark rounded-lg focus:border-brand-red focus:ring-2 focus:ring-brand-red/10 outline-none text-sm"
-            placeholder="Contoh: Tanpa sambal, pisahkan dengan kuah"
+            placeholder={t('notePlaceholder')}
           />
           {errors.customerNote && (
             <p className="text-error text-xs mt-1">{errors.customerNote.message}</p>
@@ -100,11 +102,11 @@ export function IdentityForm({
       <div className="flex gap-4 mt-6">
         {onBack && (
           <Button type="button" variant="outline" onClick={onBack} className="flex-1">
-            Kembali
+            {t('back')}
           </Button>
         )}
         <Button type="submit" className="flex-1" disabled={isLoading}>
-          Lanjut ke Pengiriman
+          {t('continueToShipping')}
         </Button>
       </div>
     </form>

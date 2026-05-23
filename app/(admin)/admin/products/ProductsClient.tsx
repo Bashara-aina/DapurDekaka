@@ -6,12 +6,21 @@ import Image from 'next/image';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { Plus, Power, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface ProductWithVariants {
   id: string;
   nameId: string;
   slug: string | null;
   categoryId: string | null;
+  category?: { nameId: string } | null;
   isActive: boolean;
   isFeatured: boolean;
   createdAt: Date;
@@ -27,6 +36,8 @@ export default function ProductsClient({ allProducts }: ProductsClientProps) {
   const [products, setProducts] = useState(allProducts);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [pendingDeleteCount, setPendingDeleteCount] = useState(0);
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
@@ -68,7 +79,11 @@ export default function ProductsClient({ allProducts }: ProductsClientProps) {
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
-    if (!confirm(`Hapus ${selectedIds.size} produk?`)) return;
+    setShowDeleteDialog(true);
+    setPendingDeleteCount(selectedIds.size);
+  };
+
+  const executeBulkDelete = async () => {
     setBulkLoading(true);
     try {
       const res = await fetch('/api/admin/products/bulk', {
@@ -85,6 +100,7 @@ export default function ProductsClient({ allProducts }: ProductsClientProps) {
       toast.error(err instanceof Error ? err.message : 'Gagal menghapus');
     } finally {
       setBulkLoading(false);
+      setShowDeleteDialog(false);
     }
   };
 
@@ -92,7 +108,7 @@ export default function ProductsClient({ allProducts }: ProductsClientProps) {
     <>
       {/* Bulk Action Bar */}
       {selectedIds.size > 0 && (
-        <div className="sticky top-14 z-10 bg-[#0F172A] text-white p-3 flex items-center gap-4 rounded-lg shadow-lg">
+        <div className="sticky top-14 z-10 bg-admin-sidebar text-white p-3 flex items-center gap-4 rounded-lg shadow-lg">
           <span className="text-sm font-medium">{selectedIds.size} dipilih</span>
           <button
             onClick={handleBulkDisable}
@@ -171,7 +187,7 @@ export default function ProductsClient({ allProducts }: ProductsClientProps) {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {product.categoryId ?? '-'}
+                      {product.category?.nameId ?? '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-brand-red">
                       {lowestVariant ? formatIDR(lowestVariant.price) : '-'}
@@ -208,6 +224,31 @@ export default function ProductsClient({ allProducts }: ProductsClientProps) {
           </table>
         </div>
       </div>
+
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Hapus Produk?</DialogTitle>
+            <DialogDescription>
+              {pendingDeleteCount} produk akan dihapus. Tindakan ini tidak bisa dibatalkan.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-3">
+            <button
+              onClick={() => setShowDeleteDialog(false)}
+              className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-50"
+            >
+              Batal
+            </button>
+            <button
+              onClick={executeBulkDelete}
+              className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-red-600 hover:bg-red-700 text-white"
+            >
+              Hapus
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

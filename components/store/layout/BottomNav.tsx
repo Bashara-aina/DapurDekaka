@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useCartStore } from '@/store/cart.store';
-import { Home, Package, ShoppingCart, User, FileText } from 'lucide-react';
+import { Home, Package, ShoppingCart, User, FileText, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 export function BottomNav() {
@@ -29,9 +29,9 @@ export function BottomNav() {
   const navItems = [
     { href: '/', Icon: Home, label: t('home') },
     { href: '/products', Icon: Package, label: t('products') },
-    { href: '/blog', Icon: FileText, label: 'Blog' },
+    { href: '/blog', Icon: FileText, label: t('blog') },
     { href: '/cart', Icon: ShoppingCart, label: t('cart'), badge: totalItems },
-    ...(isB2bUser ? [{ href: '/b2b/account', Icon: Package, label: 'B2B' }] : []),
+    ...(isB2bUser ? [{ href: '/b2b/account', Icon: Building2, label: 'B2B' }] : []),
     { href: '/account', Icon: User, label: t('account') },
   ];
 
@@ -39,7 +39,7 @@ export function BottomNav() {
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-brand-cream-dark h-[calc(5rem+env(safe-area-inset-bottom))]">
       <div className="flex items-center justify-around h-full px-2">
         {navItems.map((item, index) => {
-          const isActive = pathname === item.href;
+          const isActive = pathname.startsWith(item.href) || pathname === item.href;
           const content = (
             <>
               <item.Icon

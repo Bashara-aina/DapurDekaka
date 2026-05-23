@@ -1,6 +1,6 @@
 import { Navbar } from '@/components/store/layout/Navbar';
 import { BottomNav } from '@/components/store/layout/BottomNav';
-import { Footer } from '@/components/store/layout/Footer';
+import Footer from '@/components/store/layout/Footer';
 import { WhatsAppButton } from '@/components/store/layout/WhatsAppButton';
 import { getSetting } from '@/lib/settings/get-settings';
 

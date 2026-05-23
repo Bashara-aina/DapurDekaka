@@ -4,6 +4,7 @@
  */
 
 import { withRetry } from '@/lib/utils/integration-helpers';
+import { logger } from '@/lib/utils/logger';
 
 const MINIMAX_API_URL = 'https://api.minimax.chat/v1';
 
@@ -147,7 +148,7 @@ export async function generateProductCaption(
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[Minimax API Error]', response.status, errorText);
+        logger.error('[Minimax API Error]', { status: response.status, errorText });
         throw new Error(`Minimax API error: ${response.status}`);
       }
 
@@ -209,7 +210,7 @@ export async function generateBlogContent(
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[Minimax API Error]', response.status, errorText);
+        logger.error('[Minimax API Error]', { status: response.status, errorText });
         throw new Error(`Minimax API error: ${response.status}`);
       }
 

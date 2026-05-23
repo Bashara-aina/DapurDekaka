@@ -1,6 +1,6 @@
 import { Playfair_Display, Inter } from 'next/font/google';
 import { Navbar } from '@/components/store/layout/Navbar';
-import { Footer } from '@/components/store/layout/Footer';
+import Footer from '@/components/store/layout/Footer';
 import { WhatsAppButton } from '@/components/store/layout/WhatsAppButton';
 import { Providers } from '../(store)/providers';
 import { getSetting } from '@/lib/settings/get-settings';

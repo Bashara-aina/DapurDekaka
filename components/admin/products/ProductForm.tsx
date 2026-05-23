@@ -12,6 +12,7 @@ import { Plus, Trash2, Upload, X } from 'lucide-react';
 import Image from 'next/image';
 import { useState, useCallback } from 'react';
 import TiptapEditor from '@/components/admin/blog/TiptapEditor';
+import { toast } from 'sonner';
 
 interface ProductFormProps {
   initialData?: {
@@ -192,7 +193,7 @@ export function ProductForm({ initialData, categories, onSubmit, isSubmitting }:
       };
       setImages(prev => [...prev, newImage]);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Upload gagal');
+      toast.error(err instanceof Error ? err.message : 'Upload gagal');
     } finally {
       setUploading(false);
     }

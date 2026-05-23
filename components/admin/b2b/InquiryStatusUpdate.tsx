@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils/cn';
+import { toast } from 'sonner';
 
 const STATUS_OPTIONS = [
   { value: 'new', label: 'Baru' },
@@ -33,7 +34,12 @@ export function InquiryStatusUpdate({ inquiryId, currentStatus }: InquiryStatusU
       if (response.ok) {
         setStatus(newStatus);
         router.refresh();
+      } else {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Gagal mengupdate status');
       }
+    } catch {
+      toast.error('Gagal mengupdate status');
     } finally {
       setIsUpdating(false);
     }
@@ -46,16 +52,19 @@ export function InquiryStatusUpdate({ inquiryId, currentStatus }: InquiryStatusU
       </label>
       <div className="flex flex-wrap gap-2">
         {STATUS_OPTIONS.map((option) => (
-          <Button
+          <button
             key={option.value}
-            variant={status === option.value ? 'default' : 'outline'}
-            size="sm"
             onClick={() => handleStatusChange(option.value)}
             disabled={isUpdating || status === option.value}
-            className={status === option.value ? 'bg-brand-red text-white' : ''}
+            className={cn(
+              'text-sm px-3 py-1 rounded-full transition-colors',
+              status === option.value
+                ? 'bg-brand-red text-white'
+                : 'bg-white text-text-primary border border-admin-border'
+            )}
           >
             {option.label}
-          </Button>
+          </button>
         ))}
       </div>
     </div>

@@ -1,12 +1,15 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { db } from '@/lib/db';
 import { blogPosts } from '@/lib/db/schema';
 import { desc, isNull } from 'drizzle-orm';
 import { formatWIB } from '@/lib/utils/format-date';
+import { requireRole } from '@/lib/auth/check-role';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminBlogPage() {
+  await requireRole(['superadmin', 'owner']);
   const allPosts = await db.query.blogPosts.findMany({
     where: isNull(blogPosts.deletedAt),
     orderBy: [desc(blogPosts.createdAt)],
@@ -64,8 +67,13 @@ export default async function AdminBlogPage() {
                   <td className="px-6 py-4">
                     {post.coverImageUrl ? (
                       <div className="w-12 h-8 rounded overflow-hidden bg-gray-100">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={post.coverImageUrl} alt="" className="w-full h-full object-cover" />
+                        <Image
+                          src={post.coverImageUrl}
+                          alt=""
+                          width={48}
+                          height={32}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                     ) : (
                       <span className="text-xs text-gray-400">No cover</span>

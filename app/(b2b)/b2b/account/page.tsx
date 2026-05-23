@@ -157,7 +157,7 @@ export default function B2BAccountPage() {
                   href={`https://wa.me/${b2bProfile.assignedWaContact.replace(/\D/g, '')}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm text-[#25D366] hover:underline"
+                  className="inline-flex items-center gap-1 text-sm text-green-500 hover:underline"
                 >
                   <MessageCircle className="w-4 h-4" />
                   Hubungi Kami

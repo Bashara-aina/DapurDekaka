@@ -2,10 +2,12 @@ import { db } from '@/lib/db';
 import { orders } from '@/lib/db/schema';
 import { desc, eq, and, isNull } from 'drizzle-orm';
 import ShipmentsClient from './ShipmentsClient';
+import { requireRole } from '@/lib/auth/check-role';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ShipmentsPage() {
+  await requireRole(['superadmin', 'owner', 'warehouse']);
   const shippableOrders = await db.query.orders.findMany({
     where: and(
       isNull(orders.trackingNumber),

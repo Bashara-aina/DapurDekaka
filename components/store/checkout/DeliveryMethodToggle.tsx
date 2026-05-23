@@ -69,6 +69,7 @@ export function DeliveryMethodToggle({
           <div className="flex-1">
             <p className="font-medium">Ambil di Toko</p>
             <p className="text-sm text-text-secondary">
+              {/* TODO: Fetch pickup address from system_settings table */}
               Jl. Sinom V no. 7, Turangga, Bandung
             </p>
           </div>

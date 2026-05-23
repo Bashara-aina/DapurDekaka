@@ -2,20 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { orders, orderItems, productVariants, inventoryLogs, coupons, pointsHistory, users, orderStatusHistory } from '@/lib/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
-import { success, serverError, notFound, forbidden, conflict } from '@/lib/utils/api-response';
+import { success, serverError, notFound, forbidden, conflict, validationError } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
-import { z } from 'zod';
+import { z, ZodError } from 'zod';
 import { sendEmail } from '@/lib/resend/send-email';
 import { OrderShippedEmail } from '@/lib/resend/templates/OrderShipped';
 import { OrderDeliveredEmail } from '@/lib/resend/templates/OrderDelivered';
 import { OrderCancellationEmail } from '@/lib/resend/templates/OrderCancellation';
 import { formatWIB } from '@/lib/utils/format-date';
 import { logAdminActivity } from '@/lib/services/audit.service';
+import { refundTransaction } from '@/lib/midtrans/status';
+
+type OrderStatus = 'pending_payment' | 'paid' | 'processing' | 'packed' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const statusUpdateSchema = z.object({
-  status: z.enum(['processing', 'packed', 'shipped', 'delivered', 'cancelled']),
+  status: z.enum(['processing', 'packed', 'shipped', 'delivered', 'cancelled', 'refunded']),
   trackingNumber: z.string().optional(),
   trackingUrl: z.string().optional(),
   estimatedDays: z.string().optional(),
@@ -27,7 +30,7 @@ const statusUpdateSchema = z.object({
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   pending_payment: ['cancelled'],
-  paid: ['processing', 'cancelled'],
+  paid: ['processing', 'cancelled', 'refunded'],
   processing: ['packed', 'cancelled'],
   packed: ['shipped', 'cancelled'],
   shipped: ['delivered'],
@@ -36,8 +39,8 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
 // Warehouse can only do packed→shipped
 const WAREHOUSE_TRANSITIONS = ['shipped'];
 
-// Superadmin/owner can do all transitions
-const ADMIN_TRANSITIONS = ['processing', 'packed', 'shipped', 'delivered', 'cancelled'];
+// Superadmin/owner can do all transitions (including refund after Midtrans refund succeeds)
+const ADMIN_TRANSITIONS = ['processing', 'packed', 'shipped', 'delivered', 'cancelled', 'refunded'];
 
 export async function PATCH(
   req: NextRequest,
@@ -59,15 +62,7 @@ export async function PATCH(
     const parsed = statusUpdateSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Validasi gagal',
-          code: 'VALIDATION_ERROR',
-          details: parsed.error.flatten().fieldErrors,
-        },
-        { status: 422 }
-      );
+      return validationError(parsed.error);
     }
 
     const { status: newStatus, trackingNumber, trackingUrl, estimatedDays, cancellationReason } = parsed.data;
@@ -121,8 +116,10 @@ export async function PATCH(
       updateData.cancelledAt = new Date();
     }
 
-    // All status transitions (including cancellation) happen in a transaction
-    // to ensure order update, status history, and financial reversals are atomic
+    // All status transitions happen in a transaction
+    // to ensure order update, status history, and financial reversals are atomic.
+    // P0-09: For paid orders being cancelled, Midtrans refund is called inside the
+    // transaction body (after the optimistic lock) using midtransTransactionId.
     await db.transaction(async (tx) => {
       // Apply status update with optimistic lock — fails if status changed concurrently
       const [updatedOrder] = await tx
@@ -130,7 +127,7 @@ export async function PATCH(
         .set(updateData)
         .where(and(
           eq(orders.id, orderId),
-          eq(orders.status, currentStatus as any),
+          eq(orders.status, currentStatus as OrderStatus),
         ))
         .returning({ id: orders.id, status: orders.status });
 
@@ -141,8 +138,8 @@ export async function PATCH(
       // Write order status history for every transition
       await tx.insert(orderStatusHistory).values({
         orderId: order.id,
-        fromStatus: currentStatus as any,
-        toStatus: newStatus as any,
+        fromStatus: currentStatus as OrderStatus,
+        toStatus: newStatus as OrderStatus,
         changedByUserId: session.user.id,
         changedByType: 'admin',
         note: newStatus === 'cancelled'
@@ -160,23 +157,34 @@ export async function PATCH(
             const result = await tx
               .update(productVariants)
               .set({
-                stock: sql`stock + ${item.quantity}`,
+                stock: sql`GREATEST(stock + ${item.quantity}, 0)`,
                 updatedAt: new Date(),
               })
               .where(eq(productVariants.id, item.variantId))
               .returning({ newStock: productVariants.stock });
 
-            if (result[0]) {
-              await tx.insert(inventoryLogs).values({
-                variantId: item.variantId,
-                changeType: 'reversal',
-                quantityBefore: result[0].newStock - item.quantity,
-                quantityAfter: result[0].newStock,
-                quantityDelta: item.quantity,
-                orderId: order.id,
-                note: `Pembatalan pesanan ${order.orderNumber} oleh admin`,
-              });
+            if (!result[0]) {
+              throw new Error(`Stock restoration failed: variant ${item.variantId} not found`);
             }
+
+            await tx.insert(inventoryLogs).values({
+              variantId: item.variantId,
+              changeType: 'reversal',
+              quantityBefore: result[0].newStock - item.quantity,
+              quantityAfter: result[0].newStock,
+              quantityDelta: item.quantity,
+              orderId: order.id,
+              note: `Pembatalan pesanan ${order.orderNumber} oleh admin`,
+            });
+          }
+        }
+
+        // P0-09: If order was paid via Midtrans and has a transaction ID, call refund API
+        // Only Midtrans orders can be refunded — Net-30 B2B orders have no Midtrans transaction
+        if (order.paymentMethod === 'midtrans' && order.midtransTransactionId && ['paid', 'processing', 'packed', 'shipped', 'delivered'].includes(currentStatus)) {
+          const refundResult = await refundTransaction(order.midtransTransactionId, order.totalAmount);
+          if (!refundResult.success) {
+            throw new Error(`REFUND_FAILED:${refundResult.error ?? 'Unknown error'}`);
           }
         }
 
@@ -373,6 +381,10 @@ export async function PATCH(
     console.error('[admin/orders/status]', error);
     if (error instanceof Error && error.message === 'ORDER_STATUS_CHANGED_CONCURRENTLY') {
       return conflict('Status pesanan telah diubah oleh pengguna lain. Silakan refresh dan coba lagi.');
+    }
+    if (error instanceof Error && error.message.startsWith('REFUND_FAILED:')) {
+      const refundError = error.message.replace('REFUND_FAILED:', '');
+      return conflict('Refund gagal: ' + refundError + '. Pesanan tidak dibatalkan.');
     }
     return serverError(error);
   }

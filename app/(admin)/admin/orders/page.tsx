@@ -1,8 +1,8 @@
 import { db } from '@/lib/db';
 import { orders } from '@/lib/db/schema';
 import { desc, count, eq, and, sql } from 'drizzle-orm';
-import { auth } from '@/lib/auth';
 import OrdersClient from './OrdersClient';
+import { requireRole } from '@/lib/auth/check-role';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,8 +13,8 @@ interface PageProps {
 }
 
 export default async function OrdersPage({ searchParams }: PageProps) {
-  const session = await auth();
-  const userRole = (session?.user as { role?: string })?.role ?? '';
+  const session = await requireRole(['superadmin', 'owner', 'warehouse']);
+  const userRole = session.user.role ?? '';
   const params = await searchParams;
   const currentPage = Math.max(1, parseInt(params.page ?? '1', 10));
   const statusFilter = params.status ?? null;

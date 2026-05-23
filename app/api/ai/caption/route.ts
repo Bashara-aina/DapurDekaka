@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { auth } from '@/lib/auth';
 import { generateProductCaption } from '@/lib/services/minimax';
 import { IntegrationError } from '@/lib/utils/integration-helpers';
+import { success, serverError, unauthorized, forbidden, validationError } from '@/lib/utils/api-response';
 import { z } from 'zod';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -10,52 +11,32 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return unauthorized('Silakan login terlebih dahulu');
     }
     if (session.user.role !== 'superadmin') {
-      return NextResponse.json(
-        { success: false, error: 'Forbidden - Superadmin only', code: 'FORBIDDEN' },
-        { status: 403 }
-      );
+      return forbidden('Hanya superadmin yang dapat mengakses');
     }
 
     const body = await req.json();
-    const schema = z.object({
+    const AICaptionSchema = z.object({
       productName: z.string().min(1),
       productDescription: z.string().min(10),
       language: z.enum(['id', 'en']).default('id'),
       tone: z.enum(['professional', 'playful', 'luxurious', 'warm']).default('warm'),
     });
-    const parsed = schema.safeParse(body);
+    const parsed = AICaptionSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
-        { success: false, error: 'Validation failed', code: 'VALIDATION_ERROR', details: parsed.error.flatten().fieldErrors },
-        { status: 422 }
-      );
+      return validationError(parsed.error);
     }
 
-    const caption = await generateProductCaption({
-      productName: parsed.data.productName,
-      productDescription: parsed.data.productDescription,
-      language: parsed.data.language,
-      tone: parsed.data.tone,
-    });
+    const caption = await generateProductCaption(parsed.data);
 
-    return NextResponse.json({ success: true, data: { caption } });
+    return success({ caption });
   } catch (error) {
     console.error('[AI Caption POST]', error);
     if (error instanceof IntegrationError || (error as Error).message.includes('Minimax')) {
-      return NextResponse.json(
-        { success: false, error: 'AI service unavailable, please try again later', code: 'AI_SERVICE_ERROR' },
-        { status: 503 }
-      );
+      return serverError(new Error('AI service unavailable, please try again later'));
     }
-    return NextResponse.json(
-      { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    );
+    return serverError(error);
   }
 }

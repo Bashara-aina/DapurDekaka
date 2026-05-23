@@ -281,7 +281,7 @@ export default async function B2BLandingPage() {
             href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER}?text=Halo%20Dapur%20Dekaka,%20saya%20tertarik%20untuk%20kerjasama%20B2B`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center h-12 px-6 bg-[#25D366] text-white font-bold rounded-lg hover:bg-[#20BD5A] transition-colors"
+            className="inline-flex items-center h-12 px-6 bg-green-500 text-white font-bold rounded-lg hover:bg-green-600 transition-colors"
           >
             Chat via WhatsApp
           </a>

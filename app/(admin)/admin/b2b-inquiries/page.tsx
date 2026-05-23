@@ -1,14 +1,26 @@
 import { db } from '@/lib/db';
 import { b2bInquiries } from '@/lib/db/schema';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, asc } from 'drizzle-orm';
 import Link from 'next/link';
 import { B2BInquiryStatusClient } from './B2BInquiryStatusClient';
+import { requireRole } from '@/lib/auth/check-role';
+import { formatWIB } from '@/lib/utils/format-date';
 
 export const dynamic = 'force-dynamic';
 
-async function getInquiries() {
+interface PageProps {
+  searchParams: Promise<{ sort?: string; dir?: string }>;
+}
+
+async function getInquiries(sortField = 'createdAt', sortDir: 'asc' | 'desc' = 'desc') {
+  const orderBy = sortField === 'companyName'
+    ? sortDir === 'asc' ? asc(b2bInquiries.companyName) : desc(b2bInquiries.companyName)
+    : sortField === 'status'
+    ? sortDir === 'asc' ? asc(b2bInquiries.status) : desc(b2bInquiries.status)
+    : sortDir === 'asc' ? asc(b2bInquiries.createdAt) : desc(b2bInquiries.createdAt);
+
   return await db.query.b2bInquiries.findMany({
-    orderBy: [desc(b2bInquiries.createdAt)],
+    orderBy: [orderBy],
   });
 }
 
@@ -19,8 +31,19 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
   rejected: { label: 'Ditolak', className: 'bg-slate-200 text-slate-600' },
 };
 
-export default async function B2BInquiriesPage() {
-  const inquiries = await getInquiries();
+export default async function B2BInquiriesPage({ searchParams }: PageProps) {
+  await requireRole(['superadmin', 'owner']);
+  const params = await searchParams;
+  const sortField = params.sort ?? 'createdAt';
+  const sortDir = (params.dir ?? 'desc') as 'asc' | 'desc';
+  const inquiries = await getInquiries(sortField, sortDir);
+
+  function sortUrl(field: string) {
+    const base = new URLSearchParams();
+    base.set('sort', field);
+    base.set('dir', field === sortField && sortDir === 'desc' ? 'asc' : 'desc');
+    return `?${base.toString()}`;
+  }
 
   return (
     <div>
@@ -40,7 +63,10 @@ export default async function B2BInquiriesPage() {
             <thead className="bg-slate-50 border-b border-admin-border">
               <tr>
                 <th className="text-left px-4 py-3 text-xs font-medium text-admin-text-secondary uppercase tracking-wider">
-                  Perusahaan
+                  <a href={sortUrl('companyName')} className="flex items-center gap-1 hover:text-brand-red">
+                    Perusahaan
+                    {sortField === 'companyName' && (sortDir === 'asc' ? ' ↑' : ' ↓')}
+                  </a>
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-admin-text-secondary uppercase tracking-wider">
                   Kontak
@@ -49,10 +75,16 @@ export default async function B2BInquiriesPage() {
                   Volume
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-admin-text-secondary uppercase tracking-wider">
-                  Status
+                  <a href={sortUrl('status')} className="flex items-center gap-1 hover:text-brand-red">
+                    Status
+                    {sortField === 'status' && (sortDir === 'asc' ? ' ↑' : ' ↓')}
+                  </a>
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-admin-text-secondary uppercase tracking-wider">
-                  Tanggal
+                  <a href={sortUrl('createdAt')} className="flex items-center gap-1 hover:text-brand-red">
+                    Tanggal
+                    {sortField === 'createdAt' && (sortDir === 'asc' ? ' ↑' : ' ↓')}
+                  </a>
                 </th>
                 <th className="text-right px-4 py-3 text-xs font-medium text-admin-text-secondary uppercase tracking-wider">
                   Aksi
@@ -92,11 +124,7 @@ export default async function B2BInquiriesPage() {
                     </td>
                     <td className="px-4 py-3">
                       <p className="text-sm text-admin-text-secondary">
-                        {new Date(inquiry.createdAt).toLocaleDateString('id-ID', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
+                        {formatWIB(inquiry.createdAt)}
                       </p>
                     </td>
                     <td className="px-4 py-3 text-right">

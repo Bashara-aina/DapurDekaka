@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { User, CheckCircle, AlertCircle } from 'lucide-react';
 import { useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils/cn';
 
 const profileFormSchema = z.object({
@@ -51,6 +52,8 @@ interface UserProfile {
 }
 
 export default function AccountProfilePage() {
+  const t = useTranslations('account');
+  const tAuth = useTranslations('auth');
   const { data: session, update } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
@@ -113,7 +116,7 @@ export default function AccountProfilePage() {
         setValue('languagePreference', response.data.languagePreference || 'id');
       }
     } catch {
-      setServerError('Gagal memuat profil');
+      setServerError(t('loadProfileError') || 'Gagal memuat profil');
     } finally {
       setIsFetching(false);
     }
@@ -121,8 +124,7 @@ export default function AccountProfilePage() {
 
   useEffect(() => {
     fetchProfile();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [t]);
 
   const onSubmit = async (data: ProfileFormData) => {
     setIsLoading(true);
@@ -145,12 +147,12 @@ export default function AccountProfilePage() {
       const response = await res.json();
 
       if (!response.success) {
-        setServerError(response.error || 'Gagal memperbarui profil');
+        setServerError(response.error || t('updateProfileError') || 'Gagal memperbarui profil');
         return;
       }
 
       setProfile(response.data);
-      setServerSuccess('Profil berhasil diperbarui');
+      setServerSuccess(t('updateProfileSuccess') || 'Profil berhasil diperbarui');
 
       if (session?.user) {
         await update({
@@ -163,7 +165,7 @@ export default function AccountProfilePage() {
 
       setTimeout(() => setServerSuccess(null), 4000);
     } catch {
-      setServerError('Terjadi kesalahan. Silakan coba lagi.');
+      setServerError(t('updateProfileError') || 'Terjadi kesalahan. Silakan coba lagi.');
     } finally {
       setIsLoading(false);
     }
@@ -187,15 +189,15 @@ export default function AccountProfilePage() {
       const response = await res.json();
 
       if (!response.success) {
-        setPasswordError(response.error || 'Gagal memperbarui password');
+        setPasswordError(response.error || t('updatePasswordError') || 'Gagal memperbarui password');
         return;
       }
 
-      setPasswordSuccess('Password berhasil diperbarui');
+      setPasswordSuccess(t('updatePasswordSuccess') || 'Password berhasil diperbarui');
       resetChangePassword();
       setTimeout(() => setPasswordSuccess(null), 4000);
     } catch {
-      setPasswordError('Terjadi kesalahan. Silakan coba lagi.');
+      setPasswordError(t('updatePasswordError') || 'Terjadi kesalahan. Silakan coba lagi.');
     } finally {
       setIsPasswordLoading(false);
     }
@@ -218,17 +220,16 @@ export default function AccountProfilePage() {
       const response = await res.json();
 
       if (!response.success) {
-        setPasswordError(response.error || 'Gagal membuat password');
+        setPasswordError(response.error || t('createPasswordError') || 'Gagal membuat password');
         return;
       }
 
-      setPasswordSuccess('Password berhasil dibuat');
+      setPasswordSuccess(t('createPasswordSuccess') || 'Password berhasil dibuat');
       resetSetPassword();
-      // Refresh profile to update hasPassword
       await fetchProfile();
       setTimeout(() => setPasswordSuccess(null), 4000);
     } catch {
-      setPasswordError('Terjadi kesalahan. Silakan coba lagi.');
+      setPasswordError(t('createPasswordError') || 'Terjadi kesalahan. Silakan coba lagi.');
     } finally {
       setIsPasswordLoading(false);
     }
@@ -254,8 +255,8 @@ export default function AccountProfilePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-bold text-text-primary">Profil Saya</h1>
-        <p className="text-text-secondary text-sm mt-1">Kelola informasi akun kamu</p>
+        <h1 className="font-display text-2xl font-bold text-text-primary">{t('profile')}</h1>
+        <p className="text-text-secondary text-sm mt-1">{t('profile')}</p>
       </div>
 
       {/* Success/Error Alerts */}
@@ -280,8 +281,8 @@ export default function AccountProfilePage() {
             <User className="w-5 h-5 text-brand-red" />
           </div>
           <div>
-            <h2 className="font-display font-semibold text-text-primary">Informasi Akun</h2>
-            <p className="text-xs text-text-secondary">Perbarui data diri kamu</p>
+            <h2 className="font-display font-semibold text-text-primary">{t('editProfile')}</h2>
+            <p className="text-xs text-text-secondary">{t('editProfile')}</p>
           </div>
         </div>
 
@@ -289,7 +290,7 @@ export default function AccountProfilePage() {
           {/* Email (read-only) */}
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">
-              Email
+              {tAuth('email')}
             </label>
             <input
               type="email"
@@ -298,7 +299,7 @@ export default function AccountProfilePage() {
               className="w-full h-11 px-3 border border-brand-cream-dark rounded-lg bg-gray-50 text-text-disabled cursor-not-allowed"
             />
             <p className="text-xs text-text-disabled mt-1">
-              Email tidak dapat diubah
+              {t('emailCannotChange') || 'Email tidak dapat diubah'}
             </p>
           </div>
 
@@ -307,7 +308,7 @@ export default function AccountProfilePage() {
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-amber-700">
-                Nomor HP belum diisi. Silakan tambahkan nomor HP untuk menerima notifikasi pesanan.
+                {t('phoneMissingWarning') || 'Nomor HP belum diisi. Silakan tambahkan nomor HP untuk menerima notifikasi pesanan.'}
               </p>
             </div>
           )}
@@ -315,12 +316,12 @@ export default function AccountProfilePage() {
           {/* Name */}
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">
-              Nama Lengkap *
+              {t('fullName') || 'Nama Lengkap'} *
             </label>
             <input
               {...register('name')}
               type="text"
-              placeholder="Masukkan nama lengkap"
+              placeholder={t('enterFullName') || 'Masukkan nama lengkap'}
               className={cn(
                 'w-full h-11 px-3 border rounded-lg outline-none transition-colors',
                 'focus:border-brand-red focus:ring-2 focus:ring-brand-red/10',
@@ -337,7 +338,7 @@ export default function AccountProfilePage() {
           {/* Phone */}
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">
-              Nomor HP
+              {t('phoneNumber')}
             </label>
             <input
               {...register('phone')}
@@ -359,11 +360,13 @@ export default function AccountProfilePage() {
           {/* Language Preference */}
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">
-              Bahasa
+              {t('language') || 'Bahasa'}
             </label>
             <div className="flex items-center gap-2 h-11 px-3 border border-brand-cream-dark rounded-lg bg-gray-50">
               <span>🇮🇩 Indonesia</span>
-              <span className="ml-auto text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Bahasa Inggris segera hadir</span>
+              <span className="ml-auto text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                {t('englishComingSoon') || 'Bahasa Inggris segera hadir'}
+              </span>
             </div>
           </div>
 
@@ -373,7 +376,7 @@ export default function AccountProfilePage() {
             disabled={isLoading}
             className="w-full h-12 bg-brand-red text-white font-bold rounded-button disabled:opacity-50 hover:bg-brand-red-dark transition-colors"
           >
-            {isLoading ? 'Memproses...' : 'Simpan Perubahan'}
+            {isLoading ? t('processing') : t('saveChanges')}
           </button>
         </form>
       </div>
@@ -387,8 +390,8 @@ export default function AccountProfilePage() {
               <User className="w-5 h-5 text-brand-red" />
             </div>
             <div>
-              <h2 className="font-display font-semibold text-text-primary">Ubah Password</h2>
-              <p className="text-xs text-text-secondary">Perbarui password akun kamu</p>
+              <h2 className="font-display font-semibold text-text-primary">{t('changePassword') || 'Ubah Password'}</h2>
+              <p className="text-xs text-text-secondary">{t('changePassword') || 'Perbarui password akun kamu'}</p>
             </div>
           </div>
 
@@ -409,11 +412,11 @@ export default function AccountProfilePage() {
 
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1">
-                Password Saat Ini
+                {t('currentPassword') || 'Password Saat Ini'}
               </label>
               <input
                 type="password"
-                placeholder="Masukkan password saat ini"
+                placeholder={t('enterCurrentPassword') || 'Masukkan password saat ini'}
                 {...registerChangePassword('currentPassword')}
                 className={cn(
                   'w-full h-11 px-3 border rounded-lg outline-none transition-colors',
@@ -430,11 +433,11 @@ export default function AccountProfilePage() {
 
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1">
-                Password Baru
+                {t('newPassword') || 'Password Baru'}
               </label>
               <input
                 type="password"
-                placeholder="Minimal 8 karakter"
+                placeholder={t('minCharsPassword') || 'Minimal 8 karakter'}
                 {...registerChangePassword('newPassword')}
                 className={cn(
                   'w-full h-11 px-3 border rounded-lg outline-none transition-colors',
@@ -451,11 +454,11 @@ export default function AccountProfilePage() {
 
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1">
-                Konfirmasi Password Baru
+                {t('confirmNewPassword') || 'Konfirmasi Password Baru'}
               </label>
               <input
                 type="password"
-                placeholder="Masukkan password baru lagi"
+                placeholder={t('enterNewPasswordAgain') || 'Masukkan password baru lagi'}
                 {...registerChangePassword('confirmPassword')}
                 className={cn(
                   'w-full h-11 px-3 border rounded-lg outline-none transition-colors',
@@ -475,7 +478,7 @@ export default function AccountProfilePage() {
               disabled={isPasswordLoading}
               className="w-full h-12 bg-brand-red text-white font-bold rounded-button disabled:opacity-50 hover:bg-brand-red-dark transition-colors"
             >
-              {isPasswordLoading ? 'Memproses...' : 'Ubah Password'}
+              {isPasswordLoading ? t('processing') : t('changePassword') || 'Ubah Password'}
             </button>
           </form>
         </div>
@@ -487,8 +490,8 @@ export default function AccountProfilePage() {
               <User className="w-5 h-5 text-brand-red" />
             </div>
             <div>
-              <h2 className="font-display font-semibold text-text-primary">Buat Password</h2>
-              <p className="text-xs text-text-secondary">Akun kamu terhubung via Google</p>
+              <h2 className="font-display font-semibold text-text-primary">{t('createPassword') || 'Buat Password'}</h2>
+              <p className="text-xs text-text-secondary">{t('createPassword') || 'Akun kamu terhubung via Google'}</p>
             </div>
           </div>
 
@@ -500,12 +503,12 @@ export default function AccountProfilePage() {
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
-              <span>Terhubung dengan Google ({session?.user?.email})</span>
+              <span>{t('connectedWithGoogle', { email: session?.user?.email }) || `Terhubung dengan Google (${session?.user?.email})`}</span>
             </div>
           )}
 
           <p className="text-sm text-text-secondary mb-4">
-            Buat password untuk bisa masuk dengan email juga.
+            {t('createPasswordDesc') || 'Buat password untuk bisa masuk dengan email juga.'}
           </p>
 
           <form onSubmit={handleSubmitSetPassword(handleSetPassword)} className="space-y-5">
@@ -525,11 +528,11 @@ export default function AccountProfilePage() {
 
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1">
-                Password Baru
+                {t('newPassword') || 'Password Baru'}
               </label>
               <input
                 type="password"
-                placeholder="Minimal 8 karakter"
+                placeholder={t('minCharsPassword') || 'Minimal 8 karakter'}
                 {...registerSetPassword('newPassword')}
                 className={cn(
                   'w-full h-11 px-3 border rounded-lg outline-none transition-colors',
@@ -546,11 +549,11 @@ export default function AccountProfilePage() {
 
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1">
-                Konfirmasi Password Baru
+                {t('confirmNewPassword') || 'Konfirmasi Password Baru'}
               </label>
               <input
                 type="password"
-                placeholder="Masukkan password baru lagi"
+                placeholder={t('enterNewPasswordAgain') || 'Masukkan password baru lagi'}
                 {...registerSetPassword('confirmPassword')}
                 className={cn(
                   'w-full h-11 px-3 border rounded-lg outline-none transition-colors',
@@ -570,7 +573,7 @@ export default function AccountProfilePage() {
               disabled={isPasswordLoading}
               className="w-full h-12 bg-brand-red text-white font-bold rounded-button disabled:opacity-50 hover:bg-brand-red-dark transition-colors"
             >
-              {isPasswordLoading ? 'Memproses...' : 'Buat Password'}
+              {isPasswordLoading ? t('processing') : t('createPassword') || 'Buat Password'}
             </button>
           </form>
         </div>

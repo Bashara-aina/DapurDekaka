@@ -1,8 +1,9 @@
-import type { NextAuthConfig } from 'next-auth';
+import type { NextAuthConfig, Session } from 'next-auth';
 import type { Adapter } from 'next-auth/adapters';
 import Google from 'next-auth/providers/google';
 import Credentials from 'next-auth/providers/credentials';
 import { DrizzleAdapter } from '@auth/drizzle-adapter';
+import NextAuth from 'next-auth';
 import { db } from '@/lib/db';
 import { users, accounts, sessions, verificationTokens } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -14,14 +15,18 @@ if (!googleId || !googleSecret) {
   throw new Error('AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET must be set');
 }
 
+// DrizzleAdapter expects specific table column names; our schema uses camelCase throughout.
+// These type assertions are safe at runtime — the adapter accesses columns by name string.
 const adapter = DrizzleAdapter(db, {
   usersTable: users,
-  accountsTable: accounts as any, // our schema uses camelCase keys; runtime access matches
-  sessionsTable: sessions as any, // our schema uses `id` PK; sessionToken has unique constraint
+  // @ts-expect-error – DrizzleAdapter accountsTable schema differs from our camelCase columns
+  accountsTable: accounts,
+  // @ts-expect-error – DrizzleAdapter sessionsTable schema differs from our id PK
+  sessionsTable: sessions,
   verificationTokensTable: verificationTokens,
 }) as Adapter;
 
-export const authConfig: NextAuthConfig = {
+export const authConfig = {
   adapter,
   trustHost: true,
   pages: { signIn: '/login', error: '/login' },
@@ -51,12 +56,9 @@ export const authConfig: NextAuthConfig = {
       },
     }),
   ],
-  session: { strategy: 'database' },
+  session: { strategy: 'database', secure: process.env.NODE_ENV === 'production' },
   callbacks: {
     async session({ session, user }) {
-      if (typeof window === 'undefined') {
-        console.log('[Auth Session Callback]', { hasUser: !!user, hasSession: !!session, sessionUser: session?.user });
-      }
       if (!session.user) return session;
       if (user?.id) {
         session.user.id = user.id as string;
@@ -65,18 +67,21 @@ export const authConfig: NextAuthConfig = {
           columns: { role: true, isActive: true, name: true },
         });
         if (!dbUser) {
-          console.warn('[Auth] User not found in DB:', user.id);
-          return {} as typeof session;
+          return null as unknown as Session;
         }
         if (dbUser.role) {
           session.user.role = dbUser.role;
         }
         if (dbUser.isActive === false) {
-          console.warn('[Auth] User isActive=false, clearing session');
-          return {} as typeof session;
+          // Distinguish "inactive user" from "not logged in" — return session with flag
+          session.user.isActive = false;
         }
       }
       return session;
     },
   },
-};
+} as NextAuthConfig;
+
+const { handlers, auth } = NextAuth(authConfig);
+
+export { handlers, auth };

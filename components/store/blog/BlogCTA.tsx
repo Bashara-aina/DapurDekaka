@@ -18,7 +18,7 @@ export function BlogCTA() {
           href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER}?text=Halo! Saya tertarik dengan produk Dapur Dekaka`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#25D366] text-white text-sm font-medium rounded-button hover:bg-[#20BD5A] transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-green-500 text-white text-sm font-medium rounded-button hover:bg-green-600 transition-colors"
         >
           <span>💬</span> Chat WhatsApp
         </a>

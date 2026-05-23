@@ -1,5 +1,6 @@
 import { Tag, Clock, Percent } from 'lucide-react';
 import type { Coupon } from '@/lib/db/schema';
+import { formatIDR } from '@/lib/utils/format-currency';
 
 interface VoucherCardProps {
   voucher: Coupon;
@@ -9,15 +10,6 @@ interface VoucherCardProps {
 }
 
 export function VoucherCard({ voucher, type = 'available', discountApplied, usedAt }: VoucherCardProps) {
-  const formatIDR = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString('id-ID', {
       day: 'numeric',

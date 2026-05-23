@@ -1,6 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getCitiesByProvince } from '@/lib/rajaongkir/cities';
 import { z } from 'zod';
+import { success, validationError, serverError, badRequest } from '@/lib/utils/api-response';
+import { checkRateLimitAsync } from '@/lib/utils/rate-limit';
+import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -9,25 +12,25 @@ const querySchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
+  const ip = req.ip || req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
+  const rateLimit = await checkRateLimitAsync(ip, 30, '1 m');
+  if (!rateLimit.success) {
+    return badRequest('Terlalu banyak permintaan. Silakan coba lagi nanti.');
+  }
+
   try {
     const { searchParams } = req.nextUrl;
     const provinceId = searchParams.get('provinceId');
 
     const parsed = querySchema.safeParse({ provinceId });
     if (!parsed.success) {
-      return NextResponse.json(
-        { success: false, error: 'provinceId diperlukan', code: 'VALIDATION_ERROR' },
-        { status: 422 }
-      );
+      return validationError(parsed.error);
     }
 
     const cities = await getCitiesByProvince(parsed.data.provinceId);
-    return NextResponse.json({ success: true, data: cities });
+    return success(cities);
   } catch (error) {
-    console.error('[API/shipping/cities]', error);
-    return NextResponse.json(
-      { success: false, error: 'Gagal mengambil daftar kota', code: 'CITIES_ERROR' },
-      { status: 500 }
-    );
+    logger.error('[API/shipping/cities]', { error: error instanceof Error ? error.message : String(error) });
+    return serverError(error);
   }
 }

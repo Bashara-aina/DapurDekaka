@@ -1,17 +1,41 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { ALLOWED_COURIERS, MIN_WEIGHT_GRAM } from '@/lib/constants/couriers';
+import { NextRequest } from 'next/server';
+import { ALLOWED_COURIERS, MIN_WEIGHT_GRAM, RAJAONGKIR_STARTER_ORIGIN_ID } from '@/lib/constants/couriers';
 import { success, serverError, validationError } from '@/lib/utils/api-response';
 import { z } from 'zod';
-import { getSetting } from '@/lib/settings/get-settings';
+import { getSetting, getSettings } from '@/lib/settings/get-settings';
+import { logger } from '@/lib/utils/logger';
+import { withRateLimit } from '@/lib/utils/rate-limit';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+/**
+ * RajaOngkir Starter tier weight limit.
+ * Requests above this are rejected with a helpful message.
+ */
+const RAJAONGKIR_STARTER_WEIGHT_LIMIT_KG = 30;
+
 const costSchema = z.object({
-  destination: z.string(),
-  weight: z.number().int().positive(),
+  destination: z
+    .string()
+    .min(1, 'Destination city ID diperlukan')
+    .regex(/^\d+$/, 'Destination city ID harus berupa angka'),
+  weight: z.number().int().positive().max(30000, 'Berat maksimal 30 kg untuk pengiriman frozen'),
 });
 
-export async function POST(req: NextRequest) {
+// Simple in-memory cache for this route handler (60s TTL)
+let settingsCache: { data: Record<string, string>; expiresAt: number } | null = null;
+const SETTINGS_CACHE_TTL_MS = 60_000;
+
+async function getCachedSettings(keys: string[]): Promise<Record<string, string>> {
+  if (settingsCache && settingsCache.expiresAt > Date.now()) {
+    return settingsCache.data;
+  }
+  const data = await getSettings(keys);
+  settingsCache = { data, expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS };
+  return data;
+}
+
+export const POST = withRateLimit(async (req: NextRequest) => {
   try {
     const body = await req.json();
     const parsed = costSchema.safeParse(body);
@@ -22,24 +46,29 @@ export async function POST(req: NextRequest) {
 
     const { destination, weight } = parsed.data;
     const billableWeight = Math.max(weight, MIN_WEIGHT_GRAM);
-    const weightInKg = Math.ceil(billableWeight / 100) * 100;
+    // RajaOngkir Starter API expects weight in grams
+    const weightInGrams = Math.ceil(billableWeight / 100) * 100;
 
-    const [apiKey, originCityId, whatsappNumber] = await Promise.all([
-      Promise.resolve(process.env.RAJAONGKIR_API_KEY),
-      getSetting('rajaongkir_origin_city_id'),
-      getSetting('store_whatsapp_number'),
-    ]);
+    // Batch-fetch all settings in one DB query
+    const settings = await getCachedSettings(['rajaongkir_origin_city_id', 'store_whatsapp_number']);
 
+    const apiKey = process.env.RAJAONGKIR_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({
-        success: false,
-        error: 'RajaOngkir API not configured',
-        code: 'CONFIG_ERROR',
-      }, { status: 500 });
+      return serverError(new Error('RajaOngkir API not configured'));
     }
 
-    const origin = originCityId ?? '23';
-    const waNumber = whatsappNumber ?? process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '6281234567890';
+    // RajaOngkir Starter only supports origin 501 (Jakarta). Hardcode to prevent API errors.
+    const origin = RAJAONGKIR_STARTER_ORIGIN_ID;
+    const waNumber = settings.store_whatsapp_number ?? process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '6281234567890';
+
+    // Weight limit guard — RajaOngkir Starter API caps at 30kg
+    if (weightInGrams > RAJAONGKIR_STARTER_WEIGHT_LIMIT_KG * 1000) {
+      return success({
+        services: [],
+        message: 'Maaf, berat pesanan melebihi batas pengiriman frozen (30 kg). Silakan hubungi kami via WhatsApp untuk solusi pengiriman khusus.',
+        whatsappUrl: `https://wa.me/${waNumber}`,
+      });
+    }
 
     const results = [];
 
@@ -54,7 +83,7 @@ export async function POST(req: NextRequest) {
           body: JSON.stringify({
             origin,
             destination,
-            weight: weightInKg,
+            weight: weightInGrams,
             courier: courier.code,
           }),
         });
@@ -78,23 +107,22 @@ export async function POST(req: NextRequest) {
           }
         }
       } catch (e) {
-        console.error(`[RajaOngkir] Error for ${courier.code}:`, e);
+        logger.error(`[RajaOngkir] Error for ${courier.code}`, { error: e instanceof Error ? e.message : String(e) });
       }
     }
 
     if (results.length === 0) {
-      return NextResponse.json({
-        success: false,
-        error: 'Mohon maaf, layanan pengiriman frozen ke daerah Anda belum tersedia. Silakan hubungi kami via WhatsApp untuk solusi pengiriman khusus.',
-        code: 'NO_SERVICE',
+      return success({
+        services: [],
+        message: 'Mohon maaf, layanan pengiriman frozen ke daerah Anda belum tersedia. Silakan hubungi kami via WhatsApp untuk solusi pengiriman khusus.',
         whatsappUrl: `https://wa.me/${waNumber}`,
-      }, { status: 200 });
+      });
     }
 
     return success({ services: results });
 
   } catch (error) {
-    console.error('[shipping/cost]', error);
+    logger.error('[shipping/cost]', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
-}
+}, { windowMs: 60000, maxRequests: 20 });

@@ -11,8 +11,18 @@ interface FeaturedProductsProps {
     nameId: string;
     nameEn: string;
     slug: string;
-    variants: { id: string; price: number; stock: number; nameId: string }[];
-    images: { cloudinaryUrl: string }[];
+    isHalal: boolean;
+    variants: Array<{
+      id: string;
+      nameId: string;
+      nameEn: string;
+      sku: string;
+      price: number;
+      stock: number;
+      weightGram: number;
+      isActive: boolean;
+    }>;
+    images: Array<{ cloudinaryUrl: string | null }>;
   }[];
 }
 
@@ -69,9 +79,10 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
                   nameId: product.nameId,
                   nameEn: product.nameEn,
                   slug: product.slug,
-                  imageUrl: image?.cloudinaryUrl,
-                } as never}
-                variant={variant as never}
+                  isHalal: product.isHalal,
+                  imageUrl: image?.cloudinaryUrl ?? undefined,
+                }}
+                variant={variant}
               />
             );
           })}
@@ -156,9 +167,10 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
                     nameId: product.nameId,
                     nameEn: product.nameEn,
                     slug: product.slug,
-                    imageUrl: image?.cloudinaryUrl,
-                  } as never}
-                  variant={variant as never}
+                    isHalal: product.isHalal,
+                    imageUrl: image?.cloudinaryUrl ?? undefined,
+                  }}
+                  variant={variant}
                 />
               </MotionFn.div>
             );
@@ -186,9 +198,10 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
                   nameId: product.nameId,
                   nameEn: product.nameEn,
                   slug: product.slug,
-                  imageUrl: image?.cloudinaryUrl,
-                } as never}
-                variant={variant as never}
+                  isHalal: product.isHalal,
+                  imageUrl: image?.cloudinaryUrl ?? undefined,
+                }}
+                variant={variant}
               />
             </MotionFn.div>
           );

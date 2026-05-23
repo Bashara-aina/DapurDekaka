@@ -3,11 +3,13 @@ import { db } from '@/lib/db';
 import { products, productVariants } from '@/lib/db/schema';
 import { desc, eq, isNull } from 'drizzle-orm';
 import { Plus } from 'lucide-react';
+import { requireAdmin } from '@/lib/auth/require-admin';
 import ProductsClient from './ProductsClient';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ProductsPage() {
+  await requireAdmin(['superadmin', 'owner']);
   const allProducts = await db.query.products.findMany({
     where: isNull(products.deletedAt),
     orderBy: [desc(products.createdAt)],

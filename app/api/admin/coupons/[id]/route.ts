@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { coupons } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
+import { success, notFound, serverError, unauthorized, forbidden, validationError, conflict } from '@/lib/utils/api-response';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -14,36 +15,24 @@ export async function GET(
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return unauthorized('Silakan login terlebih dahulu');
     }
     if (session.user.role !== 'superadmin') {
-      return NextResponse.json(
-        { success: false, error: 'Forbidden', code: 'FORBIDDEN' },
-        { status: 403 }
-      );
+      return forbidden('Anda tidak memiliki akses');
     }
 
     const coupon = await db.query.coupons.findFirst({
-      where: eq(coupons.id, params.id),
+      where: and(eq(coupons.id, params.id), isNull(coupons.deletedAt)),
     });
 
     if (!coupon) {
-      return NextResponse.json(
-        { success: false, error: 'Kupon tidak ditemukan', code: 'NOT_FOUND' },
-        { status: 404 }
-      );
+      return notFound('Kupon tidak ditemukan');
     }
 
-    return NextResponse.json({ success: true, data: coupon });
+    return success(coupon);
   } catch (error) {
     console.error('[Admin Coupon GET]', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    );
+    return serverError(error);
   }
 }
 
@@ -75,35 +64,23 @@ export async function PUT(
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return unauthorized('Silakan login terlebih dahulu');
     }
     if (session.user.role !== 'superadmin') {
-      return NextResponse.json(
-        { success: false, error: 'Forbidden', code: 'FORBIDDEN' },
-        { status: 403 }
-      );
+      return forbidden('Anda tidak memiliki akses');
     }
 
     const body = await req.json();
     const parsed = UpdateCouponSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
-        { success: false, error: 'Validation failed', code: 'VALIDATION_ERROR', details: parsed.error.flatten().fieldErrors },
-        { status: 422 }
-      );
+      return validationError(parsed.error);
     }
 
     const existing = await db.query.coupons.findFirst({
-      where: eq(coupons.id, params.id),
+      where: and(eq(coupons.id, params.id), isNull(coupons.deletedAt)),
     });
     if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'Kupon tidak ditemukan', code: 'NOT_FOUND' },
-        { status: 404 }
-      );
+      return notFound('Kupon tidak ditemukan');
     }
 
     if (parsed.data.code && parsed.data.code.toUpperCase() !== existing.code) {
@@ -111,10 +88,7 @@ export async function PUT(
         where: eq(coupons.code, parsed.data.code.toUpperCase()),
       });
       if (duplicate) {
-        return NextResponse.json(
-          { success: false, error: 'Kode kupon sudah digunakan', code: 'DUPLICATE_CODE' },
-          { status: 409 }
-        );
+        return conflict('Kode kupon sudah digunakan');
       }
     }
 
@@ -148,13 +122,10 @@ export async function PUT(
       .where(eq(coupons.id, params.id))
       .returning();
 
-    return NextResponse.json({ success: true, data: updated });
+    return success(updated);
   } catch (error) {
     console.error('[Admin Coupon PUT]', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    );
+    return serverError(error);
   }
 }
 
@@ -165,36 +136,27 @@ export async function DELETE(
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return unauthorized('Silakan login terlebih dahulu');
     }
     if (session.user.role !== 'superadmin') {
-      return NextResponse.json(
-        { success: false, error: 'Forbidden', code: 'FORBIDDEN' },
-        { status: 403 }
-      );
+      return forbidden('Anda tidak memiliki akses');
     }
 
     const existing = await db.query.coupons.findFirst({
-      where: eq(coupons.id, params.id),
+      where: and(eq(coupons.id, params.id), isNull(coupons.deletedAt)),
     });
     if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'Kupon tidak ditemukan', code: 'NOT_FOUND' },
-        { status: 404 }
-      );
+      return notFound('Kupon tidak ditemukan');
     }
 
-    await db.delete(coupons).where(eq(coupons.id, params.id));
+    await db
+      .update(coupons)
+      .set({ deletedAt: new Date() })
+      .where(eq(coupons.id, params.id));
 
-    return NextResponse.json({ success: true, data: { id: params.id } });
+    return success({ id: params.id });
   } catch (error) {
     console.error('[Admin Coupon DELETE]', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    );
+    return serverError(error);
   }
 }

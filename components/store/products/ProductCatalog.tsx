@@ -3,7 +3,15 @@
 import { useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { ProductCard } from '@/components/store/products/ProductCard';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import type { Product, ProductVariant } from '@/lib/db/schema';
 import { productImages } from '@/lib/db/schema';
 
@@ -36,18 +44,20 @@ interface ProductCatalogProps {
   categories: { id: string; nameId: string; slug: string }[];
   initialCategory?: string;
   initialSearch?: string;
+  nextCursor?: string | null;
 }
 
 type SortOption = 'default' | 'price_asc' | 'price_desc' | 'newest';
 
-const SORT_OPTIONS: { value: SortOption; label: string }[] = [
-  { value: 'default', label: 'Sortir: Default' },
-  { value: 'price_asc', label: 'Harga: Rendah → Tinggi' },
-  { value: 'price_desc', label: 'Harga: Tinggi → Rendah' },
-  { value: 'newest', label: 'Terbaru' },
+const SORT_OPTIONS: { value: SortOption; labelKey: string }[] = [
+  { value: 'default', labelKey: 'sortDefault' },
+  { value: 'price_asc', labelKey: 'sortPriceAsc' },
+  { value: 'price_desc', labelKey: 'sortPriceDesc' },
+  { value: 'newest', labelKey: 'sortNewest' },
 ];
 
-export function ProductCatalog({ products, categories, initialCategory = '', initialSearch = '' }: ProductCatalogProps) {
+export function ProductCatalog({ products, categories, initialCategory = '', initialSearch = '', nextCursor }: ProductCatalogProps) {
+  const t = useTranslations();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [sort, setSort] = useState<SortOption>('default');
@@ -120,9 +130,9 @@ export function ProductCatalog({ products, categories, initialCategory = '', ini
       {/* Header */}
       <div className="bg-white border-b border-brand-cream-dark py-6 px-4">
         <div className="container mx-auto">
-          <h1 className="font-display text-2xl font-bold text-text-primary">Produk</h1>
+          <h1 className="font-display text-2xl font-bold text-text-primary">{t('nav.products')}</h1>
           <p className="text-text-secondary text-sm mt-1">
-            {filteredProducts.length} produk ditemukan
+            {t('productsFound', { count: filteredProducts.length })}
           </p>
         </div>
       </div>
@@ -139,7 +149,7 @@ export function ProductCatalog({ products, categories, initialCategory = '', ini
                   !category ? 'bg-brand-red text-white' : 'bg-white text-text-primary border border-brand-cream-dark'
                 }`}
               >
-                Semua
+                {t('allCategory')}
               </button>
               {categories.map((cat) => (
                 <button
@@ -156,15 +166,16 @@ export function ProductCatalog({ products, categories, initialCategory = '', ini
 
             {/* Sort Dropdown */}
             <div className="flex-shrink-0">
-              <select
-                value={sort}
-                onChange={(e) => setSort(e.target.value as SortOption)}
-                className="h-10 px-3 rounded-button border border-brand-cream-dark bg-white text-sm text-text-primary focus:border-brand-red focus:outline-none focus:ring-2 focus:ring-brand-red/10 cursor-pointer"
-              >
-                {SORT_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
+              <Select value={sort} onValueChange={(v) => setSort(v as SortOption)}>
+                <SelectTrigger className="h-10 px-3 rounded-button border border-brand-cream-dark bg-white text-sm text-text-primary focus:border-brand-red focus:outline-none focus:ring-2 focus:ring-brand-red/10 cursor-pointer w-auto min-w-[160px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SORT_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{t(opt.labelKey)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
@@ -194,18 +205,37 @@ export function ProductCatalog({ products, categories, initialCategory = '', ini
           </div>
         ) : (
           <div className="text-center py-16 col-span-full">
-            <p className="text-5xl mb-4">😕</p>
+            <div className="w-16 h-16 bg-brand-cream rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-text-disabled" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
             <h3 className="font-display text-lg font-semibold text-text-primary mb-2">
-              Produk tidak ditemukan
+              {t('productsNotFound')}
             </h3>
             <p className="text-text-secondary text-sm mb-4">
-              Coba kategori lain atau hapus filter
+              {t('productsNotFoundDesc')}
             </p>
             <button
               onClick={() => handleCategoryChange(null)}
               className="px-4 py-2 bg-brand-red text-white text-sm font-bold rounded-button hover:bg-brand-red-dark transition-colors"
             >
-              Tampilkan Semua Produk
+              {t('showAllProducts')}
+            </button>
+          </div>
+        )}
+
+        {nextCursor && (
+          <div className="flex justify-center py-8">
+            <button
+              onClick={() => {
+                const params = new URLSearchParams(searchParams.toString());
+                params.set('cursor', nextCursor);
+                router.push(`/products?${params.toString()}`, { scroll: false });
+              }}
+              className="px-6 py-3 bg-white border border-brand-cream-dark text-text-primary font-medium rounded-button hover:bg-brand-cream transition-colors"
+            >
+              {t('loadMore')}
             </button>
           </div>
         )}

@@ -228,14 +228,9 @@ export default async function B2BQuoteDetailPage({ params }: PageProps) {
           {/* Actions */}
           <div className="bg-white rounded-xl border border-admin-border p-6">
             <h2 className="font-semibold text-admin-text-primary mb-4">Aksi</h2>
-            <div className="space-y-2">
-              <button className="w-full h-10 bg-brand-red text-white font-medium rounded-lg hover:bg-brand-red-dark transition-colors">
-                Kirim Quote via Email
-              </button>
-              <button className="w-full h-10 border border-admin-border text-admin-text-primary font-medium rounded-lg hover:bg-slate-50 transition-colors">
-                Download PDF
-              </button>
-            </div>
+            <p className="text-sm text-admin-text-secondary">
+              Fitur kirim email dan download PDF sedang dalam pengembangan.
+            </p>
           </div>
         </div>
       </div>

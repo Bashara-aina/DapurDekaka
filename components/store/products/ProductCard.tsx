@@ -4,6 +4,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ShoppingCart, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
+import { useSession } from 'next-auth/react';
 import { useCartStore } from '@/store/cart.store';
 import { useRouter } from 'next/navigation';
 import { formatIDR } from '@/lib/utils/format-currency';
@@ -34,36 +36,22 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, variant, className }: ProductCardProps) {
+  const t = useTranslations('product');
+  const tCart = useTranslations('cart');
+  const { data: session } = useSession();
   const addItem = useCartStore((s) => s.addItem);
+  const syncToDb = useCartStore((s) => s.syncToDb);
   const router = useRouter();
   const isOutOfStock = variant.stock === 0;
   const canQuickAdd = !isOutOfStock;
 
-  const handleQuickAdd = (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (isOutOfStock) return;
-    addItem({
-      variantId: variant.id,
-      productId: product.id,
-      productNameId: product.nameId,
-      productNameEn: product.nameEn,
-      variantNameId: variant.nameId,
-      variantNameEn: variant.nameEn,
-      sku: variant.sku,
-      imageUrl: product.imageUrl || '/assets/logo/logo.png',
-      unitPrice: variant.price,
-      weightGram: variant.weightGram,
-      stock: variant.stock,
-    });
-    toast.success(`${product.nameId} ditambahkan ke keranjang`, {
-      action: {
-        label: 'Lihat Keranjang',
-        onClick: () => router.push('/cart'),
-      },
-    });
+  const syncIfLoggedIn = async () => {
+    if (session?.user) {
+      await syncToDb();
+    }
   };
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  const handleQuickAdd = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (isOutOfStock) return;
     addItem({
@@ -79,12 +67,38 @@ export function ProductCard({ product, variant, className }: ProductCardProps) {
       weightGram: variant.weightGram,
       stock: variant.stock,
     });
-    toast.success(`${product.nameId} ditambahkan ke keranjang`, {
+    toast.success(`${product.nameId} ${tCart('addedToCart')}`, {
       action: {
-        label: 'Lihat Keranjang',
+        label: tCart('viewCart'),
         onClick: () => router.push('/cart'),
       },
     });
+    await syncIfLoggedIn();
+  };
+
+  const handleAddToCart = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isOutOfStock) return;
+    addItem({
+      variantId: variant.id,
+      productId: product.id,
+      productNameId: product.nameId,
+      productNameEn: product.nameEn,
+      variantNameId: variant.nameId,
+      variantNameEn: variant.nameEn,
+      sku: variant.sku,
+      imageUrl: product.imageUrl || '/assets/logo/logo.png',
+      unitPrice: variant.price,
+      weightGram: variant.weightGram,
+      stock: variant.stock,
+    });
+    toast.success(`${product.nameId} ${tCart('addedToCart')}`, {
+      action: {
+        label: tCart('viewCart'),
+        onClick: () => router.push('/cart'),
+      },
+    });
+    await syncIfLoggedIn();
   };
 
   return (
@@ -119,7 +133,7 @@ export function ProductCard({ product, variant, className }: ProductCardProps) {
         {isOutOfStock && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-t-card">
             <span className="px-3 py-1.5 bg-white/90 text-text-primary text-xs font-bold rounded-badge tracking-wide">
-              HABIS
+              {t('outOfStock')}
             </span>
           </div>
         )}
@@ -132,8 +146,8 @@ export function ProductCard({ product, variant, className }: ProductCardProps) {
         {canQuickAdd && (
           <button
             onClick={handleQuickAdd}
-            className="absolute bottom-2 right-2 w-11 h-11 bg-brand-red rounded-full flex items-center justify-center text-white shadow-lg hover:bg-brand-red-dark transition-colors"
-            aria-label="Tambah ke keranjang"
+            className="absolute bottom-2 right-2 w-11 h-11 bg-brand-red rounded-full flex items-center justify-center text-white shadow-lg hover:bg-brand-red-dark active:bg-brand-red-dark transition-colors"
+            aria-label={t('addToCart')}
           >
             <Plus className="w-4 h-4" />
           </button>
@@ -157,12 +171,12 @@ export function ProductCard({ product, variant, className }: ProductCardProps) {
             onClick={handleAddToCart}
             disabled={isOutOfStock}
             className={cn(
-              'h-11 w-11 rounded-full flex items-center justify-center transition-colors',
+              'h-11 w-11 rounded-full flex items-center justify-center transition-colors active:bg-brand-red-dark',
               isOutOfStock
                 ? 'bg-text-disabled text-white cursor-not-allowed'
                 : 'bg-brand-red text-white hover:bg-brand-red-dark'
             )}
-            aria-label="Tambah ke keranjang"
+            aria-label={t('addToCart')}
           >
             <ShoppingCart className="w-5 h-5" />
           </button>

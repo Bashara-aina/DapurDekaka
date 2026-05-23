@@ -7,6 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import {
+ Select,
+ SelectContent,
+ SelectItem,
+ SelectTrigger,
+ SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
 interface CouponFormProps {
@@ -108,15 +116,19 @@ export function CouponForm({ initialData, onSubmit, isSubmitting }: CouponFormPr
 
         <div className="space-y-2">
           <Label htmlFor="type">Tipe Kupon</Label>
-          <select
-            id="type"
-            {...form.register('type')}
-            className="w-full h-10 px-3 rounded-md border border-input bg-white text-sm"
+          <Select
+            value={form.watch('type')}
+            onValueChange={(v) => form.setValue('type', v as 'percentage' | 'fixed' | 'free_shipping' | 'buy_x_get_y')}
           >
-            {COUPON_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {COUPON_TYPES.map((t) => (
+                <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-2">
@@ -138,12 +150,19 @@ export function CouponForm({ initialData, onSubmit, isSubmitting }: CouponFormPr
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
-          <Label htmlFor="discountValue">Nilai Diskon</Label>
+          <Label htmlFor="discountValue">
+            Nilai Diskon
+            {form.watch('type') === 'percentage' && (
+              <span className="text-text-muted font-normal"> (maks. 100%)</span>
+            )}
+          </Label>
           <Input
             id="discountValue"
             type="number"
+            min={form.watch('type') === 'percentage' ? 1 : 0}
+            max={form.watch('type') === 'percentage' ? 100 : undefined}
             {...form.register('discountValue', { valueAsNumber: true })}
-            placeholder="10"
+            placeholder={form.watch('type') === 'percentage' ? '1 - 100' : '10'}
           />
           {form.formState.errors.discountValue && (
             <p className="text-sm text-red-500">{form.formState.errors.discountValue.message}</p>
@@ -206,22 +225,20 @@ export function CouponForm({ initialData, onSubmit, isSubmitting }: CouponFormPr
 
       <div className="space-y-2">
         <Label htmlFor="descriptionId">Deskripsi (ID)</Label>
-        <textarea
-          id="descriptionId"
-          {...form.register('descriptionId')}
-          className="w-full min-h-[80px] px-3 py-2 rounded-md border border-input bg-white text-sm"
-          placeholder="Diskon 10% untuk pembelian pertama"
-        />
+<Textarea
+            id="descriptionId"
+            {...form.register('descriptionId')}
+            placeholder="Diskon 10% untuk pembelian pertama"
+          />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="descriptionEn">Description (EN)</Label>
-        <textarea
-          id="descriptionEn"
-          {...form.register('descriptionEn')}
-          className="w-full min-h-[80px] px-3 py-2 rounded-md border border-input bg-white text-sm"
-          placeholder="10% off for first purchase"
-        />
+<Textarea
+            id="descriptionEn"
+            {...form.register('descriptionEn')}
+            placeholder="10% off for first purchase"
+          />
       </div>
 
       {form.watch('type') === 'buy_x_get_y' && (

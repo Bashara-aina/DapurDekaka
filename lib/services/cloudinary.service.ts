@@ -1,7 +1,8 @@
 import { v2 as cloudinary } from 'cloudinary';
+import { logger } from '@/lib/utils/logger';
 
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
+  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME!,
   api_key: process.env.CLOUDINARY_API_KEY!,
   api_secret: process.env.CLOUDINARY_API_SECRET!,
 });
@@ -21,13 +22,18 @@ export async function generateSignedUploadParams(folder: string): Promise<{
     signature,
     timestamp,
     apiKey: process.env.CLOUDINARY_API_KEY!,
-    cloudName: process.env.CLOUDINARY_CLOUD_NAME!,
+    cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME!,
     folder,
   };
 }
 
 export async function deleteCloudinaryImage(publicId: string): Promise<void> {
-  await cloudinary.uploader.destroy(publicId);
+  try {
+    await cloudinary.uploader.destroy(publicId);
+  } catch (error) {
+    logger.error('[Cloudinary] Failed to delete image', { publicId, error });
+    // Don't throw — image deletion failure shouldn't block the main operation
+  }
 }
 
 export function getCloudinaryUrl(publicId: string, options?: {

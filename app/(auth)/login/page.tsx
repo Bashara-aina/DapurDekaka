@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { toast } from 'sonner';
 
 function getSafeCallbackUrl(raw: string | null): string {
   const fallback = '/account';
@@ -19,7 +20,7 @@ function getSafeCallbackUrl(raw: string | null): string {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
 
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -75,17 +76,34 @@ function LoginForm() {
       if (result?.error) {
         setError('Email atau password salah');
       } else if (result?.url) {
-        try {
-          const cartItems = JSON.parse(localStorage.getItem('cart-storage') || '{}');
-          if (cartItems?.state?.items?.length > 0) {
-            await fetch('/api/auth/merge-cart', {
+        // Refresh session to mitigate session fixation (L-02)
+        await update();
+        const cartItems = JSON.parse(localStorage.getItem('dapur-cart') || '{}');
+        if (cartItems?.state?.items?.length > 0) {
+          try {
+            const mergeRes = await fetch('/api/auth/merge-cart', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ items: cartItems.state.items }),
             });
+            if (!mergeRes.ok) {
+              localStorage.removeItem('dapur-cart');
+              toast.error('Gagal menggabungkan keranjang. Item lokal akan dihapus.');
+            } else {
+              const mergeData = await mergeRes.json();
+              if (!mergeData.success) {
+                localStorage.removeItem('dapur-cart');
+                toast.error('Gagal menggabungkan keranjang. Item lokal akan dihapus.');
+              } else {
+                localStorage.removeItem('dapur-cart');
+                toast.success('Keranjang berhasil digabungkan');
+              }
+            }
+          } catch (err) {
+            localStorage.removeItem('dapur-cart');
+            toast.error('Gagal menggabungkan keranjang. Item di lok Lokal akan dihapus.');
+            console.error('[Cart merge failed]', err);
           }
-        } catch {
-          // Cart merge is non-critical, don't block on failure
         }
         router.push(callbackUrl);
       }

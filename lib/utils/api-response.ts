@@ -56,6 +56,13 @@ export function badRequest(message: string) {
   );
 }
 
+export function tooManyRequests(message = 'Too many requests') {
+  return NextResponse.json(
+    { success: false, error: message, code: 'TOO_MANY_REQUESTS' },
+    { status: 429 }
+  );
+}
+
 export function serverError(error: unknown) {
   console.error('[API Error]', error);
   return NextResponse.json(

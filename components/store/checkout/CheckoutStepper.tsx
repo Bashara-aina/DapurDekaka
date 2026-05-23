@@ -1,7 +1,9 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { motion } from 'framer-motion';
 
 export interface CheckoutStepItem {
   id: string;
@@ -16,6 +18,7 @@ interface CheckoutStepperProps {
 }
 
 export function CheckoutStepper({ steps, currentStepId, onStepClick, className }: CheckoutStepperProps) {
+  const t = useTranslations('checkout');
   const currentIndex = steps.findIndex((s) => s.id === currentStepId);
 
   return (
@@ -40,10 +43,16 @@ export function CheckoutStepper({ steps, currentStepId, onStepClick, className }
                       : 'bg-brand-cream-dark text-text-secondary',
                   (!isCompleted && !isActive) && 'cursor-not-allowed'
                 )}
-                aria-label={`Langkah ${idx + 1}: ${step.label}`}
+                aria-label={`${t('stepNumber', { n: idx + 1 })} ${step.label}`}
               >
                 {isCompleted ? (
-                  <CheckCircle className="w-4 h-4" />
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                  </motion.div>
                 ) : (
                   <span>{idx + 1}</span>
                 )}

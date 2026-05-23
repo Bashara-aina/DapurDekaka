@@ -1,16 +1,19 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Script from 'next/script';
-import { Clock, RefreshCw, ArrowRight, Copy, CheckCircle, CreditCard } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
+import { Clock, RefreshCw, ArrowRight, Copy, CheckCircle } from 'lucide-react';
 import { getSnapUrl } from '@/lib/midtrans/client';
 import { cn } from '@/lib/utils/cn';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { formatWIB } from '@/lib/utils/format-date';
 
 function PendingContent() {
+  const t = useTranslations('checkout');
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderNumber = searchParams.get('order');
@@ -68,35 +71,34 @@ function PendingContent() {
     };
   }, [orderNumber, router]);
 
-  // Countdown timer
-  useEffect(() => {
+  // Countdown timer — wrapped in useCallback to prevent recreation on each render
+  const updateCountdown = useCallback(() => {
     if (!orderDetails?.paymentExpiresAt) {
       setCountdown(null);
       return;
     }
 
-    const updateCountdown = () => {
-      const now = Date.now();
-      const expiry = new Date(orderDetails.paymentExpiresAt!).getTime();
-      const remaining = expiry - now;
+    const now = Date.now();
+    const expiry = new Date(orderDetails.paymentExpiresAt).getTime();
+    const remaining = expiry - now;
 
-      if (remaining <= 0) {
-        setCountdown('00:00');
-        router.push(`/checkout/failed?order=${orderNumber}`);
-        return;
-      }
+    if (remaining <= 0) {
+      setCountdown('00:00');
+      return;
+    }
 
-      const minutes = Math.floor(remaining / 60000);
-      const seconds = Math.floor((remaining % 60000) / 1000);
-      setCountdown(
-        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-      );
-    };
+    const minutes = Math.floor(remaining / 60000);
+    const seconds = Math.floor((remaining % 60000) / 1000);
+    setCountdown(
+      `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+    );
+  }, [orderDetails?.paymentExpiresAt]);
 
+  useEffect(() => {
     updateCountdown();
     const countdownInterval = setInterval(updateCountdown, 1000);
     return () => clearInterval(countdownInterval);
-  }, [orderDetails?.paymentExpiresAt, orderNumber, router]);
+  }, [updateCountdown]);
 
   const handleRetry = async () => {
     if (!orderNumber) return;
@@ -114,13 +116,13 @@ function PendingContent() {
         if (window.snap) {
           window.snap.pay(data.data.snapToken);
         } else {
-          alert('Midtrans belum loaded. Silakan coba beberapa saat lagi.');
+          toast.error(t('midtransNotLoaded'));
         }
       } else {
-        alert(data.error || 'Gagal membuat token pembayaran baru');
+        toast.error(data.error || t('retryTokenError'));
       }
     } catch {
-      alert('Gagal membuat token pembayaran baru');
+      toast.error(t('retryTokenError'));
     }
 
     setRetrying(false);
@@ -140,9 +142,9 @@ function PendingContent() {
   if (!orderNumber) {
     return (
       <div className="text-center py-12">
-        <p className="text-text-secondary">Nomor pesanan tidak ditemukan.</p>
+        <p className="text-text-secondary">{t('pendingOrderNotFound')}</p>
         <Link href="/" className="text-brand-red mt-4 inline-block">
-          Kembali ke Beranda
+          {t('backToHome')}
         </Link>
       </div>
     );
@@ -161,27 +163,27 @@ function PendingContent() {
         </div>
 
         <h1 className="font-display text-3xl font-bold text-text-primary mb-3">
-          Menunggu Pembayaran
+          {t('pendingTitle')}
         </h1>
         <p className="text-text-secondary mb-2">
-          Pembayaran Anda sedang diproses oleh Midtrans.
+          {t('pendingSubtitle')}
         </p>
         <p className="text-sm text-text-secondary mb-8">
           {orderDetails?.paymentExpiresAt
-              ? `Batas waktu: ${formatWIB(new Date(orderDetails.paymentExpiresAt))}`
-              : 'Harap selesaikan pembayaran sebelum batas waktu yang ditentukan.'
+              ? `${t('pendingExpiryLabel')}: ${formatWIB(new Date(orderDetails.paymentExpiresAt))}`
+              : t('pendingNoExpiry')
             }
         </p>
 
         {/* Order number display */}
         <div className="bg-white rounded-card p-6 shadow-card max-w-sm mx-auto mb-6">
-          <p className="text-xs text-text-secondary mb-2">Nomor Pesanan</p>
+          <p className="text-xs text-text-secondary mb-2">{t('orderNumber')}</p>
           <div className="flex items-center justify-center gap-2 mb-4">
             <p className="font-bold text-xl text-brand-red">{orderNumber}</p>
             <button
               onClick={handleCopyOrderNumber}
               className="p-1 hover:bg-brand-cream rounded transition-colors"
-              title="Salin"
+              title={t('copy')}
             >
               {copied ? (
                 <CheckCircle className="w-4 h-4 text-success" />
@@ -192,18 +194,18 @@ function PendingContent() {
           </div>
           {orderDetails?.totalAmount && (
             <div className="border-t border-brand-cream-dark pt-4 mt-4">
-              <p className="text-xs text-text-secondary mb-1">Total Bayar</p>
+              <p className="text-xs text-text-secondary mb-1">{t('totalToPay')}</p>
               <p className="font-bold text-lg text-brand-red mb-3">
                 {formatIDR(orderDetails.totalAmount)}
               </p>
               {orderDetails.paymentType && (
                 <p className="text-xs text-text-secondary mb-2">
-                  Metode: <span className="font-medium capitalize">{orderDetails.paymentType.replace('_', ' ')}</span>
+                  {t('paymentMethod')}: <span className="font-medium capitalize">{orderDetails.paymentType.replace('_', ' ')}</span>
                 </p>
               )}
               {orderDetails.vaNumber && (
                 <div className="bg-brand-cream rounded-lg p-3 mb-3">
-                  <p className="text-xs text-text-secondary mb-1">Virtual Account</p>
+                  <p className="text-xs text-text-secondary mb-1">{t('virtualAccount')}</p>
                   <p className="font-mono font-bold text-lg text-text-primary">
                     {orderDetails.vaNumber}
                   </p>
@@ -211,18 +213,18 @@ function PendingContent() {
               )}
               {countdown && (
                 <p className="text-xs font-medium text-warning">
-                  Sisa waktu: {countdown}
+                  {t('timeRemaining', { countdown })}
                 </p>
               )}
               {orderDetails.paymentExpiresAt && (
                 <p className="text-xs text-text-muted">
-                  Batas: {formatWIB(new Date(orderDetails.paymentExpiresAt))}
+                  {t('expiryTime', { time: formatWIB(new Date(orderDetails.paymentExpiresAt)) })}
                 </p>
               )}
             </div>
           )}
           <p className="text-xs text-text-muted">
-            Simpan nomor pesanan ini untuk referensi
+            {t('saveOrderReference')}
           </p>
         </div>
 
@@ -235,16 +237,16 @@ function PendingContent() {
             {retrying ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin" />
-                Memproses...
+                {t('processing')}
               </>
             ) : !snapLoaded ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin" />
-                Memuat...
+                {t('loadingMidtrans')}
               </>
             ) : (
               <>
-                Bayar Sekarang
+                {t('retryNow')}
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
@@ -254,12 +256,12 @@ function PendingContent() {
             href="/products"
             className="flex items-center justify-center gap-2 w-full h-12 bg-white border border-brand-cream-dark text-text-primary font-medium rounded-button hover:bg-brand-cream transition-colors"
           >
-            Lanjut Belanja
+            {t('continueShopping')}
           </Link>
         </div>
 
         <p className="text-xs text-text-muted mt-8">
-          Having trouble? Hubungi kami via WhatsApp untuk bantuan.
+          {t('havingTrouble')}
         </p>
       </div>
     </>

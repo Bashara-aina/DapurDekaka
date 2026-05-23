@@ -26,10 +26,11 @@ export function PointsRedeemer({
   // Max points that can be redeemed: 50% of subtotal
   const maxPointsValue = Math.floor(subtotal * 0.5);
   const maxPoints = Math.min(pointsBalance, maxPointsValue);
-  const maxPointsToRedeem = Math.floor(maxPointsValue / POINTS_VALUE_IDR) * POINTS_VALUE_IDR;
+  const maxPointsToRedeem = Math.floor(maxPointsValue / POINTS_VALUE_IDR);
 
   const pointsValue = Math.floor(usedPoints / POINTS_VALUE_IDR) * POINTS_VALUE_IDR;
-  const potentialSavings = Math.min(pointsBalance, Math.floor((subtotal * 0.5) / POINTS_VALUE_IDR) * POINTS_VALUE_IDR) * POINTS_VALUE_IDR;
+
+  const potentialSavings = Math.min(pointsBalance, Math.floor((subtotal * 0.5) / POINTS_VALUE_IDR)) * POINTS_VALUE_IDR;
 
   const handleToggle = (checked: boolean) => {
     setUsePoints(checked);

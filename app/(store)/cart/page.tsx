@@ -3,7 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { LogIn, AlertTriangle, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useCartStore } from '@/store/cart.store';
 import { CartItemComponent } from '@/components/store/cart/CartItem';
 import { CartSummary } from '@/components/store/cart/CartSummary';
@@ -25,6 +27,9 @@ interface StockValidation {
 }
 
 export default function CartPage() {
+  const t = useTranslations('cart');
+  const tAccount = useTranslations('account');
+
   const { data: session } = useSession();
   const items = useCartStore((s) => s.items);
   const getTotalItems = useCartStore((s) => s.getTotalItems);
@@ -52,13 +57,13 @@ export default function CartPage() {
       if (response.success && response.data?.items) {
         setStockValidations(response.data.items);
       }
-    } catch (error) {
-      console.error('Failed to validate stock:', error);
+    } catch {
+      toast.error(t('cartEmpty') || 'Gagal memuat keranjang');
     } finally {
       setIsValidating(false);
       setHasValidated(true);
     }
-  }, [items]);
+  }, [items, t]);
 
   useEffect(() => {
     if (items.length > 0) {
@@ -77,7 +82,7 @@ export default function CartPage() {
     return (
       <div className="min-h-screen bg-brand-cream">
         <div className="bg-white border-b border-brand-cream-dark py-6 px-4">
-          <h1 className="font-display text-2xl font-bold">Keranjang</h1>
+          <h1 className="font-display text-2xl font-bold">{t('empty')}</h1>
         </div>
         <EmptyCart />
       </div>
@@ -85,21 +90,21 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-brand-cream">
+    <div className="min-h-screen bg-brand-cream pb-20">
       <div className="bg-white border-b border-brand-cream-dark py-6 px-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-display text-2xl md:text-3xl font-bold">Keranjang</h1>
-            <p className="text-text-secondary text-sm mt-1">{getTotalItems()} item</p>
+            <h1 className="font-display text-2xl md:text-3xl font-bold">{t('cartTitle')}</h1>
+            <p className="text-text-secondary text-sm mt-1">{tAccount('itemsCount', { count: getTotalItems() })}</p>
           </div>
           {items.length > 0 && (
             <button
               onClick={() => setShowClearConfirm(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-button transition-colors"
-              aria-label="Hapus semua item di keranjang"
+              aria-label={tAccount('clearCartConfirmTitle')}
             >
               <Trash2 className="w-4 h-4" />
-              Hapus Semua
+              {tAccount('deleteAll')}
             </button>
           )}
         </div>
@@ -113,23 +118,23 @@ export default function CartPage() {
               <LogIn className="w-5 h-5 text-brand-gold flex-shrink-0 mt-0.5" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-text-primary">
-                  Masuk untuk mendapatkan poin dari pembelian ini
+                  {tAccount('loginToEarnPoints')}
                 </p>
                 <p className="text-xs text-text-secondary mt-0.5">
-                  Setiap pembelian bisa mendapatkan poin loyalty yang bisa ditukarkan
+                  {tAccount('pointsEarnDescription')}
                 </p>
                 <div className="flex gap-2 mt-3">
                   <Link
                     href="/login?callbackUrl=/cart"
                     className="px-4 py-2 bg-brand-red text-white text-xs font-bold rounded-button hover:bg-brand-red-dark transition-colors"
                   >
-                    Masuk
+                    {tAccount('login')}
                   </Link>
                   <Link
                     href="/register?callbackUrl=/cart"
                     className="px-4 py-2 border border-brand-red text-brand-red text-xs font-bold rounded-button hover:bg-brand-red/5 transition-colors"
                   >
-                    Daftar
+                    {tAccount('register')}
                   </Link>
                 </div>
               </div>
@@ -143,11 +148,10 @@ export default function CartPage() {
             <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-text-primary">
-                {invalidCount} item tidak tersedia dengan jumlah yang diminta
+                {tAccount('stockUnavailable', { count: invalidCount })}
               </p>
               <p className="text-xs text-text-secondary mt-0.5">
-                Stok telah diperbarui. Silakan kurangi jumlah atau hapus item yang tidak
-                tersedia.
+                {tAccount('stockUpdated')}
               </p>
             </div>
           </div>
@@ -157,7 +161,7 @@ export default function CartPage() {
         {isValidating && (
           <div className="text-center py-2 mb-4">
             <span className="text-xs text-text-secondary">
-              Memvalidasi stok...
+              {tAccount('validatingStock')}
             </span>
           </div>
         )}
@@ -188,23 +192,23 @@ export default function CartPage() {
       <Dialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="font-display">Hapus Semua Item?</DialogTitle>
+            <DialogTitle className="font-display">{tAccount('clearCartConfirmTitle')}</DialogTitle>
           </DialogHeader>
           <p className="text-text-secondary text-sm">
-            Semua item akan dihapus dari keranjang. Tindakan ini tidak bisa dibatalkan.
+            {tAccount('clearCartConfirmDesc')}
           </p>
           <DialogFooter className="flex gap-3">
             <button
               onClick={() => setShowClearConfirm(false)}
               className="flex-1 h-11 border border-brand-cream-dark rounded-button font-medium hover:bg-brand-cream transition-colors"
             >
-              Batal
+              {tAccount('cancel')}
             </button>
             <button
               onClick={() => { clearCart(); setShowClearConfirm(false); }}
               className="flex-1 h-11 bg-brand-red text-white rounded-button font-bold hover:bg-brand-red-dark transition-colors"
             >
-              Hapus
+              {tAccount('delete')}
             </button>
           </DialogFooter>
         </DialogContent>

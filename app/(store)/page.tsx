@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { HeroCarousel } from '@/components/store/home/HeroCarousel';
 import { FeaturedProducts } from '@/components/store/home/FeaturedProducts';
 import { CategoryChips } from '@/components/store/home/CategoryChips';
@@ -13,55 +14,58 @@ import { eq, and, desc, isNull, lte, gte, isNull as isNullCond, sql } from 'driz
 
 export const revalidate = 1800;
 
-export const metadata: Metadata = {
-  title: { absolute: 'Dapur Dekaka | Frozen Food Premium dari Bandung' },
-  description: 'Cita rasa warisan Chinese-Indonesia, kini di rumahmu. Dimsum, siomay, bakso frozen premium dari Bandung. Pesan online, kirim ke seluruh Indonesia.',
-  keywords: [
-    'frozen food premium',
-    'dimsum halal',
-    'dimsum Bandung',
-    'siomay premium',
-    'bakso halal',
-    'lumpia frozen',
-    'makanan beku berkualitas',
-    'frozen food online Indonesia',
-    'pesan dimsum online',
-    'dimsum kirim ke rumah',
-    'Chinese Indonesian food halal',
-    'frozen food tanpa pengawet',
-    'dapur dekaka',
-  ],
-  alternates: {
-    canonical: 'https://dapurdekaka.com',
-  },
-  openGraph: {
-    title: 'Dapur Dekaka | Frozen Food Premium dari Bandung',
-    description: 'Cita rasa warisan Chinese-Indonesia, kini di rumahmu. Pesan online, kirim ke seluruh Indonesia.',
-    url: 'https://dapurdekaka.com',
-    siteName: 'Dapur Dekaka',
-    images: [
-      {
-        url: 'https://res.cloudinary.com/dapurdekaka/image/upload/v1/dapurdekaka/og-image.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'Dapur Dekaka - Frozen Food Premium',
-      },
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('metadata');
+  return {
+    title: t('homeTitle'),
+    description: t('homeDescription'),
+    keywords: [
+      'frozen food premium',
+      'dimsum halal',
+      'dimsum Bandung',
+      'siomay premium',
+      'bakso halal',
+      'lumpia frozen',
+      'makanan beku berkualitas',
+      'frozen food online Indonesia',
+      'pesan dimsum online',
+      'dimsum kirim ke rumah',
+      'Chinese Indonesian food halal',
+      'frozen food tanpa pengawet',
+      'dapur dekaka',
     ],
-    locale: 'id_ID',
-    alternateLocale: ['en_US'],
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Dapur Dekaka | Frozen Food Premium dari Bandung',
-    description: 'Cita rasa warisan Chinese-Indonesia, kini di rumahmu.',
-    images: ['https://res.cloudinary.com/dapurdekaka/image/upload/v1/dapurdekaka/og-image.jpg'],
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-};
+    alternates: {
+      canonical: 'https://dapurdekaka.com',
+    },
+    openGraph: {
+      title: t('homeTitle'),
+      description: t('homeDescription'),
+      url: 'https://dapurdekaka.com',
+      siteName: 'Dapur Dekaka',
+      images: [
+        {
+          url: 'https://res.cloudinary.com/dapurdekaka/image/upload/v1/dapurdekaka/og-image.jpg',
+          width: 1200,
+          height: 630,
+          alt: 'Dapur Dekaka - Frozen Food Premium',
+        },
+      ],
+      locale: 'id_ID',
+      alternateLocale: ['en_US'],
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: t('homeTitle'),
+      description: t('homeDescription'),
+      images: ['https://res.cloudinary.com/dapurdekaka/image/upload/v1/dapurdekaka/og-image.jpg'],
+    },
+    robots: {
+      index: true,
+      follow: true,
+    },
+  };
+}
 
 async function getFeaturedProducts() {
   const featured = await db.query.products.findMany({
@@ -74,12 +78,20 @@ async function getFeaturedProducts() {
     limit: 8,
   });
   return featured.map(p => ({
-    ...p,
+    id: p.id,
+    nameId: p.nameId,
+    nameEn: p.nameEn ?? '',
+    slug: p.slug,
+    isHalal: p.isHalal ?? true,
     variants: p.variants.map(v => ({
       id: v.id,
+      nameId: v.nameId,
+      nameEn: v.nameEn ?? '',
+      sku: v.sku ?? '',
       price: v.price,
       stock: v.stock,
-      nameId: v.nameId,
+      weightGram: v.weightGram ?? 0,
+      isActive: v.isActive,
     })),
     images: p.images.map(img => ({
       cloudinaryUrl: img.cloudinaryUrl,
@@ -230,7 +242,7 @@ export default async function HomePage() {
   };
 
   return (
-    <div className="bg-brand-cream">
+    <div className="bg-brand-cream pb-20 md:pb-0">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}

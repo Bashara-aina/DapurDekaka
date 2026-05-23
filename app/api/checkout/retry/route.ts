@@ -2,26 +2,31 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { eq, and, sql } from 'drizzle-orm';
 import { orders, orderItems, productVariants, inventoryLogs, coupons, couponUsages, pointsHistory, users, orderStatusHistory } from '@/lib/db/schema';
-import { success, serverError, notFound, conflict, unauthorized, forbidden } from '@/lib/utils/api-response';
+import { success, serverError, notFound, conflict, unauthorized, forbidden, validationError, tooManyRequests } from '@/lib/utils/api-response';
+import { z } from 'zod';
 import { createMidtransTransaction } from '@/lib/midtrans/create-transaction';
 import { formatWIB } from '@/lib/utils/format-date';
 import { getSetting } from '@/lib/settings/get-settings';
 import { auth } from '@/lib/auth';
+import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
+const retrySchema = z.object({
+  orderNumber: z.string().regex(/^DDK-\d{8}-\d{4}(?:-retry-\d+)?$/, 'Format orderNumber tidak valid'),
+});
 
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     const body = await req.json();
-    const { orderNumber } = body;
+    const parsed = retrySchema.safeParse(body);
 
-    if (!orderNumber) {
-      return NextResponse.json(
-        { success: false, error: 'orderNumber diperlukan', code: 'VALIDATION_ERROR' },
-        { status: 422 }
-      );
+    if (!parsed.success) {
+      return validationError(parsed.error);
     }
+
+    const { orderNumber } = parsed.data;
 
     const order = await db.query.orders.findFirst({
       where: eq(orders.orderNumber, orderNumber),
@@ -44,8 +49,9 @@ export async function POST(req: NextRequest) {
       return conflict('Order tidak dapat diretry — status bukan pending_payment');
     }
 
+    // H-04: Server-side cap on retry attempts — max 3 retries before auto-cancellation
     if (order.paymentRetryCount >= 3) {
-      // BUG-04: Wrap cancellation in full transaction with stock restore, points reversal, coupon reversion
+      // Wrap cancellation in full transaction with stock restore, points reversal, coupon reversion
       await db.transaction(async (tx) => {
         // 1. Update order status
         await tx.update(orders)
@@ -92,6 +98,24 @@ export async function POST(req: NextRequest) {
         }
 
         // 5. Reverse points if redeemed (FIFO unconsume)
+        // H-04: STRESS TESTING NOTE — FIFO reversal fragility with concurrent redemptions:
+        //
+        // This reversal sets consumedAt: null on referenced earn records.
+        // If a subsequent order has already consumed the same earn records (same earnId was
+        // referenced by a newer redeem after this order's retry expired), the FIFO chain breaks.
+        // The older earn record becomes "double-spent" — partially unconsumed while the newer
+        // order already deducted its value from pointsBalance.
+        //
+        // Under high concurrency (multiple customers retrying at once with low points balance),
+        // this can cause pointsBalance to go negative or redeem records to reference already-
+        // consumed earnIds.
+        //
+        // Mitigation: pointsBalance uses GREATEST to prevent negative, but the FIFO chain
+        // itself can be corrupted. A full stress test with 100+ concurrent retries is needed
+        // to validate this edge case in production-like load.
+        //
+        // TODO: Consider adding a consumedAt version field or a lock table for earn records
+        // to prevent concurrent consumption of the same earn record.
         if (order.userId && order.pointsUsed && order.pointsUsed > 0) {
           const redeemRecords = await tx
             .select()
@@ -116,13 +140,10 @@ export async function POST(req: NextRequest) {
         }
       });
 
-      return conflict('Pembayaran sudah mencapai batas retry. Pesanan dibatalkan.');
+      return tooManyRequests('Pembayaran sudah mencapai batas retry. Pesanan dibatalkan.');
     }
 
-    const retryCount = order.paymentRetryCount + 1;
-    const newMidtransOrderId = `${orderNumber}-retry-${retryCount}`;
-
-    // Build item_details
+    // Build item_details for Midtrans
     const itemDetails = order.items.map((item) => ({
       id: item.variantId,
       price: item.unitPrice,
@@ -148,37 +169,52 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Create new Midtrans transaction
-    const { snapToken, midtransOrderId } = await createMidtransTransaction({
-      orderNumber,
-      retryCount,
-      grossAmount: order.totalAmount,
-      customerName: order.recipientName,
-      customerEmail: order.recipientEmail,
-      customerPhone: order.recipientPhone,
-      items: itemDetails,
+    const expiryMinutes = await getSetting<number>('payment_expiry_minutes', 'integer') ?? 15;
+    const retryCount = order.paymentRetryCount + 1;
+
+    // Wrap Midtrans call + order update in transaction for atomicity
+    const [updatedOrder] = await db.transaction(async (tx) => {
+      // Create new Midtrans transaction
+      const { snapToken, midtransOrderId } = await createMidtransTransaction({
+        orderNumber,
+        retryCount,
+        grossAmount: order.totalAmount,
+        customerName: order.recipientName,
+        customerEmail: order.recipientEmail,
+        customerPhone: order.recipientPhone,
+        items: itemDetails,
+      });
+
+      // Update order with new Midtrans IDs and incremented retry count
+      const [updated] = await tx
+        .update(orders)
+        .set({
+          midtransOrderId,
+          midtransSnapToken: snapToken,
+          paymentRetryCount: retryCount,
+          paymentExpiresAt: new Date(Date.now() + expiryMinutes * 60 * 1000),
+        })
+        .where(and(
+          eq(orders.id, order.id),
+          eq(orders.status, 'pending_payment')
+        ))
+        .returning({ id: orders.id, midtransSnapToken: orders.midtransSnapToken });
+
+      return [updated];
     });
 
-    // Update order with new Midtrans IDs
-    const expiryMinutes = await getSetting<number>('payment_expiry_minutes', 'integer') ?? 15;
-    await db
-      .update(orders)
-      .set({
-        midtransOrderId,
-        midtransSnapToken: snapToken,
-        paymentRetryCount: retryCount,
-        paymentExpiresAt: new Date(Date.now() + expiryMinutes * 60 * 1000),
-      })
-      .where(eq(orders.id, order.id));
+    if (!updatedOrder) {
+      return conflict('Order sudah tidak dapat diretry');
+    }
 
     return success({
       orderId: order.id,
       orderNumber: order.orderNumber,
-      snapToken,
+      snapToken: updatedOrder.midtransSnapToken,
       expiresAt: formatWIB(new Date(Date.now() + expiryMinutes * 60 * 1000)),
     });
   } catch (error) {
-    console.error('[checkout/retry]', error);
+    logger.error('[checkout/retry]', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
 }

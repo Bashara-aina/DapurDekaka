@@ -15,44 +15,45 @@
 
 import { auth } from '@/lib/auth';
 import { unauthorized, forbidden } from '@/lib/utils/api-response';
+import type { NextResponse } from 'next/server';
+import type { Session } from 'next-auth';
 
-type UserRole = 'customer' | 'b2b' | 'warehouse' | 'owner' | 'superadmin';
-
-export type AdminRole = 'superadmin' | 'owner' | 'warehouse';
+type AdminRole = 'owner' | 'superadmin' | 'warehouse';
 
 const DEFAULT_ADMIN_ROLES: AdminRole[] = ['owner', 'superadmin'];
 const VIEWER_ROLES: AdminRole[] = ['owner', 'superadmin', 'warehouse'];
+
+type SessionUser = NonNullable<Session>['user'];
 
 /**
  * Verify the user has an active session and one of the allowed admin roles.
  *
  * @param roles  Array of allowed roles. Defaults to ['owner', 'superadmin']
- * @returns      The session object if authorized
- * @response     401 if not authenticated, 403 if role not permitted
+ * @returns      The session user if authorized, or a NextResponse (401/403) if not
  */
-export async function requireAdmin<T extends AdminRole = AdminRole>(
-  roles: T[] = DEFAULT_ADMIN_ROLES as T[]
-): Promise<{ user: { id: string; role: UserRole; email?: string | null; name?: string | null; image?: string | null } }> {
+export async function requireAdmin(
+  roles: AdminRole[] = DEFAULT_ADMIN_ROLES
+): Promise<{ user: SessionUser } | NextResponse> {
   const session = await auth();
 
   if (!session?.user) {
-    return unauthorized() as never;
+    return unauthorized();
   }
 
-  const userRole = session.user.role as string;
+  const userRole = session.user.role as AdminRole;
 
-  if (!roles.includes(userRole as T)) {
-    return forbidden('Anda tidak memiliki akses ke fitur ini') as never;
+  if (!roles.includes(userRole)) {
+    return forbidden('Anda tidak memiliki akses ke fitur ini');
   }
 
-  return session as { user: { id: string; role: UserRole; email?: string | null; name?: string | null; image?: string | null } };
+  return { user: session.user };
 }
 
 /**
  * Require superadmin only role.
  * Shorthand for requireAdmin(['superadmin'])
  */
-export async function requireSuperadmin(): Promise<{ user: { id: string; role: UserRole } }> {
+export async function requireSuperadmin(): Promise<{ user: SessionUser } | NextResponse> {
   return requireAdmin(['superadmin']);
 }
 
@@ -60,6 +61,6 @@ export async function requireSuperadmin(): Promise<{ user: { id: string; role: U
  * Require any admin or warehouse role.
  * Shorthand for requireAdmin(['owner', 'superadmin', 'warehouse'])
  */
-export async function requireAnyAdmin(): Promise<{ user: { id: string; role: UserRole } }> {
+export async function requireAnyAdmin(): Promise<{ user: SessionUser } | NextResponse> {
   return requireAdmin(VIEWER_ROLES);
 }

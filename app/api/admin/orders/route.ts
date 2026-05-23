@@ -6,6 +6,7 @@ import { orders, orderItems, orderDailyCounters, orderStatusHistory, productVari
 import { eq, desc, and, isNull, sql, inArray, gte, lt, or, ilike } from 'drizzle-orm';
 import { success, unauthorized, forbidden, serverError, validationError } from '@/lib/utils/api-response';
 import { generateOrderNumber } from '@/lib/utils/generate-order-number';
+import type { SQL } from 'drizzle-orm';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -42,7 +43,7 @@ export async function GET(req: NextRequest) {
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
 
-    const conditions: any[] = [];
+    const conditions: SQL[] = [];
 
     if (status && ORDER_STATUSES.includes(status as typeof ORDER_STATUSES[number])) {
       conditions.push(eq(orders.status, status as typeof ORDER_STATUSES[number]));
@@ -67,7 +68,7 @@ export async function GET(req: NextRequest) {
           ilike(orders.orderNumber, `%${search}%`),
           ilike(orders.recipientName, `%${search}%`),
           ilike(orders.recipientPhone, `%${search}%`),
-        )
+        ) as SQL<boolean>
       );
     }
 
@@ -230,6 +231,21 @@ export async function POST(req: NextRequest) {
 
       // Insert order items
       if (data.items && data.items.length > 0) {
+        // LOW-02: Validate all variantIds exist and are active before inserting
+        const variantIds = data.items.map((item) => item.variantId);
+        const dbVariants = await tx.query.productVariants.findMany({
+          where: and(
+            inArray(productVariants.id, variantIds),
+            eq(productVariants.isActive, true)
+          ),
+        });
+        const activeVariantIds = new Set(dbVariants.map((v) => v.id));
+        for (const item of data.items) {
+          if (!activeVariantIds.has(item.variantId)) {
+            throw new Error(`Variant ${item.variantId} tidak ditemukan atau tidak aktif`);
+          }
+        }
+
         await tx.insert(orderItems).values(
           data.items.map((item) => ({
             orderId: newOrder.id,

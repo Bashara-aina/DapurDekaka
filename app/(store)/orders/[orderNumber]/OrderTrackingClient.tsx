@@ -2,8 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { Mail, Lock, MessageCircle } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils/cn';
+import { formatIDR } from '@/lib/utils/format-currency';
+import { formatWIB } from '@/lib/utils/format-date';
 import { OrderTimeline } from '@/components/store/orders/OrderTimeline';
 
 interface Order {
@@ -44,50 +49,34 @@ interface VerifiedOrder extends Order {
   requiresEmailVerification?: false;
 }
 
-const STATUS_TIMELINE: Record<string, { label: string; index: number }> = {
-  pending_payment: { label: 'Menunggu Pembayaran', index: 0 },
-  paid: { label: 'Pembayaran Diterima', index: 1 },
-  processing: { label: 'Sedang Diproses', index: 2 },
-  packed: { label: 'Siap Dikirim', index: 3 },
-  shipped: { label: 'Dalam Pengiriman', index: 4 },
-  delivered: { label: 'Selesai', index: 5 },
-  cancelled: { label: 'Dibatalkan', index: 0 },
-};
-
-const TIMELINE_STEPS = [
-  { label: 'Pesanan Dibuat', description: 'Checkout selesai, menunggu pembayaran' },
-  { label: 'Pembayaran Diterima', description: 'Pembayaran berhasil diverifikasi' },
-  { label: 'Sedang Diproses', description: 'Tim kami sedang menyiapkan pesanan' },
-  { label: 'Siap Dikirim', description: 'Pesanan dikemas dan siap dikirim' },
-  { label: 'Dalam Pengiriman', description: 'Sedang diantar oleh kurir' },
-  { label: 'Selesai', description: 'Pesanan telah diterima' },
-];
-
-const formatIDR = (amount: number) => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-};
-
-const formatWIB = (dateStr: string) => {
-  return new Date(dateStr).toLocaleString('id-ID', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Asia/Jakarta',
-  });
-};
-
 export function OrderTrackingClient({
   orderNumber,
 }: {
   orderNumber: string;
 }) {
+  const t = useTranslations('checkout');
+  const tOrderStatus = useTranslations('orderStatus');
+  const tApiErrors = useTranslations('apiErrors');
+
+  const STATUS_TIMELINE: Record<string, { label: string; index: number }> = {
+    pending_payment: { label: tOrderStatus('pending_payment'), index: 0 },
+    paid: { label: tOrderStatus('paid'), index: 1 },
+    processing: { label: tOrderStatus('processing'), index: 2 },
+    packed: { label: tOrderStatus('packed'), index: 3 },
+    shipped: { label: tOrderStatus('shipped'), index: 4 },
+    delivered: { label: tOrderStatus('delivered'), index: 5 },
+    cancelled: { label: tOrderStatus('cancelled'), index: 0 },
+  };
+
+  const TIMELINE_STEPS = [
+    { label: t('orderCreated'), description: t('orderCreatedDesc') },
+    { label: t('paymentReceived'), description: t('paymentReceivedDesc') },
+    { label: t('beingPrepared'), description: t('beingPreparedDesc') },
+    { label: t('readyToShip'), description: t('readyToShipDesc') },
+    { label: t('outForDelivery'), description: t('outForDeliveryDesc') },
+    { label: t('orderComplete'), description: t('orderCompleteDesc') },
+  ];
+
   const [email, setEmail] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [verified, setVerified] = useState(false);
@@ -112,11 +101,11 @@ export function OrderTrackingClient({
           setVerified(true);
         }
       } catch {
-        // Not logged in or not their order — show the email form
+        toast.error(tApiErrors('networkError') || 'Gagal memuat data pesanan');
       }
     }
     tryAutoVerify();
-  }, [orderNumber]);
+  }, [orderNumber, tApiErrors]);
 
   const handleVerifyEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,10 +126,10 @@ export function OrderTrackingClient({
         setOrder(data.data.order as Order);
         setVerified(true);
       } else {
-        setError(data.error || 'Email tidak cocok dengan pesanan');
+        setError(data.error || tApiErrors('emailNotMatch') || 'Email tidak cocok dengan pesanan');
       }
     } catch {
-      setError('Terjadi kesalahan. Silakan coba lagi.');
+      toast.error(tApiErrors('networkError') || 'Terjadi kesalahan saat verifikasi');
     }
 
     setIsVerifying(false);
@@ -153,9 +142,9 @@ export function OrderTrackingClient({
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <Link href="/" className="font-display text-xl font-bold">
-              Dapur Dekaka
+              {t('storeName')}
             </Link>
-            <span className="text-sm text-text-secondary">Lacak Pesanan</span>
+            <span className="text-sm text-text-secondary">{t('trackOrder')}</span>
           </div>
         </div>
       </div>
@@ -165,7 +154,7 @@ export function OrderTrackingClient({
         <div className="bg-white rounded-card p-6 shadow-card mb-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-xs text-text-secondary mb-1">Nomor Pesanan</p>
+              <p className="text-xs text-text-secondary mb-1">{t('orderNumber')}</p>
               <p className="font-bold text-xl text-brand-red">{orderNumber}</p>
             </div>
             <div
@@ -191,17 +180,17 @@ export function OrderTrackingClient({
                 <Mail className="w-8 h-8 text-brand-red" />
               </div>
               <h2 className="font-display text-xl font-bold text-text-primary mb-2">
-                Verifikasi Email
+                {t('emailVerificationRequired')}
               </h2>
               <p className="text-text-secondary text-sm">
-                Masukkan email yang digunakan saat checkout untuk melihat detail pesanan
+                {t('enterEmailToTrack')}
               </p>
             </div>
 
             <form onSubmit={handleVerifyEmail} className="max-w-sm mx-auto">
               <div className="mb-4">
                 <label htmlFor="email" className="block text-sm font-medium text-text-primary mb-1">
-                  Email
+                  {t('emailVerificationRequired')}
                 </label>
                 <input
                   type="email"
@@ -223,7 +212,7 @@ export function OrderTrackingClient({
                 disabled={isVerifying}
                 className="w-full h-12 bg-brand-red text-white font-bold rounded-button hover:bg-brand-red-dark transition-colors disabled:opacity-50"
               >
-                {isVerifying ? 'Memverifikasi...' : 'Verifikasi'}
+                {isVerifying ? t('verifying') : t('verify')}
               </button>
             </form>
           </div>
@@ -235,7 +224,7 @@ export function OrderTrackingClient({
             {/* Timeline using OrderTimeline component */}
             {currentStatus !== 'cancelled' && (
               <div className="bg-white rounded-card p-6 shadow-card mb-6">
-                <h3 className="font-semibold mb-4">Status Pesanan</h3>
+                <h3 className="font-semibold mb-4">{t('orderStatus')}</h3>
                 <OrderTimeline
                   steps={TIMELINE_STEPS}
                   currentStepIndex={currentIndex}
@@ -246,16 +235,17 @@ export function OrderTrackingClient({
             {/* Order items */}
             {order.items && order.items.length > 0 && (
               <div className="bg-white rounded-card p-6 shadow-card mb-6">
-                <h3 className="font-semibold mb-4">Item Pesanan</h3>
+                <h3 className="font-semibold mb-4">{t('orderItems')}</h3>
                 <div className="space-y-3">
                   {order.items.map((item, idx) => (
                     <div key={idx} className="flex items-center gap-3">
                       {item.productImageUrl && (
                         <div className="w-12 h-12 rounded bg-brand-cream overflow-hidden">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
+                          <Image
                             src={item.productImageUrl}
                             alt={item.productNameId}
+                            width={48}
+                            height={48}
                             className="w-full h-full object-cover"
                           />
                         </div>
@@ -273,38 +263,38 @@ export function OrderTrackingClient({
 
             {/* Delivery info */}
             <div className="bg-white rounded-card p-6 shadow-card mb-6">
-              <h3 className="font-semibold mb-4">Informasi Pengiriman</h3>
+              <h3 className="font-semibold mb-4">{t('shippingInfo')}</h3>
 
               <div className="space-y-3 text-sm">
                 {order.recipientName && (
                   <div className="flex justify-between">
-                    <span className="text-text-secondary">Penerima</span>
+                    <span className="text-text-secondary">{t('recipientLabel')}</span>
                     <span className="font-medium">{order.recipientName}</span>
                   </div>
                 )}
                 {order.recipientPhone && (
                   <div className="flex justify-between">
-                    <span className="text-text-secondary">No. HP</span>
+                    <span className="text-text-secondary">{t('phoneLabel')}</span>
                     <span className="font-medium">{order.recipientPhone}</span>
                   </div>
                 )}
                 {order.addressLine && (
                   <>
                     <div className="flex justify-between">
-                      <span className="text-text-secondary">Alamat</span>
+                      <span className="text-text-secondary">{t('addressDeliveryLabel')}</span>
                       <span className="font-medium text-right max-w-[60%]">
                         {order.addressLine}, {order.district}, {order.city}, {order.province}
                       </span>
                     </div>
                     {order.courierName && (
                       <div className="flex justify-between">
-                        <span className="text-text-secondary">Kurir</span>
+                        <span className="text-text-secondary">{t('courierDeliveryLabel')}</span>
                         <span className="font-medium">{order.courierName}</span>
                       </div>
                     )}
                     {order.trackingNumber && (
                       <div className="flex justify-between">
-                        <span className="text-text-secondary">No. Resi</span>
+                        <span className="text-text-secondary">{t('trackingNumberLabel')}</span>
                         <span className="font-medium">{order.trackingNumber}</span>
                       </div>
                     )}
@@ -312,8 +302,8 @@ export function OrderTrackingClient({
                 )}
                 {order.deliveryMethod === 'pickup' && (
                   <div className="flex justify-between">
-                    <span className="text-text-secondary">Metode</span>
-                    <span className="font-medium">Ambil di Toko</span>
+                    <span className="text-text-secondary">{t('method')}</span>
+                    <span className="font-medium">{t('pickupMethod')}</span>
                   </div>
                 )}
               </div>
@@ -321,42 +311,42 @@ export function OrderTrackingClient({
 
             {/* Order summary */}
             <div className="bg-white rounded-card p-6 shadow-card">
-              <h3 className="font-semibold mb-4">Ringkasan Pembayaran</h3>
+              <h3 className="font-semibold mb-4">{t('paymentSummary')}</h3>
               <div className="space-y-2 text-sm">
                 {order.subtotal !== undefined && (
                   <div className="flex justify-between">
-                    <span className="text-text-secondary">Subtotal</span>
+                    <span className="text-text-secondary">{t('subtotalLabel')}</span>
                     <span>{formatIDR(order.subtotal)}</span>
                   </div>
                 )}
                 {order.discountAmount !== undefined && order.discountAmount > 0 && (
                   <div className="flex justify-between text-success">
-                    <span>Diskon</span>
+                    <span>{t('discountLabel')}</span>
                     <span>-{formatIDR(order.discountAmount)}</span>
                   </div>
                 )}
                 {order.pointsDiscount !== undefined && order.pointsDiscount > 0 && (
                   <div className="flex justify-between text-success">
-                    <span>Points Digunakan</span>
+                    <span>{t('pointsUsedLabel')}</span>
                     <span>-{formatIDR(order.pointsDiscount)}</span>
                   </div>
                 )}
                 {order.shippingCost !== undefined && order.shippingCost > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-text-secondary">Ongkos Kirim</span>
+                    <span className="text-text-secondary">{t('shippingLabel')}</span>
                     <span>{formatIDR(order.shippingCost)}</span>
                   </div>
                 )}
                 {order.totalAmount !== undefined && (
                   <div className="flex justify-between font-bold text-lg pt-2 border-t border-brand-cream-dark">
-                    <span>Total</span>
+                    <span>{t('totalLabel')}</span>
                     <span className="text-brand-red">{formatIDR(order.totalAmount)}</span>
                   </div>
                 )}
                 {order.pointsEarned !== undefined && order.pointsEarned > 0 && (
                   <div className="flex justify-between text-success">
-                    <span>Poin Didapat</span>
-                    <span>+{order.pointsEarned} poin</span>
+                    <span>{t('pointsEarnedLabel')}</span>
+                    <span>+{order.pointsEarned} {t('pointsUnit')}</span>
                   </div>
                 )}
               </div>
@@ -371,9 +361,9 @@ export function OrderTrackingClient({
               <div className="w-16 h-16 bg-brand-cream rounded-full flex items-center justify-center mx-auto mb-4">
                 <Lock className="w-8 h-8 text-text-muted" />
               </div>
-              <h3 className="font-semibold mb-2">Detail Pesanan</h3>
+              <h3 className="font-semibold mb-2">{t('detailAfterVerify')}</h3>
               <p className="text-sm text-text-secondary">
-                Verifikasi email untuk melihat detail pesanan lengkap
+                {t('verifyEmailForDetails')}
               </p>
             </div>
           </div>

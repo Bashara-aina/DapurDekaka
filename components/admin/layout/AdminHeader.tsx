@@ -1,6 +1,6 @@
 'use client';
 
-import { Menu, Bell, Search, ChevronRight } from 'lucide-react';
+import { Menu, ChevronRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -83,24 +83,9 @@ export function AdminHeader() {
           <Breadcrumb />
         </div>
 
-        {/* Right: search + bell */}
+        {/* Right: search placeholder + user avatar */}
         <div className="flex items-center gap-2">
-          <button
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500"
-            aria-label="Cari"
-            title="Cari (segera hadir)"
-          >
-            <Search className="w-4 h-4" />
-          </button>
-
-          <button
-            className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500"
-            aria-label="Notifikasi"
-          >
-            <Bell className="w-4 h-4" />
-            {/* Unread badge — placeholder */}
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-brand-red rounded-full" />
-          </button>
+          <span className="text-xs text-gray-400 hidden md:inline">Admin</span>
 
           {/* User avatar placeholder */}
           <div className="w-8 h-8 rounded-full bg-admin-sidebar text-white flex items-center justify-center text-xs font-bold select-none">

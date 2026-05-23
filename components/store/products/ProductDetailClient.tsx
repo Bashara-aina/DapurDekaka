@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { Minus, Plus, ShoppingCart, ArrowLeft, X, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCartStore } from '@/store/cart.store';
@@ -70,19 +72,22 @@ interface ProductDetailClientProps {
 }
 
 export function ProductDetailClient({ product, relatedProducts }: ProductDetailClientProps) {
+  const t = useTranslations('ProductDetail');
   const defaultVariantIndex = product.variants.findIndex(v => v.stock > 0 && v.isActive);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(Math.max(0, defaultVariantIndex));
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const router = useRouter();
+  const { data: session } = useSession();
   const addItem = useCartStore((s) => s.addItem);
+  const syncToDb = useCartStore((s) => s.syncToDb);
 
   const selectedVariant = product.variants[selectedVariantIndex];
   const primaryImage = product.images[0];
   const isOutOfStock = selectedVariant?.stock === 0;
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (isOutOfStock || !selectedVariant) return;
 
     addItem({
@@ -98,12 +103,15 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
       weightGram: selectedVariant.weightGram,
       stock: selectedVariant.stock,
     });
-    toast.success(`${product.nameId} ditambahkan ke keranjang`, {
+    toast.success(t('cart.added', { productName: product.nameId }), {
       action: {
-        label: 'Lihat Keranjang',
+        label: t('cart.viewCart'),
         onClick: () => router.push('/cart'),
       },
     });
+    if (session?.user) {
+      await syncToDb();
+    }
   };
 
   return (
@@ -112,11 +120,11 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
       <nav aria-label="Breadcrumb" className="bg-white px-4 py-3 border-b border-brand-cream-dark">
         <ol className="flex items-center gap-2 text-sm text-text-secondary">
           <li>
-            <Link href="/" className="hover:text-brand-red transition-colors">Beranda</Link>
+            <Link href="/" className="hover:text-brand-red transition-colors">{t('breadcrumb.home')}</Link>
           </li>
           <li><ChevronRight className="w-3.5 h-3.5" /></li>
           <li>
-            <Link href="/products" className="hover:text-brand-red transition-colors">Produk</Link>
+            <Link href="/products" className="hover:text-brand-red transition-colors">{t('breadcrumb.products')}</Link>
           </li>
           {product.category && (
             <>
@@ -144,7 +152,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
           <button
             onClick={() => setLightboxOpen(true)}
             className="relative w-full h-full cursor-zoom-in"
-            aria-label="Perbesar gambar"
+            aria-label={t('zoomImage')}
           >
             <Image
               src={product.images[selectedImageIndex].cloudinaryUrl}
@@ -156,8 +164,8 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
             />
           </button>
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-6xl">🥟</span>
+          <div className="w-full h-full bg-brand-cream-dark flex items-center justify-center rounded-lg">
+            <span className="text-brand-red text-3xl font-display">D</span>
           </div>
         )}
         
@@ -171,7 +179,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
             }
           }}
           className="absolute top-4 left-4 w-11 h-11 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm"
-          aria-label="Kembali"
+          aria-label={t('back')}
         >
           <ArrowLeft className="w-5 h-5 text-text-primary" />
         </button>
@@ -193,7 +201,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
                 'w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden border-2',
                 i === selectedImageIndex ? 'border-brand-red' : 'border-transparent'
               )}
-              aria-label={`Lihat foto ${i + 1} ${product.nameId}`}
+              aria-label={t('thumbnailPhoto', { number: i + 1 })}
             >
               <Image src={img.cloudinaryUrl} alt={`${product.nameId} - foto ${i + 1}`} width={64} height={64} className="object-cover" />
             </button>
@@ -216,7 +224,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
 
           {/* Variants */}
           <div className="mt-4">
-            <p className="text-text-secondary text-sm mb-2">Pilih Varian:</p>
+            <p className="text-text-secondary text-sm mb-2">{t('variant.select')}</p>
             <div className="flex flex-wrap gap-2">
               {product.variants.map((variant, i) => (
                 <button
@@ -256,7 +264,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
           {/* Description */}
           {product.descriptionId && (
             <div className="mt-4 pt-4 border-t border-brand-cream-dark">
-              <h3 className="font-semibold text-text-primary mb-2">Deskripsi</h3>
+              <h3 className="font-semibold text-text-primary mb-2">{t('description')}</h3>
               <p className="text-text-secondary text-sm whitespace-pre-line">
                 {product.descriptionId}
               </p>
@@ -269,7 +277,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
       {relatedProducts && relatedProducts.length > 0 && (
         <div className="px-4 mt-6">
           <h2 className="font-display text-xl font-bold text-text-primary mb-4">
-            Produk Lainnya
+            {t('relatedProducts')}
           </h2>
           <div className="grid grid-cols-2 gap-3">
             {relatedProducts.slice(0, 4).map((related) => {
@@ -292,7 +300,9 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
                       />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-4xl">🥟</span>
+                        <div className="w-full h-full bg-brand-cream-dark flex items-center justify-center rounded-lg">
+                          <span className="text-brand-red text-3xl font-display">D</span>
+                        </div>
                       </div>
                     )}
                     {related.isHalal && (
@@ -320,7 +330,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
               href={`/products?category=${product.category.slug}`}
               className="mt-4 flex items-center justify-center gap-1 text-brand-red text-sm font-medium hover:underline"
             >
-              Lihat semua {product.category.nameId} →
+              {t('viewAllCategory', { category: product.category.nameId })}
             </Link>
           )}
         </div>
@@ -335,7 +345,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
               onClick={() => setQuantity(Math.max(1, quantity - 1))}
               className="w-11 h-11 flex items-center justify-center text-brand-red"
               disabled={quantity <= 1}
-              aria-label="Kurangi jumlah"
+              aria-label={t('decreaseQty')}
             >
               <Minus className="w-4 h-4" />
             </button>
@@ -344,7 +354,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
               onClick={() => setQuantity(Math.min(selectedVariant?.stock ?? 99, Math.min(99, quantity + 1)))}
               className="w-11 h-11 flex items-center justify-center text-brand-red"
               disabled={quantity >= Math.min(99, selectedVariant?.stock ?? 99)}
-              aria-label="Tambah jumlah"
+              aria-label={t('increaseQty')}
             >
               <Plus className="w-4 h-4" />
             </button>
@@ -362,7 +372,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
             )}
           >
             <ShoppingCart className="w-5 h-5" />
-            {isOutOfStock ? 'Stok Habis' : 'Tambah ke Keranjang'}
+            {isOutOfStock ? t('variant.outOfStock') : t('addToCart')}
           </button>
         </div>
       </div>
@@ -384,7 +394,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
             <button
               onClick={() => setLightboxOpen(false)}
               className="absolute top-4 right-4 w-11 h-11 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm"
-              aria-label="Tutup lightbox"
+              aria-label={t('closeLightbox')}
             >
               <X className="w-5 h-5 text-text-primary" />
             </button>

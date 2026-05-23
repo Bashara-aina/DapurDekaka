@@ -7,7 +7,7 @@ import {
   MessageSquare, Image, Settings, Box, Truck, FileText, Bot, ClipboardList,
   BarChart3, X, Layers, Star
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/cn';
 import { useEffect } from 'react';
 
 const NAV_ITEMS = [
@@ -21,6 +21,7 @@ const NAV_ITEMS = [
   { href: '/admin/inventory', label: 'Inventori', icon: Box },
   { href: '/admin/shipments', label: 'Pengiriman', icon: Truck },
   { href: '/admin/customers', label: 'Pelanggan', icon: Users },
+  { href: '/admin/users', label: 'Users', icon: Users },
   { separator: true },
   { href: '/admin/coupons', label: 'Kupon', icon: Tag },
   { href: '/admin/blog', label: 'Blog', icon: FileText },

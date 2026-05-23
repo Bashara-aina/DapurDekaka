@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 
 export const metadata: Metadata = {
   title: 'Kebijakan Privasi - Dapur Dekaka',
@@ -9,32 +10,34 @@ export const metadata: Metadata = {
   },
 };
 
-export default function PrivacyPolicyPage() {
+export default async function PrivacyPolicyPage() {
+  const t = await getTranslations('policy');
+
   return (
     <div className="bg-brand-cream min-h-screen">
       <div className="container mx-auto px-4 py-8 max-w-3xl">
         <h1 className="font-display text-3xl font-bold text-text-primary mb-2">
-          Kebijakan Privasi
+          {t('privacyTitle')}
         </h1>
         <p className="text-text-secondary text-sm mb-8">
-          Terakhir diperbarui: Mei 2026 — Sesuai UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi (UU PDP)
+          {t('privacyLastUpdated')}
         </p>
 
         <div className="bg-white rounded-card shadow-card p-6 md:p-8 space-y-6">
           <section>
             <h2 className="font-display text-xl font-semibold text-text-primary mb-3">
-              Data yang Kami Kumpulkan
+              {t('dataCollectedTitle')}
             </h2>
             <p className="text-text-secondary leading-relaxed mb-4">
-              Dapur Dekaka mengumpulkan data pribadi berikut untuk memproses pesanan dan memberikan layanan terbaik:
+              {t('dataCollectedDesc')}
             </p>
             <ul className="list-disc list-inside text-text-secondary space-y-2">
-              <li><strong>Nama lengkap</strong> — untuk identitas pengiriman dan faktur</li>
-              <li><strong>Alamat email</strong> — untuk konfirmasi pesanan dan komunikasi</li>
-              <li><strong>Nomor telepon</strong> — untuk koordinasi pengiriman via WhatsApp/SMS</li>
-              <li><strong>Alamat pengiriman</strong> — untuk mengirim produk ke lokasi Anda</li>
-              <li><strong>Data pembayaran</strong> — diproses oleh Midtrans, tidak disimpan di server kami</li>
-              <li><strong>Riwayat pesanan</strong> — untuk layanan pelanggan dan loyalty points</li>
+              <li><strong>{t('dataItemName')}</strong> — {t('dataItemNameDesc')}</li>
+              <li><strong>{t('dataItemEmail')}</strong> — {t('dataItemEmailDesc')}</li>
+              <li><strong>{t('dataItemPhone')}</strong> — {t('dataItemPhoneDesc')}</li>
+              <li><strong>{t('dataItemAddress')}</strong> — {t('dataItemAddressDesc')}</li>
+              <li><strong>{t('dataItemPayment')}</strong> — {t('dataItemPaymentDesc')}</li>
+              <li><strong>{t('dataItemHistory')}</strong> — {t('dataItemHistoryDesc')}</li>
             </ul>
           </section>
 
@@ -42,17 +45,17 @@ export default function PrivacyPolicyPage() {
 
           <section>
             <h2 className="font-display text-xl font-semibold text-text-primary mb-3">
-              Tujuan Pengumpulan Data
+              {t('purposeTitle')}
             </h2>
             <p className="text-text-secondary leading-relaxed mb-4">
-              Data Anda digunakan untuk:
+              {t('purposeDesc')}
             </p>
             <ul className="list-disc list-inside text-text-secondary space-y-2">
-              <li>Memproses dan mengirim pesanan frozen food</li>
-              <li>Mengirim notifikasi status pesanan via WhatsApp dan email</li>
-              <li>Memberikan loyalty points dan promo personal</li>
-              <li>Memenuhi kewajiban hukum dan regulasi perpajakan (PPN)</li>
-              <li>Meningkatkan layanan pelanggan</li>
+              <li>{t('purposeItem1')}</li>
+              <li>{t('purposeItem2')}</li>
+              <li>{t('purposeItem3')}</li>
+              <li>{t('purposeItem4')}</li>
+              <li>{t('purposeItem5')}</li>
             </ul>
           </section>
 
@@ -60,16 +63,16 @@ export default function PrivacyPolicyPage() {
 
           <section>
             <h2 className="font-display text-xl font-semibold text-text-primary mb-3">
-              Perlindungan Data
+              {t('protectionTitle')}
             </h2>
             <p className="text-text-secondary leading-relaxed">
-              Kami melindungi data Anda dengan:
+              {t('protectionDesc')}
             </p>
             <ul className="list-disc list-inside text-text-secondary space-y-2 mt-2">
-              <li>Enkripsi SSL/TLS untuk semua transmisi data</li>
-              <li>Penyimpanan di database Neon PostgreSQL yang aman</li>
-              <li>Akses terbatas hanya untuk staff yang berwenang</li>
-              <li>Tidak menjual atau membagikan data ke pihak ketiga untuk tujuan marketing</li>
+              <li>{t('protectionItem1')}</li>
+              <li>{t('protectionItem2')}</li>
+              <li>{t('protectionItem3')}</li>
+              <li>{t('protectionItem4')}</li>
             </ul>
           </section>
 
@@ -77,13 +80,10 @@ export default function PrivacyPolicyPage() {
 
           <section>
             <h2 className="font-display text-xl font-semibold text-text-primary mb-3">
-              Retensi Data
+              {t('retentionTitle')}
             </h2>
             <p className="text-text-secondary leading-relaxed">
-              Data pribadi disimpan selama akun aktif dan selama diperlukan untuk keperluan 
-              hukum. Anda dapatطلب penghapusan data kapan saja — semua data pribadi akan 
-              dianonimisasi atau dihapus dari sistem, kecuali data yang wajib disimpan untuk 
-              keperluan hukum/perpajakan (faktur, bukti transaksi minimal 10 tahun).
+              {t('retentionDesc')}
             </p>
           </section>
 
@@ -91,15 +91,15 @@ export default function PrivacyPolicyPage() {
 
           <section>
             <h2 className="font-display text-xl font-semibold text-text-primary mb-3">
-              Hak Anda (UU PDP Pasal 5-13)
+              {t('rightsTitle')}
             </h2>
             <ul className="list-disc list-inside text-text-secondary space-y-2">
-              <li>Mendapatkan akses ke data pribadi Anda</li>
-              <li>Meminta perbaikan data yang tidak akurat</li>
-              <li>Meminta penghapusan data dalam kondisi tertentu</li>
-              <li>Menarik persetujuan kapan saja</li>
-              <li>Mengajukan keberatan atas pemrosesan tertentu</li>
-              <li>Mengajukan komplain ke otoritas perlindungan data</li>
+              <li>{t('rightsItem1')}</li>
+              <li>{t('rightsItem2')}</li>
+              <li>{t('rightsItem3')}</li>
+              <li>{t('rightsItem4')}</li>
+              <li>{t('rightsItem5')}</li>
+              <li>{t('rightsItem6')}</li>
             </ul>
           </section>
 
@@ -107,18 +107,18 @@ export default function PrivacyPolicyPage() {
 
           <section>
             <h2 className="font-display text-xl font-semibold text-text-primary mb-3">
-              Cookies
+              {t('cookiesTitle')}
             </h2>
             <p className="text-text-secondary leading-relaxed">
-              Situs dapurdekaka.com menggunakan cookies untuk:
+              {t('cookiesDesc')}
             </p>
             <ul className="list-disc list-inside text-text-secondary space-y-2 mt-2">
-              <li><strong>Fungsional</strong> — mengingat item keranjang dan preferensi bahasa</li>
-              <li><strong>Analytics</strong> — memahami cara pengunjung menggunakan situs</li>
-              <li><strong>Marketing</strong> — menayangkan iklan yang relevan (jika berlaku)</li>
+              <li><strong>{t('cookiesFunc')}</strong> — {t('cookiesFuncDesc')}</li>
+              <li><strong>{t('cookiesAnalytics')}</strong> — {t('cookiesAnalyticsDesc')}</li>
+              <li><strong>{t('cookiesMarketing')}</strong> — {t('cookiesMarketingDesc')}</li>
             </ul>
             <p className="text-text-secondary leading-relaxed mt-2">
-              Anda dapat menonaktifkan cookies melalui pengaturan browser.
+              {t('cookiesDisable')}
             </p>
           </section>
 
@@ -126,13 +126,10 @@ export default function PrivacyPolicyPage() {
 
           <section>
             <h2 className="font-display text-xl font-semibold text-text-primary mb-3">
-              WhatsApp Business
+              {t('whatsappBusinessTitle')}
             </h2>
             <p className="text-text-secondary leading-relaxed">
-              Saat Anda menghubungi kami via WhatsApp, chat akan tercatat di WhatsApp Business 
-              untuk keperluan customer service. Data percakapan ditangani sesuai kebijakan 
-              privasi WhatsApp Business. Kami tidak menggunakan data WhatsApp untuk tujuan 
-              marketing.
+              {t('whatsappBusinessDesc')}
             </p>
           </section>
 
@@ -140,12 +137,10 @@ export default function PrivacyPolicyPage() {
 
           <section>
             <h2 className="font-display text-xl font-semibold text-text-primary mb-3">
-              Perubahan Kebijakan
+              {t('changesTitle')}
             </h2>
             <p className="text-text-secondary leading-relaxed">
-              Kebijakan privasi ini dapat diperbarui sewaktu-waktu. Perubahan signifikan 
-              akan diumumkan melalui situs web dan/atau email. Penggunaan berkelanjutan 
-              atas layanan kami setelah perubahan merupakan persetujuan atas kebijakan terbaru.
+              {t('changesDesc')}
             </p>
           </section>
 
@@ -153,30 +148,29 @@ export default function PrivacyPolicyPage() {
 
           <section>
             <h2 className="font-display text-xl font-semibold text-text-primary mb-3">
-              Hubungi Kami
+              {t('contactTitle')}
             </h2>
             <p className="text-text-secondary leading-relaxed">
-              Untuk pertanyaan tentang kebijakan privasi atau mengajukan solicitação 
-              penghapusan data, hubungi:
+              {t('contactDesc')}
             </p>
             <ul className="list-disc list-inside text-text-secondary space-y-2 mt-2">
               <li>
-                Email: <a href="mailto:privasi@dapurdekaka.com" className="text-brand-red font-medium hover:underline">privasi@dapurdekaka.com</a>
+                {t('contactEmail')}<a href="mailto:privasi@dapurdekaka.com" className="text-brand-red font-medium hover:underline">{t('contactEmailLink')}</a>
               </li>
               <li>
-                WhatsApp:{' '}
+                {t('contactWhatsApp')}{' '}
                 <a
                   href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-brand-red font-medium hover:underline"
                 >
-                  Klik di sini untuk chat
+                  {t('contactWhatsAppLink')}
                 </a>
               </li>
             </ul>
             <p className="text-text-secondary text-sm mt-4">
-              Atau kirim surat ke: Jl. Sinom V No. 7, Turangga, Bandung 40261, Indonesia
+              {t('contactAddress')}
             </p>
           </section>
         </div>

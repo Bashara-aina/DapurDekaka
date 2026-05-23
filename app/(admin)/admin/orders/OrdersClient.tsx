@@ -53,6 +53,7 @@ const STATUS_LABELS: Record<string, string> = {
 const TRANSITIONS: Record<string, { status: string; label: string }[]> = {
   paid: [{ status: 'processing', label: 'Proses' }],
   processing: [{ status: 'packed', label: 'Kemas' }],
+  packed: [{ status: 'shipped', label: 'Kirim' }],
   shipped: [{ status: 'delivered', label: 'Terima' }],
 };
 
@@ -146,38 +147,69 @@ export default function OrdersClient({
         )}
       </div>
 
-      <form onSubmit={handleSearch} className="flex gap-2">
-        <input
-          type="text"
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          placeholder="Cari no. pesanan, nama, email..."
-          className="flex-1 h-10 px-3 rounded-md border border-input bg-white text-sm"
-        />
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1">
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Cari no. pesanan, nama, email..."
+            className="w-full h-10 pl-3 pr-10 rounded-md border border-input bg-white text-sm"
+          />
+          {searchInput && (
+            <button
+              type="button"
+              onClick={() => { setSearchInput(''); clearSearch(); }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              aria-label="Clear search"
+            >
+              ×
+            </button>
+          )}
+        </div>
+
+        <select
+          value={searchParams.get('status') ?? 'all'}
+          onChange={(e) => {
+            const params = new URLSearchParams(searchParams.toString());
+            if (e.target.value === 'all') {
+              params.delete('status');
+            } else {
+              params.set('status', e.target.value);
+            }
+            params.set('page', '1');
+            router.push(`/admin/orders?${params.toString()}`);
+          }}
+          className="h-10 px-3 rounded-md border border-input bg-white text-sm text-gray-700"
+          aria-label="Filter status"
+        >
+          <option value="all">Semua Status</option>
+          <option value="pending_payment">Menunggu Bayar</option>
+          <option value="paid">Dibayar</option>
+          <option value="processing">Diproses</option>
+          <option value="packed">Dikemas</option>
+          <option value="shipped">Dikirim</option>
+          <option value="delivered">Diterima</option>
+          <option value="cancelled">Dibatalkan</option>
+          <option value="refunded">Dikembalikan</option>
+        </select>
+
         <button
           type="submit"
-          className="h-10 px-4 bg-[#0F172A] text-white text-sm font-medium rounded-md hover:bg-[#1e293b] transition-colors"
+          onClick={handleSearch}
+          className="h-10 px-4 bg-admin-sidebar text-white text-sm font-medium rounded-md hover:bg-admin-sidebar-hover transition-colors"
         >
           Cari
         </button>
-        {searchQuery && (
-          <button
-            type="button"
-            onClick={clearSearch}
-            className="h-10 px-4 bg-gray-200 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-300 transition-colors"
-          >
-            Hapus
-          </button>
-        )}
-      </form>
+      </div>
       {searchQuery && (
         <p className="text-sm text-gray-500">
           Hasil pencarian: <strong>&quot;{searchQuery}&quot;</strong> — {totalOrders.toLocaleString('id-ID')} pesanan ditemukan
         </p>
       )}
 
-      <div className="bg-white rounded-lg border border-admin-border overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="bg-white rounded-lg border border-admin-border overflow-x-auto">
+        <div className="min-w-[640px]">
           <table className="w-full">
             <thead className="bg-admin-content">
               <tr>
@@ -314,7 +346,7 @@ export default function OrdersClient({
                     onClick={() => router.push(buildPageUrl(pageNum))}
                     className={`w-9 h-9 rounded text-sm font-medium ${
                       pageNum === currentPage
-                        ? 'bg-[#0F172A] text-white'
+                        ? 'bg-admin-sidebar text-white'
                         : 'border border-admin-border hover:bg-admin-content text-gray-600'
                     }`}
                   >

@@ -1,10 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { Plus, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { AddressCard } from '@/components/store/account/AddressCard';
 import { AddressForm } from '@/components/store/account/AddressForm';
 import type { Address } from '@/lib/db/schema';
+import type { AddressFormData } from '@/components/store/account/AddressForm';
 
 interface Province {
   id: string;
@@ -19,6 +22,7 @@ interface City {
 }
 
 export default function AccountAddressesPage() {
+  const t = useTranslations('account');
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [cities, setCities] = useState<City[]>([]);
@@ -39,8 +43,8 @@ export default function AccountAddressesPage() {
       if (data.success) {
         setAddresses(data.data);
       }
-    } catch (error) {
-      console.error('Failed to fetch addresses:', error);
+    } catch {
+      toast.error(t('loadAddressError') || 'Gagal memuat alamat');
     } finally {
       setIsLoading(false);
     }
@@ -57,8 +61,8 @@ export default function AccountAddressesPage() {
 
       if (provinceData.success) setProvinces(provinceData.data);
       if (cityData.success) setCities(cityData.data);
-    } catch (error) {
-      console.error('Failed to fetch shipping data:', error);
+    } catch {
+      toast.error(t('loadShippingError') || 'Gagal memuat data pengiriman');
     }
   };
 
@@ -68,7 +72,7 @@ export default function AccountAddressesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Yakin ingin menghapus alamat ini?')) return;
+    if (!confirm(t('deleteAddressConfirm') || 'Yakin ingin menghapus alamat ini?')) return;
 
     try {
       const res = await fetch(`/api/account/addresses/${id}`, { method: 'DELETE' });
@@ -76,8 +80,8 @@ export default function AccountAddressesPage() {
       if (data.success) {
         setAddresses(prev => prev.filter(a => a.id !== id));
       }
-    } catch (error) {
-      console.error('Failed to delete address:', error);
+    } catch {
+      toast.error(t('deleteAddressError') || 'Gagal menghapus alamat');
     }
   };
 
@@ -95,12 +99,12 @@ export default function AccountAddressesPage() {
           isDefault: a.id === id,
         })));
       }
-    } catch (error) {
-      console.error('Failed to set default address:', error);
+    } catch {
+      toast.error(t('setDefaultError') || 'Gagal mengatur alamat utama');
     }
   };
 
-  const handleSubmitAddress = async (formData: any) => {
+  const handleSubmitAddress = async (formData: AddressFormData) => {
     setIsSubmitting(true);
     try {
       if (editingAddress) {
@@ -127,8 +131,8 @@ export default function AccountAddressesPage() {
 
       setShowForm(false);
       setEditingAddress(null);
-    } catch (error) {
-      console.error('Failed to save address:', error);
+    } catch {
+      toast.error(t('saveAddressError') || 'Gagal menyimpan alamat');
     } finally {
       setIsSubmitting(false);
     }
@@ -150,11 +154,11 @@ export default function AccountAddressesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20 md:pb-0">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold text-text-primary">Alamat Tersimpan</h1>
-          <p className="text-text-secondary text-sm mt-1">Kelola alamat pengiriman kamu</p>
+          <h1 className="font-display text-2xl font-bold text-text-primary">{t('addresses')}</h1>
+          <p className="text-text-secondary text-sm mt-1">{t('addresses')}</p>
         </div>
         {!showForm && (
           <button
@@ -162,7 +166,7 @@ export default function AccountAddressesPage() {
             className="flex items-center gap-2 h-10 px-4 bg-brand-red text-white font-bold rounded-button hover:bg-brand-red-dark transition-colors"
           >
             <Plus className="w-5 h-5" />
-            Tambah Alamat
+            {t('addAddress')}
           </button>
         )}
       </div>
@@ -184,17 +188,17 @@ export default function AccountAddressesPage() {
             <Trash2 className="w-10 h-10 text-text-disabled" />
           </div>
           <h2 className="font-display text-lg font-semibold text-text-primary mb-2">
-            Belum Ada Alamat
+            {t('noAddresses')}
           </h2>
           <p className="text-text-secondary mb-6">
-            Tambahkan alamat untuk checkout lebih cepat
+            {t('noAddressesDesc') || 'Tambahkan alamat untuk checkout lebih cepat'}
           </p>
           <button
             onClick={() => setShowForm(true)}
             className="inline-flex items-center gap-2 h-12 px-6 bg-brand-red text-white font-bold rounded-button hover:bg-brand-red-dark transition-colors"
           >
             <Plus className="w-5 h-5" />
-            Tambah Alamat
+            {t('addAddress')}
           </button>
         </div>
       ) : (

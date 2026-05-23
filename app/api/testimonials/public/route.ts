@@ -1,19 +1,33 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { testimonials } from '@/lib/db/schema';
 import { eq, sql, asc, and } from 'drizzle-orm';
-import { success, serverError } from '@/lib/utils/api-response';
+import { success, serverError, badRequest } from '@/lib/utils/api-response';
+import { checkRateLimitAsync } from '@/lib/utils/rate-limit';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
+  const ip = req.ip || req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
+  const rateLimit = await checkRateLimitAsync(ip, 30, '1 m');
+  if (!rateLimit.success) {
+    return badRequest('Terlalu banyak permintaan. Silakan coba lagi nanti.');
+  }
+
   try {
     const data = await db.query.testimonials.findMany({
       where: and(eq(testimonials.isActive, true), sql`${testimonials.deletedAt} IS NULL`),
       orderBy: [asc(testimonials.sortOrder), asc(testimonials.createdAt)],
     });
 
-    return success(data);
+    return NextResponse.json(
+      { success: true, data },
+      {
+        headers: {
+          'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
+        },
+      }
+    );
   } catch (error) {
     console.error('[api/testimonials/public]', error);
     return serverError(error);

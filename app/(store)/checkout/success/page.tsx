@@ -4,10 +4,13 @@ import { useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import confetti from 'canvas-confetti';
 import { formatIDR } from '@/lib/utils/format-currency';
+import { CheckCircle } from 'lucide-react';
 
 function SuccessContent() {
+  const t = useTranslations('checkout');
   const searchParams = useSearchParams();
   const orderNumber = searchParams.get('order');
 
@@ -49,31 +52,33 @@ function SuccessContent() {
   return (
     <div className="min-h-screen bg-brand-cream flex items-center justify-center p-4">
       <div className="text-center max-w-md w-full">
-        <div className="text-6xl mb-6">🎉</div>
+        <div className="mb-6">
+          <CheckCircle className="w-16 h-16 text-success mx-auto" />
+        </div>
         <h1 className="font-display text-3xl font-bold text-text-primary mb-4">
-          Pesanan Berhasil!
+          {t('successTitle')}
         </h1>
         <p className="text-text-secondary mb-2">
-          Terima kasih atas pesanan Anda.
+          {t('successThankYou')}
         </p>
         <p className="text-text-secondary mb-4">
-          Order number: <span className="font-bold text-brand-red">{orderNumber}</span>
+          {t('successOrderNumber')}: <span className="font-bold text-brand-red">{orderNumber}</span>
         </p>
 
         {orderData?.order?.courierName && orderData?.order?.deliveryMethod === 'delivery' && (
           <p className="text-sm text-text-secondary mb-4">
-            Dikirim via {orderData.order.courierName} · Estimasi 2-3 hari kerja
+            {t('successDeliveryEstimate', { courier: orderData.order.courierName })}
           </p>
         )}
 
         {orderData?.order?.pointsEarned && orderData.order.pointsEarned > 0 && orderData.order.status === 'paid' ? (
           <div className="bg-gradient-to-r from-brand-gold/20 to-brand-gold/10 border border-brand-gold/30 rounded-xl p-4 mb-6">
-            <p className="text-sm text-text-secondary mb-1">Kamu mendapat</p>
+            <p className="text-sm text-text-secondary mb-1">{t('successPointsEarned')}</p>
             <p className="text-2xl font-bold text-brand-gold">
-              +{orderData.order.pointsEarned.toLocaleString('id-ID')} poin
+              +{orderData.order.pointsEarned.toLocaleString('id-ID')} {t('pointsUnit')}
             </p>
             <p className="text-xs text-text-secondary mt-1">
-              Poin akan dikreditkan setelah pembayaran dikonfirmasi oleh sistem
+              {t('successPointsNote')}
             </p>
           </div>
         ) : null}
@@ -83,7 +88,7 @@ function SuccessContent() {
             href={`/orders/${orderNumber}`}
             className="block w-full h-12 bg-brand-red text-white font-bold rounded-button flex items-center justify-center"
           >
-            Lihat Detail Pesanan
+            {t('viewOrderDetails')}
           </Link>
           {orderNumber && (
             <a
@@ -95,14 +100,14 @@ function SuccessContent() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Unduh Struk PDF
+              {t('downloadReceipt')}
             </a>
           )}
           <Link
             href="/products"
             className="block w-full h-12 bg-white border border-brand-cream-dark text-text-primary font-medium rounded-button flex items-center justify-center"
           >
-            Lanjut Belanja
+            {t('continueShopping')}
           </Link>
         </div>
       </div>
@@ -115,7 +120,9 @@ function LoadingFallback() {
     <div className="min-h-screen bg-brand-cream flex items-center justify-center p-4">
       <div className="text-center">
         <div className="animate-pulse">
-          <div className="text-6xl mb-6 opacity-50">🎉</div>
+          <div className="mb-6">
+            <CheckCircle className="w-16 h-16 text-success mx-auto opacity-50" />
+          </div>
           <div className="h-8 bg-brand-cream-dark rounded w-48 mx-auto mb-4"></div>
           <div className="h-4 bg-brand-cream-dark rounded w-64 mx-auto"></div>
         </div>

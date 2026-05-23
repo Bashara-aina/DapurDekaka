@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eq, desc } from 'drizzle-orm';
-import { success, notFound, unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
+import { z } from 'zod';
+import { success, notFound, unauthorized, forbidden, serverError, validationError } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { users, orders, addresses, pointsHistory } from '@/lib/db/schema';
@@ -69,6 +70,12 @@ export async function GET(
   }
 }
 
+const UpdateCustomerSchema = z.object({
+  name: z.string().min(1).optional(),
+  phone: z.string().optional(),
+  isActive: z.boolean().optional(),
+});
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -86,6 +93,20 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await req.json();
+    const parsed = UpdateCustomerSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Validation failed',
+          code: 'VALIDATION_ERROR',
+          details: parsed.error.flatten().fieldErrors,
+        },
+        { status: 422 }
+      );
+    }
+
+    const { name, phone, isActive } = parsed.data;
 
     const existing = await db.query.users.findFirst({
       where: eq(users.id, id),
@@ -95,14 +116,14 @@ export async function PATCH(
       return notFound('Pelanggan tidak ditemukan');
     }
 
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
+    if (name !== undefined) updateData.name = name;
+    if (phone !== undefined) updateData.phone = phone;
+    if (isActive !== undefined) updateData.isActive = isActive;
+
     const [updated] = await db
       .update(users)
-      .set({
-        ...(body.name !== undefined && { name: body.name }),
-        ...(body.phone !== undefined && { phone: body.phone }),
-        ...(body.isActive !== undefined && { isActive: body.isActive }),
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(users.id, id))
       .returning();
 

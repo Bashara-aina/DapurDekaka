@@ -4,10 +4,12 @@ import { coupons } from '@/lib/db/schema';
 import { desc } from 'drizzle-orm';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { formatWIB } from '@/lib/utils/format-date';
+import { requireRole } from '@/lib/auth/check-role';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminCouponsPage() {
+  await requireRole(['superadmin']);
   const allCoupons = await db.query.coupons.findMany({
     orderBy: [desc(coupons.createdAt)],
   });
@@ -71,7 +73,7 @@ export default async function AdminCouponsPage() {
                       })()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatIDR(coupon.minOrderAmount)}
+                      {formatIDR(coupon.minOrderAmount ?? 0)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {coupon.maxUses

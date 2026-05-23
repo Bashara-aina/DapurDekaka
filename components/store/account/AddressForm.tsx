@@ -20,7 +20,7 @@ const addressFormSchema = z.object({
   isDefault: z.boolean().optional(),
 });
 
-type AddressFormData = z.infer<typeof addressFormSchema>;
+export type AddressFormData = z.infer<typeof addressFormSchema>;
 
 interface Province {
   id: string;

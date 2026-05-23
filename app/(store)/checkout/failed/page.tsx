@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { XCircle, RefreshCw, Home } from 'lucide-react';
 import { useCartStore } from '@/store/cart.store';
 
@@ -20,7 +21,16 @@ interface FailedOrderItem {
   imageUrl?: string;
 }
 
+/**
+ * FIX 8 (workaround): Cart store's addItem blocks stock=0 items.
+ * On payment failure, we restore items to cart for retry.
+ * Since real stock is re-validated server-side at checkout initiation,
+ * using a placeholder stock value (999) here is safe — the server will
+ * return an error if any items are actually out of stock at retry time.
+ * This workaround avoids a deeper cart-store refactor for now.
+ */
 export default function CheckoutFailedPage() {
+  const t = useTranslations('checkout');
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderNumber = searchParams.get('order');
@@ -56,9 +66,8 @@ export default function CheckoutFailedPage() {
     setIsRestoring(true);
     try {
       for (const item of orderItems) {
-        // FIX 8: Cart restored with stock=0 may block addItem — use 999 (will be re-validated at checkout)
-        // Alternatively, we could fetch current stock from /api/cart/validate but that adds complexity
-        // Since checkout initiate re-validates all prices/stock server-side anyway, high placeholder is safe
+        // FIX 8: Use 999 as placeholder stock since cart store blocks stock=0.
+        // Stock will be re-validated server-side at checkout initiation.
         addItem({
           variantId: item.variantId,
           productId: item.productId,
@@ -87,15 +96,15 @@ export default function CheckoutFailedPage() {
         </div>
 
         <h1 className="font-display text-3xl font-bold text-text-primary mb-3">
-          Pembayaran Gagal
+          {t('failedTitle')}
         </h1>
         <p className="text-text-secondary mb-2">
-          Maaf, pembayaran Anda tidak dapat diproses.
+          {t('failedSubtitle')}
         </p>
         <p className="text-sm text-text-secondary mb-8">
           {orderItems?.length
-            ? 'Keranjang Anda telah dipulihkan. Silakan coba lagi.'
-            : 'Jangan khawatir — keranjang Anda masih tersimpan.'}
+            ? t('failedCartRestored')
+            : t('failedCartSaved')}
         </p>
 
         <div className="space-y-3">
@@ -106,7 +115,7 @@ export default function CheckoutFailedPage() {
               className="flex items-center justify-center gap-2 w-full h-12 bg-brand-red text-white font-bold rounded-button hover:bg-brand-red-dark transition-colors disabled:opacity-50"
             >
               <RefreshCw className="w-4 h-4" />
-              {isRestoring ? 'Memulihkan...' : 'Coba Lagi'}
+              {isRestoring ? t('restoring') : t('retryAgain')}
             </button>
           ) : (
             <Link
@@ -114,7 +123,7 @@ export default function CheckoutFailedPage() {
               className="flex items-center justify-center gap-2 w-full h-12 bg-brand-red text-white font-bold rounded-button hover:bg-brand-red-dark transition-colors"
             >
               <RefreshCw className="w-4 h-4" />
-              Coba Lagi
+              {t('retryAgain')}
             </Link>
           )}
 
@@ -123,12 +132,12 @@ export default function CheckoutFailedPage() {
             className="flex items-center justify-center gap-2 w-full h-12 bg-white border border-brand-cream-dark text-text-primary font-medium rounded-button hover:bg-brand-cream transition-colors"
           >
             <Home className="w-4 h-4" />
-            Kembali ke Beranda
+            {t('backToHome')}
           </Link>
         </div>
 
         <p className="text-xs text-text-muted mt-8">
-          Jika masalah berlanjut, silakan hubungi kami via WhatsApp.
+          {t('failedContactWhatsApp')}
         </p>
       </div>
     </div>

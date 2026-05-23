@@ -1,5 +1,6 @@
 export * from './couriers';
 export * from './points';
+export * from './orders';
 
 /**
  * Maximum cart quantity per variant

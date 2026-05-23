@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 import { pointsHistory, users } from '@/lib/db/schema';
 import { eq, and, lt, inArray, isNull, sql } from 'drizzle-orm';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
-import { serverError, success } from '@/lib/utils/api-response';
+import { serverError, success, unauthorized } from '@/lib/utils/api-response';
 import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -15,10 +15,7 @@ export const runtime = 'nodejs';
 export async function GET(req: NextRequest) {
   try {
     if (!verifyCronAuth(req)) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return unauthorized('Cron auth diperlukan');
     }
 
     const now = new Date();

@@ -8,10 +8,14 @@ import { Package, Gift, MapPin, ChevronRight, ShoppingBag } from 'lucide-react';
 import { count, eq, and } from 'drizzle-orm';
 import { orders } from '@/lib/db/schema';
 import { POINTS_VALUE_IDR } from '@/lib/constants/points';
+import { ORDER_STATUS_LABELS, ORDER_STATUS_LABELS_SHORT, ORDER_STATUS_COLORS } from '@/lib/constants/orders';
 import { users } from '@/lib/db/schema';
+import { formatIDR } from '@/lib/utils/format-currency';
+import { getTranslations } from 'next-intl/server';
 
 export default async function AccountPage() {
   const session = await auth();
+  const t = await getTranslations();
 
   if (!session?.user?.id) {
     redirect('/login');
@@ -54,24 +58,15 @@ export default async function AccountPage() {
     where: (addrs, { eq }) => eq(addrs.userId, session.user.id!),
   });
 
-  const formatIDR = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
   return (
     <div className="space-y-6">
       {/* Welcome Header */}
       <div className="bg-white rounded-card shadow-card p-6">
         <h1 className="font-display text-2xl font-bold text-text-primary">
-          Halo, {user.name}!
+          {t('account.greeting', { name: user.name })}
         </h1>
         <p className="text-text-secondary text-sm mt-1">
-          Selamat datang di akun Dapur Dekaka kamu
+          {t('account.welcomeMessage')}
         </p>
       </div>
 
@@ -84,7 +79,7 @@ export default async function AccountPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-text-primary">{totalOrderCount || 0}</p>
-              <p className="text-xs text-text-secondary">Total Pesanan</p>
+              <p className="text-xs text-text-secondary">{t('account.totalOrders')}</p>
             </div>
           </div>
         </Link>
@@ -96,7 +91,7 @@ export default async function AccountPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-text-primary">{user.pointsBalance || 0}</p>
-              <p className="text-xs text-text-secondary">Poin Saya</p>
+              <p className="text-xs text-text-secondary">{t('account.myPoints')}</p>
             </div>
           </div>
         </Link>
@@ -108,7 +103,7 @@ export default async function AccountPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-text-primary">{addressCount.length || 0}</p>
-              <p className="text-xs text-text-secondary">Alamat Tersimpan</p>
+              <p className="text-xs text-text-secondary">{t('account.addresses')}</p>
             </div>
           </div>
         </Link>
@@ -122,7 +117,7 @@ export default async function AccountPage() {
               <p className="text-2xl font-bold text-text-primary">
                 {pendingCount || 0}
               </p>
-              <p className="text-xs text-text-secondary">Menunggu Pembayaran</p>
+              <p className="text-xs text-text-secondary">{t('account.pendingPayment')}</p>
             </div>
           </div>
         </Link>
@@ -131,12 +126,12 @@ export default async function AccountPage() {
       {/* Recent Orders */}
       <div className="bg-white rounded-card shadow-card p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-lg font-semibold text-text-primary">Pesanan Terbaru</h2>
+          <h2 className="font-display text-lg font-semibold text-text-primary">{t('account.recentOrders')}</h2>
           <Link
             href="/account/orders"
             className="flex items-center gap-1 text-sm text-brand-red hover:underline"
           >
-            Lihat Semua
+            {t('account.viewAll')}
             <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
@@ -146,12 +141,12 @@ export default async function AccountPage() {
             <div className="w-16 h-16 bg-brand-cream rounded-full flex items-center justify-center mx-auto mb-4">
               <Package className="w-8 h-8 text-text-disabled" />
             </div>
-            <p className="text-text-secondary">Belum ada pesanan</p>
+            <p className="text-text-secondary">{t('account.noOrders')}</p>
             <Link
               href="/products"
               className="inline-block mt-4 text-brand-red font-medium hover:underline"
             >
-              Mulai Belanja
+              {t('cart.startShopping')}
             </Link>
           </div>
         ) : (
@@ -177,22 +172,8 @@ export default async function AccountPage() {
                     <p className="font-bold text-brand-red">
                       {formatIDR(order.totalAmount)}
                     </p>
-                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium mt-1
-                      ${order.status === 'pending_payment' ? 'bg-warning-light text-warning' : ''}
-                      ${order.status === 'paid' ? 'bg-info-light text-info' : ''}
-                      ${order.status === 'processing' ? 'bg-purple-100 text-purple-700' : ''}
-                      ${order.status === 'packed' ? 'bg-cyan-100 text-cyan-700' : ''}
-                      ${order.status === 'shipped' ? 'bg-success-light text-success' : ''}
-                      ${order.status === 'delivered' ? 'bg-success-light text-success' : ''}
-                      ${order.status === 'cancelled' ? 'bg-gray-100 text-gray-600' : ''}
-                    `}>
-                      {order.status === 'pending_payment' && 'Menunggu'}
-                      {order.status === 'paid' && 'Dibayar'}
-                      {order.status === 'processing' && 'Diproses'}
-                      {order.status === 'packed' && 'Dikemas'}
-                      {order.status === 'shipped' && 'Dikirim'}
-                      {order.status === 'delivered' && 'Selesai'}
-                      {order.status === 'cancelled' && 'Dibatalkan'}
+                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium mt-1 ${ORDER_STATUS_COLORS[order.status as keyof typeof ORDER_STATUS_COLORS] || ''}`}>
+                      {ORDER_STATUS_LABELS_SHORT[order.status as keyof typeof ORDER_STATUS_LABELS_SHORT] || order.status}
                     </span>
                   </div>
                 </div>
@@ -207,17 +188,17 @@ export default async function AccountPage() {
         <div className="bg-gradient-to-r from-brand-red to-brand-red-dark rounded-card p-6 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm opacity-80">Poin Kamu</p>
+              <p className="text-sm opacity-80">{t('account.yourPoints')}</p>
               <p className="text-3xl font-bold">{user.pointsBalance} poin</p>
               <p className="text-xs opacity-70 mt-1">
-                {formatIDR(user.pointsBalance * 10)} bisa ditukarkan
+                {formatIDR(user.pointsBalance * 10)} {t('account.canRedeem')}
               </p>
             </div>
             <Link
               href="/account/points"
               className="px-4 py-2 bg-white text-brand-red font-bold rounded-lg hover:bg-brand-cream transition-colors"
             >
-              Tukarkan
+              {t('account.redeemPoints')}
             </Link>
           </div>
         </div>

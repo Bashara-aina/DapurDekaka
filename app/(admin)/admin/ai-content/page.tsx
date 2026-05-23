@@ -1,6 +1,8 @@
 import { CaptionGenerator } from '@/components/admin/ai/CaptionGenerator';
+import { requireRole } from '@/lib/auth/check-role';
 
-export default function AdminAIPage() {
+export default async function AdminAIPage() {
+  await requireRole(['superadmin']);
   return (
     <div className="space-y-6">
       <div className="space-y-2">

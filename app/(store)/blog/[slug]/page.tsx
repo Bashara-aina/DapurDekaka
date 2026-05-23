@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
+import { MessageCircle } from 'lucide-react';
 import DOMPurify from 'isomorphic-dompurify';
 import { db } from '@/lib/db';
 import { blogPosts } from '@/lib/db/schema';
@@ -294,9 +295,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                   href={`https://wa.me/?text=${encodeURIComponent(`${post.titleId} - ${pageUrl}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#25D366] text-white text-sm font-medium rounded-button hover:bg-[#20BD5A] transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-whatsapp-green text-white text-sm font-medium rounded-button hover:bg-whatsapp-green-dark transition-colors"
                 >
-                  <span>💬</span> WhatsApp
+                  <MessageCircle className="w-4 h-4" /> WhatsApp
                 </a>
                 <CopyLinkButton url={pageUrl} />
               </div>

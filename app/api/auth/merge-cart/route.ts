@@ -4,7 +4,7 @@ export const runtime = 'nodejs';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { savedCarts } from '@/lib/db/schema';
-import { eq, and, inArray, sql } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { success, unauthorized, serverError } from '@/lib/utils/api-response';
 import { withRateLimit } from '@/lib/utils/rate-limit';
 import type { CartItem } from '@/store/cart.store';
@@ -29,23 +29,52 @@ export const POST = withRateLimit(
         return success({ merged: 0 });
       }
 
-      await db.transaction(async (tx) => {
-        // Delete user's existing saved cart
-        await tx.delete(savedCarts).where(eq(savedCarts.userId, session.user.id));
+      const userId = session.user.id;
+      let mergedCount = 0;
 
-        // Insert incoming items
-        if (items.length > 0) {
-          await tx.insert(savedCarts).values(
-            items.map((item) => ({
-              userId: session.user.id,
+      await db.transaction(async (tx) => {
+        for (const item of items) {
+          const cappedQty = Math.min(item.quantity, 99);
+
+          // Check if this variant already exists in user's saved cart
+          const existing = await tx
+            .select()
+            .from(savedCarts)
+            .where(
+              and(
+                eq(savedCarts.userId, userId),
+                eq(savedCarts.variantId, item.variantId)
+              )
+            )
+            .limit(1);
+
+          if (existing.length > 0) {
+            // Merge: add quantities, cap at 99
+            const existingItem = existing[0];
+            if (!existingItem) continue;
+            const newQty = Math.min(existingItem.quantity + cappedQty, 99);
+            await tx
+              .update(savedCarts)
+              .set({ quantity: newQty })
+              .where(
+                and(
+                  eq(savedCarts.userId, userId),
+                  eq(savedCarts.variantId, item.variantId)
+                )
+              );
+          } else {
+            // Insert new item
+            await tx.insert(savedCarts).values({
+              userId,
               variantId: item.variantId,
-              quantity: item.quantity,
-            }))
-          );
+              quantity: cappedQty,
+            });
+          }
+          mergedCount++;
         }
       });
 
-      return success({ merged: items.length });
+      return success({ merged: mergedCount });
 
     } catch (error) {
       console.error('[auth/merge-cart]', error);

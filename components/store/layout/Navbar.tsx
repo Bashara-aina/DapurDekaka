@@ -3,26 +3,34 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { ShoppingCart, User, Search, Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils/cn';
 import { useCartStore } from '@/store/cart.store';
 import { usePathname, useRouter } from 'next/navigation';
 
-const NAV_LINKS = [
-  { href: '/', label: 'Beranda' },
-  { href: '/products', label: 'Produk' },
-  { href: '/blog', label: 'Blog' },
-  { href: '/b2b', label: 'B2B' },
+const NAV_LINKS = (t: (key: string) => string) => [
+  { href: '/', label: t('nav.home') },
+  { href: '/products', label: t('nav.products') },
+  { href: '/blog', label: t('nav.blog') },
+  { href: '/b2b', label: t('nav.b2b') },
 ];
 
 export function Navbar() {
+  const t = useTranslations();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { data: session } = useSession();
   const router = useRouter();
   const pathname = usePathname();
   const cartItems = useCartStore((s) => s.items);
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+
+  const navLinks = NAV_LINKS(t);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   const handleSignOut = async () => {
     setMobileMenuOpen(false);
@@ -42,7 +50,7 @@ export function Navbar() {
 
           {/* Nav Links */}
           <nav className="flex items-center gap-8">
-            {NAV_LINKS.map((link) => {
+            {navLinks.map((link) => {
             const isActive = link.href === '/' ? pathname === '/' : pathname.startsWith(link.href);
             return (
               <Link
@@ -65,7 +73,7 @@ export function Navbar() {
           <div className="flex items-center gap-3">
             {/* <LanguageSwitcher /> */}
             <Link
-              href="/products?q="
+              href="/products"
               className="p-2 text-text-secondary hover:text-brand-red transition-colors"
               aria-label="Cari produk"
             >
@@ -114,7 +122,7 @@ export function Navbar() {
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-red text-white text-sm font-medium rounded-button hover:bg-brand-red-dark transition-colors"
               >
                 <User className="w-4 h-4" />
-                Masuk
+                {t('nav.login')}
               </Link>
             )}
           </div>
@@ -165,7 +173,7 @@ export function Navbar() {
             {/* Menu */}
             <div className="absolute top-14 left-0 right-0 bg-white border-b border-brand-cream-dark shadow-lg z-40 animate-slide-up">
               <nav className="p-4 space-y-1">
-                {NAV_LINKS.map((link) => (
+                {navLinks.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
@@ -183,13 +191,13 @@ export function Navbar() {
                       onClick={() => setMobileMenuOpen(false)}
                       className="block py-3 px-4 text-text-primary hover:bg-brand-cream rounded-lg transition-colors min-h-[44px] flex items-center"
                     >
-                      Akun Saya
+                      {t('nav.accountMy')}
                     </Link>
                     <button
                       onClick={handleSignOut}
                       className="block w-full text-left py-3 px-4 text-error hover:bg-error-light rounded-lg transition-colors min-h-[44px] flex items-center"
                     >
-                      Keluar
+                      {t('nav.logout')}
                     </button>
                   </>
                 ) : (
@@ -198,7 +206,7 @@ export function Navbar() {
                     onClick={() => setMobileMenuOpen(false)}
                     className="block py-3 px-4 text-text-primary hover:bg-brand-cream rounded-lg transition-colors min-h-[44px] flex items-center"
                   >
-                    Masuk
+                    {t('nav.login')}
                   </Link>
                 )}
               </nav>

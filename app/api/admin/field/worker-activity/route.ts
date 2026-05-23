@@ -34,13 +34,10 @@ export async function GET(req: NextRequest) {
     const userIds = [...new Set(activities.map((a) => a.userId))];
     const usersMap: Record<string, string> = {};
     if (userIds.length > 0) {
-      const users = await db.query.users.findMany({
-        where: userIds.length > 0 ? undefined : undefined,
-      });
       // fetch individually to avoid complex query
       for (const uid of userIds) {
         const user = await db.query.users.findFirst({
-          where: eq(adminActivityLogs.userId, uid),
+          where: eq(users.id, uid),
         });
         if (user) usersMap[uid] = user.name;
       }

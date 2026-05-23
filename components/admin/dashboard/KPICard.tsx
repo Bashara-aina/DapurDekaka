@@ -1,3 +1,5 @@
+'use client';
+
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { cn } from '@/lib/utils/cn';
@@ -11,7 +13,7 @@ interface KPICardProps {
   changePeriod?: string;
   icon?: React.ReactNode;
   isCurrency?: boolean;
-  sparkData?: number[]; // 7 values for sparkline, most recent last
+  sparkData?: number[];
 }
 
 export function KPICard({
@@ -67,11 +69,11 @@ export function KPICard({
   return (
     <div className="bg-white rounded-card p-5 shadow-card">
       <div className="flex items-start justify-between mb-3">
-        <p className="text-sm font-medium text-[#6B6B6B]">{title}</p>
+        <p className="text-sm font-medium text-text-secondary">{title}</p>
         {icon && <div className="text-brand-red">{icon}</div>}
       </div>
       <div className="flex items-end justify-between">
-        <p className="text-2xl font-bold text-[#1A1A1A] mb-2">
+        <p className="text-2xl font-bold text-text-primary mb-2">
           {prefix}{displayValue}{suffix}
         </p>
         {sparkData && renderSparkline(sparkData)}
@@ -81,10 +83,10 @@ export function KPICard({
           className={cn(
             'flex items-center gap-1 text-xs font-medium',
             isPositive
-              ? 'text-[#16A34A]'
+              ? 'text-success'
               : isNegative
-              ? 'text-[#DC2626]'
-              : 'text-[#6B6B6B]'
+              ? 'text-error'
+              : 'text-text-secondary'
           )}
         >
           {isPositive ? (
@@ -99,7 +101,7 @@ export function KPICard({
             {change.toFixed(1)}%
           </span>
           {changePeriod && (
-            <span className="text-[#ABABAB] font-normal">{changePeriod}</span>
+            <span className="text-text-muted font-normal">{changePeriod}</span>
           )}
         </div>
       )}

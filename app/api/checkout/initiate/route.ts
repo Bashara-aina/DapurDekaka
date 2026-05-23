@@ -43,7 +43,8 @@ const initiateSchema = z.object({
         quantity: z.number().int().min(1).max(99),
         weightGram: z.number().int().positive(),
       })
-    ),
+    )
+    .min(1, 'Minimal 1 item di keranjang'),
   deliveryMethod: z.enum(['delivery', 'pickup']),
   recipientName: z.string().min(2),
   recipientEmail: z.string().email(),
@@ -253,10 +254,21 @@ export const POST = withRateLimit(
           orderBy: (variants, { asc }) => [asc(variants.price)],
         });
 
-        // If qualifyingVariants is empty (all variants already in cart), pick lowest-priced anyway as free item
-        const selectedVariants = qualifyingVariants.length >= getQty
-          ? qualifyingVariants.slice(0, getQty)
-          : qualifyingVariants.slice(0, getQty);
+        // FIX 2B: Filter to only in-stock variants before selecting free items
+        const inStockVariants = qualifyingVariants.filter((v) => v.stock > 0);
+        if (inStockVariants.length === 0) {
+          return conflict('Tidak ada stok untuk item gratis dengan kupon ini');
+        }
+
+        const selectedVariants = inStockVariants.slice(0, getQty);
+
+        // Warn if requested free quantity exceeds available in-stock variants
+        if (selectedVariants.length < getQty) {
+          console.warn(
+            `[checkout/initiate] buy_x_get_y: only ${selectedVariants.length} of ${getQty} ` +
+            `free items available for product ${qualifyingProductId}`
+          );
+        }
 
         // Find product info for free items
         const productInfo = await db.query.products.findFirst({
@@ -337,13 +349,6 @@ export const POST = withRateLimit(
     }
 
     if (userId && pointsUsed && pointsUsed > 0) {
-      const user = await db.query.users.findFirst({
-        where: eq(users.id, userId),
-      });
-
-      if (!user || user.pointsBalance < pointsUsed) {
-        return conflict('Saldo poin tidak mencukupi');
-      }
       pointsDeducted = true;
     }
 
@@ -392,7 +397,7 @@ export const POST = withRateLimit(
     }
 
     const baseShippingCost = deliveryMethod === 'pickup' ? 0 : (addressData.courierCode ? (parsed.data.shippingCost ?? 0) : 0);
-    const shippingCost = (coupon && (coupon.type === 'free_shipping' || coupon.freeShipping)) && deliveryMethod === 'delivery'
+    const shippingCost = (coupon && coupon.type === 'free_shipping' && deliveryMethod === 'delivery')
       ? 0
       : baseShippingCost;
     const totalAmount = subtotal - discountAmount - pointsDiscount + shippingCost;
@@ -430,6 +435,17 @@ export const POST = withRateLimit(
       const redeemRecords: { earnId: string; amountUsed: number }[] = [];
       let pointsBalanceForRedeem = 0;
       if (pointsDeducted && userId && pointsUsed) {
+        // Lock user row to prevent concurrent points redemption race condition
+        const [balanceRecord] = await tx
+          .select({ balance: users.pointsBalance })
+          .from(users)
+          .where(eq(users.id, userId))
+          .for('update');
+
+        if (!balanceRecord || balanceRecord.balance < pointsUsed) {
+          throw new Error('Saldo poin tidak mencukupi');
+        }
+
         // Fetch ALL eligible earn records without a row limit.
         // .limit(pointsUsed) limits by row count, not points total — the accumulating
         // loop below determines how many records are needed to cover pointsUsed.
@@ -578,7 +594,7 @@ export const POST = withRateLimit(
           if (item.quantity <= 0) continue;
           const [updated] = await tx
             .update(productVariants)
-            .set({ stock: sql`stock - ${item.quantity}` })
+            .set({ stock: sql`GREATEST(stock - ${item.quantity}, 0)` })
             .where(
               and(
                 eq(productVariants.id, item.variantId),
@@ -588,7 +604,7 @@ export const POST = withRateLimit(
             .returning({ newStock: productVariants.stock });
 
           if (!updated) {
-            throw new Error(`Insufficient stock for variant ${item.variantId}`);
+            throw new Error(`Stok tidak mencukupi untuk variant ${item.variantId}`);
           }
 
           // Log inventory movement for Net-30 B2B sale
@@ -603,8 +619,8 @@ export const POST = withRateLimit(
         }
 
         // Award loyalty points for B2B Net-30 order
-        if (userId && order.pointsEarned > 0) {
-          const earnedPoints = order.pointsEarned;
+        if (userId && created.pointsEarned > 0) {
+          const earnedPoints = created.pointsEarned;
           const updatedUsers = await tx
             .update(users)
             .set({ pointsBalance: sql`points_balance + ${earnedPoints}` })
@@ -695,50 +711,67 @@ export const POST = withRateLimit(
     }
 
     // ── Step 8b: Create Midtrans transaction ─────────────────────────────
-    const itemDetails = items.map((item) => ({
-      id: item.variantId,
-      price: item.unitPrice,
-      quantity: item.quantity,
-      name: `${item.productNameId.substring(0, 45)} - ${item.variantNameId}`.substring(0, 50),
-    }));
+    let midtransOrderId: string | null = null;
+    let snapToken: string | null = null;
 
-    // Add free items to Midtrans item details (price must be 0 for Midtrans gross_amount validation)
-    for (const freeItem of freeItems) {
-      itemDetails.push({
-        id: freeItem.variantId,
-        price: 0,
-        quantity: freeItem.quantity,
-        name: `FREE: ${freeItem.productNameId.substring(0, 40)} - ${freeItem.variantNameId}`.substring(0, 50),
+    try {
+      const itemDetails = items.map((item) => ({
+        id: item.variantId,
+        price: item.unitPrice,
+        quantity: item.quantity,
+        name: `${item.productNameId.substring(0, 45)} - ${item.variantNameId}`.substring(0, 50),
+      }));
+
+      // Add free items to Midtrans item details (price must be 0 for Midtrans gross_amount validation)
+      for (const freeItem of freeItems) {
+        itemDetails.push({
+          id: freeItem.variantId,
+          price: 0,
+          quantity: freeItem.quantity,
+          name: `FREE: ${freeItem.productNameId.substring(0, 40)} - ${freeItem.variantNameId}`.substring(0, 50),
+        });
+      }
+
+      if (shippingCost > 0) {
+        itemDetails.push({
+          id: 'shipping',
+          price: shippingCost,
+          quantity: 1,
+          name: `Ongkir ${addressData.courierName ?? ''}`.substring(0, 50),
+        });
+      }
+
+      if (discountAmount + pointsDiscount > 0) {
+        itemDetails.push({
+          id: 'discount',
+          price: -(discountAmount + pointsDiscount),
+          quantity: 1,
+          name: 'Diskon & Poin',
+        });
+      }
+
+      const midtransResult = await createMidtransTransaction({
+        orderNumber: order.orderNumber,
+        retryCount: 0,
+        grossAmount: totalAmount,
+        customerName: recipientName,
+        customerEmail: recipientEmail,
+        customerPhone: recipientPhone,
+        items: itemDetails,
       });
-    }
-
-    if (shippingCost > 0) {
-      itemDetails.push({
-        id: 'shipping',
-        price: shippingCost,
-        quantity: 1,
-        name: `Ongkir ${addressData.courierName ?? ''}`.substring(0, 50),
+      midtransOrderId = midtransResult.midtransOrderId;
+      snapToken = midtransResult.snapToken;
+    } catch (midtransError) {
+      // BUG-07 FIX: If Midtrans fails, roll back the order so there's no orphaned record
+      await db.transaction(async (tx) => {
+        await tx.delete(orderItems).where(eq(orderItems.orderId, order.id));
+        await tx.delete(orders).where(eq(orders.id, order.id));
+        if (coupon && coupon.maxUsesPerUser && userId) {
+          await tx.delete(couponUsages).where(eq(couponUsages.orderId, order.id));
+        }
       });
+      throw midtransError;
     }
-
-    if (discountAmount + pointsDiscount > 0) {
-      itemDetails.push({
-        id: 'discount',
-        price: -(discountAmount + pointsDiscount),
-        quantity: 1,
-        name: 'Diskon & Poin',
-      });
-    }
-
-    const { snapToken, midtransOrderId } = await createMidtransTransaction({
-      orderNumber: order.orderNumber,
-      retryCount: 0,
-      grossAmount: totalAmount,
-      customerName: recipientName,
-      customerEmail: recipientEmail,
-      customerPhone: recipientPhone,
-      items: itemDetails,
-    });
 
     // ── Step 9: Update order with Midtrans IDs ───────────────────────────
     await db

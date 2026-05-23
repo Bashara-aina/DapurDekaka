@@ -2,6 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { toast } from 'sonner';
 
 interface B2BInquiryStatusClientProps {
   inquiryId: string;
@@ -20,27 +28,28 @@ export function B2BInquiryStatusClient({ inquiryId, currentStatus }: B2BInquiryS
   const [isUpdating, setIsUpdating] = useState(false);
   const [status, setStatus] = useState(currentStatus);
 
-  const handleStatusChange = async (newStatus: string) => {
-    if (newStatus === status || isUpdating) return;
+  const handleStatusChange = async (newStatus: string | null) => {
+    const statusValue = newStatus;
+    if (!statusValue || statusValue === status || isUpdating) return;
 
     setIsUpdating(true);
     try {
       const res = await fetch(`/api/admin/b2b-inquiries/${inquiryId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: statusValue }),
       });
 
       if (res.ok) {
-        setStatus(newStatus);
+        setStatus(statusValue);
         router.refresh();
       } else {
         const err = await res.json().catch(() => ({}));
-        console.error('Failed to update inquiry status:', err.error || 'Unknown error');
-        setStatus(currentStatus); // revert optimistic update
+        toast.error(err.error || 'Gagal mengupdate status');
+        setStatus(currentStatus);
       }
     } catch (error) {
-      console.error('Failed to update inquiry status:', error);
+      toast.error(error instanceof Error ? error.message : 'Gagal mengupdate status');
     } finally {
       setIsUpdating(false);
     }
@@ -49,17 +58,16 @@ export function B2BInquiryStatusClient({ inquiryId, currentStatus }: B2BInquiryS
   const statusInfo = STATUS_LABELS[status] ?? { label: status, className: 'bg-slate-200 text-slate-700' };
 
   return (
-    <select
-      value={status}
-      onChange={(e) => handleStatusChange(e.target.value)}
-      disabled={isUpdating}
-      className={`text-xs font-medium rounded-full px-2 py-1 border-0 cursor-pointer focus:ring-2 focus:ring-brand-red ${statusInfo.className}`}
-      style={{ backgroundColor: 'inherit' }}
-    >
-      <option value="new">Baru</option>
-      <option value="contacted">Ditindaklanjuti</option>
-      <option value="converted">Terjadwal</option>
-      <option value="rejected">Ditolak</option>
-    </select>
+    <Select value={status} onValueChange={handleStatusChange} disabled={isUpdating}>
+      <SelectTrigger className={`text-xs font-medium rounded-full px-2 py-1 border-0 focus:ring-2 focus:ring-brand-red ${statusInfo.className}`}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="new">Baru</SelectItem>
+        <SelectItem value="contacted">Ditindaklanjuti</SelectItem>
+        <SelectItem value="converted">Terjadwal</SelectItem>
+        <SelectItem value="rejected">Ditolak</SelectItem>
+      </SelectContent>
+    </Select>
   );
 }

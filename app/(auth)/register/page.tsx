@@ -61,18 +61,23 @@ export default function RegisterPage() {
       });
 
       if (loginResult && !loginResult.error) {
-        // Merge guest cart after successful login
-        try {
-          const cartItems = JSON.parse(localStorage.getItem('cart-storage') || '{}');
-          if (cartItems?.state?.items?.length > 0) {
-            await fetch('/api/auth/merge-cart', {
+        const cartItems = JSON.parse(localStorage.getItem('dapur-cart') || '{}');
+        if (cartItems?.state?.items?.length > 0) {
+          try {
+            const mergeRes = await fetch('/api/auth/merge-cart', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ items: cartItems.state.items }),
             });
+            const mergeData = await mergeRes.json();
+            if (!mergeRes.ok || !mergeData.success) {
+              throw new Error(mergeData.error || 'Gagal menggabungkan keranjang');
+            }
+            localStorage.removeItem('dapur-cart');
+          } catch (err) {
+            localStorage.removeItem('dapur-cart');
+            console.error('[Cart merge failed]', err);
           }
-        } catch {
-          // Cart merge is non-critical
         }
         router.push('/account');
       } else {

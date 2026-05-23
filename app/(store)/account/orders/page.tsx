@@ -6,6 +6,10 @@ import { Package, ChevronRight, ChevronLeft } from 'lucide-react';
 import type { Metadata } from 'next';
 import { count, desc, eq, and } from 'drizzle-orm';
 import { orders } from '@/lib/db/schema';
+import { formatIDR } from '@/lib/utils/format-currency';
+import { getTranslations } from 'next-intl/server';
+import { formatWIB } from '@/lib/utils/format-date';
+import { ORDER_STATUS_LABELS_SHORT, ORDER_STATUS_COLORS } from '@/lib/constants/orders';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +33,7 @@ const STATUS_FILTERS = [
 
 export default async function AccountOrdersPage({ searchParams }: OrdersPageProps) {
   const session = await auth();
+  const t = await getTranslations();
 
   if (!session?.user?.id) {
     redirect('/login');
@@ -39,7 +44,6 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
   const perPage = 10;
   const offset = (currentPage - 1) * perPage;
 
-  // BUG-06: Validate statusFilter against allowed enum values
   const VALID_STATUSES = ['pending_payment', 'paid', 'processing', 'packed', 'shipped', 'delivered', 'cancelled'] as const;
   type ValidStatus = typeof VALID_STATUSES[number];
   const validStatus = (statusParam && statusParam !== 'all' && (VALID_STATUSES as readonly string[]).includes(statusParam))
@@ -49,8 +53,8 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
   const [ordersResult, totalResult] = await Promise.all([
     db.query.orders.findMany({
       where: validStatus
-        ? (o: ReturnType<typeof eq>, { and, eq }: any) => and(eq(o.userId, session.user.id!), eq(o.status, validStatus))
-        : (o: any, { eq }: any) => eq(o.userId, session.user.id!),
+        ? (o, { and, eq }) => and(eq(o.userId, session.user.id!), eq(o.status, validStatus))
+        : (o, { eq }) => eq(o.userId, session.user.id!),
       with: {
         items: true,
       },
@@ -68,37 +72,85 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
   const totalOrders = totalResult[0]?.total ?? 0;
   const totalPages = Math.ceil(totalOrders / perPage);
 
-  const formatIDR = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-bold text-text-primary">Pesanan Saya</h1>
-        <p className="text-text-secondary text-sm mt-1">Lihat semua pesanan kamu</p>
+        <h1 className="font-display text-2xl font-bold text-text-primary">{t('account.orderHistory')}</h1>
+        <p className="text-text-secondary text-sm mt-1">{t('account.noOrders')}</p>
       </div>
 
       {/* Status Filter */}
       <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide">
-        {STATUS_FILTERS.map((filter) => (
-          <Link
-            key={filter.key}
-            href={filter.key === 'all' ? '/account/orders' : `/account/orders?status=${filter.key}`}
-            className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              (statusParam || 'all') === filter.key
-                ? 'bg-brand-red text-white'
-                : 'bg-white text-text-secondary hover:bg-brand-cream'
-            }`}
-          >
-            {filter.label}
-          </Link>
-        ))}
+        <Link
+          href="/account/orders"
+          className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            (statusParam || 'all') === 'all'
+              ? 'bg-brand-red text-white'
+              : 'bg-white text-text-secondary hover:bg-brand-cream'
+          }`}
+        >
+          {t('blog.all')}
+        </Link>
+        <Link
+          href="/account/orders?status=pending_payment"
+          className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            statusParam === 'pending_payment'
+              ? 'bg-brand-red text-white'
+              : 'bg-white text-text-secondary hover:bg-brand-cream'
+          }`}
+        >
+          {t('orderStatus.pending')}
+        </Link>
+        <Link
+          href="/account/orders?status=processing"
+          className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            statusParam === 'processing'
+              ? 'bg-brand-red text-white'
+              : 'bg-white text-text-secondary hover:bg-brand-cream'
+          }`}
+        >
+          {t('orderStatus.processing_short')}
+        </Link>
+        <Link
+          href="/account/orders?status=packed"
+          className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            statusParam === 'packed'
+              ? 'bg-brand-red text-white'
+              : 'bg-white text-text-secondary hover:bg-brand-cream'
+          }`}
+        >
+          {t('orderStatus.packed_short')}
+        </Link>
+        <Link
+          href="/account/orders?status=shipped"
+          className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            statusParam === 'shipped'
+              ? 'bg-brand-red text-white'
+              : 'bg-white text-text-secondary hover:bg-brand-cream'
+          }`}
+        >
+          {t('orderStatus.shipped_short')}
+        </Link>
+        <Link
+          href="/account/orders?status=delivered"
+          className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            statusParam === 'delivered'
+              ? 'bg-brand-red text-white'
+              : 'bg-white text-text-secondary hover:bg-brand-cream'
+          }`}
+        >
+          {t('orderStatus.delivered_short')}
+        </Link>
+        <Link
+          href="/account/orders?status=cancelled"
+          className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            statusParam === 'cancelled'
+              ? 'bg-brand-red text-white'
+              : 'bg-white text-text-secondary hover:bg-brand-cream'
+          }`}
+        >
+          {t('orderStatus.cancelled')}
+        </Link>
       </div>
 
       {ordersResult.length === 0 ? (
@@ -107,16 +159,16 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
             <Package className="w-10 h-10 text-text-disabled" />
           </div>
           <h2 className="font-display text-lg font-semibold text-text-primary mb-2">
-            Belum Ada Pesanan
+            {t('account.noOrderHistory')}
           </h2>
           <p className="text-text-secondary mb-6">
-            Pesanan pertamamu akan muncul di sini
+            {t('account.noOrderHistoryDesc')}
           </p>
           <Link
             href="/products"
             className="inline-block h-12 px-6 bg-brand-red text-white font-bold rounded-button hover:bg-brand-red-dark transition-colors"
           >
-            Mulai Belanja
+            {t('cart.startShopping')}
           </Link>
         </div>
       ) : (
@@ -132,32 +184,14 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-text-primary truncate">{order.orderNumber}</p>
-                      <span className={`flex-shrink-0 px-2 py-0.5 rounded text-xs font-medium
-                        ${order.status === 'pending_payment' ? 'bg-warning-light text-warning' : ''}
-                        ${order.status === 'paid' ? 'bg-info-light text-info' : ''}
-                        ${order.status === 'processing' ? 'bg-purple-100 text-purple-700' : ''}
-                        ${order.status === 'packed' ? 'bg-cyan-100 text-cyan-700' : ''}
-                        ${order.status === 'shipped' ? 'bg-success-light text-success' : ''}
-                        ${order.status === 'delivered' ? 'bg-success-light text-success' : ''}
-                        ${order.status === 'cancelled' ? 'bg-gray-100 text-gray-600' : ''}
-                      `}>
-                        {order.status === 'pending_payment' && 'Menunggu Bayar'}
-                        {order.status === 'paid' && 'Dibayar'}
-                        {order.status === 'processing' && 'Diproses'}
-                        {order.status === 'packed' && 'Dikemas'}
-                        {order.status === 'shipped' && 'Dikirim'}
-                        {order.status === 'delivered' && 'Selesai'}
-                        {order.status === 'cancelled' && 'Dibatalkan'}
+                      <span className={`flex-shrink-0 px-2 py-0.5 rounded text-xs font-medium ${ORDER_STATUS_COLORS[order.status as keyof typeof ORDER_STATUS_COLORS] || ''}`}>
+                        {ORDER_STATUS_LABELS_SHORT[order.status as keyof typeof ORDER_STATUS_LABELS_SHORT] || order.status}
                       </span>
                     </div>
                     <p className="text-sm text-text-secondary mt-1">
-                      {new Date(order.createdAt).toLocaleDateString('id-ID', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                      })}
+                      {formatWIB(order.createdAt)}
                       {' · '}
-                      {order.items.length} item
+                      {t('account.itemsCount', { count: order.items.length })}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">

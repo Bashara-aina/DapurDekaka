@@ -14,19 +14,41 @@ import {
 import { eq, and, inArray, sql, or, gte } from 'drizzle-orm';
 import crypto from 'crypto';
 import { success, serverError } from '@/lib/utils/api-response';
-import { verifyMidtransSignature } from '@/lib/midtrans/verify-webhook';
 import { sendEmail } from '@/lib/resend/send-email';
 import { OrderConfirmationEmail } from '@/lib/resend/templates/OrderConfirmation';
 import { OrderCancellationEmail } from '@/lib/resend/templates/OrderCancellation';
 import { PickupInvitationEmail } from '@/lib/resend/templates/PickupInvitation';
 import { formatWIB } from '@/lib/utils/format-date';
 import { logger } from '@/lib/utils/logger';
+import { withRateLimit } from '@/lib/utils/rate-limit';
+import { POINTS_EXPIRY_DAYS } from '@/lib/constants/points';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export async function POST(req: NextRequest) {
+const WEBHOOK_RATE_LIMIT = { windowMs: 60000, maxRequests: 30 };
+
+export const POST = withRateLimit(async (req: NextRequest) => {
   try {
-    const body = await req.json();
+    // CRITICAL: Verify Midtrans SHA-512 signature FIRST using raw body
+    const signature = req.headers.get('x-midtrans-signature');
+    if (!signature) {
+      logger.warn('[Midtrans Webhook] Missing signature header');
+      return NextResponse.json({ error: 'Missing signature' }, { status: 401 });
+    }
+
+    const rawBody = await req.text();
+    const serverKey = process.env.MIDTRANS_SERVER_KEY!;
+    const expectedHash = crypto
+      .createHash('sha512')
+      .update(serverKey + rawBody)
+      .digest('hex');
+
+    if (signature !== expectedHash) {
+      logger.warn('[Midtrans Webhook] Invalid signature');
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+    }
+
+    const body = JSON.parse(rawBody);
 
     const {
       order_id,
@@ -35,21 +57,6 @@ export async function POST(req: NextRequest) {
       signature_key,
       transaction_status,
     } = body;
-
-    // ── Step 1: Verify signature ────────────────────────────────────────
-    const serverKey = process.env.MIDTRANS_SERVER_KEY!;
-    const isValid = verifyMidtransSignature(
-      order_id,
-      status_code,
-      gross_amount,
-      serverKey,
-      signature_key
-    );
-
-    if (!isValid) {
-      logger.warn('[Midtrans Webhook] Invalid signature', { orderId: order_id });
-      return NextResponse.json({ received: false }, { status: 400 });
-    }
 
     // BUG-03: Removed stale webhook check — VA/bank transfer can settle hours/days later.
     // Idempotency is handled by midtransTransactionId uniqueness check below.
@@ -93,6 +100,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Settlement for refunded order — reject, money already returned
+    if (order.status === 'refunded' && transaction_status === 'settlement') {
+      logger.warn('[Midtrans Webhook] Received settlement for refunded order', {
+        orderNumber: order.orderNumber,
+        midtransOrderId: order_id,
+      });
+      return NextResponse.json(
+        { received: true, note: 'order_refunded_payment_received_manual_review_needed' },
+        { status: 200 }
+      );
+    }
+
     // ── Step 4: Settlement — full processing ───────────────────────────
 // BUG-02: Also handle 'capture' status for credit card auto-captured transactions
     if (transaction_status === 'settlement' || transaction_status === 'capture') {
@@ -100,8 +119,8 @@ export async function POST(req: NextRequest) {
       const expectedAmount = order.totalAmount;
       const webhookAmount = Math.round(parseFloat(gross_amount));
       if (webhookAmount !== expectedAmount) {
-        console.error('[Midtrans Webhook] Amount mismatch', {
-          order_id,
+        logger.error('[Midtrans Webhook] Amount mismatch', {
+          orderId: order_id,
           expectedAmount,
           webhookAmount,
         });
@@ -122,33 +141,51 @@ export async function POST(req: NextRequest) {
           })
           .where(eq(orders.id, order.id));
 
-        // BUG-07: Stock was already decremented at initiate time to prevent overselling.
-        // At settlement we only need to log the sale — no stock deduction needed here.
-        // We still log the inventory movement for audit trail.
+        // Deduct stock atomically using GREATEST to prevent negative stock
+        // (initiate already checked stock, so this should always succeed)
         for (const item of order.items) {
-          const [currentVariant] = await tx
-            .select({ stock: productVariants.stock })
-            .from(productVariants)
-            .where(eq(productVariants.id, item.variantId));
+          const [updated] = await tx
+            .update(productVariants)
+            .set({ stock: sql`GREATEST(stock - ${item.quantity}, 0)` })
+            .where(and(
+              eq(productVariants.id, item.variantId),
+              gte(productVariants.stock, item.quantity)
+            ))
+            .returning({ newStock: productVariants.stock });
 
-          if (currentVariant) {
-            await tx.insert(inventoryLogs).values({
-              variantId: item.variantId,
-              changeType: 'sale',
-              quantityBefore: currentVariant.stock + item.quantity,
-              quantityAfter: currentVariant.stock,
-              quantityDelta: -item.quantity,
-              orderId: order.id,
-            });
+          if (!updated || updated.newStock === undefined) {
+            // Stock insufficient — this should not happen since initiate checked stock.
+            // But under race conditions it could. Throw to rollback transaction.
+            throw new Error(`Settlement failed: insufficient stock for variant ${item.variantId}`);
           }
+
+          // Log inventory movement for audit trail
+          await tx.insert(inventoryLogs).values({
+            variantId: item.variantId,
+            changeType: 'sale',
+            quantityBefore: (updated?.newStock ?? 0) + item.quantity,
+            quantityAfter: updated?.newStock ?? 0,
+            quantityDelta: -item.quantity,
+            orderId: order.id,
+          });
         }
 
-        // Increment coupon used_count
+        // Increment coupon used_count — only if couponUsages row doesn't already exist
+        // (prevents double-increment if Midtrans fires the same webhook twice)
         if (order.couponId) {
-          await tx
-            .update(coupons)
-            .set({ usedCount: sql`used_count + 1` })
-            .where(eq(coupons.id, order.couponId));
+          const existingUsage = await tx
+            .select()
+            .from(couponUsages)
+            .where(and(
+              eq(couponUsages.couponId, order.couponId),
+              eq(couponUsages.orderId, order.id)
+            ));
+          if (existingUsage.length === 0) {
+            await tx
+              .update(coupons)
+              .set({ usedCount: sql`used_count + 1` })
+              .where(eq(coupons.id, order.couponId));
+          }
         }
 
         // Award loyalty points (order.pointsEarned already includes 2x for B2B, set at checkout initiate)
@@ -171,7 +208,7 @@ export async function POST(req: NextRequest) {
             descriptionId: `Pembelian ${order.orderNumber}`,
             descriptionEn: `Purchase ${order.orderNumber}`,
             orderId: order.id,
-            expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+            expiresAt: new Date(Date.now() + POINTS_EXPIRY_DAYS * 24 * 60 * 60 * 1000),
           });
         }
 
@@ -275,15 +312,15 @@ export async function POST(req: NextRequest) {
           })
           .where(eq(orders.id, order.id));
 
-        // BUG-07: Restore stock that was reserved at initiate time
+        // BUG-15: Restore stock using GREATEST guard; BUG-16: handle missing variants silently
         for (const item of order.items) {
           const [updated] = await tx
             .update(productVariants)
-            .set({ stock: sql`stock + ${item.quantity}`, updatedAt: new Date() })
+            .set({ stock: sql`GREATEST(stock + ${item.quantity}, 0)`, updatedAt: new Date() })
             .where(eq(productVariants.id, item.variantId))
             .returning({ newStock: productVariants.stock });
 
-          if (updated) {
+          if (updated && updated.newStock !== undefined) {
             await tx.insert(inventoryLogs).values({
               variantId: item.variantId,
               changeType: 'reversal',
@@ -382,4 +419,4 @@ export async function POST(req: NextRequest) {
     logger.error('[Midtrans Webhook] Error', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
-}
+}, WEBHOOK_RATE_LIMIT);
