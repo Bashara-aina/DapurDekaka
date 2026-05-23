@@ -5,6 +5,7 @@ import { eq, inArray } from 'drizzle-orm';
 import { success, serverError, validationError } from '@/lib/utils/api-response';
 import { checkRateLimitAsync } from '@/lib/utils/rate-limit';
 import { z } from 'zod';
+import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -129,7 +130,7 @@ async function handleValidate(req: NextRequest) {
       return success({ items });
     }
   } catch (error) {
-    console.error('[cart/validate]', error);
+    logger.error('[cart/validate]', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
 }

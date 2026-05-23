@@ -31,7 +31,7 @@ export function BottomNav() {
     { href: '/products', Icon: Package, label: t('products') },
     { href: '/blog', Icon: FileText, label: t('blog') },
     { href: '/cart', Icon: ShoppingCart, label: t('cart'), badge: totalItems },
-    ...(isB2bUser ? [{ href: '/b2b/account', Icon: Building2, label: 'B2B' }] : []),
+    ...(isB2bUser ? [{ href: '/b2b/account', Icon: Building2, label: t('b2b') }] : []),
     { href: '/account', Icon: User, label: t('account') },
   ];
 
@@ -63,6 +63,7 @@ export function BottomNav() {
             <Link
               key={index}
               href={item.href}
+              aria-label={item.badge && item.badge > 0 ? `${item.label} (${item.badge} item)` : undefined}
               className={cn(
                 'relative flex flex-col items-center gap-0.5 py-2 px-3',
                 isActive ? 'text-brand-red' : 'text-text-secondary'
@@ -70,7 +71,10 @@ export function BottomNav() {
             >
               {content}
               {item.badge && item.badge > 0 && (
-                <span className="absolute -top-1 -right-2 w-5 h-5 bg-brand-red text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                <span
+                  className="absolute -top-1 -right-2 w-5 h-5 bg-brand-red text-white text-[10px] font-bold rounded-full flex items-center justify-center"
+                  aria-hidden="true"
+                >
                   {item.badge > 99 ? '99+' : item.badge}
                 </span>
               )}

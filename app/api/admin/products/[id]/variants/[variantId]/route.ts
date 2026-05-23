@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { productVariants, products } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -84,10 +84,13 @@ export async function PATCH(
     if (data.sku !== undefined) updateData.sku = data.sku;
     if (data.price !== undefined) updateData.price = data.price;
     if (data.b2bPrice !== undefined) updateData.b2bPrice = data.b2bPrice;
-    if (data.stock !== undefined) updateData.stock = data.stock;
     if (data.weightGram !== undefined) updateData.weightGram = data.weightGram;
     if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
+
+    if (data.stock !== undefined) {
+      updateData.stock = sql`GREATEST(${data.stock}, 0)`;
+    }
 
     updateData.updatedAt = new Date();
 
@@ -99,6 +102,13 @@ export async function PATCH(
         eq(productVariants.productId, params.id)
       ))
       .returning();
+
+    if (!updated) {
+      return NextResponse.json(
+        { success: false, error: 'Varian tidak ditemukan atau tidak ada perubahan', code: 'NOT_FOUND' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({ success: true, data: updated });
   } catch (error) {

@@ -26,6 +26,7 @@ import { createMidtransTransaction } from '@/lib/midtrans/create-transaction';
 import { POINTS_EARN_RATE } from '@/lib/constants/points';
 import { getSetting } from '@/lib/settings/get-settings';
 import { withRateLimit } from '@/lib/utils/rate-limit';
+import { logger } from '@/lib/utils/logger';
 
 const initiateSchema = z.object({
   items: z
@@ -264,10 +265,11 @@ export const POST = withRateLimit(
 
         // Warn if requested free quantity exceeds available in-stock variants
         if (selectedVariants.length < getQty) {
-          console.warn(
-            `[checkout/initiate] buy_x_get_y: only ${selectedVariants.length} of ${getQty} ` +
-            `free items available for product ${qualifyingProductId}`
-          );
+          logger.warn('[checkout/initiate] buy_x_get_y', {
+            productId: qualifyingProductId,
+            requested: getQty,
+            available: selectedVariants.length,
+          });
         }
 
         // Find product info for free items
@@ -586,8 +588,10 @@ export const POST = withRateLimit(
         await tx.insert(orderItems).values(freeItemsWithOrderId);
       }
 
-      // For Net-30 B2B orders: deduct stock + award points + confirm coupon in same transaction
-      // because there is no Midtrans webhook to trigger these later
+      // For Net-30 B2B orders: deduct stock in same transaction
+      // DO NOT award points here — Net-30 skips Midtrans, so there is no webhook
+      // to award points later. Points are awarded ONLY when admin confirms payment
+      // via POST /api/admin/orders/[id]/confirm-payment
       if (isNet30Order) {
         const allOrderItems = [...orderItemsData, ...freeItems];
         for (const item of allOrderItems) {
@@ -618,28 +622,8 @@ export const POST = withRateLimit(
           });
         }
 
-        // Award loyalty points for B2B Net-30 order
-        if (userId && created.pointsEarned > 0) {
-          const earnedPoints = created.pointsEarned;
-          const updatedUsers = await tx
-            .update(users)
-            .set({ pointsBalance: sql`points_balance + ${earnedPoints}` })
-            .where(eq(users.id, userId))
-            .returning({ pointsBalance: users.pointsBalance });
-
-          const newBalance = updatedUsers[0]?.pointsBalance ?? earnedPoints;
-
-          await tx.insert(pointsHistory).values({
-            userId,
-            type: 'earn',
-            pointsAmount: earnedPoints,
-            pointsBalanceAfter: newBalance,
-            descriptionId: `Pembelian ${orderNumber} (Net-30)`,
-            descriptionEn: `Purchase ${orderNumber} (Net-30)`,
-            orderId: created.id,
-            expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-          });
-        }
+        // NOTE: Points are NOT awarded here. They are awarded ONLY via
+        // POST /api/admin/orders/[id]/confirm-payment when payment is confirmed.
 
         // Confirm coupon usage for Net-30 (upsert the provisional row if per-user limit was enforced)
         if (coupon && coupon.maxUsesPerUser && userId) {
@@ -789,7 +773,7 @@ export const POST = withRateLimit(
       snapToken,
     });
     } catch (error) {
-      console.error('[checkout/initiate]', error);
+      logger.error('[checkout/initiate]', { error: error instanceof Error ? error.message : String(error) });
       return serverError(error);
     }
   },

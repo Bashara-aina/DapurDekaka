@@ -9,7 +9,7 @@ import { Building2, User, Mail, Phone, MessageSquare, Send, CheckCircle } from '
 const VOLUME_OPTIONS = [
   { value: '1-5-juta', label: 'Rp 1 - 5 juta/bulan' },
   { value: '5-10-juta', label: 'Rp 5 - 10 juta/bulan' },
-  { value: '10-20-juta', label: 'Rp 20 - 20 juta/bulan' },
+  { value: '10-20-juta', label: 'Rp 10 - 20 juta/bulan' },
   { value: '20-50-juta', label: 'Rp 20 - 50 juta/bulan' },
   { value: '50-juta-plus', label: 'Rp 50 juta+/bulan' },
 ];

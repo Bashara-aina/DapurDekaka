@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Coins } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { cn } from '@/lib/utils/cn';
 import { POINTS_MIN_REDEEM, POINTS_VALUE_IDR } from '@/lib/constants/points';
@@ -21,6 +22,7 @@ export function PointsRedeemer({
   onToggle,
   className,
 }: PointsRedeemerProps) {
+  const t = useTranslations('pointsRedeemer');
   const [usePoints, setUsePoints] = useState(usedPoints > 0);
 
   // Max points that can be redeemed: 50% of subtotal
@@ -47,11 +49,11 @@ export function PointsRedeemer({
         <div className="flex items-center gap-2">
           <Coins className="w-4 h-4 text-gold" />
           <div>
-            <p className="text-sm font-medium">Gunakan Poin</p>
+            <p className="text-sm font-medium">{t('usePoints')}</p>
             <p className="text-xs text-text-secondary">
-              Saldo: {pointsBalance.toLocaleString('id-ID')} poin
+              {t('balance', { points: pointsBalance.toLocaleString('id-ID') })}
               {potentialSavings > 0 && (
-                <span className="text-success ml-1">(≈ hemat {formatIDR(potentialSavings)})</span>
+                <span className="text-success ml-1">{t('savings', { amount: formatIDR(potentialSavings) })}</span>
               )}
             </p>
           </div>
@@ -63,7 +65,7 @@ export function PointsRedeemer({
             checked={usePoints}
             onChange={(e) => handleToggle(e.target.checked)}
             className="sr-only"
-            aria-label={`Gunakan poin (${pointsBalance.toLocaleString('id-ID')} poin tersedia)`}
+            aria-label={`${t('usePoints')} (${pointsBalance.toLocaleString('id-ID')} poin tersedia)`}
           />
           <div className="w-11 h-6 bg-brand-cream-dark rounded-full peer peer-checked:bg-brand-red peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all" />
         </label>
@@ -72,8 +74,10 @@ export function PointsRedeemer({
       {usePoints && (
         <div className="mt-3 pt-3 border-t border-brand-cream-dark">
           <p className="text-xs text-text-secondary mb-1">
-            Maks. {maxPointsToRedeem.toLocaleString('id-ID')} poin (
-            {formatIDR(maxPointsToRedeem * POINTS_VALUE_IDR)})
+            {t('maxRedeem', {
+              points: maxPointsToRedeem.toLocaleString('id-ID'),
+              amount: formatIDR(maxPointsToRedeem * POINTS_VALUE_IDR)
+            })}
           </p>
           {pointsValue > 0 && (
             <p className="text-sm font-bold text-success">

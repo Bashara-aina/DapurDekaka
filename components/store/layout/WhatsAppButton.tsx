@@ -17,7 +17,7 @@ export function WhatsAppButton({ whatsappNumber }: WhatsAppButtonProps) {
   if (!rawNumber) return null;
 
   const number = rawNumber;
-  const message = encodeURIComponent('Halo Dapur Dekaka, saya ingin bertanya tentang...');
+  const message = encodeURIComponent(t('defaultMessage'));
   const whatsappUrl = `https://wa.me/${number}?text=${message}`;
 
   return (

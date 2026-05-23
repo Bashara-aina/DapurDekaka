@@ -67,15 +67,17 @@ export async function POST(req: NextRequest) {
           note: 'Dibatalkan setelah 3 kali gagal pembayaran',
         });
 
-        // 3. Restore stock (reserved at initiate)
+        // 3. Restore stock using GREATEST guard + affected-rows check (same pattern as webhook)
         for (const item of order.items) {
+          if (item.quantity <= 0) continue;
+          // Restore uses GREATEST so no minimum stock check needed — any non-negative quantity is valid
           const [updated] = await tx
             .update(productVariants)
-            .set({ stock: sql`stock + ${item.quantity}`, updatedAt: new Date() })
+            .set({ stock: sql`GREATEST(stock + ${item.quantity}, 0)`, updatedAt: new Date() })
             .where(eq(productVariants.id, item.variantId))
             .returning({ newStock: productVariants.stock });
 
-          if (updated) {
+          if (updated && updated.newStock !== undefined) {
             await tx.insert(inventoryLogs).values({
               variantId: item.variantId,
               changeType: 'reversal',

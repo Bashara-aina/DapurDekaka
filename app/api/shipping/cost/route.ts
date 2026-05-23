@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { ALLOWED_COURIERS, MIN_WEIGHT_GRAM, RAJAONGKIR_STARTER_ORIGIN_ID } from '@/lib/constants/couriers';
+import { ALLOWED_COURIERS, MIN_WEIGHT_GRAM, RAJAONGKIR_ORIGIN_CITY_ID } from '@/lib/constants/couriers';
 import { success, serverError, validationError } from '@/lib/utils/api-response';
 import { z } from 'zod';
 import { getSetting, getSettings } from '@/lib/settings/get-settings';
@@ -57,8 +57,8 @@ export const POST = withRateLimit(async (req: NextRequest) => {
       return serverError(new Error('RajaOngkir API not configured'));
     }
 
-    // RajaOngkir Starter only supports origin 501 (Jakarta). Hardcode to prevent API errors.
-    const origin = RAJAONGKIR_STARTER_ORIGIN_ID;
+    // Use origin from the setting (defaults to Bandung "23")
+    const origin = settings.rajaongkir_origin_city_id ?? RAJAONGKIR_ORIGIN_CITY_ID;
     const waNumber = settings.store_whatsapp_number ?? process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '6281234567890';
 
     // Weight limit guard — RajaOngkir Starter API caps at 30kg

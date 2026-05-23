@@ -1,6 +1,6 @@
 import { rajaOngkirPost } from './client';
 import { withRetry } from '@/lib/utils/integration-helpers';
-import { ALLOWED_COURIERS, MIN_WEIGHT_GRAM, RAJAONGKIR_STARTER_ORIGIN_ID } from '@/lib/constants/couriers';
+import { ALLOWED_COURIERS, MIN_WEIGHT_GRAM, RAJAONGKIR_ORIGIN_CITY_ID } from '@/lib/constants/couriers';
 import { getSetting } from '@/lib/settings/get-settings';
 
 export interface ShippingCostResult {
@@ -55,7 +55,7 @@ export async function calculateShippingCost(
   // RajaOngkir Starter only supports origin 501 (Jakarta).
   // If the setting is 23 (Bandung) for a Starter account, the API will error.
   // Default to 501 to ensure the API call succeeds.
-  const origin = originCityId ?? RAJAONGKIR_STARTER_ORIGIN_ID;
+  const origin = originCityId ?? RAJAONGKIR_ORIGIN_CITY_ID;
   const waNumber = whatsappNumber ?? process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '6281234567890';
 
   const allResults: ShippingCostResult[] = [];

@@ -11,18 +11,19 @@ export const ALLOWED_COURIERS = [
 export type AllowedCourier = typeof ALLOWED_COURIERS[number];
 
 /**
- * RajaOngkir Starter tier origin city ID.
- * NOTE: RajaOngkir Starter only supports origin_id: 501 (Jakarta).
- * If you need Bandung-origin shipping rates, you must upgrade to RajaOngkir Pro.
- * The `rajaongkir_origin_city_id` setting should be configured accordingly.
+ * RajaOngkir origin city ID for shipping cost calculations.
+ * Defaults to Bandung (23) from env var RAJAONGKIR_ORIGIN_CITY_ID.
+ * If using RajaOngkir Starter tier with Jakarta-registered account, set to '501'.
+ * For accurate Bandung-origin shipping rates, use RajaOngkir Pro with origin "23".
  */
-export const RAJAONGKIR_STARTER_ORIGIN_ID = '501' as const;
+export const RAJAONGKIR_ORIGIN_CITY_ID =
+  (process.env.RAJAONGKIR_ORIGIN_CITY_ID ?? '23') as string;
 
 /**
- * @deprecated Use RAJAONGKIR_STARTER_ORIGIN_ID. RajaOngkir Starter only supports
- * origin 501 (Jakarta). The `rajaongkir_origin_city_id` setting should store 501.
+ * @deprecated Use RAJAONGKIR_ORIGIN_CITY_ID instead. RajaOngkir Starter only supports
+ * origin 501 (Jakarta) but this project uses Bandung (23) for accurate frozen shipping rates.
  */
-export const ORIGIN_CITY_ID = '23';
+export const ORIGIN_CITY_ID = RAJAONGKIR_ORIGIN_CITY_ID;
 
 /**
  * Minimum billable weight in grams

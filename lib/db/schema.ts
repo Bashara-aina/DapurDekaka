@@ -364,7 +364,9 @@ export const orderStatusHistory = pgTable('order_status_history', {
   note: text('note'),
   metadata: jsonb('metadata'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => ({
+  orderIdIdx: index('idx_order_status_history_order_id').on(table.orderId),
+}));
 
 // ─────────────────────────────────────────
 // PROMOTIONS & LOYALTY
@@ -475,6 +477,7 @@ export const blogPosts = pgTable('blog_posts', {
   slugIdx: index('idx_blog_posts_slug').on(table.slug),
   publishedIdx: index('idx_blog_posts_published').on(table.isPublished, table.publishedAt),
   authorIdIdx: index('idx_blog_posts_author_id').on(table.authorId),
+  categoryIdIdx: index('idx_blog_posts_category_id').on(table.blogCategoryId),
 }));
 
 export const carouselSlides = pgTable('carousel_slides', {

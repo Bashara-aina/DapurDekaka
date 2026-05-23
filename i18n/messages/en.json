@@ -147,11 +147,100 @@
     "frozenFresh": "Frozen Fresh",
     "nationwideDelivery": "Nationwide Delivery"
   },
+  "orderSummary": {
+    "title": "Order Summary",
+    "subtotal": "Subtotal",
+    "discount": "Discount",
+    "pointsUsed": "Points Used",
+    "shippingCost": "Shipping",
+    "total": "Total"
+  },
+  "featuredProducts": {
+    "title": "Featured Products",
+    "subtitle": "The best choices from our kitchen",
+    "viewAll": "View All",
+    "empty": "No featured products at the moment",
+    "viewAllProducts": "View all products"
+  },
+  "testimonials": {
+    "title": "What Our Customers Say",
+    "error": "Failed to load testimonials"
+  },
+  "shippingOptions": {
+    "selectCourier": "Select Courier",
+    "noOptions": "No shipping options available for this area.",
+    "estimate": "Estimated {days} days",
+    "back": "Back"
+  },
+  "addressForm": {
+    "shippingAddress": "Shipping Address",
+    "province": "Province",
+    "city": "City/Regency",
+    "district": "District",
+    "fullAddress": "Full Address",
+    "postalCode": "Postal Code (optional)",
+    "loadingProvinces": "Loading provinces...",
+    "loadingCities": "Loading cities...",
+    "searchProvince": "Type to search province...",
+    "searchCity": "Type to search city...",
+    "selectProvinceFirst": "Select province first",
+    "districtPlaceholder": "Example: Cibeunying Kaler",
+    "addressPlaceholder": "St. name, No. RT/RW, Village",
+    "postalCodePlaceholder": "40111",
+    "back": "Back",
+    "selectProvinceFirstButton": "Select Province First",
+    "loading": "Loading...",
+    "continue": "Continue"
+  },
+  "savedAddress": {
+    "selectAddress": "Select Address",
+    "address": "Address",
+    "primary": "Default",
+    "addNewAddress": "Add new address",
+    "enterManually": "Enter address manually",
+    "back": "Back"
+  },
+  "cartSummary": {
+    "shoppingSummary": "Shopping Summary",
+    "stockIssueWarning": "Some items have insufficient stock. Please fix before checkout.",
+    "totalItems": "Total Items ({count})",
+    "estimatedWeight": "Estimated Weight",
+    "shippingCost": "Shipping",
+    "enterAddress": "Enter address",
+    "discount": "Discount",
+    "pointsUsed": "Points Used",
+    "total": "Total",
+    "continueToCheckout": "Continue to Checkout"
+  },
+  "pointsRedeemer": {
+    "usePoints": "Use Points",
+    "balance": "Balance: {points} points",
+    "savings": "(≈ save {amount})",
+    "maxRedeem": "Max. {points} points ({amount})"
+  },
+  "productCard": {
+    "muiCertification": "MUI 001/2020"
+  },
+  "home": {
+    "gallery": {
+      "title": "Our Gallery",
+      "description": "Photo collection of our products and kitchen activities",
+      "followOnInstagram": "Follow @dapurdekaka"
+    }
+  },
   "whatsapp": {
     "chat": "Chat WhatsApp",
     "chatForOrder": "Chat WhatsApp for questions about orders or products",
     "close": "Close",
-    "tooltipNote": "You will be directed to WhatsApp. This chat is recorded for our customer service purposes."
+    "tooltipNote": "You will be directed to WhatsApp. This chat is recorded for our customer service purposes.",
+    "defaultMessage": "Hello Dapur Dekaka, I would like to inquire about..."
+  },
+  "deliveryMethod": {
+    "title": "Delivery Method",
+    "deliverToAddress": "Deliver to Address",
+    "deliverDescription": "Delivered via SiCepat FROZEN / JNE YES / AnterAja Frozen",
+    "pickupAtStore": "Self Pickup",
+    "back": "Back"
   },
   "product": {
     "addToCart": "Add to Cart",
@@ -314,6 +403,11 @@
     "net30Redirect": "B2B Net-30 order is being processed...",
     "midtransNotLoaded": "Midtrans not loaded yet. Please try again in a moment.",
     "retryTokenError": "Failed to create new payment token",
+    "orderLoadError": "Failed to load order data",
+    "emailMismatchError": "Email does not match the order",
+    "verifyError": "An error occurred during verification",
+    "emailLabel": "Email",
+    "emailPlaceholder": "name@email.com",
     "emailVerificationRequired": "Email Verification",
     "enterEmailToTrack": "Enter the email used at checkout to view order details",
     "verify": "Verify",
@@ -624,6 +718,8 @@
     "sortPriceAsc": "Price: Low to High",
     "sortPriceDesc": "Price: High to Low",
     "sortNewest": "Newest",
-    "allCategory": "All"
+    "allCategory": "All",
+    "aboutTitle": "About Us | Dapur Dekaka",
+    "aboutDescription": "Dapur Dekaka is a premium Chinese-Indonesian frozen food producer from Bandung. Halal-certified dimsum, siomay, and bakso."
   }
 }

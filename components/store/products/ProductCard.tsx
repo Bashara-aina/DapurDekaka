@@ -124,7 +124,7 @@ export function ProductCard({ product, variant, className }: ProductCardProps) {
             <HalalBadge />
             {product.isHalal && (
               <span className="text-[8px] text-text-disabled bg-white/60 px-1 rounded text-center">
-                MUI 001/2020
+                {t('muiCertification')}
               </span>
             )}
           </div>

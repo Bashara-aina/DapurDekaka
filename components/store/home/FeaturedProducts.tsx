@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { ProductCard } from '@/components/store/products/ProductCard';
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 interface FeaturedProductsProps {
   products: {
@@ -27,6 +28,7 @@ interface FeaturedProductsProps {
 }
 
 export function FeaturedProducts({ products }: FeaturedProductsProps) {
+  const t = useTranslations('featuredProducts');
   const [MotionComp, setMotionComp] = useState<typeof import('framer-motion') | null>(null);
 
   useEffect(() => {
@@ -54,15 +56,15 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="font-display text-2xl md:text-3xl font-semibold text-text-primary">
-              Produk Unggulan
+              {t('title')}
             </h2>
-            <p className="text-text-secondary text-sm">Pilihan terbaik dari dapur kami</p>
+            <p className="text-text-secondary text-sm">{t('subtitle')}</p>
           </div>
           <Link
             href="/products"
             className="flex items-center gap-1 text-brand-red font-medium text-sm hover:underline"
           >
-            Lihat Semua
+            {t('viewAll')}
             <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
@@ -89,9 +91,9 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
         </div>
         {products.length === 0 && (
           <div className="text-center py-8 text-text-secondary">
-            <p>Belum ada produk unggulan saat ini</p>
+            <p>{t('empty')}</p>
             <Link href="/products" className="text-brand-red font-medium text-sm mt-2 inline-block hover:underline">
-              Lihat semua produk
+              {t('viewAllProducts')}
             </Link>
           </div>
         )}
@@ -105,15 +107,15 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="font-display text-2xl md:text-3xl font-semibold text-text-primary">
-              Produk Unggulan
+              {t('title')}
             </h2>
-            <p className="text-text-secondary text-sm">Pilihan terbaik dari dapur kami</p>
+            <p className="text-text-secondary text-sm">{t('subtitle')}</p>
           </div>
         </div>
         <div className="bg-white rounded-card p-8 text-center">
-          <p className="text-text-secondary">Belum ada produk unggulan saat ini</p>
+          <p className="text-text-secondary">{t('empty')}</p>
           <Link href="/products" className="text-brand-red font-medium text-sm mt-2 inline-block hover:underline">
-            Lihat semua produk
+            {t('viewAllProducts')}
           </Link>
         </div>
       </section>
@@ -133,15 +135,15 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
       >
         <div>
           <h2 className="font-display text-2xl md:text-3xl font-semibold text-text-primary">
-            Produk Unggulan
+            {t('title')}
           </h2>
-          <p className="text-text-secondary text-sm">Pilihan terbaik dari dapur kami</p>
+          <p className="text-text-secondary text-sm">{t('subtitle')}</p>
         </div>
         <Link
           href="/products"
           className="flex items-center gap-1 text-brand-red font-medium text-sm hover:underline"
         >
-          Lihat Semua
+          {t('viewAll')}
           <ChevronRight className="w-4 h-4" />
         </Link>
       </MotionFn.div>
