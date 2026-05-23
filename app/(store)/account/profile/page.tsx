@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -107,7 +107,7 @@ export default function AccountProfilePage() {
     },
   });
 
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     try {
       const res = await fetch('/api/account/profile');
       const response = await res.json();
@@ -122,11 +122,11 @@ export default function AccountProfilePage() {
     } finally {
       setIsFetching(false);
     }
-  };
+  }, [t, setValue]);
 
   useEffect(() => {
     fetchProfile();
-  }, [t]);
+  }, [fetchProfile]);
 
   const onSubmit = async (data: ProfileFormData) => {
     setIsLoading(true);
