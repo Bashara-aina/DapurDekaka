@@ -77,6 +77,7 @@ export default function CheckoutPage() {
   const [snapToken, setSnapToken] = useState<string | null>(null);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const [storeHours, setStoreHours] = useState<StoreHours>({ openDays: 'Senin - Sabtu', openHours: '08.00 - 17.00 WIB' });
+  const [pickupAddress, setPickupAddress] = useState<string | null>(null);
   const [serverTotalAmount, setServerTotalAmount] = useState<number>(0);
   const [formData, setFormData] = useState<CheckoutFormData>({
     recipientName: '',
@@ -196,22 +197,25 @@ export default function CheckoutPage() {
     }
   }, [addressesData]);
 
-  // Fetch store hours from system settings
+  // Fetch store hours and pickup address from system settings
   useEffect(() => {
-    async function fetchStoreHours() {
+    async function fetchStoreSettings() {
       try {
         const res = await fetch('/api/settings/public');
         const json = await res.json();
         if (json.success && json.data) {
-          const openDays = json.data.store_open_days?.value ?? 'Senin - Sabtu';
-          const openHours = json.data.store_opening_hours?.value ?? '08.00 - 17.00 WIB';
+          const openDays = json.data.store_open_days ?? 'Senin - Sabtu';
+          const openHours = json.data.store_opening_hours ?? '08.00 - 17.00 WIB';
           setStoreHours({ openDays, openHours });
+
+          const address = json.data.store_address ?? null;
+          setPickupAddress(address);
         }
       } catch {
         // Use defaults on error
       }
     }
-    fetchStoreHours();
+    fetchStoreSettings();
   }, []);
 
   const stepsDelivery = [
@@ -525,6 +529,7 @@ export default function CheckoutPage() {
                   value={formData.deliveryMethod}
                   onChange={handleDeliveryMethodChange}
                   onBack={handleBack}
+                  pickupAddress={pickupAddress ?? undefined}
                 />
 
                 {formData.deliveryMethod === 'delivery' && (

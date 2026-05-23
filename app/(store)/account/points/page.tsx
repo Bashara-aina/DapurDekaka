@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Gift, AlertTriangle, TrendingUp, ChevronDown } from 'lucide-react';
@@ -27,11 +27,7 @@ export default function AccountPointsPage() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
 
-  useEffect(() => {
-    fetchPoints(page);
-  }, [page]);
-
-  const fetchPoints = async (pageNum: number) => {
+  const fetchPoints = useCallback(async (pageNum: number) => {
     try {
       const res = await fetch(`/api/account/points?page=${pageNum}&limit=20`);
       const response = await res.json();
@@ -54,7 +50,11 @@ export default function AccountPointsPage() {
         setIsLoadingMore(false);
       }
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    fetchPoints(page);
+  }, [page, fetchPoints]);
 
   if (isInitialLoading) {
     return (

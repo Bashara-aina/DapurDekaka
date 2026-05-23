@@ -1,6 +1,7 @@
 'use client';
 
 import { MapPin, Plus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils/cn';
 
 export interface SavedAddress {
@@ -33,11 +34,12 @@ export function SavedAddressPicker({
   onBack,
   className,
 }: SavedAddressPickerProps) {
+  const t = useTranslations('savedAddress');
   const selectedAddress = addresses.find((a) => a.id === selectedId);
 
   return (
     <div className={cn('bg-white rounded-card p-6 shadow-card', className)}>
-      <h2 className="font-semibold text-lg mb-4">Pilih Alamat</h2>
+      <h2 className="font-semibold text-lg mb-4">{t('selectAddress')}</h2>
 
       <div className="space-y-3">
         {addresses.map((address) => (
@@ -57,10 +59,10 @@ export function SavedAddressPicker({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="font-medium">
-                    {address.label || 'Alamat'}
+                    {address.label || t('address')}
                     {address.isDefault && (
                       <span className="ml-2 text-xs bg-brand-gold text-white px-2 py-0.5 rounded-full">
-                        Utama
+                        {t('primary')}
                       </span>
                     )}
                   </p>
@@ -89,8 +91,8 @@ export function SavedAddressPicker({
           <div className="flex items-center gap-3">
             <Plus className="w-5 h-5 text-brand-red flex-shrink-0" />
             <div>
-              <p className="font-medium text-brand-red">Tambah alamat baru</p>
-              <p className="text-sm text-text-secondary">Masukkan alamat manual</p>
+              <p className="font-medium text-brand-red">{t('addNewAddress')}</p>
+              <p className="text-sm text-text-secondary">{t('enterManually')}</p>
             </div>
           </div>
         </button>
@@ -102,7 +104,7 @@ export function SavedAddressPicker({
           onClick={onBack}
           className="w-full h-12 border border-brand-cream-dark text-text-primary font-medium rounded-button mt-4"
         >
-          Kembali
+          {t('back')}
         </button>
       )}
     </div>

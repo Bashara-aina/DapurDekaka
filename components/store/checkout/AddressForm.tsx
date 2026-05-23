@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Loader2, Search } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/cn';
@@ -41,6 +42,8 @@ interface AddressFormProps {
 }
 
 export function AddressForm({ onSubmit, onBack, defaultValues, className }: AddressFormProps) {
+  const t = useTranslations('addressForm');
+  const tShipping = useTranslations('shipping');
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [loadingProvinces, setLoadingProvinces] = useState(true);
@@ -146,16 +149,16 @@ export function AddressForm({ onSubmit, onBack, defaultValues, className }: Addr
       onSubmit={handleSubmit(onSubmit)}
       className={cn('bg-white rounded-card p-6 shadow-card', className)}
     >
-      <h2 className="font-semibold text-lg mb-4">Alamat Pengiriman</h2>
+      <h2 className="font-semibold text-lg mb-4">{t('shippingAddress')}</h2>
 
       <div className="space-y-4">
         {/* Province — searchable */}
         <div>
-          <label className="block text-sm font-medium mb-1">Provinsi</label>
+          <label className="block text-sm font-medium mb-1">{t('province')}</label>
           {loadingProvinces ? (
             <div className="h-10 flex items-center gap-2 text-sm text-text-secondary">
               <Loader2 className="w-4 h-4 animate-spin" />
-              Memuat provinsi...
+              {t('loadingProvinces')}
             </div>
           ) : (
             <div className="relative">
@@ -169,7 +172,7 @@ export function AddressForm({ onSubmit, onBack, defaultValues, className }: Addr
                     setProvinceOpen(true);
                   }}
                   onFocus={() => setProvinceOpen(true)}
-                  placeholder="Ketik untuk cari provinsi..."
+                  placeholder={t('searchProvince')}
                   className="w-full h-10 pl-10 pr-3 border border-brand-cream-dark rounded-lg focus:border-brand-red focus:ring-2 focus:ring-brand-red/10 outline-none bg-white text-sm"
                 />
               </div>
@@ -199,11 +202,11 @@ export function AddressForm({ onSubmit, onBack, defaultValues, className }: Addr
 
         {/* City — searchable */}
         <div>
-          <label className="block text-sm font-medium mb-1">Kota/Kabupaten</label>
+          <label className="block text-sm font-medium mb-1">{t('city')}</label>
           {loadingCities ? (
             <div className="h-10 flex items-center gap-2 text-sm text-text-secondary">
               <Loader2 className="w-4 h-4 animate-spin" />
-              Memuat kota...
+              {t('loadingCities')}
             </div>
           ) : (
             <div className="relative">
@@ -220,7 +223,7 @@ export function AddressForm({ onSubmit, onBack, defaultValues, className }: Addr
                     if (!selectedProvinceId) return;
                     setCityOpen(true);
                   }}
-                  placeholder={selectedProvinceId ? 'Ketik untuk cari kota...' : 'Pilih provinsi dulu'}
+                  placeholder={selectedProvinceId ? t('searchCity') : t('selectProvinceFirst')}
                   disabled={!selectedProvinceId}
                   className="w-full h-10 pl-10 pr-3 border border-brand-cream-dark rounded-lg focus:border-brand-red focus:ring-2 focus:ring-brand-red/10 outline-none bg-white text-sm disabled:opacity-50"
                 />
@@ -251,22 +254,22 @@ export function AddressForm({ onSubmit, onBack, defaultValues, className }: Addr
 
         {/* District */}
         <div>
-          <label className="block text-sm font-medium mb-1">Kecamatan</label>
+          <label className="block text-sm font-medium mb-1">{t('district')}</label>
           <Input
             {...register('district')}
-            placeholder="Contoh: Cibeunying Kaler"
+            placeholder={t('districtPlaceholder')}
             error={errors.district?.message}
           />
         </div>
 
         {/* Address Line */}
         <div>
-          <label className="block text-sm font-medium mb-1">Alamat Lengkap</label>
+          <label className="block text-sm font-medium mb-1">{t('fullAddress')}</label>
           <textarea
             {...register('addressLine')}
             rows={3}
             className="w-full px-3 py-2 border border-brand-cream-dark rounded-lg focus:border-brand-red focus:ring-2 focus:ring-brand-red/10 outline-none"
-            placeholder="Jl. jalan, No. RT/RW, Kelurahan"
+            placeholder={t('addressPlaceholder')}
           />
           {errors.addressLine && (
             <p className="text-error text-xs mt-1">{errors.addressLine.message}</p>
@@ -275,10 +278,10 @@ export function AddressForm({ onSubmit, onBack, defaultValues, className }: Addr
 
         {/* Postal Code */}
         <div>
-          <label className="block text-sm font-medium mb-1">Kode Pos (opsional)</label>
+          <label className="block text-sm font-medium mb-1">{t('postalCode')}</label>
           <Input
             {...register('postalCode')}
-            placeholder="40111"
+            placeholder={t('postalCodePlaceholder')}
           />
         </div>
       </div>
@@ -286,7 +289,7 @@ export function AddressForm({ onSubmit, onBack, defaultValues, className }: Addr
       <div className="flex gap-4 mt-6">
         {onBack && (
           <Button type="button" variant="outline" onClick={onBack} className="flex-1">
-            Kembali
+            {t('back')}
           </Button>
         )}
         <Button
@@ -295,10 +298,10 @@ export function AddressForm({ onSubmit, onBack, defaultValues, className }: Addr
           disabled={!selectedProvinceId || loadingCities}
         >
           {!selectedProvinceId
-            ? 'Pilih Provinsi Dulu'
+            ? t('selectProvinceFirstButton')
             : loadingCities
-              ? 'Memuat...'
-              : 'Lanjut'}
+              ? t('loading')
+              : t('continue')}
         </Button>
       </div>
     </form>

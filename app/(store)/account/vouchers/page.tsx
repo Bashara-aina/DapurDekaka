@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { Tag, Check } from 'lucide-react';
 import { toast } from 'sonner';
@@ -20,11 +20,7 @@ export default function AccountVouchersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'available' | 'used'>('available');
 
-  useEffect(() => {
-    fetchVouchers();
-  }, []);
-
-  const fetchVouchers = async () => {
+  const fetchVouchers = useCallback(async () => {
     try {
       const res = await fetch('/api/account/vouchers');
       const response = await res.json();
@@ -36,7 +32,11 @@ export default function AccountVouchersPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    fetchVouchers();
+  }, [fetchVouchers]);
 
   if (isLoading) {
     return (

@@ -1,6 +1,7 @@
 'use client';
 
 import { Truck, MapPin } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
 
@@ -8,6 +9,7 @@ interface DeliveryMethodToggleProps {
   value: 'delivery' | 'pickup';
   onChange: (method: 'delivery' | 'pickup') => void;
   onBack?: () => void;
+  pickupAddress?: string;
   isLoading?: boolean;
   className?: string;
 }
@@ -16,12 +18,15 @@ export function DeliveryMethodToggle({
   value,
   onChange,
   onBack,
+  pickupAddress,
   isLoading,
   className,
 }: DeliveryMethodToggleProps) {
+  const t = useTranslations('deliveryMethod');
+
   return (
     <div className={cn('bg-white rounded-card p-6 shadow-card', className)}>
-      <h2 className="font-semibold text-lg mb-4">Metode Pengiriman</h2>
+      <h2 className="font-semibold text-lg mb-4">{t('title')}</h2>
 
       <div className="space-y-3">
         <label
@@ -42,9 +47,9 @@ export function DeliveryMethodToggle({
           />
           <Truck className="w-5 h-5 text-brand-red flex-shrink-0" />
           <div className="flex-1">
-            <p className="font-medium">Kirim ke Alamat</p>
+            <p className="font-medium">{t('deliverToAddress')}</p>
             <p className="text-sm text-text-secondary">
-              Dikirim via SiCepat FROZEN / JNE YES / AnterAja Frozen
+              {t('deliverDescription')}
             </p>
           </div>
         </label>
@@ -67,11 +72,10 @@ export function DeliveryMethodToggle({
           />
           <MapPin className="w-5 h-5 text-brand-red flex-shrink-0" />
           <div className="flex-1">
-            <p className="font-medium">Ambil di Toko</p>
-            <p className="text-sm text-text-secondary">
-              {/* TODO: Fetch pickup address from system_settings table */}
-              Jl. Sinom V no. 7, Turangga, Bandung
-            </p>
+            <p className="font-medium">{t('pickupAtStore')}</p>
+            {pickupAddress && (
+              <p className="text-sm text-text-secondary">{pickupAddress}</p>
+            )}
           </div>
         </label>
       </div>
@@ -79,7 +83,7 @@ export function DeliveryMethodToggle({
       <div className="flex gap-4 mt-6">
         {onBack && (
           <Button type="button" variant="outline" onClick={onBack} className="flex-1">
-            Kembali
+            {t('back')}
           </Button>
         )}
       </div>

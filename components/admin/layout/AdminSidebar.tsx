@@ -9,28 +9,29 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 
 const NAV_ITEMS = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['superadmin'] },
   { href: '/admin/team-dashboard', label: 'Tim Dashboard', icon: BarChart3, roles: ['superadmin', 'owner'] },
   { href: '/admin/field', label: 'Gudang', icon: ClipboardList, roles: ['superadmin', 'owner', 'warehouse'] },
   { separator: true },
-  { href: '/admin/orders', label: 'Pesanan', icon: ShoppingCart },
-  { href: '/admin/products', label: 'Produk', icon: Package },
-  { href: '/admin/categories', label: 'Kategori', icon: Layers },
-  { href: '/admin/inventory', label: 'Inventori', icon: Box },
-  { href: '/admin/shipments', label: 'Pengiriman', icon: Truck },
-  { href: '/admin/customers', label: 'Pelanggan', icon: Users },
-  { href: '/admin/users', label: 'Users', icon: Users },
+  { href: '/admin/orders', label: 'Pesanan', icon: ShoppingCart, roles: ['superadmin', 'owner', 'warehouse'] },
+  { href: '/admin/products', label: 'Produk', icon: Package, roles: ['superadmin', 'owner'] },
+  { href: '/admin/categories', label: 'Kategori', icon: Layers, roles: ['superadmin', 'owner'] },
+  { href: '/admin/inventory', label: 'Inventori', icon: Box, roles: ['superadmin', 'owner', 'warehouse'] },
+  { href: '/admin/shipments', label: 'Pengiriman', icon: Truck, roles: ['superadmin', 'owner', 'warehouse'] },
+  { href: '/admin/customers', label: 'Pelanggan', icon: Users, roles: ['superadmin', 'owner'] },
+  { href: '/admin/users', label: 'Users', icon: Users, roles: ['superadmin'] },
   { separator: true },
-  { href: '/admin/coupons', label: 'Kupon', icon: Tag },
-  { href: '/admin/blog', label: 'Blog', icon: FileText },
-  { href: '/admin/testimonials', label: 'Testimoni', icon: Star },
-  { href: '/admin/carousel', label: 'Carousel', icon: Image },
-  { href: '/admin/b2b-inquiries', label: 'B2B', icon: MessageSquare },
-  { href: '/admin/ai-content', label: 'AI Content', icon: Bot },
+  { href: '/admin/coupons', label: 'Kupon', icon: Tag, roles: ['superadmin'] },
+  { href: '/admin/blog', label: 'Blog', icon: FileText, roles: ['superadmin', 'owner'] },
+  { href: '/admin/testimonials', label: 'Testimoni', icon: Star, roles: ['superadmin', 'owner'] },
+  { href: '/admin/carousel', label: 'Carousel', icon: Image, roles: ['superadmin', 'owner'] },
+  { href: '/admin/b2b-inquiries', label: 'B2B', icon: MessageSquare, roles: ['superadmin', 'owner'] },
+  { href: '/admin/ai-content', label: 'AI Content', icon: Bot, roles: ['superadmin'] },
   { separator: true },
-  { href: '/admin/settings', label: 'Pengaturan', icon: Settings },
+  { href: '/admin/settings', label: 'Pengaturan', icon: Settings, roles: ['superadmin'] },
 ];
 
 interface AdminSidebarProps {
@@ -51,7 +52,17 @@ export function AdminSidebar({ mobileOpen = false, onMobileClose }: AdminSidebar
     return () => { document.body.style.overflow = ''; };
   }, [mobileOpen]);
 
-  const NavContent = () => (
+  const NavContent = () => {
+    const { data: session } = useSession();
+    const userRole = (session?.user as { role?: string })?.role ?? '';
+
+    const visibleItems = NAV_ITEMS.filter(item => {
+      if ('separator' in item) return true;
+      const navItem = item as { roles?: string[] };
+      return !navItem.roles || navItem.roles.includes(userRole);
+    });
+
+    return (
     <>
       {/* Logo */}
       <div className="p-6 border-b border-white/10 flex items-center justify-between">
@@ -71,7 +82,7 @@ export function AdminSidebar({ mobileOpen = false, onMobileClose }: AdminSidebar
 
       {/* Nav */}
       <nav className="flex-1 p-4 space-y-0.5 overflow-y-auto">
-        {NAV_ITEMS.map((item, idx) => {
+        {visibleItems.map((item, idx) => {
           if ('separator' in item && item.separator) {
             return <div key={`sep-${idx}`} className="my-2 border-t border-white/10" />;
           }
@@ -106,7 +117,8 @@ export function AdminSidebar({ mobileOpen = false, onMobileClose }: AdminSidebar
         </Link>
       </div>
     </>
-  );
+    );
+  };
 
   return (
     <>

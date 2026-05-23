@@ -53,8 +53,8 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
   const [ordersResult, totalResult] = await Promise.all([
     db.query.orders.findMany({
       where: validStatus
-        ? (o, { and, eq }) => and(eq(o.userId, session.user.id!), eq(o.status, validStatus))
-        : (o, { eq }) => eq(o.userId, session.user.id!),
+        ? (o, { and, eq }) => and(eq(o.userId, session.user.id!), eq(o.status, validStatus), eq(o.isB2b, false))
+        : (o, { and, eq }) => and(eq(o.userId, session.user.id!), eq(o.isB2b, false)),
       with: {
         items: true,
       },
@@ -64,9 +64,9 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
     }),
     validStatus
       ? db.select({ total: count() }).from(orders)
-        .where(and(eq(orders.userId, session.user.id!), eq(orders.status, validStatus)))
+        .where(and(eq(orders.userId, session.user.id!), eq(orders.status, validStatus), eq(orders.isB2b, false)))
       : db.select({ total: count() }).from(orders)
-        .where(eq(orders.userId, session.user.id!)),
+        .where(and(eq(orders.userId, session.user.id!), eq(orders.isB2b, false))),
   ]);
 
   const totalOrders = totalResult[0]?.total ?? 0;

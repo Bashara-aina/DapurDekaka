@@ -150,7 +150,7 @@
   },
   "nav": {
     "home": "Beranda",
-    "products": "Produk",
+    "products": "Katalog",
     "cart": "Keranjang",
     "account": "Akun",
     "blog": "Blog",
@@ -180,11 +180,100 @@
     "frozenFresh": "Frozen Fresh",
     "nationwideDelivery": "Nationwide Delivery"
   },
+  "orderSummary": {
+    "title": "Ringkasan Pesanan",
+    "subtotal": "Subtotal",
+    "discount": "Diskon",
+    "pointsUsed": "Points Digunakan",
+    "shippingCost": "Ongkos Kirim",
+    "total": "Total"
+  },
+  "featuredProducts": {
+    "title": "Produk Unggulan",
+    "subtitle": "Pilihan terbaik dari dapur kami",
+    "viewAll": "Lihat Semua",
+    "empty": "Belum ada produk unggulan saat ini",
+    "viewAllProducts": "Lihat semua produk"
+  },
+  "testimonials": {
+    "title": "Kata Mereka yang Sudah Percaya",
+    "error": "Gagal memuat testimoni"
+  },
+  "shippingOptions": {
+    "selectCourier": "Pilih Kurir",
+    "noOptions": "Tidak ada opsi pengiriman tersedia untuk daerah ini.",
+    "estimate": "Estimasi {days} hari",
+    "back": "Kembali"
+  },
+  "addressForm": {
+    "shippingAddress": "Alamat Pengiriman",
+    "province": "Provinsi",
+    "city": "Kota/Kabupaten",
+    "district": "Kecamatan",
+    "fullAddress": "Alamat Lengkap",
+    "postalCode": "Kode Pos (opsional)",
+    "loadingProvinces": "Memuat provinsi...",
+    "loadingCities": "Memuat kota...",
+    "searchProvince": "Ketik untuk cari provinsi...",
+    "searchCity": "Ketik untuk cari kota...",
+    "selectProvinceFirst": "Pilih provinsi dulu",
+    "districtPlaceholder": "Contoh: Cibeunying Kaler",
+    "addressPlaceholder": "Jl. jalan, No. RT/RW, Kelurahan",
+    "postalCodePlaceholder": "40111",
+    "back": "Kembali",
+    "selectProvinceFirstButton": "Pilih Provinsi Dulu",
+    "loading": "Memuat...",
+    "continue": "Lanjut"
+  },
+  "savedAddress": {
+    "selectAddress": "Pilih Alamat",
+    "address": "Alamat",
+    "primary": "Utama",
+    "addNewAddress": "Tambah alamat baru",
+    "enterManually": "Masukkan alamat manual",
+    "back": "Kembali"
+  },
+  "cartSummary": {
+    "shoppingSummary": "Ringkasan Belanja",
+    "stockIssueWarning": "Ada item yang stoknya tidak mencukupi. Silakan perbaiki sebelum checkout.",
+    "totalItems": "Total Item ({count})",
+    "estimatedWeight": "Estimasi Berat",
+    "shippingCost": "Ongkos Kirim",
+    "enterAddress": "Masukkan alamat",
+    "discount": "Diskon",
+    "pointsUsed": "Poin Digunakan",
+    "total": "Total",
+    "continueToCheckout": "Lanjutkan ke Checkout"
+  },
+  "pointsRedeemer": {
+    "usePoints": "Gunakan Poin",
+    "balance": "Saldo: {points} poin",
+    "savings": "(≈ hemat {amount})",
+    "maxRedeem": "Maks. {points} poin ({amount})"
+  },
+  "productCard": {
+    "muiCertification": "MUI 001/2020"
+  },
+  "home": {
+    "gallery": {
+      "title": "Galeri Kami",
+      "description": "Koleksi foto produk dan aktivitas dari dapur kami",
+      "followOnInstagram": "Ikuti @dapurdekaka"
+    }
+  },
   "whatsapp": {
     "chat": "Chat WhatsApp",
     "chatForOrder": "Chat WhatsApp untuk pertanyaan tentang pesanan atau produk",
     "close": "Tutup",
-    "tooltipNote": "Anda akan diarahkan ke WhatsApp. Chat ini tercatat untuk keperluan CS kami."
+    "tooltipNote": "Anda akan diarahkan ke WhatsApp. Chat ini tercatat untuk keperluan CS kami.",
+    "defaultMessage": "Halo Dapur Dekaka, saya ingin bertanya tentang..."
+  },
+  "deliveryMethod": {
+    "title": "Metode Pengiriman",
+    "deliverToAddress": "Kirim ke Alamat",
+    "deliverDescription": "Dikirim via SiCepat FROZEN / JNE YES / AnterAja Frozen",
+    "pickupAtStore": "Ambil di Toko",
+    "back": "Kembali"
   },
   "cart": {
     "empty": "Keranjangmu masih kosong",
@@ -521,7 +610,7 @@
       "notFound": "Halaman tidak ditemukan",
       "unauthorized": "Anda tidak memiliki akses ke halaman ini",
       "serverError": "Terjadi kesalahan server. Silakan coba lagi nanti.",
-      "validationError": "Data yang输入 tidak valid"
+      "validationError": "Data yang dimasukkan tidak valid"
     }
   },
   "shipping": {

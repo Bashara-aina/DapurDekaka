@@ -19,6 +19,7 @@ export function Testimonials() {
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     async function fetchTestimonials() {
@@ -29,7 +30,7 @@ export function Testimonials() {
           setTestimonials(json.data);
         }
       } catch {
-        // Fallback: use empty array (component shows nothing)
+        setHasError(true);
       }
     }
     fetchTestimonials();
@@ -45,6 +46,20 @@ export function Testimonials() {
   }, [isPaused, testimonials.length, next]);
 
   if (testimonials.length === 0) {
+    if (hasError) {
+      return (
+        <section className="py-12 px-4 bg-white">
+          <div className="container mx-auto text-center">
+            <h2 className="font-display text-2xl md:text-3xl font-semibold text-center mb-8">
+              Kata Mereka yang Sudah Percaya
+            </h2>
+            <p className="text-text-secondary text-sm">
+              Gagal memuat testimoni. Silakan coba lagi nanti.
+            </p>
+          </div>
+        </section>
+      );
+    }
     return null;
   }
 

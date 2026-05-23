@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { productVariants, inventoryLogs } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { success, serverError, forbidden, notFound, validationError } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
 import { z } from 'zod';
+import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -44,26 +45,39 @@ export async function POST(req: NextRequest) {
     }
 
     const quantityBefore = variant.stock;
-    const quantityAfter = Math.max(0, quantityBefore + delta);
-    const actualDelta = quantityAfter - quantityBefore;
+    let quantityAfter = 0;
+    let actualDelta = 0;
 
-    await db.update(productVariants).set({ stock: quantityAfter, updatedAt: new Date() }).where(eq(productVariants.id, variantId));
+    await db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(productVariants)
+        .set({ stock: sql`GREATEST(stock + ${delta}, 0)`, updatedAt: new Date() })
+        .where(eq(productVariants.id, variantId))
+        .returning({ newStock: productVariants.stock });
 
-    await db.insert(inventoryLogs).values({
-      variantId,
-      changedByUserId: session.user.id,
-      changeType: 'adjustment',
-      quantityBefore,
-      quantityAfter,
-      quantityDelta: actualDelta,
-      note: actualDelta !== delta
-        ? `[Manual Adjust] ${reason}${note ? ` - ${note}` : ''}\n(permintaan ${delta > 0 ? '+' : ''}${delta}, real ${actualDelta > 0 ? '+' : ''}${actualDelta} — dibatasi stok tersedia)`
-        : `[Manual Adjust] ${reason}${note ? ` - ${note}` : ''}`,
+      if (!updated) {
+        throw new Error('Gagal memperbarui stok');
+      }
+
+      quantityAfter = updated.newStock;
+      actualDelta = quantityAfter - quantityBefore;
+
+      await tx.insert(inventoryLogs).values({
+        variantId,
+        changedByUserId: session.user.id,
+        changeType: 'adjustment',
+        quantityBefore,
+        quantityAfter,
+        quantityDelta: actualDelta,
+        note: actualDelta !== delta
+          ? `[Manual Adjust] ${reason}${note ? ` - ${note}` : ''}\n(permintaan ${delta > 0 ? '+' : ''}${delta}, real ${actualDelta > 0 ? '+' : ''}${actualDelta} — dibatasi stok tersedia)`
+          : `[Manual Adjust] ${reason}${note ? ` - ${note}` : ''}`,
+      });
     });
 
     return success({ variantId, stockBefore: quantityBefore, stockAfter: quantityAfter, actualDelta });
   } catch (error) {
-    console.error('[admin/field/inventory/adjust POST]', error);
+    logger.error('[admin/field/inventory/adjust]', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
 }

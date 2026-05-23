@@ -1,6 +1,7 @@
 'use client';
 
 import { Truck } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
@@ -30,10 +31,12 @@ export function ShippingOptions({
   isLoading,
   className,
 }: ShippingOptionsProps) {
+  const t = useTranslations('shippingOptions');
+
   if (isLoading) {
     return (
       <div className={cn('bg-white rounded-card p-6 shadow-card', className)}>
-        <h2 className="font-semibold text-lg mb-4">Pilih Kurir</h2>
+        <h2 className="font-semibold text-lg mb-4">{t('selectCourier')}</h2>
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <div
@@ -48,11 +51,11 @@ export function ShippingOptions({
 
   return (
     <div className={cn('bg-white rounded-card p-6 shadow-card', className)}>
-      <h2 className="font-semibold text-lg mb-4">Pilih Kurir</h2>
+      <h2 className="font-semibold text-lg mb-4">{t('selectCourier')}</h2>
 
       {options.length === 0 ? (
         <p className="text-text-secondary text-center py-8">
-          Tidak ada opsi pengiriman tersedia untuk daerah ini.
+          {t('noOptions')}
         </p>
       ) : (
         <div className="space-y-3">
@@ -72,7 +75,7 @@ export function ShippingOptions({
               <div className="flex-1">
                 <p className="font-medium">{option.displayName}</p>
                 <p className="text-sm text-text-secondary">
-                  Estimasi {option.estimatedDays} hari
+                  {t('estimate', { days: option.estimatedDays })}
                 </p>
               </div>
               <p className="font-bold text-brand-red">{formatIDR(option.cost)}</p>
@@ -88,7 +91,7 @@ export function ShippingOptions({
           onClick={onBack}
           className="w-full mt-4"
         >
-          Kembali
+          {t('back')}
         </Button>
       )}
     </div>

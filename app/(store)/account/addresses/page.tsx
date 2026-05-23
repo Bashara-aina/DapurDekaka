@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -33,12 +33,7 @@ export default function AccountAddressesPage() {
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchAddresses();
-    fetchProvinces();
-  }, []);
-
-  const fetchAddresses = async () => {
+  const fetchAddresses = useCallback(async () => {
     try {
       const res = await fetch('/api/account/addresses');
       const data = await res.json();
@@ -50,9 +45,9 @@ export default function AccountAddressesPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [t]);
 
-  const fetchProvinces = async () => {
+  const fetchProvinces = useCallback(async () => {
     try {
       const [provinceRes, cityRes] = await Promise.all([
         fetch('/api/shipping/provinces'),
@@ -66,7 +61,12 @@ export default function AccountAddressesPage() {
     } catch {
       toast.error(t('loadShippingError') || 'Gagal memuat data pengiriman');
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    fetchAddresses();
+    fetchProvinces();
+  }, [fetchAddresses, fetchProvinces]);
 
   const handleEdit = (address: Address) => {
     setEditingAddress(address);

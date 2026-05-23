@@ -1,6 +1,8 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { cn } from '@/lib/utils/cn';
 import type { CartItem } from '@/store/cart.store';
@@ -24,9 +26,11 @@ export function OrderSummaryCard({
   totalAmount,
   className,
 }: OrderSummaryCardProps) {
+  const t = useTranslations('orderSummary');
+
   return (
     <div className={cn('bg-white rounded-card p-6 shadow-card sticky top-32', className)}>
-      <h3 className="font-semibold mb-4">Ringkasan Pesanan</h3>
+      <h3 className="font-semibold mb-4">{t('title')}</h3>
 
       <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
         {items.map((item) => (
@@ -59,33 +63,33 @@ export function OrderSummaryCard({
 
       <div className="border-t border-brand-cream-dark pt-4 space-y-2">
         <div className="flex justify-between text-sm">
-          <span className="text-text-secondary">Subtotal</span>
+          <span className="text-text-secondary">{t('subtotal')}</span>
           <span>{formatIDR(subtotal)}</span>
         </div>
 
         {discountAmount > 0 && (
           <div className="flex justify-between text-sm text-success">
-            <span>Diskon</span>
+            <span>{t('discount')}</span>
             <span>-{formatIDR(discountAmount)}</span>
           </div>
         )}
 
         {pointsDiscount > 0 && (
           <div className="flex justify-between text-sm text-success">
-            <span>Points Digunakan</span>
+            <span>{t('pointsUsed')}</span>
             <span>-{formatIDR(pointsDiscount)}</span>
           </div>
         )}
 
         {shippingCost > 0 && (
           <div className="flex justify-between text-sm">
-            <span className="text-text-secondary">Ongkos Kirim</span>
+            <span className="text-text-secondary">{t('shippingCost')}</span>
             <span>{formatIDR(shippingCost)}</span>
           </div>
         )}
 
         <div className="flex justify-between font-bold text-lg pt-2 border-t border-brand-cream-dark">
-          <span>Total</span>
+          <span>{t('total')}</span>
           <span className="text-brand-red">{formatIDR(totalAmount)}</span>
         </div>
       </div>

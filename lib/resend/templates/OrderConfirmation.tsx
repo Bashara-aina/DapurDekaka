@@ -184,7 +184,7 @@ export function OrderConfirmationEmail({
           {/* Footer */}
           <Section style={styles.footer}>
             <Text style={styles.footerText}>
-              Pesananmu akan diproses segera.若有 pertanyaan，请 hubungi kami via WhatsApp.
+              Pesananmu akan diproses segera. Jika ada pertanyaan, hubungi kami via WhatsApp.
             </Text>
             <Link href={process.env.NEXT_PUBLIC_APP_URL} style={styles.footerLink}>
               dapurdekaka.com

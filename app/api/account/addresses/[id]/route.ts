@@ -4,6 +4,7 @@ import { addresses } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
 import { success, unauthorized, notFound, serverError } from '@/lib/utils/api-response';
+import { logger } from '@/lib/utils/logger';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -41,7 +42,7 @@ export async function DELETE(req: NextRequest, { params }: DeleteAddressParams) 
     return success({ deleted: true });
 
   } catch (error) {
-    console.error('[account/addresses DELETE]', error);
+    logger.error('[account/addresses DELETE]', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
 }
@@ -54,6 +55,17 @@ export async function PUT(req: NextRequest, { params }: DeleteAddressParams) {
 
     if (!session?.user?.id) {
       return unauthorized('Silakan masuk terlebih dahulu');
+    }
+
+    // Explicit ownership check before any modification (BOLA fix)
+    const existing = await db.query.addresses.findFirst({
+      where: and(
+        eq(addresses.id, id),
+        eq(addresses.userId, session.user.id)
+      ),
+    });
+    if (!existing) {
+      return notFound('Alamat tidak ditemukan');
     }
 
     if (body.isDefault) {
@@ -77,7 +89,7 @@ export async function PUT(req: NextRequest, { params }: DeleteAddressParams) {
     return success(updated[0]);
 
   } catch (error) {
-    console.error('[account/addresses/[id] PUT]', error);
+    logger.error('[account/addresses/[id] PUT]', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
 }
