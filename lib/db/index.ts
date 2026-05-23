@@ -31,6 +31,12 @@ Object.defineProperty(globalThis, '__db', {
 export const db: DbType = new Proxy({} as DbType, {
   get(_target, prop) {
     if (prop === 'then' || prop === 'catch') return undefined;
-    return (getDb() as unknown as Record<string, unknown>)[prop as string];
+    const result = (getDb() as unknown as Record<string, unknown>)[prop as string];
+    // When DrizzleAdapter calls is(db, PgDatabase), prop is the prototype.
+    // Intercept it and delegate to the real instance's prototype so the
+    // instanceof check inside DrizzleAdapter's is() succeeds.
+    if (prop === 'constructor') return getDb().constructor;
+    if (typeof prop === 'symbol') return result;
+    return result;
   },
 });
