@@ -17,7 +17,10 @@ interface ProductCardHorizontalProps {
   className?: string;
 }
 
+import { useTranslations } from 'next-intl';
+
 export function ProductCardHorizontal({ product, variant, className }: ProductCardHorizontalProps) {
+  const t = useTranslations('product');
   const { data: session } = useSession();
   const addItem = useCartStore((s) => s.addItem);
   const syncToDb = useCartStore((s) => s.syncToDb);
@@ -95,7 +98,7 @@ export function ProductCardHorizontal({ product, variant, className }: ProductCa
                 ? 'bg-text-disabled text-white cursor-not-allowed'
                 : 'bg-brand-red text-white hover:bg-brand-red-dark'
             )}
-            aria-label="Tambah ke keranjang"
+            aria-label={t('addToCart')}
           >
             <ShoppingCart className="w-4 h-4 md:w-5 md:h-5" />
           </button>

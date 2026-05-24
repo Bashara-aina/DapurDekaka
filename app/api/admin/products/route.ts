@@ -4,6 +4,8 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { products, categories, productVariants, productImages } from '@/lib/db/schema';
 import { eq, desc, and, isNull, sql, like, or } from 'drizzle-orm';
+import { unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
+import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -11,17 +13,11 @@ export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return unauthorized('Silakan login terlebih dahulu');
     }
     const role = (session.user as { role?: string }).role;
     if (!role || !['superadmin', 'owner'].includes(role)) {
-      return NextResponse.json(
-        { success: false, error: 'Forbidden', code: 'FORBIDDEN' },
-        { status: 403 }
-      );
+      return forbidden('Anda tidak memiliki akses');
     }
 
     const { searchParams } = new URL(req.url);
@@ -88,11 +84,8 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('[Admin Products GET]', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    );
+    logger.error('[Admin Products GET]', { error });
+    return serverError(error);
   }
 }
 

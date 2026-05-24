@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle, ChefHat, ShieldCheck, Snowflake, Truck, Award, Heart } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,7 +78,7 @@ export default async function AboutPage() {
       />
 
       {/* Hero */}
-      <section className="relative bg-brand-navy text-white py-20 md:py-28">
+      <section className="relative bg-slate-800 text-white py-20 md:py-28">
         <div className="container">
           <div className="max-w-2xl">
             <p className="text-brand-gold font-medium text-sm tracking-wider uppercase mb-3">
@@ -131,7 +131,7 @@ export default async function AboutPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="bg-white rounded-2xl p-6 text-center">
               <div className="w-16 h-16 bg-brand-red/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl">🍖</span>
+                <ChefHat className="w-7 h-7 text-brand-red" />
               </div>
               <h3 className="font-display text-lg font-bold mb-2">{t('qualityTitle')}</h3>
               <p className="text-sm text-text-secondary">
@@ -140,7 +140,7 @@ export default async function AboutPage() {
             </div>
             <div className="bg-white rounded-2xl p-6 text-center">
               <div className="w-16 h-16 bg-brand-red/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl">✅</span>
+                <ShieldCheck className="w-7 h-7 text-brand-red" />
               </div>
               <h3 className="font-display text-lg font-bold mb-2">{t('halalTitle')}</h3>
               <p className="text-sm text-text-secondary">
@@ -149,7 +149,7 @@ export default async function AboutPage() {
             </div>
             <div className="bg-white rounded-2xl p-6 text-center">
               <div className="w-16 h-16 bg-brand-red/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl">❄️</span>
+                <Snowflake className="w-7 h-7 text-brand-red" />
               </div>
               <h3 className="font-display text-lg font-bold mb-2">{t('coldChainTitle')}</h3>
               <p className="text-sm text-text-secondary">

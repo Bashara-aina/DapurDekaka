@@ -38,7 +38,7 @@ export default async function Footer() {
             <h4 className="font-semibold text-brand-cream mb-4">{t('helpTitle')}</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/orders/DDK-TEST-0001" className="hover:text-brand-cream">{t('trackOrder')}</Link>
+                <Link href="/orders" className="hover:text-brand-cream">{t('trackOrder')}</Link>
               </li>
               <li>
                 <Link href="/refund-policy" className="hover:text-brand-cream">{t('refundPolicy')}</Link>

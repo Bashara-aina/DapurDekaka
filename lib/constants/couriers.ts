@@ -1,14 +1,28 @@
 /**
  * Only cold-chain couriers allowed for frozen products.
- * These are the ONLY couriers we show — no JNE REG, J&T, Pos Indonesia, etc.
+ * These are the ONLY couriers we show — no JNE REG, Pos Indonesia, etc.
  */
 export const ALLOWED_COURIERS = [
   { code: 'sicepat', service: 'FROZEN', displayName: 'SiCepat FROZEN' },
   { code: 'jne', service: 'YES', displayName: 'JNE YES (Next Day)' },
   { code: 'anteraja', service: 'FROZEN', displayName: 'AnterAja Frozen' },
+  { code: 'jnt', service: 'FROZEN', displayName: 'J&T FROZEN' },
+  { code: 'rex', service: 'FROZEN', displayName: 'Rex FROZEN' },
 ] as const;
 
 export type AllowedCourier = typeof ALLOWED_COURIERS[number];
+
+/**
+ * Tracking number format validation regex by courier code.
+ * Used to validate tracking numbers before saving.
+ */
+export const TRACKING_FORMATS: Record<string, RegExp> = {
+  sicepat: /^[A-Z0-9]{10,20}$/,
+  jne: /^[A-Z0-9]{10,15}$/,
+  anteraja: /^[A-Z0-9]{12}$/,
+  jnt: /^[A-Z0-9]{10,15}$/,
+  rex: /^[A-Z0-9]{10,15}$/,
+};
 
 /**
  * RajaOngkir origin city ID for shipping cost calculations.
@@ -38,6 +52,8 @@ export const COURIER_TRACKING_URLS: Record<string, string> = {
   sicepat: 'https://www.sicepat.com/check/waybill/{{trackingNumber}}',
   jne: 'https://www.jne.co.id/tracking/trace/{{trackingNumber}}',
   anteraja: 'https://anteraja.id/trace/{{trackingNumber}}',
+  jnt: 'https://www.jtexpress.co.id/check/waybill',
+  rex: 'https://rex.cus-rex.com',
 };
 
 /**
@@ -48,4 +64,18 @@ export function buildTrackingUrl(courierCode: string, trackingNumber: string): s
   const template = COURIER_TRACKING_URLS[courierCode?.toLowerCase()];
   if (!template || !trackingNumber) return '';
   return template.replace('{{trackingNumber}}', trackingNumber);
+}
+
+/**
+ * Validate tracking number format for a given courier.
+ * Returns error message if invalid, null if valid.
+ */
+export function validateTrackingFormat(courierCode: string, trackingNumber: string): string | null {
+  if (!trackingNumber) return null;
+  const format = TRACKING_FORMATS[courierCode?.toLowerCase()];
+  if (!format) return 'Kurir tidak dikenali';
+  if (!format.test(trackingNumber)) {
+    return `Format nomor resi tidak valid untuk ${courierCode.toUpperCase()}`;
+  }
+  return null;
 }

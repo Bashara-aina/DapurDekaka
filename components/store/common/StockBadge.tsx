@@ -1,5 +1,8 @@
+'use client';
+
 import { cn } from '@/lib/utils/cn';
 import { useCartStore } from '@/store/cart.store';
+import { useTranslations } from 'next-intl';
 
 interface StockBadgeProps {
   /** Direct stock value — used for product pages (static display) */
@@ -10,6 +13,7 @@ interface StockBadgeProps {
 }
 
 export function StockBadge({ stock: directStock, variantId, className }: StockBadgeProps) {
+  const t = useTranslations('product');
   // Always call the hook — derive the value from the result
   const cartStock = useCartStore((s) =>
     variantId ? s.items.find((i) => i.variantId === variantId)?.stock : undefined
@@ -25,7 +29,7 @@ export function StockBadge({ stock: directStock, variantId, className }: StockBa
           className
         )}
       >
-        Habis
+        {t('outOfStock')}
       </span>
     );
   }
@@ -38,7 +42,7 @@ export function StockBadge({ stock: directStock, variantId, className }: StockBa
           className
         )}
       >
-        Tersisa {stock} pcs
+        {t('remainingStock', { count: stock })}
       </span>
     );
   }

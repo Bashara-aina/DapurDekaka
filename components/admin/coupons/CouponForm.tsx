@@ -69,6 +69,16 @@ const CouponSchema = z.object({
   isPublic: z.boolean().default(false),
   startsAt: z.string().datetime().optional().nullable(),
   expiresAt: z.string().datetime().optional().nullable(),
+}).superRefine((data, ctx) => {
+  if (data.type === 'percentage' && data.discountValue !== undefined) {
+    if (data.discountValue < 1 || data.discountValue > 100) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Diskon maksimal 100%',
+        path: ['discountValue'],
+      });
+    }
+  }
 });
 
 export type CouponFormData = z.infer<typeof CouponSchema>;

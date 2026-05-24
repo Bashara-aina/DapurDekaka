@@ -5,7 +5,7 @@ import { eq, and, ne, isNull } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import { ProductDetailClient } from '@/components/store/products/ProductDetailClient';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 interface ProductDetailPageProps {
   params: Promise<{ slug: string }>;
@@ -13,7 +13,7 @@ interface ProductDetailPageProps {
 
 export async function generateMetadata({ params }: ProductDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
-  
+
   const product = await db.query.products.findFirst({
     where: and(eq(products.slug, slug), eq(products.isActive, true), isNull(products.deletedAt)),
     with: {
@@ -37,8 +37,8 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
     };
   }
 
-  const description = product.metaDescriptionId || 
-    product.shortDescriptionId || 
+  const description = product.metaDescriptionId ||
+    product.shortDescriptionId ||
     `Beli ${product.nameId} online. Harga terbaik, kirim ke seluruh Indonesia. ${product.category?.nameId || 'Frozen food'} premium dari Dapur Dekaka.`;
 
   const title = product.metaTitleId || `${product.nameId} - Dapur Dekaka`;
@@ -84,9 +84,10 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
   };
 }
 
-export const revalidate = 60;
-
 export async function generateStaticParams() {
+  // If DB is unavailable during build, return empty array.
+  // The dynamic = 'force-static' ensures the page is still accessible
+  // and will fetch data at request time rather than being pre-rendered.
   try {
     const activeProducts = await db.query.products.findMany({
       where: and(eq(products.isActive, true), isNull(products.deletedAt)),
@@ -94,6 +95,8 @@ export async function generateStaticParams() {
     });
     return activeProducts.map((p) => ({ slug: p.slug }));
   } catch {
+    // Log but don't fail — page will be rendered dynamically at runtime
+    console.error('[ProductDetail] generateStaticParams failed, falling back to dynamic rendering');
     return [];
   }
 }

@@ -11,6 +11,7 @@ import { success, validationError, serverError } from '@/lib/utils/api-response'
 import { withRateLimit } from '@/lib/utils/rate-limit';
 import { sendEmail } from '@/lib/resend/send-email';
 import { PasswordResetEmail } from '@/lib/resend/templates/PasswordReset';
+import { logger } from '@/lib/utils/logger';
 
 const forgotPasswordSchema = z.object({
   email: z.string().email('Format email tidak valid'),
@@ -58,7 +59,7 @@ export const POST = withRateLimit(
             userName: user.name,
           }),
         }).catch((err: unknown) => {
-          console.error('[auth/forgot-password] Email send failed:', err);
+          logger.error('[auth/forgot-password] Email send failed', { error: err });
         });
       } else {
         // Timing normalization — simulate the time an email send would take
@@ -68,7 +69,7 @@ export const POST = withRateLimit(
       return success({ message: 'Link reset password telah dikirim ke email kamu' });
 
     } catch (error) {
-      console.error('[auth/forgot-password]', error);
+      logger.error('[auth/forgot-password]', { error });
       return serverError(error);
     }
   },

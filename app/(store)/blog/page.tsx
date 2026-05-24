@@ -103,6 +103,7 @@ async function getCategories() {
 }
 
 export default async function BlogPage({ searchParams }: BlogPageProps) {
+  const t = await getTranslations('blog');
   const params = await searchParams;
   const search = params.q || '';
   const categorySlug = params.category || '';
@@ -123,9 +124,9 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
   return (
     <div className="container pb-20 md:pb-0">
       <div className="mb-8">
-        <h1 className="font-display text-3xl font-bold mb-2">Blog</h1>
+        <h1 className="font-display text-3xl font-bold mb-2">{t('title')}</h1>
         <p className="text-text-secondary">
-          Artikel dan tips seputar makanan frozen, resep, dan informasi menarik.
+          {t('description')}
         </p>
       </div>
 
@@ -135,7 +136,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
         {categorySlug && <input type="hidden" name="category" value={categorySlug} />}
         {search && (
           <a href="/blog" className="h-11 px-4 flex items-center text-sm text-text-secondary hover:text-brand-red">
-            Reset
+            {t('reset')}
           </a>
         )}
         {categories.length > 0 && (
@@ -146,7 +147,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
                 !categorySlug ? 'border-brand-red bg-brand-red text-white' : 'border-brand-cream-dark bg-white text-text-primary hover:border-brand-red'
               }`}
             >
-              Semua
+              {t('all')}
             </a>
             {categories.map((cat) => (
               <a
@@ -166,11 +167,11 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
       {/* Active filters display */}
       {(search || categorySlug) && (
         <div className="mb-4 flex items-center gap-2 text-sm text-text-secondary">
-          <span>Menampilkan:</span>
-          {search && <span className="px-2 py-1 bg-brand-cream rounded">Pencarian: &quot;{search}&quot;</span>}
+          <span>{t('showing')}</span>
+          {search && <span className="px-2 py-1 bg-brand-cream rounded">{t('search')}&quot;{search}&quot;</span>}
           {categorySlug && categories.find(c => c.slug === categorySlug) && (
             <span className="px-2 py-1 bg-brand-cream rounded">
-              Kategori: {categories.find(c => c.slug === categorySlug)?.nameId}
+              {t('category')} {categories.find(c => c.slug === categorySlug)?.nameId}
             </span>
           )}
         </div>
@@ -181,12 +182,12 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
           <div className="w-24 h-24 mx-auto mb-4 bg-brand-cream rounded-full flex items-center justify-center">
             <span className="text-4xl">📝</span>
           </div>
-          <h2 className="font-display text-xl font-semibold mb-2">Artikel tidak ditemukan</h2>
+          <h2 className="font-display text-xl font-semibold mb-2">{t('noArticles')}</h2>
           <p className="text-text-secondary">
-            Coba gunakan kata kunci lain atau hapus filter.
+            {t('tryDifferentKeywords')}
           </p>
           <a href="/blog" className="mt-4 inline-block px-4 py-2 bg-brand-red text-white text-sm font-medium rounded-button hover:bg-brand-red-dark">
-            Lihat Semua Artikel
+            {t('viewAllArticles')}
           </a>
         </div>
       ) : (
@@ -265,26 +266,26 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
                   href={`/blog?${new URLSearchParams({ ...(search ? { q: search } : {}), ...(categorySlug ? { category: categorySlug } : {}), page: String(page - 1) }).toString()}`}
                   className="px-4 py-2 border border-brand-cream-dark rounded-button text-sm font-medium text-text-primary hover:border-brand-red hover:text-brand-red transition-colors"
                 >
-                  ← Sebelumnya
+                  ← {t('prev')}
                 </a>
               ) : (
                 <span className="px-4 py-2 border border-brand-cream-dark rounded-button text-sm font-medium text-text-muted cursor-not-allowed">
-                  ← Sebelumnya
+                  ← {t('prev')}
                 </span>
               )}
               <span className="px-4 py-2 text-sm text-text-secondary">
-                Halaman {page} dari {totalPages}
+                {t('page')} {page} {t('of')} {totalPages}
               </span>
               {hasNextPage ? (
                 <a
                   href={`/blog?${new URLSearchParams({ ...(search ? { q: search } : {}), ...(categorySlug ? { category: categorySlug } : {}), page: String(page + 1) }).toString()}`}
                   className="px-4 py-2 border border-brand-cream-dark rounded-button text-sm font-medium text-text-primary hover:border-brand-red hover:text-brand-red transition-colors"
                 >
-                  Selanjutnya →
+                  {t('next')} →
                 </a>
               ) : (
                 <span className="px-4 py-2 border border-brand-cream-dark rounded-button text-sm font-medium text-text-muted cursor-not-allowed">
-                  Selanjutnya →
+                  {t('next')} →
                 </span>
               )}
             </div>

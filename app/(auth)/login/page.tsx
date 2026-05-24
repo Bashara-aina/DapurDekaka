@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
+import { logger } from '@/lib/utils/logger';
 
 function getSafeCallbackUrl(raw: string | null): string {
   const fallback = '/account';
@@ -102,7 +103,7 @@ function LoginForm() {
           } catch (err) {
             localStorage.removeItem('dapur-cart');
             toast.error('Gagal menggabungkan keranjang. Item di lok Lokal akan dihapus.');
-            console.error('[Cart merge failed]', err);
+            logger.error('[auth/login] Cart merge failed', { error: err });
           }
         }
         router.push(callbackUrl);

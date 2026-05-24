@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { products } from '@/lib/db/schema';
@@ -6,6 +6,9 @@ import { inArray } from 'drizzle-orm';
 import { success, unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
+const ALLOWED_ACTIONS = ['enable', 'disable', 'archive'] as const;
+type BulkAction = typeof ALLOWED_ACTIONS[number];
 
 export async function PATCH(req: NextRequest) {
   try {
@@ -21,10 +24,20 @@ export async function PATCH(req: NextRequest) {
       return success({ updated: 0 });
     }
 
+    if (!ALLOWED_ACTIONS.includes(action as BulkAction)) {
+      return NextResponse.json(
+        { success: false, error: `Aksi tidak valid. Aksi yang diperbolehkan: ${ALLOWED_ACTIONS.join(', ')}`, code: 'INVALID_ACTION' },
+        { status: 400 }
+      );
+    }
+
     if (action === 'disable') {
       await db.update(products).set({ isActive: false }).where(inArray(products.id, ids));
     } else if (action === 'enable') {
       await db.update(products).set({ isActive: true }).where(inArray(products.id, ids));
+    } else if (action === 'archive') {
+      const now = new Date();
+      await db.update(products).set({ deletedAt: now }).where(inArray(products.id, ids));
     }
 
     return success({ updated: ids.length });
@@ -48,6 +61,7 @@ export async function DELETE(req: NextRequest) {
       return success({ deleted: 0 });
     }
 
+    // Soft delete (archived) — not hard delete
     const now = new Date();
     await db.update(products).set({ deletedAt: now }).where(inArray(products.id, ids));
 

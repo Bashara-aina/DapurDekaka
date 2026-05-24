@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { users, pointsHistory } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { success, serverError, forbidden, badRequest } from '@/lib/utils/api-response';
+import { logger } from '@/lib/utils/logger';
 import { auth } from '@/lib/auth';
 import { logAdminActivity } from '@/lib/services/audit.service';
 export const dynamic = 'force-dynamic';
@@ -94,7 +95,7 @@ export async function POST(req: NextRequest) {
       targetId: userId,
       beforeState: { pointsBalance: targetUser.pointsBalance },
       afterState: { pointsBalance: (targetUser.pointsBalance ?? 0) + adjustedAmount, adjustedAmount, reason },
-    }).catch(e => console.error('[Audit] Failed to log points adjust:', e));
+    }).catch(e => logger.error('[Audit] Failed to log points adjust', { error: e }));
 
     return success({
       userId,
@@ -105,7 +106,7 @@ export async function POST(req: NextRequest) {
         : `Berhasil mengurangi ${amount} poin`,
     });
   } catch (error) {
-    console.error('[admin/points/adjust]', error);
+    logger.error('[admin/points/adjust]', { error });
     return serverError(error);
   }
 }

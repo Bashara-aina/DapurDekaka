@@ -10,7 +10,6 @@ import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import { useCartStore } from '@/store/cart.store';
 import { formatIDR } from '@/lib/utils/format-currency';
-import { cn } from '@/lib/utils/cn';
 import { POINTS_MIN_REDEEM, POINTS_VALUE_IDR } from '@/lib/constants/points';
 
 export const dynamic = 'force-dynamic';
@@ -19,16 +18,14 @@ import { CheckoutStepper } from '@/components/store/checkout/CheckoutStepper';
 import { IdentityForm } from '@/components/store/checkout/IdentityForm';
 import type { IdentityFormData } from '@/components/store/checkout/IdentityForm';
 import { DeliveryMethodToggle } from '@/components/store/checkout/DeliveryMethodToggle';
-import { AddressForm } from '@/components/store/checkout/AddressForm';
 import { ShippingOptions } from '@/components/store/checkout/ShippingOptions';
 import type { ShippingOption } from '@/components/store/checkout/ShippingOptions';
-import { CouponInput } from '@/components/store/checkout/CouponInput';
-import { PointsRedeemer } from '@/components/store/checkout/PointsRedeemer';
 import { OrderSummaryCard } from '@/components/store/checkout/OrderSummaryCard';
 import { EmptyState } from '@/components/store/common/EmptyState';
-import { SavedAddressPicker } from '@/components/store/checkout/SavedAddressPicker';
+import { PaymentStep } from '@/components/store/checkout/PaymentStep';
+import { PickupInfoPanel } from '@/components/store/checkout/PickupInfoPanel';
+import { CheckoutAddressStep } from '@/components/store/checkout/CheckoutAddressStep';
 import type { SavedAddress } from '@/components/store/checkout/SavedAddressPicker';
-import { ChevronDown, Loader2 } from 'lucide-react';
 
 const MidtransPayment = nextDynamic(
   () => import('@/components/store/checkout/MidtransPayment').then((m) => m.MidtransPayment),
@@ -100,7 +97,6 @@ export default function CheckoutPage() {
     customerNote: '',
   });
 
-  // FIX 13: Persist checkout state to sessionStorage so refresh doesn't lose progress
   useEffect(() => {
     const draft = sessionStorage.getItem('checkout-draft');
     if (draft) {
@@ -116,7 +112,7 @@ export default function CheckoutPage() {
   }, []);
 
   useEffect(() => {
-    if (snapToken) return; // don't save once order is initiated
+    if (snapToken) return;
     sessionStorage.setItem('checkout-draft', JSON.stringify({ formData, step }));
   }, [formData, step, snapToken]);
 
@@ -132,7 +128,6 @@ export default function CheckoutPage() {
   const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string | null>(null);
   const [showAddressPicker, setShowAddressPicker] = useState(false);
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
-  const [showOrderReview, setShowOrderReview] = useState(false);
 
   const { data: pointsData } = useQuery({
     queryKey: ['account', 'points'],
@@ -144,7 +139,6 @@ export default function CheckoutPage() {
     enabled: !!session?.user,
   });
 
-  // FIX 4: Fetch profile to pre-fill phone number for logged-in users
   const { data: profileData } = useQuery({
     queryKey: ['account', 'profile'],
     queryFn: async () => {
@@ -157,7 +151,6 @@ export default function CheckoutPage() {
 
   const pointsBalance = pointsData?.balance ?? 0;
 
-  // Auto-skip identity step for logged-in users (name + email from session)
   useEffect(() => {
     if (session?.user && step === 'identity') {
       updateForm({
@@ -165,21 +158,18 @@ export default function CheckoutPage() {
         recipientEmail: session.user.email || '',
       });
       setStep('delivery');
-      // Sync local cart to DB for logged-in user
       const syncCart = useCartStore.getState().syncToDb;
       syncCart();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user]);
 
-  // Pre-fill phone from profile data (separate effect so it doesn't race with auto-skip)
   useEffect(() => {
     if (profileData?.phone) {
       updateForm({ recipientPhone: profileData.phone });
     }
   }, [profileData]);
 
-  // Fetch saved addresses when logged-in user reaches delivery step
   const { data: addressesData } = useQuery({
     queryKey: ['account', 'addresses'],
     queryFn: async () => {
@@ -190,26 +180,23 @@ export default function CheckoutPage() {
     enabled: !!session?.user && step === 'delivery',
   });
 
-  // Sync saved addresses when data changes
   useEffect(() => {
     if (addressesData) {
       setSavedAddresses(addressesData as SavedAddress[]);
     }
   }, [addressesData]);
 
-  // Fetch store hours and pickup address from system settings
   useEffect(() => {
     async function fetchStoreSettings() {
       try {
         const res = await fetch('/api/settings/public');
         const json = await res.json();
         if (json.success && json.data) {
-          const openDays = json.data.store_open_days ?? 'Senin - Sabtu';
-          const openHours = json.data.store_opening_hours ?? '08.00 - 17.00 WIB';
-          setStoreHours({ openDays, openHours });
-
-          const address = json.data.store_address ?? null;
-          setPickupAddress(address);
+          setStoreHours({
+            openDays: json.data.store_open_days ?? 'Senin - Sabtu',
+            openHours: json.data.store_opening_hours ?? '08.00 - 17.00 WIB',
+          });
+          setPickupAddress(json.data.store_address ?? null);
         }
       } catch {
         // Use defaults on error
@@ -251,16 +238,12 @@ export default function CheckoutPage() {
   const pointsDiscount = usePoints && formData.pointsUsed > 0
     ? formData.pointsUsed * POINTS_VALUE_IDR
     : 0;
-  const effectiveShippingCost = isFreeShippingCoupon && formData.deliveryMethod === 'delivery'
-    ? 0
-    : formData.shippingCost;
-  const totalAmount = subtotal - couponDiscount - pointsDiscount + effectiveShippingCost;
+  const totalAmount = subtotal - couponDiscount - pointsDiscount + formData.shippingCost;
 
   const updateForm = (updates: Partial<CheckoutFormData>) => {
     setFormData((prev) => ({ ...prev, ...updates }));
   };
 
-  // Step 1: Identity
   const handleIdentitySubmit = (data: IdentityFormData) => {
     updateForm({
       recipientName: data.recipientName,
@@ -271,7 +254,6 @@ export default function CheckoutPage() {
     setStep('delivery');
   };
 
-  // Step 2: Delivery method
   const handleDeliveryMethodChange = async (method: 'delivery' | 'pickup') => {
     updateForm({ deliveryMethod: method, shippingCost: 0 });
     if (method === 'pickup' && step === 'courier') {
@@ -295,7 +277,6 @@ export default function CheckoutPage() {
       return;
     }
 
-    // Fetch shipping costs
     setLoadingShipping(true);
     try {
       const res = await fetch('/api/shipping/cost', {
@@ -340,7 +321,6 @@ export default function CheckoutPage() {
     setLoadingShipping(false);
   };
 
-  // Step 3: Courier selection
   const handleCourierSelect = (option: ShippingOption) => {
     updateForm({
       courierCode: option.courier,
@@ -351,7 +331,6 @@ export default function CheckoutPage() {
     setStep('payment');
   };
 
-  // Step 4: Payment
   const handleApplyCoupon = async () => {
     if (!formData.couponCode) return;
 
@@ -387,11 +366,10 @@ export default function CheckoutPage() {
     if (!use) {
       updateForm({ pointsUsed: 0 });
     } else {
-      // Calculate max points based on 50% of subtotal-cap, converted from IDR to points (1pt = 10 IDR)
       const maxPointsInIDR = Math.floor((subtotal - couponDiscount) * 0.5);
-      const maxPointsFromIDR = Math.floor(maxPointsInIDR / 10); // 1pt = 10 IDR
+      const maxPointsFromIDR = Math.floor(maxPointsInIDR / 10);
       const maxPoints = Math.min(pointsBalance, maxPointsFromIDR);
-      const pointsToUse = Math.floor(maxPoints / POINTS_MIN_REDEEM) * POINTS_MIN_REDEEM; // Round to min 100
+      const pointsToUse = Math.floor(maxPoints / POINTS_MIN_REDEEM) * POINTS_MIN_REDEEM;
       updateForm({ pointsUsed: pointsToUse });
     }
   };
@@ -432,7 +410,6 @@ export default function CheckoutPage() {
         return;
       }
 
-      // Handle Net-30 B2B orders (skip Midtrans, go directly to success)
       if (data.data.net30) {
         clearCart();
         router.push(`/checkout/success?order=${data.data.orderNumber}&net30=1`);
@@ -453,7 +430,6 @@ export default function CheckoutPage() {
     router.push(`/checkout/success?order=${orderNumber}`);
   };
 
-  // Step back navigation
   const handleBack = () => {
     const stepOrder = activeSteps.map(s => s.id);
     const currentIndex = stepOrder.indexOf(step);
@@ -466,12 +442,17 @@ export default function CheckoutPage() {
 
   const itemCount = items.reduce((acc, i) => acc + i.quantity, 0);
 
+  const effectiveShippingCost = isFreeShippingCoupon && formData.deliveryMethod === 'delivery'
+    ? 0
+    : formData.shippingCost;
+  const finalTotal = subtotal - couponDiscount - pointsDiscount + effectiveShippingCost;
+
   return (
     <div className="min-h-screen bg-brand-cream pb-24 md:pb-0">
-      {/* FIX 11: Mobile sticky total bar */}
+      {/* Mobile sticky total bar */}
       <div className="lg:hidden sticky top-[76px] z-10 bg-white border-b border-brand-cream-dark px-4 py-2 flex justify-between text-sm">
         <span className="text-text-secondary">{t('mobileStickyItem', { count: itemCount })}</span>
-        <span className="font-bold text-brand-red">{formatIDR(totalAmount)}</span>
+        <span className="font-bold text-brand-red">{formatIDR(finalTotal)}</span>
       </div>
 
       {/* Header with stepper */}
@@ -483,7 +464,6 @@ export default function CheckoutPage() {
               steps={activeSteps}
               currentStepId={step}
               onStepClick={(stepId) => {
-                // Only allow going back to completed steps
                 const stepOrder = activeSteps.map(s => s.id);
                 const targetIndex = stepOrder.indexOf(stepId);
                 const currentIndex = stepOrder.indexOf(step);
@@ -533,126 +513,47 @@ export default function CheckoutPage() {
                 />
 
                 {formData.deliveryMethod === 'delivery' && (
-                  <div className="mt-4">
-                    {loadingShipping && (
-                      <div className="bg-white rounded-card p-6 shadow-card mb-4">
-                        <div className="flex items-center justify-center py-12">
-                          <Loader2 className="w-6 h-6 animate-spin text-brand-red" />
-                          <span className="ml-2 text-text-secondary">{t('calculatingShipping')}</span>
-                        </div>
-                      </div>
-                    )}
-                    {session?.user && savedAddresses.length > 0 && !showNewAddressForm ? (
-                      <>
-                        <SavedAddressPicker
-                          addresses={savedAddresses}
-                          selectedId={selectedSavedAddressId}
-                          onSelect={(address) => {
-                            if (address === null) {
-                              setShowNewAddressForm(true);
-                            } else {
-                              setSelectedSavedAddressId(address.id);
-                              updateForm({
-                                addressLine: address.addressLine,
-                                district: address.district,
-                                city: address.city,
-                                cityId: address.cityId,
-                                province: address.province,
-                                provinceId: address.provinceId,
-                                postalCode: address.postalCode,
-                              });
-                            }
-                          }}
-                          onBack={handleBack}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!selectedSavedAddressId) return;
-                            setLoadingShipping(true);
-                            const address = savedAddresses.find(a => a.id === selectedSavedAddressId);
-                            if (address) {
-                              updateForm({
-                                addressLine: address.addressLine,
-                                district: address.district,
-                                city: address.city,
-                                cityId: address.cityId,
-                                province: address.province,
-                                provinceId: address.provinceId,
-                                postalCode: address.postalCode,
-                              });
-                              fetchShippingCost(address.cityId);
-                            }
-                          }}
-                          disabled={!selectedSavedAddressId || loadingShipping}
-                          className="w-full h-12 bg-brand-red text-white font-bold rounded-button mt-4 disabled:opacity-50"
-                        >
-                          {loadingShipping ? t('calculatingShipping') : t('continueToCourier')}
-                        </button>
-                      </>
-                    ) : (
-                      <AddressForm
-                        defaultValues={{
-                          addressLine: formData.addressLine,
-                          district: formData.district,
-                          city: formData.city,
-                          cityId: formData.cityId,
-                          province: formData.province,
-                          provinceId: formData.provinceId,
-                          postalCode: formData.postalCode,
-                        }}
-                        onSubmit={(data) => {
-                          setShowNewAddressForm(false);
-                          handleAddressSubmit(data);
-                        }}
-                        onBack={() => {
-                          if (session?.user && savedAddresses.length > 0) {
-                            setShowNewAddressForm(false);
-                            setShowAddressPicker(true);
-                          } else {
-                            handleBack();
-                          }
-                        }}
-                      />
-                    )}
-                  </div>
+                  <CheckoutAddressStep
+                    session={session ?? undefined}
+                    savedAddresses={savedAddresses}
+                    selectedSavedAddressId={selectedSavedAddressId}
+                    showNewAddressForm={showNewAddressForm}
+                    loadingShipping={loadingShipping}
+                    formData={formData}
+                    totalWeight={totalWeight}
+                    updateForm={updateForm}
+                    fetchShippingCost={fetchShippingCost}
+                    onAddressSubmit={handleAddressSubmit}
+                    onBack={handleBack}
+                    onShowNewAddressForm={() => setShowNewAddressForm(true)}
+                    onHideNewAddressForm={() => setShowNewAddressForm(false)}
+                    onSelectSavedAddress={(address) => {
+                      if (address === null) {
+                        setShowNewAddressForm(true);
+                      } else {
+                        setSelectedSavedAddressId(address.id);
+                        updateForm({
+                          addressLine: address.addressLine,
+                          district: address.district,
+                          city: address.city,
+                          cityId: address.cityId,
+                          province: address.province,
+                          provinceId: address.provinceId,
+                          postalCode: address.postalCode,
+                        });
+                      }
+                    }}
+                  />
                 )}
 
                 {formData.deliveryMethod === 'pickup' && (
                   <div className="mt-4">
-                    <div className="bg-white rounded-card p-6 shadow-card">
-                      <h2 className="font-semibold text-lg mb-4">{t('pickupLocation')}</h2>
-                      <p className="text-text-secondary mb-4">
-                        {t('pickupInstructions')}
-                      </p>
-                      <div className="mt-4 bg-green-50 border border-green-200 rounded-lg p-4">
-                        <h3 className="font-semibold text-green-800 mb-2">{t('pickupLocationTitle')}</h3>
-                        <p className="text-sm text-green-700 mb-1">
-                          <strong>{t('storeName')}</strong><br/>
-                          {t('storeAddressLine')}<br/>
-                          {t('storeCity')}
-                        </p>
-                        <p className="text-xs text-green-600 mt-2">
-                          {t('storeHours', { days: storeHours.openDays, hours: storeHours.openHours })}<br/>
-                        </p>
-                      </div>
-                      <div className="flex gap-4 mt-4">
-                        <button
-                          type="button"
-                          onClick={handleBack}
-                          className="flex-1 h-12 border border-brand-cream-dark text-text-primary font-medium rounded-button"
-                        >
-                          {t('back')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setStep('payment')}
-                          className="flex-1 h-12 bg-brand-red text-white font-bold rounded-button"
-                        >
-                          {t('nextToPayment')}
-                        </button>
-                      </div>
-                    </div>
+                    <PickupInfoPanel
+                      storeHours={storeHours}
+                      pickupAddress={pickupAddress}
+                      onBack={handleBack}
+                      onNext={() => setStep('payment')}
+                    />
                   </div>
                 )}
               </>
@@ -679,132 +580,25 @@ export default function CheckoutPage() {
             )}
 
             {step === 'payment' && (
-              <div className="bg-white rounded-card p-6 shadow-card">
-                <h2 className="font-semibold text-lg mb-4">{t('payment')}</h2>
-
-                {/* Order Review Collapsible */}
-                <button
-                  type="button"
-                  onClick={() => setShowOrderReview(!showOrderReview)}
-                  className="w-full flex items-center justify-between py-3 border-b border-brand-cream-dark mb-4"
-                  aria-expanded={showOrderReview}
-                >
-                  <span className="font-medium text-sm text-text-primary">{t('orderReview')}</span>
-                  <ChevronDown className={cn('w-4 h-4 text-text-secondary transition-transform', showOrderReview && 'rotate-180')} />
-                </button>
-
-                {showOrderReview && (
-                  <div className="mb-6 p-4 bg-brand-cream rounded-lg text-sm space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-text-secondary">{t('recipient')}</span>
-                      <span className="font-medium">{formData.recipientName}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-secondary">{t('phoneNumber')}</span>
-                      <span className="font-medium">{formData.recipientPhone}</span>
-                    </div>
-                    {formData.deliveryMethod === 'delivery' && (
-                      <>
-                        <div className="flex justify-between">
-                          <span className="text-text-secondary">{t('addressLabel')}</span>
-                          <span className="font-medium text-right max-w-[60%]">
-                            {formData.addressLine}, {formData.district}, {formData.city}, {formData.province}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-text-secondary">{t('courierLabel')}</span>
-                          <span className="font-medium">{formData.courierName} {formData.courierService}</span>
-                        </div>
-                      </>
-                    )}
-                    {formData.deliveryMethod === 'pickup' && (
-                      <div className="flex justify-between">
-                        <span className="text-text-secondary">{t('method')}</span>
-                        <span className="font-medium">{t('pickupLocation')}</span>
-                      </div>
-                    )}
-                    <div className="border-t border-brand-cream-dark pt-2 mt-2 space-y-1">
-                      <div className="flex justify-between text-xs text-text-secondary">
-                        <span>{t('subtotal')}</span>
-                        <span>{formatIDR(subtotal)}</span>
-                      </div>
-                      {couponDiscount > 0 && (
-                        <div className="flex justify-between text-xs text-success">
-                          <span>{t('discount')}</span>
-                          <span>-{formatIDR(couponDiscount)}</span>
-                        </div>
-                      )}
-                      {pointsDiscount > 0 && (
-                        <div className="flex justify-between text-xs text-success">
-                          <span>{t('pointsLabel', { used: formData.pointsUsed })}</span>
-                          <span>-{formatIDR(pointsDiscount)}</span>
-                        </div>
-                      )}
-                      {formData.shippingCost > 0 && (
-                        <div className="flex justify-between text-xs text-text-secondary">
-                          <span>{t('shippingCost')}</span>
-                          <span>{formatIDR(formData.shippingCost)}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between font-bold text-brand-red pt-1">
-                        <span>{t('totalPay')}</span>
-                        <span>{formatIDR(totalAmount)}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Coupon */}
-                <div role="alert" aria-live="polite" className="mb-6">
-                  <CouponInput
-                    code={formData.couponCode}
-                    onCodeChange={(code) => updateForm({ couponCode: code })}
-                    onClearError={() => setCouponError('')}
-                    onApply={handleApplyCoupon}
-                    discountAmount={couponDiscount}
-                    error={couponError}
-                    isLoading={false}
-                  />
-                  {couponType === 'buy_x_get_y' && couponBuyXgetY && (
-                    <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <p className="text-sm text-green-700">
-                        <span className="font-semibold">{t('freeShippingCouponActive')}</span>
-                        <br />
-                        {t('freeShippingCouponDesc', { buy: couponBuyXgetY.buyQuantity, get: couponBuyXgetY.getQuantity })}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Points */}
-                <div role="status" aria-live="polite" className="mb-6">
-                  <PointsRedeemer
-                    pointsBalance={pointsBalance}
-                    subtotal={subtotal - couponDiscount}
-                    usedPoints={formData.pointsUsed}
-                    onToggle={handlePointsToggle}
-                  />
-                </div>
-
-                {/* Back button - show different label based on delivery method */}
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  className="text-sm text-text-secondary hover:underline mb-4 text-left"
-                >
-                  {formData.deliveryMethod === 'pickup' ? t('backToDelivery') : t('backToCourier')}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handlePlaceOrder}
-                  disabled={isLoading}
-                  className="w-full h-14 bg-brand-red text-white font-bold rounded-button disabled:opacity-50"
-                >
-                  {isLoading ? t('processing') : t('payNowButton', { amount: formatIDR(totalAmount) })}
-                  <span className="block text-xs font-normal mt-0.5 opacity-80">{t('payNowNote')}</span>
-                </button>
-              </div>
+              <PaymentStep
+                formData={formData}
+                subtotal={subtotal}
+                couponDiscount={couponDiscount}
+                couponType={couponType}
+                couponBuyXgetY={couponBuyXgetY}
+                isFreeShippingCoupon={isFreeShippingCoupon}
+                pointsBalance={pointsBalance}
+                pointsDiscount={pointsDiscount}
+                totalAmount={finalTotal}
+                updateForm={updateForm}
+                onCouponApply={handleApplyCoupon}
+                onPointsToggle={handlePointsToggle}
+                onPlaceOrder={handlePlaceOrder}
+                onBack={handleBack}
+                isLoading={isLoading}
+                couponError={couponError}
+                onClearCouponError={() => setCouponError('')}
+              />
             )}
           </div>
 
@@ -814,9 +608,9 @@ export default function CheckoutPage() {
               items={items}
               subtotal={subtotal}
               discountAmount={couponDiscount}
-              shippingCost={formData.shippingCost}
+              shippingCost={effectiveShippingCost}
               pointsDiscount={pointsDiscount}
-              totalAmount={totalAmount}
+              totalAmount={finalTotal}
             />
           </div>
         </div>

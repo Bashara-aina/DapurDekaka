@@ -37,7 +37,7 @@ export default async function middleware(req: NextRequest) {
       return NextResponse.redirect(new URL('/', req.url));
     }
     if (role === 'warehouse') {
-      const allowed = ['/admin/inventory', '/admin/shipments', '/admin/field', '/admin/orders'];
+      const allowed = ['/admin/inventory', '/admin/shipments', '/admin/field'];
       if (!allowed.some((p) => pathname.startsWith(p))) {
         return NextResponse.redirect(new URL('/admin/inventory', req.url));
       }

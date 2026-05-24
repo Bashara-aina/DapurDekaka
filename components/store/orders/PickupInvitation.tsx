@@ -14,16 +14,15 @@ interface PickupInvitationProps {
 
 const DEFAULT_ADDRESS = 'Jl. Sinom V no. 7, Turangga, Bandung';
 const DEFAULT_MAPS_URL = 'https://maps.google.com/?q=Jl+Sinom+V+No+7+Turangga+Bandung';
-const DEFAULT_WHATSAPP = '6281234567890';
 
 export function PickupInvitation({
   orderNumber,
   storeAddress = DEFAULT_ADDRESS,
   googleMapsUrl = DEFAULT_MAPS_URL,
-  whatsappNumber = DEFAULT_WHATSAPP,
   openingHours = '08:00 - 20:00 WIB (Setiap Hari)',
   className,
 }: PickupInvitationProps) {
+  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '6281234567890';
   const waUrl = `https://wa.me/${whatsappNumber.replace(/^0/, '62')}`;
 
   return (

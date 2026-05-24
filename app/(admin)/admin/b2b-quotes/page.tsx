@@ -1,3 +1,4 @@
+import { requireRole } from '@/lib/auth/check-role';
 import Link from 'next/link';
 import { db } from '@/lib/db';
 import { b2bQuotes, b2bProfiles, users } from '@/lib/db/schema';
@@ -27,6 +28,7 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
 };
 
 export default async function B2BQuotesPage() {
+  await requireRole(['superadmin', 'owner']);
   const quotes = await getQuotes() as Array<{
     id: string;
     quoteNumber: string;

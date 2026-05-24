@@ -1,6 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '../lib/db/schema';
+import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 
 if (process.env.NODE_ENV === 'production') {
@@ -14,26 +15,35 @@ const db = drizzle(sql, { schema });
 async function seed() {
   console.log('Starting seed...');
 
-  // 1. Create superadmin user
-  console.log('Creating superadmin user...');
+  // 1. Create superadmin user (idempotent — skip if exists)
+  console.log('Ensuring superadmin user exists...');
   const adminPassword = process.env.SEED_ADMIN_PASSWORD || 'adminpassword123';
   const passwordHash = await bcrypt.hash(adminPassword, 12);
-  
-  const [adminUser] = await db.insert(schema.users).values({
-    name: 'Bashara',
-    email: process.env.SEED_ADMIN_EMAIL || 'bashara@dapurdekaka.com',
-    passwordHash,
-    role: 'superadmin',
-    isActive: true,
-    pointsBalance: 0,
-    languagePreference: 'id',
-  }).returning();
 
-  if (!adminUser) {
-    throw new Error('Failed to create admin user');
+  let adminId: string;
+
+  const existingAdmin = await db.query.users.findFirst({
+    where: eq(schema.users.email, process.env.SEED_ADMIN_EMAIL || 'bashara@dapurdekaka.com'),
+    columns: { id: true, email: true },
+  });
+
+  if (existingAdmin) {
+    adminId = existingAdmin.id;
+    console.log(`Admin user already exists (${existingAdmin.email}), skipping creation.`);
+  } else {
+    const returned = await db.insert(schema.users).values({
+      name: 'Bashara',
+      email: process.env.SEED_ADMIN_EMAIL || 'bashara@dapurdekaka.com',
+      passwordHash,
+      role: 'superadmin',
+      isActive: true,
+      pointsBalance: 0,
+      languagePreference: 'id',
+    }).returning();
+    const created = returned[0]!;
+    adminId = created.id;
+    console.log(`Created admin user: ${created.email}`);
   }
-
-  console.log(`Created admin user: ${adminUser.email}`);
 
   // 2. Create categories
   console.log('Creating categories...');
@@ -77,7 +87,7 @@ async function seed() {
   ];
 
   await db.insert(schema.systemSettings).values(
-    settings.map(s => ({ ...s, updatedBy: adminUser!.id }))
+    settings.map(s => ({ ...s, updatedBy: adminId }))
   );
   
   console.log(`Created ${settings.length} system settings`);
@@ -94,7 +104,7 @@ async function seed() {
       minOrderAmount: 50000,
       maxUses: 1000,
       isPublic: true,
-      createdBy: adminUser!.id,
+      createdBy: adminId,
     },
     {
       code: 'GRATISONGKIR',
@@ -104,7 +114,7 @@ async function seed() {
       minOrderAmount: 150000,
       maxUses: 500,
       isPublic: true,
-      createdBy: adminUser!.id,
+      createdBy: adminId,
     },
   ];
 

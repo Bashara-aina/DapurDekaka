@@ -11,7 +11,9 @@ export const runtime = 'nodejs';
 
 const adjustSchema = z.object({
   variantId: z.string().uuid(),
-  delta: z.number().int(),
+  delta: z.number().int().refine((val) => val !== 0, {
+    message: 'Delta tidak boleh nol',
+  }),
   reason: z.string().min(1, 'Alasan penyesuaian harus diisi'),
   note: z.string().optional(),
 });

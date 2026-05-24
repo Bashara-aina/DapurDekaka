@@ -699,7 +699,7 @@ export const POST = withRateLimit(
     let snapToken: string | null = null;
 
     try {
-      const itemDetails = items.map((item) => ({
+      const itemDetails = orderItemsData.map((item) => ({
         id: item.variantId,
         price: item.unitPrice,
         quantity: item.quantity,

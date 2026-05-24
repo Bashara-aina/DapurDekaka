@@ -1,7 +1,14 @@
 import { AdminSidebar } from '@/components/admin/layout/AdminSidebar';
 import { AdminHeader } from '@/components/admin/layout/AdminHeader';
+import { auth } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth();
+  if (!session) redirect('/login');
+  if (!['superadmin', 'owner', 'warehouse'].includes(session.user.role ?? '')) {
+    redirect('/');
+  }
   return (
     <div className="min-h-screen bg-admin-content flex">
       <AdminSidebar />

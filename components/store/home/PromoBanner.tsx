@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Copy, Check } from 'lucide-react';
 
 interface PromoBannerProps {
@@ -13,10 +14,11 @@ interface PromoBannerProps {
 
 export function PromoBanner({
   promoCode = 'SELAMATDATANG',
-  promoTitle = 'Untuk pembelian pertama kamu',
-  promoSubtitle = 'Gunakan kode:',
-  promoLabel = 'PROMO SPESIAL',
+  promoTitle,
+  promoSubtitle,
+  promoLabel,
 }: PromoBannerProps) {
+  const t = useTranslations('promo');
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -37,12 +39,12 @@ export function PromoBanner({
         </div>
         <div className="relative z-10">
           <span className="inline-block px-4 py-1 bg-white/20 text-white rounded-pill text-sm font-semibold mb-4">
-            {promoLabel}
+            {promoLabel ?? t('badge')}
           </span>
           <h3 className="font-display text-xl md:text-2xl font-bold text-white mb-2">
-            {promoTitle}
+            {promoTitle ?? t('title')}
           </h3>
-          <p className="text-white/80 mb-4">{promoSubtitle}</p>
+          <p className="text-white/80 mb-4">{promoSubtitle ?? t('subtitle')}</p>
           <button
             onClick={handleCopy}
             className="inline-flex items-center gap-2 px-6 py-2 bg-white text-brand-red font-mono font-bold rounded-lg text-lg md:text-xl mb-6 hover:bg-brand-cream transition-colors active:scale-95"
@@ -60,7 +62,7 @@ export function PromoBanner({
             href="/products"
             className="inline-flex items-center h-11 px-6 bg-white text-brand-red font-bold rounded-button shadow-lg hover:bg-brand-cream transition-colors"
           >
-            Klaim Sekarang
+            {t('cta')}
           </Link>
         </div>
       </div>

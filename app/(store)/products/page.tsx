@@ -44,16 +44,26 @@ export const revalidate = 300;
 
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
   const params = await searchParams;
-  const { category, q, cursor } = params;
+  const { category: categorySlug, q, cursor } = params;
 
   const cursorClause = cursor
     ? lt(products.createdAt, new Date(cursor))
     : undefined;
 
+  const conditions = [eq(products.isActive, true), isNull(products.deletedAt)];
+  if (categorySlug) {
+    const category = await db.query.categories.findFirst({
+      where: eq(categories.slug, categorySlug),
+    });
+    if (category) {
+      conditions.push(eq(products.categoryId, category.id));
+    }
+  }
+
   const productsList = await db.query.products.findMany({
     where: cursor
-      ? and(eq(products.isActive, true), isNull(products.deletedAt), cursorClause)
-      : and(eq(products.isActive, true), isNull(products.deletedAt)),
+      ? and(...conditions, cursorClause)
+      : and(...conditions),
     with: {
       variants: { where: eq(productVariants.isActive, true) },
       images: { orderBy: (images, { asc }) => [asc(images.sortOrder)] },
@@ -83,7 +93,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     <ProductCatalog
       products={productsList}
       categories={allCategories.map(c => ({ id: c.id, nameId: c.nameId, slug: c.slug }))}
-      initialCategory={category || ''}
+      initialCategory={categorySlug || ''}
       initialSearch={q || ''}
       nextCursor={nextCursor}
     />

@@ -116,6 +116,23 @@ const STATUS_COLORS: Record<string, string> = {
   refunded: 'bg-pink-100 text-pink-800',
 };
 
+const TRACKING_FORMATS_CLIENT: Record<string, RegExp> = {
+  sicepat: /^[A-Z0-9]{10,20}$/,
+  jne: /^[A-Z0-9]{10,15}$/,
+  anteraja: /^[A-Z0-9]{12}$/,
+  jnt: /^[A-Z0-9]{10,15}$/,
+  rex: /^[A-Z0-9]{10,15}$/,
+};
+
+function validateTrackingFormat(courierCode: string, tracking: string): string | null {
+  const format = TRACKING_FORMATS_CLIENT[courierCode?.toLowerCase()];
+  if (!format) return null;
+  if (!format.test(tracking.trim().toUpperCase())) {
+    return `Format resi tidak valid untuk ${courierCode.toUpperCase()}`;
+  }
+  return null;
+}
+
 export default function OrderDetailClient({ orderId, userRole }: OrderDetailClientProps) {
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -124,6 +141,7 @@ export default function OrderDetailClient({ orderId, userRole }: OrderDetailClie
   const [trackingNumber, setTrackingNumber] = useState('');
   const [trackingUrl, setTrackingUrl] = useState('');
   const [estimatedDays, setEstimatedDays] = useState('');
+  const [trackingError, setTrackingError] = useState<string | null>(null);
 
   React.useEffect(() => {
     async function fetchData() {
@@ -153,6 +171,10 @@ export default function OrderDetailClient({ orderId, userRole }: OrderDetailClie
   async function handleStatusUpdate(newStatus: string) {
     if (newStatus === 'shipped' && !trackingNumber.trim()) {
       alert('Nomor resi wajib diisi sebelum mengubah status ke "Dikirim"');
+      return;
+    }
+    if (newStatus === 'shipped' && trackingError) {
+      alert('Format nomor resi tidak valid');
       return;
     }
     if (!confirm(`Yakin ubah status ke "${STATUS_LABELS[newStatus]}"?`)) return;
@@ -442,10 +464,19 @@ export default function OrderDetailClient({ orderId, userRole }: OrderDetailClie
                   <input
                     type="text"
                     value={trackingNumber}
-                    onChange={(e) => setTrackingNumber(e.target.value)}
+                    onChange={(e) => {
+                      setTrackingNumber(e.target.value);
+                      if (order?.courierCode) {
+                        const err = validateTrackingFormat(order.courierCode, e.target.value);
+                        setTrackingError(err);
+                      }
+                    }}
                     placeholder="Masukkan nomor resi"
                     className="w-full h-10 px-3 rounded-md border border-input bg-white text-sm"
                   />
+                  {trackingError && (
+                    <p className="text-xs text-red-500 mt-1">{trackingError}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">URL Tracking (opsional)</label>
@@ -480,12 +511,13 @@ export default function OrderDetailClient({ orderId, userRole }: OrderDetailClie
                       const res = await fetch(`/api/admin/orders/${orderId}/status`, {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          status: 'shipped',
-                          trackingNumber,
-                          trackingUrl: trackingUrl || undefined,
-                          estimatedDays: estimatedDays || undefined,
-                        }),
+body: JSON.stringify({
+          status: 'shipped',
+          trackingNumber,
+          trackingUrl: trackingUrl || undefined,
+          estimatedDays: estimatedDays || undefined,
+          courierCode: order?.courierCode,
+        }),
                       });
                       if (!res.ok) {
                         const err = await res.json();

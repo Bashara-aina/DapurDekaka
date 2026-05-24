@@ -94,7 +94,7 @@ export function Testimonials() {
                     </div>
                     <p className="font-display text-text-primary mb-4 italic text-base leading-relaxed">&quot;{t.contentId}&quot;</p>
                     <p className="font-semibold text-brand-red">
-                      {t.customerName}
+                      {t.customerName?.split(' ')[0] ?? 'Customer'}
                       {t.customerLocation && <span className="font-normal text-text-secondary text-sm">, {t.customerLocation}</span>}
                     </p>
                   </div>

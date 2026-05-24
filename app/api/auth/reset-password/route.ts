@@ -8,6 +8,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { success, validationError, serverError, unauthorized } from '@/lib/utils/api-response';
 import { withRateLimit } from '@/lib/utils/rate-limit';
+import { logger } from '@/lib/utils/logger';
 
 const resetPasswordSchema = z.object({
   token: z.string().min(1, 'Token diperlukan'),
@@ -54,7 +55,7 @@ export const POST = withRateLimit(
       return success({ message: 'Password berhasil direset' });
 
     } catch (error) {
-      console.error('[auth/reset-password]', error);
+      logger.error('[auth/reset-password]', { error });
       return serverError(error);
     }
   },

@@ -1,5 +1,6 @@
 import { snap } from './client';
 import { getMidtransOrderId } from '@/lib/utils/generate-order-number';
+import { getSetting } from '@/lib/settings/get-settings';
 
 export interface MidtransItemDetail {
   id: string;
@@ -30,6 +31,9 @@ export async function createMidtransTransaction(
   }
   const midtransOrderId = getMidtransOrderId(params.orderNumber, params.retryCount);
 
+  const expiryMinutesStr = await getSetting<string>('payment_expiry_minutes', 'string');
+  const expiryMinutes = Math.min(parseInt(expiryMinutesStr ?? '15', 10), 15);
+
   const transactionParams = {
     transaction_details: {
       order_id: midtransOrderId,
@@ -43,7 +47,7 @@ export async function createMidtransTransaction(
     item_details: params.items,
     expiry: {
       unit: 'minute' as const,
-      duration: 15,
+      duration: expiryMinutes,
     },
     callbacks: {
       finish: `${appUrl}/checkout/success`,

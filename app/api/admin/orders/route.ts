@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { orders, orderItems, orderDailyCounters, orderStatusHistory, productVariants, inventoryLogs } from '@/lib/db/schema';
 import { eq, desc, and, isNull, sql, inArray, gte, lt, or, ilike } from 'drizzle-orm';
 import { success, unauthorized, forbidden, serverError, validationError } from '@/lib/utils/api-response';
+import { logger } from '@/lib/utils/logger';
 import { generateOrderNumber } from '@/lib/utils/generate-order-number';
 import type { SQL } from 'drizzle-orm';
 export const dynamic = 'force-dynamic';
@@ -107,7 +108,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('[Admin Orders GET]', error);
+    logger.error('[Admin Orders GET]', { error });
     return serverError(error);
   }
 }
@@ -307,7 +308,7 @@ export async function POST(req: NextRequest) {
 
     return success(created, 201);
   } catch (error) {
-    console.error('[Admin Orders POST]', error);
+    logger.error('[Admin Orders POST]', { error });
     return serverError(error);
   }
 }

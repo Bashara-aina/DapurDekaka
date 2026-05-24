@@ -4,7 +4,7 @@ import Google from 'next-auth/providers/google';
 import Credentials from 'next-auth/providers/credentials';
 import { DrizzleAdapter } from '@auth/drizzle-adapter';
 import NextAuth from 'next-auth';
-import { db } from '@/lib/db';
+import { getDb, db } from '@/lib/db';
 import { users, accounts, sessions, verificationTokens } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
@@ -15,16 +15,13 @@ if (!googleId || !googleSecret) {
   throw new Error('AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET must be set');
 }
 
-// DrizzleAdapter expects specific table column names; our schema uses camelCase throughout.
-// These type assertions are safe at runtime — the adapter accesses columns by name string.
-const adapter = DrizzleAdapter(db, {
-  usersTable: users,
-  // @ts-expect-error – DrizzleAdapter accountsTable schema differs from our camelCase columns
-  accountsTable: accounts,
-  // @ts-expect-error – DrizzleAdapter sessionsTable schema differs from our id PK
-  sessionsTable: sessions,
-  verificationTokensTable: verificationTokens,
-}) as Adapter;
+if (!process.env.AUTH_SECRET || process.env.AUTH_SECRET.length < 32) {
+  throw new Error('AUTH_SECRET must be set and at least 32 characters long');
+}
+
+// Use getDb() so DrizzleAdapter's internal is(db, PgDatabase) check succeeds.
+// The neon-http driver returns a real Drizzle instance that passes the type guard.
+const adapter = DrizzleAdapter(getDb()) as Adapter;
 
 export const authConfig = {
   adapter,

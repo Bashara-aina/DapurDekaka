@@ -13,8 +13,57 @@
     "remainingStock": "Tersisa {count} pcs",
     "selectVariant": "Pilih Varian",
     "halal": "HALAL",
-    "imageAlt": "{name}"
+    "imageAlt": "{name}",
+    "productsNotFound": "Produk tidak ditemukan",
+    "productsNotFoundDesc": "Coba kategori lain atau hapus filter",
+    "showAllProducts": "Tampilkan Semua Produk"
   },
+  "stock": {
+    "habis": "Habis",
+    "tersisa": "Tersisa {count} pcs"
+  },
+  "increaseQuantity": "Tambah jumlah",
+  "allCategory": "Semua",
+  "promo": {
+    "badge": "PROMO SPESIAL",
+    "title": "Untuk pembelian pertama kamu",
+    "subtitle": "Gunakan kode:",
+    "cta": "Klaim Sekarang"
+  },
+  "why": {
+    "title": "Kenapa Dapur Dekaka?",
+    "features_0_title": "100% Halal",
+    "features_0_description": "Bersertifikat dan terjamin kehalalannya",
+    "features_1_title": "Dikemas Frozen Fresh",
+    "features_1_description": "Kualitas terjaga sampai tujuan",
+    "features_2_title": "Kirim ke Seluruh Indonesia",
+    "features_2_description": "Dari Bandung untuk Nusantara"
+  },
+  "hero": {
+    "fallback": {
+      "title": "Cita Rasa Warisan,\nkini di Rumahmu",
+      "subtitle": "Dimsum, siomay, dan bakso frozen premium dari Bandung — langsung ke pintu rumah Anda",
+      "cta": "Lihat Produk"
+    }
+  },
+  "emptyCart": {
+    "title": "Keranjangmu masih kosong",
+    "description": "Yuk, temukan dimsum favoritmu!",
+    "cta": "Mulai Belanja"
+  },
+  "coupon": {
+    "label": "Kode Kupon",
+    "placeholder": "Masukkan kode kupon",
+    "apply": "Terapkan",
+    "success": "Kupon berhasil! -{amount}"
+  },
+  "navbar": {
+    "search": "Cari produk",
+    "cart": "Keranjang",
+    "account": "Akun",
+    "menu": "Menu"
+  },
+  "halalBadge": "HALAL",
   "ProductDetail": {
     "breadcrumb": {
       "home": "Beranda",

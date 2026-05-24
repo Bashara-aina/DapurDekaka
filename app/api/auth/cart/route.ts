@@ -5,6 +5,7 @@ import { eq, and, sql } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
 import { success, unauthorized } from '@/lib/utils/api-response';
 import { CartItem } from '@/store/cart.store';
+import { logger } from '@/lib/utils/logger';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -71,7 +72,7 @@ export const GET = async (_req: NextRequest) => {
 
     return success({ items, totalQuantity, subtotal });
   } catch (error) {
-    console.error('[GET /api/auth/cart]', error);
+    logger.error('[GET /api/auth/cart]', { error });
     return NextResponse.json(
       { success: false, error: 'Gagal memuat keranjang' },
       { status: 500 }

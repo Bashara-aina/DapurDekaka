@@ -306,7 +306,7 @@ export default function TestimonialsClient() {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3 min-w-0">
                   <div className="w-10 h-10 rounded-full bg-brand-cream flex items-center justify-center shrink-0 text-lg font-bold text-brand-red">
-                    {t.customerName.charAt(0).toUpperCase()}
+                    {(t.customerName ?? 'C').charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">

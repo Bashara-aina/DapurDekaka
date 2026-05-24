@@ -248,8 +248,57 @@
     "remainingStock": "Only {count} pcs left",
     "selectVariant": "Select Variant",
     "halal": "HALAL",
-    "imageAlt": "{name}"
+    "imageAlt": "{name}",
+    "productsNotFound": "No products found",
+    "productsNotFoundDesc": "Try another category or remove filters",
+    "showAllProducts": "Show All Products"
   },
+  "stock": {
+    "habis": "Out of Stock",
+    "tersisa": "Only {count} pcs left"
+  },
+  "increaseQuantity": "Increase quantity",
+  "allCategory": "All",
+  "promo": {
+    "badge": "SPECIAL PROMO",
+    "title": "For your first purchase",
+    "subtitle": "Use code:",
+    "cta": "Claim Now"
+  },
+  "why": {
+    "title": "Why Dapur Dekaka?",
+    "features_0_title": "100% Halal",
+    "features_0_description": "Certified and guaranteed halal",
+    "features_1_title": "Frozen Fresh Packaging",
+    "features_1_description": "Quality maintained to destination",
+    "features_2_title": "Ship Across Indonesia",
+    "features_2_description": "From Bandung to the Nation"
+  },
+  "hero": {
+    "fallback": {
+      "title": "Heritage Flavors,\nNow at Your Home",
+      "subtitle": "Premium frozen dimsum, siomay, and bakso from Bandung — straight to your doorstep",
+      "cta": "View Products"
+    }
+  },
+  "emptyCart": {
+    "title": "Your cart is empty",
+    "description": "Let's find your favorite dimsum!",
+    "cta": "Start Shopping"
+  },
+  "coupon": {
+    "label": "Coupon Code",
+    "placeholder": "Enter coupon code",
+    "apply": "Apply",
+    "success": "Coupon applied! -{amount}"
+  },
+  "navbar": {
+    "search": "Search products",
+    "cart": "Cart",
+    "account": "Account",
+    "menu": "Menu"
+  },
+  "halalBadge": "HALAL",
   "ProductDetail": {
     "breadcrumb": {
       "home": "Home",

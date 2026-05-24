@@ -1,14 +1,11 @@
+'use client';
+
 import Link from 'next/link';
 import { cn } from '@/lib/utils/cn';
-
-interface Category {
-  id: string;
-  nameId: string;
-  slug: string;
-}
+import { useTranslations } from 'next-intl';
 
 interface ProductFiltersProps {
-  categories: Category[];
+  categories: { id: string; nameId: string; slug: string }[];
   activeCategory?: string;
   activeSearch?: string;
 }
@@ -18,6 +15,8 @@ export function ProductFilters({
   activeCategory,
   activeSearch,
 }: ProductFiltersProps) {
+  const t = useTranslations('metadata');
+
   const searchParams = new URLSearchParams();
   if (activeCategory) searchParams.set('category', activeCategory);
   if (activeSearch) searchParams.set('q', activeSearch);
@@ -36,7 +35,7 @@ export function ProductFilters({
                 : 'bg-white border border-brand-cream-dark text-text-primary hover:border-brand-red hover:text-brand-red'
             )}
           >
-            Semua
+            {t('allCategory')}
           </Link>
           {categories.map((cat) => (
             <Link

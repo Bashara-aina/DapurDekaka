@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { eq, desc } from 'drizzle-orm';
 import { success, notFound, unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
+import { logger } from '@/lib/utils/logger';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { orders, orderItems, orderStatusHistory } from '@/lib/db/schema';
@@ -43,7 +44,7 @@ export async function GET(
 
     return success(order);
   } catch (error) {
-    console.error('[Admin Orders GET id]', error);
+    logger.error('[Admin Orders GET id]', { error });
     return serverError(error);
   }
 }

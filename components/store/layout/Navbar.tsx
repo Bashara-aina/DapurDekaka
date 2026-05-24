@@ -75,14 +75,14 @@ export function Navbar() {
             <Link
               href="/products"
               className="p-2 text-text-secondary hover:text-brand-red transition-colors"
-              aria-label="Cari produk"
+              aria-label={t('navbar.search')}
             >
               <Search className="w-5 h-5" />
             </Link>
             <Link
               href="/cart"
               className="relative p-2 text-text-secondary hover:text-brand-red transition-colors"
-              aria-label="Keranjang"
+              aria-label={t('navbar.cart')}
             >
               <ShoppingCart className="w-5 h-5" />
               {totalItems > 0 && (
@@ -95,7 +95,7 @@ export function Navbar() {
               <Link
                 href="/account"
                 className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-cream hover:bg-brand-cream-dark transition-colors"
-                aria-label="Akun"
+                aria-label={t('navbar.account')}
               >
                 {session.user.image ? (
                   <Image
@@ -142,7 +142,7 @@ export function Navbar() {
             <Link
               href="/cart"
               className="relative p-2 text-text-secondary"
-              aria-label="Keranjang"
+              aria-label={t('navbar.cart')}
             >
               <ShoppingCart className="w-5 h-5" />
               {totalItems > 0 && (
@@ -154,7 +154,7 @@ export function Navbar() {
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 text-text-secondary"
-              aria-label="Menu"
+              aria-label={t('navbar.menu')}
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>

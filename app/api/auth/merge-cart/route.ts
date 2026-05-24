@@ -7,11 +7,17 @@ import { savedCarts } from '@/lib/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { success, unauthorized, serverError } from '@/lib/utils/api-response';
 import { withRateLimit } from '@/lib/utils/rate-limit';
-import type { CartItem } from '@/store/cart.store';
+import { logger } from '@/lib/utils/logger';
+import { z } from 'zod';
 
-interface MergeCartRequest {
-  items: CartItem[];
-}
+const CartItemSchema = z.object({
+  variantId: z.string().uuid('Invalid variant ID'),
+  quantity: z.number().int().min(1, 'Quantity must be at least 1').max(99, 'Quantity cannot exceed 99'),
+});
+
+const MergeCartSchema = z.object({
+  items: z.array(CartItemSchema),
+});
 
 export const POST = withRateLimit(
   async (req: NextRequest) => {
@@ -22,12 +28,17 @@ export const POST = withRateLimit(
         return unauthorized('Silakan masuk terlebih dahulu');
       }
 
-      const body = await req.json() as MergeCartRequest;
-      const { items } = body;
+      const body = await req.json();
+      const parsed = MergeCartSchema.safeParse(body);
 
-      if (!items || !Array.isArray(items) || items.length === 0) {
-        return success({ merged: 0 });
+      if (!parsed.success) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid cart items', code: 'VALIDATION_ERROR' },
+          { status: 422 }
+        );
       }
+
+      const { items } = parsed.data;
 
       const userId = session.user.id;
       let mergedCount = 0;
@@ -77,7 +88,7 @@ export const POST = withRateLimit(
       return success({ merged: mergedCount });
 
     } catch (error) {
-      console.error('[auth/merge-cart]', error);
+      logger.error('[auth/merge-cart]', { error });
       return serverError(error);
     }
   },

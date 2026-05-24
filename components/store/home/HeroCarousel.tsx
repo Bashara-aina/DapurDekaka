@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dsnhwfuxh';
 const CLOUDINARY_BASE = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/f_webp,q_auto,w_1600`;
@@ -27,6 +28,7 @@ interface HeroCarouselProps {
 }
 
 export function HeroCarousel({ slides, autoRotateSpeed = 5000 }: HeroCarouselProps) {
+  const t = useTranslations('hero.fallback');
   const [currentSlide, setCurrentSlide] = useState(0);
   const [MotionComp, setMotionComp] = useState<typeof import('framer-motion') | null>(null);
 
@@ -53,17 +55,16 @@ export function HeroCarousel({ slides, autoRotateSpeed = 5000 }: HeroCarouselPro
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent z-10" />
         <div className="relative z-20 h-full flex flex-col items-center justify-center text-center px-6">
           <h1 className="font-display text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-2 sm:mb-3 whitespace-pre-line leading-tight">
-            Cita Rasa Warisan,
-            kini di Rumahmu
+            {t('title')}
           </h1>
           <p className="text-white/90 text-base md:text-lg mb-6 max-w-xl">
-            Dimsum, siomay, dan bakso frozen premium dari Bandung — langsung ke pintu rumah Anda
+            {t('subtitle')}
           </p>
           <Link
             href="/products"
             className="inline-flex items-center h-12 px-6 bg-white text-brand-red font-bold rounded-button shadow-lg hover:bg-brand-cream transition-colors"
           >
-            Lihat Produk
+            {t('cta')}
           </Link>
         </div>
       </section>

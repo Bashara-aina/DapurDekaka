@@ -42,7 +42,6 @@ const ROLE_OPTIONS = [
   { value: 'b2b', label: 'B2B', color: 'bg-amber-100 text-amber-800' },
   { value: 'warehouse', label: 'Warehouse', color: 'bg-purple-100 text-purple-800' },
   { value: 'owner', label: 'Owner', color: 'bg-cyan-100 text-cyan-800' },
-  { value: 'superadmin', label: 'Superadmin', color: 'bg-red-100 text-red-800' },
 ];
 
 const ROLE_COLORS: Record<string, string> = {

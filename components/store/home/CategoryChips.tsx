@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 interface CategoryChipsProps {
   categories: { id: string; nameId: string; slug: string }[];
@@ -8,6 +9,8 @@ interface CategoryChipsProps {
 }
 
 export function CategoryChips({ categories, activeSlug }: CategoryChipsProps) {
+  const t = useTranslations('metadata');
+
   return (
     <section className="py-4">
       <div
@@ -21,7 +24,7 @@ export function CategoryChips({ categories, activeSlug }: CategoryChipsProps) {
               : 'bg-white border border-brand-cream-dark text-text-primary hover:border-brand-red hover:text-brand-red'
           }`}
         >
-          Semua
+          {t('allCategory')}
         </Link>
         {categories.map((cat) => (
           <Link

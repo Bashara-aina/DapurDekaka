@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { coupons } from '@/lib/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import { success, notFound, serverError, unauthorized, forbidden, validationError, conflict } from '@/lib/utils/api-response';
+import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -31,7 +32,7 @@ export async function GET(
 
     return success(coupon);
   } catch (error) {
-    console.error('[Admin Coupon GET]', error);
+    logger.error('[Admin Coupon GET]', { error });
     return serverError(error);
   }
 }
@@ -124,7 +125,7 @@ export async function PUT(
 
     return success(updated);
   } catch (error) {
-    console.error('[Admin Coupon PUT]', error);
+    logger.error('[Admin Coupon PUT]', { error });
     return serverError(error);
   }
 }
@@ -156,7 +157,7 @@ export async function DELETE(
 
     return success({ id: params.id });
   } catch (error) {
-    console.error('[Admin Coupon DELETE]', error);
+    logger.error('[Admin Coupon DELETE]', { error });
     return serverError(error);
   }
 }

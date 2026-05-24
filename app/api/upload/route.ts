@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { generateSignedUploadParams } from '@/lib/cloudinary/upload';
 import { success, unauthorized, serverError, forbidden } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
+import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
 
     return success(signedParams);
   } catch (error) {
-    console.error('[Upload] Error generating signed params:', error);
+    logger.error('[Upload] Error generating signed params', { error });
     return serverError(error);
   }
 }

@@ -4,6 +4,8 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { coupons } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
+import { unauthorized, forbidden, serverError, conflict } from '@/lib/utils/api-response';
+import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -11,16 +13,10 @@ export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return unauthorized('Silakan login terlebih dahulu');
     }
     if (session.user.role !== 'superadmin') {
-      return NextResponse.json(
-        { success: false, error: 'Forbidden', code: 'FORBIDDEN' },
-        { status: 403 }
-      );
+      return forbidden('Anda tidak memiliki akses');
     }
 
     const allCoupons = await db.query.coupons.findMany({
@@ -29,11 +25,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ success: true, data: allCoupons });
   } catch (error) {
-    console.error('[Admin Coupons GET]', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    );
+    logger.error('[Admin Coupons GET]', { error });
+    return serverError(error);
   }
 }
 
@@ -114,16 +107,10 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return unauthorized('Silakan login terlebih dahulu');
     }
     if (session.user.role !== 'superadmin') {
-      return NextResponse.json(
-        { success: false, error: 'Forbidden', code: 'FORBIDDEN' },
-        { status: 403 }
-      );
+      return forbidden('Anda tidak memiliki akses');
     }
 
     const body = await req.json();
@@ -140,10 +127,7 @@ export async function POST(req: NextRequest) {
       where: eq(coupons.code, code),
     });
     if (existing) {
-      return NextResponse.json(
-        { success: false, error: 'Kode kupon sudah digunakan', code: 'DUPLICATE_CODE' },
-        { status: 409 }
-      );
+      return conflict('Kode kupon sudah digunakan');
     }
 
     const newCoupon = {
@@ -172,10 +156,7 @@ export async function POST(req: NextRequest) {
     const [created] = await db.insert(coupons).values(newCoupon).returning();
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch (error) {
-    console.error('[Admin Coupons POST]', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    );
+    logger.error('[Admin Coupons POST]', { error });
+    return serverError(error);
   }
 }

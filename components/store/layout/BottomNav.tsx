@@ -63,7 +63,7 @@ export function BottomNav() {
             <Link
               key={index}
               href={item.href}
-              aria-label={item.badge && item.badge > 0 ? `${item.label} (${item.badge} item)` : undefined}
+              aria-label={item.label}
               className={cn(
                 'relative flex flex-col items-center gap-0.5 py-2 px-3',
                 isActive ? 'text-brand-red' : 'text-text-secondary'

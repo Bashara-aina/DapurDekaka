@@ -30,17 +30,17 @@ function validateRedisConfig(): void {
   const hasToken = Boolean(process.env.UPSTASH_REDIS_REST_TOKEN);
 
   if (process.env.NODE_ENV === 'production') {
-    logger.error(
-      '[RateLimit] CRITICAL: Redis not configured. Rate limiting is disabled in production. ' +
-      'Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables.'
-    );
-    // Continue with in-memory fallback — less secure but prevents app crash
+    if (!hasUrl || !hasToken) {
+      throw new Error(
+        'Rate limiting requires UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN in production'
+      );
+    }
   } else if (!hasUrl || !hasToken) {
     // eslint-disable-next-line no-console
     console.warn(
       '[RateLimit] WARNING: Upstash Redis not configured. ' +
-      'Rate limiting falls back to in-memory (not effective in serverless production). ' +
-      'Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN env vars.'
+        'Rate limiting falls back to in-memory (not effective in serverless production). ' +
+        'Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN env vars.'
     );
   }
 }

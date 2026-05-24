@@ -1,13 +1,18 @@
+'use client';
+
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { EmptyState } from '@/components/store/common/EmptyState';
 
 export function EmptyCart() {
+  const t = useTranslations('emptyCart');
+
   return (
     <EmptyState
       variant="cart"
-      title="Keranjangmu masih kosong"
-      description="Yuk, temukan dimsum favoritmu!"
-      action={{ label: 'Mulai Belanja', href: '/products' }}
+      title={t('title')}
+      description={t('description')}
+      action={{ label: t('cta'), href: '/products' }}
     />
   );
 }

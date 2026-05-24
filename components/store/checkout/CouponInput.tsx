@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Tag } from 'lucide-react';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { cn } from '@/lib/utils/cn';
@@ -27,6 +28,8 @@ export function CouponInput({
   isLoading,
   className,
 }: CouponInputProps) {
+  const t = useTranslations('coupon');
+
   const handleChange = (val: string) => {
     const upper = val.toUpperCase();
     onCodeChange(upper);
@@ -37,14 +40,14 @@ export function CouponInput({
 
   return (
     <div className={cn('space-y-2', className)}>
-      <label className="block text-sm font-medium">Kode Kupon</label>
+      <label className="block text-sm font-medium">{t('label')}</label>
 
       <div className="flex gap-2">
         <div className="flex-1">
           <Input
             value={code}
             onChange={(e) => handleChange(e.target.value)}
-            placeholder="Masukkan kode kupon"
+            placeholder={t('placeholder')}
             className="uppercase"
             disabled={isLoading}
           />
@@ -56,7 +59,7 @@ export function CouponInput({
           className="h-10 px-4 bg-brand-red text-white font-medium rounded-lg hover:bg-brand-red-dark transition-colors disabled:opacity-50 flex items-center gap-2"
         >
           <Tag className="w-4 h-4" />
-          Terapkan
+          {t('apply')}
         </button>
       </div>
 
@@ -66,7 +69,7 @@ export function CouponInput({
 
       {discountAmount > 0 && (
         <p className="text-sm text-success font-medium">
-          Kupon berhasil! -{formatIDR(discountAmount)}
+          {t('success', { amount: formatIDR(discountAmount) })}
         </p>
       )}
     </div>
