@@ -19,9 +19,20 @@ if (!process.env.AUTH_SECRET || process.env.AUTH_SECRET.length < 32) {
   throw new Error('AUTH_SECRET must be set and at least 32 characters long');
 }
 
-// Use getDb() so DrizzleAdapter's internal is(db, PgDatabase) check succeeds.
-// The neon-http driver returns a real Drizzle instance that passes the type guard.
+// Drizzle adapter is kept so Google OAuth account linking (the `accounts` table)
+// continues to work. NextAuth v5's Credentials provider requires JWT sessions,
+// so we set strategy: 'jwt' below and read role/isActive from the token.
 const adapter = DrizzleAdapter(getDb()) as Adapter;
+
+// Shape we attach to the JWT and surface on session.user
+interface AppSessionUser {
+  id?: string;
+  email?: string | null;
+  name?: string | null;
+  image?: string | null;
+  role?: string;
+  isActive?: boolean;
+}
 
 export const authConfig = {
   adapter,
@@ -49,30 +60,57 @@ export const authConfig = {
           user.passwordHash
         );
         if (!isValid) return null;
-        return { id: user.id, email: user.email, name: user.name, role: user.role };
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          isActive: user.isActive,
+        };
       },
     }),
   ],
-  session: { strategy: 'database', secure: process.env.NODE_ENV === 'production' },
+  // Credentials provider in NextAuth v5 requires JWT strategy.
+  // Drizzle adapter still handles Google OAuth account linking at sign-in.
+  session: { strategy: 'jwt', maxAge: 60 * 60 * 24 * 30, secure: process.env.NODE_ENV === 'production' },
   callbacks: {
-    async session({ session, user }) {
-      if (!session.user) return session;
-      if (user?.id) {
-        session.user.id = user.id as string;
+    async jwt({ token, user, trigger, session: updateData }) {
+      // On sign-in (both Credentials and OAuth) the `user` arg is populated.
+      // Copy role + isActive into the JWT so the session callback can surface them.
+      if (user) {
+        const u = user as AppSessionUser;
+        if (u.id) token.sub = u.id;
+        if (u.role) (token as Record<string, unknown>).role = u.role;
+        if (typeof u.isActive === 'boolean') (token as Record<string, unknown>).isActive = u.isActive;
+      }
+
+      // When the client calls update() (e.g. after login), refresh role/isActive
+      // from the DB so a deactivated user is reflected on the next request.
+      if (trigger === 'update' && (token.sub || (token as Record<string, unknown>).userId)) {
+        const userId = (token.sub || (token as Record<string, unknown>).userId) as string;
         const dbUser = await db.query.users.findFirst({
-          where: eq(users.id, user.id),
-          columns: { role: true, isActive: true, name: true },
+          where: eq(users.id, userId),
+          columns: { role: true, isActive: true },
         });
-        if (!dbUser) {
-          return null as unknown as Session;
+        if (dbUser) {
+          (token as Record<string, unknown>).role = dbUser.role;
+          (token as Record<string, unknown>).isActive = dbUser.isActive;
         }
-        if (dbUser.role) {
-          session.user.role = dbUser.role;
-        }
-        if (dbUser.isActive === false) {
-          // Distinguish "inactive user" from "not logged in" — return session with flag
-          session.user.isActive = false;
-        }
+      }
+
+      return token;
+    },
+    async session({ session, token }) {
+      if (!session.user) return session;
+      const t = token as Record<string, unknown>;
+      if (typeof t.sub === 'string') {
+        session.user.id = t.sub;
+      }
+      if (typeof t.role === 'string') {
+        session.user.role = t.role;
+      }
+      if (typeof t.isActive === 'boolean') {
+        session.user.isActive = t.isActive;
       }
       return session;
     },
@@ -82,3 +120,6 @@ export const authConfig = {
 const { handlers, auth } = NextAuth(authConfig);
 
 export { handlers, auth };
+
+// Re-export so callers can type-narrow without importing next-auth directly.
+export type { Session } from 'next-auth';
