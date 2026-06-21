@@ -166,6 +166,19 @@ const DATE_PRESETS = [
   { label: '30 Hari', getValue: () => { const t = new Date(); const start = new Date(t); start.setDate(t.getDate() - 29); return { from: start.toISOString().split('T')[0]!, to: t.toISOString().split('T')[0]! }; } },
 ];
 
+// Fetch wrapper that returns null instead of throwing, so a single failing
+// endpoint cannot take down the entire admin dashboard via the route's error.tsx.
+async function safeFetchJson<T>(url: string): Promise<T | null> {
+  try {
+    const res = await fetch(url);
+    const json = await res.json();
+    if (!json?.success) return null;
+    return json.data as T;
+  } catch {
+    return null;
+  }
+}
+
 export default function SuperadminDashboardClient() {
   const { data: session } = useSession();
   const [dismissedAlert, setDismissedAlert] = useState(false);
@@ -175,106 +188,63 @@ export default function SuperadminDashboardClient() {
   const [feedFilter, setFeedFilter] = useState('all');
   const [dateRange, setDateRange] = useState<{ from: string; to: string }>({ from: '', to: '' });
 
-  const { data: kpis } = useQuery<KPIData>({
+  const { data: kpis } = useQuery<KPIData | null>({
     queryKey: ['superadmin-kpis', dateRange.from, dateRange.to],
-    queryFn: async () => {
+    queryFn: () => {
       const params = new URLSearchParams();
       if (dateRange.from) params.set('from', dateRange.from);
       if (dateRange.to) params.set('to', dateRange.to);
-      const res = await fetch(`/api/admin/dashboard/kpis?${params.toString()}`);
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data;
+      return safeFetchJson<KPIData>(`/api/admin/dashboard/kpis?${params.toString()}`);
     },
     staleTime: 60000,
     refetchInterval: 30000,
   });
 
-  const { data: alerts } = useQuery<Alert[]>({
+  const { data: alerts } = useQuery<Alert[] | null>({
     queryKey: ['superadmin-alerts'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/dashboard/alerts');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data;
-    },
+    queryFn: () => safeFetchJson<Alert[]>('/api/admin/dashboard/alerts'),
     staleTime: 300000,
   });
 
-  const { data: orderFunnel, refetch: refetchFunnel, isFetching: funnelFetching } = useQuery<OrderFunnel>({
+  const { data: orderFunnel, refetch: refetchFunnel, isFetching: funnelFetching } = useQuery<OrderFunnel | null>({
     queryKey: ['order-funnel'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/dashboard/order-funnel');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data;
-    },
+    queryFn: () => safeFetchJson<OrderFunnel>('/api/admin/dashboard/order-funnel'),
     refetchInterval: 60000,
   });
 
-  const { data: actionQueue } = useQuery<ActionQueueItem[]>({
+  const { data: actionQueue } = useQuery<ActionQueueItem[] | null>({
     queryKey: ['action-queue'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/dashboard/action-queue');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data;
-    },
+    queryFn: () => safeFetchJson<ActionQueueItem[]>('/api/admin/dashboard/action-queue'),
     refetchInterval: 120000,
   });
 
-  const { data: liveFeed } = useQuery<LiveOrder[]>({
+  const { data: liveFeed } = useQuery<LiveOrder[] | null>({
     queryKey: ['live-feed'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/dashboard/live-feed?limit=20');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data;
-    },
+    queryFn: () => safeFetchJson<LiveOrder[]>('/api/admin/dashboard/live-feed?limit=20'),
     refetchInterval: 30000,
   });
 
-  const { data: inventoryFlash } = useQuery<InventoryFlash>({
+  const { data: inventoryFlash } = useQuery<InventoryFlash | null>({
     queryKey: ['inventory-flash'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/dashboard/inventory-flash');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data;
-    },
+    queryFn: () => safeFetchJson<InventoryFlash>('/api/admin/dashboard/inventory-flash'),
     refetchInterval: 120000,
   });
 
-  const { data: auditLogs } = useQuery<{ logs: AuditLog[]; total: number }>({
+  const { data: auditLogs } = useQuery<{ logs: AuditLog[]; total: number } | null>({
     queryKey: ['audit-logs'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/audit-logs?page=1');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data;
-    },
+    queryFn: () => safeFetchJson<{ logs: AuditLog[]; total: number }>('/api/admin/audit-logs?page=1'),
     staleTime: 300000,
   });
 
-  const { data: userSummary } = useQuery<UserSummary>({
+  const { data: userSummary } = useQuery<UserSummary | null>({
     queryKey: ['user-summary'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/users/summary');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data;
-    },
+    queryFn: () => safeFetchJson<UserSummary>('/api/admin/users/summary'),
     staleTime: 300000,
   });
 
-  const { data: revenueChartData } = useQuery<Array<{ date: string; label: string; revenue: number; orders: number }>>({
+  const { data: revenueChartData } = useQuery<Array<{ date: string; label: string; revenue: number; orders: number }> | null>({
     queryKey: ['revenue-chart'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/dashboard/revenue-chart');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data;
-    },
+    queryFn: () => safeFetchJson<Array<{ date: string; label: string; revenue: number; orders: number }>>('/api/admin/dashboard/revenue-chart'),
     staleTime: 300000,
   });
 
@@ -795,7 +765,7 @@ export default function SuperadminDashboardClient() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {auditLogs?.logs.slice(0, 15).map(log => (
+              {auditLogs?.logs?.slice(0, 15).map(log => (
                 <tr key={log.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-5 py-3 text-xs text-gray-400 whitespace-nowrap">
                     {formatWIB(new Date(log.createdAt))}
