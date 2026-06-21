@@ -67,17 +67,16 @@ interface LiveOrder {
   createdAt: string;
   recipientName: string;
   totalAmount: number;
-  courierName: string | null;
+  isB2b: boolean;
   itemSummary: { name: string; quantity: number }[];
   totalItems: number;
 }
 
 interface InventoryFlash {
-  outOfStockCount: number;
-  lowStockCount: number;
-  healthyCount: number;
-  outOfStock: { id: string; nameId: string; sku: string; stock: number; productNameId: string | null }[];
-  lowStock: { id: string; nameId: string; sku: string; stock: number; productNameId: string | null }[];
+  outOfStock: { count: number };
+  lowStock: { count: number };
+  topSelling: { variantId: string; productName: string; variantName: string; totalQuantity: number; totalRevenue: number }[];
+  totalActiveVariants: number;
 }
 
 interface AuditLog {
@@ -104,7 +103,9 @@ interface UserSummary {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function getRelativeTime(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
+  const t = new Date(dateStr).getTime();
+  if (Number.isNaN(t)) return '—';
+  const diff = Date.now() - t;
   const m = Math.floor(diff / 60000);
   if (m < 1) return 'baru saja';
   if (m < 60) return `${m} menit lalu`;
@@ -218,9 +219,9 @@ export default function SuperadminDashboardClient() {
     refetchInterval: 120000,
   });
 
-  const { data: liveFeed } = useQuery<LiveOrder[] | null>({
+  const { data: liveFeed } = useQuery<{ orders: LiveOrder[]; count: number } | null>({
     queryKey: ['live-feed'],
-    queryFn: () => safeFetchJson<LiveOrder[]>('/api/admin/dashboard/live-feed?limit=20'),
+    queryFn: () => safeFetchJson<{ orders: LiveOrder[]; count: number }>('/api/admin/dashboard/live-feed?limit=20'),
     refetchInterval: 30000,
   });
 
@@ -262,8 +263,8 @@ export default function SuperadminDashboardClient() {
     : 'bg-blue-50 border-blue-200 text-blue-700';
 
   const filteredFeed = feedFilter === 'all'
-    ? liveFeed ?? []
-    : (liveFeed ?? []).filter(o => o.status === feedFilter);
+    ? liveFeed?.orders ?? []
+    : (liveFeed?.orders ?? []).filter(o => o.status === feedFilter);
 
   return (
     <div className="space-y-5 pb-20 md:pb-6">
@@ -631,38 +632,34 @@ export default function SuperadminDashboardClient() {
             <>
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <div className="text-center p-3 bg-red-50 rounded-lg border border-red-100">
-                  <p className="text-2xl font-bold text-red-500">{inventoryFlash.outOfStockCount}</p>
+                  <p className="text-2xl font-bold text-red-500">{inventoryFlash.outOfStock.count}</p>
                   <p className="text-xs text-red-600 mt-0.5">Habis</p>
                 </div>
                 <div className="text-center p-3 bg-amber-50 rounded-lg border border-amber-100">
-                  <p className="text-2xl font-bold text-amber-500">{inventoryFlash.lowStockCount}</p>
+                  <p className="text-2xl font-bold text-amber-500">{inventoryFlash.lowStock.count}</p>
                   <p className="text-xs text-amber-600 mt-0.5">Menipis</p>
                 </div>
                 <div className="text-center p-3 bg-green-50 rounded-lg border border-green-100">
-                  <p className="text-2xl font-bold text-green-600">{inventoryFlash.healthyCount}</p>
+                  <p className="text-2xl font-bold text-green-600">{inventoryFlash.totalActiveVariants - inventoryFlash.outOfStock.count - inventoryFlash.lowStock.count}</p>
                   <p className="text-xs text-green-700 mt-0.5">Sehat</p>
                 </div>
               </div>
-              <div className="space-y-1.5">
-                {inventoryFlash.outOfStock.slice(0, 3).map(item => (
-                  <div key={item.id} className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">
-                    <div>
-                      <p className="text-sm text-red-600 font-medium">{item.productNameId} — {item.nameId}</p>
-                      <p className="text-xs text-gray-400">{item.sku}</p>
+              {inventoryFlash.topSelling.length > 0 && (
+                <div className="space-y-1.5 border-t border-gray-100 pt-3 mt-2">
+                  <p className="text-xs font-medium text-text-secondary mb-1">Top Penjualan 30 Hari</p>
+                  {inventoryFlash.topSelling.slice(0, 3).map(item => (
+                    <div key={item.variantId} className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">
+                      <div>
+                        <p className="text-sm text-text-primary font-medium">{item.productName}</p>
+                        <p className="text-xs text-gray-400">{item.variantName}</p>
+                      </div>
+                      <span className="text-xs font-bold text-brand-red bg-red-50 px-2 py-0.5 rounded">
+                        {item.totalQuantity} pcs
+                      </span>
                     </div>
-                    <span className="text-xs font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded">0 unit</span>
-                  </div>
-                ))}
-                {inventoryFlash.lowStock.slice(0, 3).map(item => (
-                  <div key={item.id} className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">
-                    <div>
-                      <p className="text-sm text-amber-600 font-medium">{item.productNameId} — {item.nameId}</p>
-                      <p className="text-xs text-gray-400">{item.sku}</p>
-                    </div>
-                    <span className="text-xs font-bold text-amber-500 bg-amber-50 px-2 py-0.5 rounded">{item.stock} unit</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </>
           ) : (
             <div className="space-y-2">
