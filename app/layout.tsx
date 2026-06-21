@@ -26,10 +26,10 @@ export const metadata: Metadata = {
   description: 'Cita rasa warisan Chinese-Indonesia, kini di rumahmu. Dimsum, siomay, bakso frozen premium dari Bandung. Pesan online, kirim ke seluruh Indonesia.',
   icons: {
     icon: [
-      { url: '/favicon.ico', type: 'image/x-icon' },
+      { url: '/favicon.ico', sizes: 'any', type: 'image/x-icon' },
       { url: '/assets/icons/favicon.svg', type: 'image/svg+xml' },
     ],
-    apple: '/assets/logo/generated-icon.png',
+    apple: '/assets/logo/apple-touch-icon.png',
   },
 };
 
