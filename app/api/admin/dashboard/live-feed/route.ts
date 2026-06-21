@@ -2,8 +2,8 @@ import { NextRequest } from 'next/server';
 import { cache } from 'react';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { orders } from '@/lib/db/schema';
-import { desc, sql } from 'drizzle-orm';
+import { orders, orderItems } from '@/lib/db/schema';
+import { desc, eq, inArray, sql } from 'drizzle-orm';
 import { success, unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -23,20 +23,38 @@ const getLiveFeed = cache(async () => {
     .orderBy(desc(orders.createdAt))
     .limit(20);
 
-  return recentOrders.map(order => {
-    const minutesAgo = Math.floor(
-      (Date.now() - new Date(order.createdAt).getTime()) / 60000
-    );
-    return {
-      id: order.id,
-      orderNumber: order.orderNumber,
-      customerName: order.recipientName,
-      total: order.totalAmount,
-      status: order.status,
-      isB2b: order.isB2b,
-      timeAgo: minutesAgo < 1 ? ' baru' : `${minutesAgo}m lalu`,
-    };
-  });
+  if (recentOrders.length === 0) {
+    return [];
+  }
+
+  const orderIds = recentOrders.map(o => o.id);
+  const items = await db
+    .select({
+      orderId: orderItems.orderId,
+      productNameId: orderItems.productNameId,
+      quantity: orderItems.quantity,
+    })
+    .from(orderItems)
+    .where(inArray(orderItems.orderId, orderIds));
+
+  const itemsByOrder = new Map<string, { name: string; quantity: number }[]>();
+  for (const item of items) {
+    const list = itemsByOrder.get(item.orderId) ?? [];
+    list.push({ name: item.productNameId, quantity: item.quantity });
+    itemsByOrder.set(item.orderId, list);
+  }
+
+  return recentOrders.map(order => ({
+    id: order.id,
+    orderNumber: order.orderNumber,
+    recipientName: order.recipientName,
+    totalAmount: order.totalAmount,
+    status: order.status,
+    createdAt: order.createdAt.toISOString(),
+    isB2b: order.isB2b,
+    itemSummary: itemsByOrder.get(order.id) ?? [],
+    totalItems: itemsByOrder.get(order.id)?.reduce((sum, i) => sum + i.quantity, 0) ?? 0,
+  }));
 });
 
 export async function GET(_req: NextRequest) {

@@ -67,17 +67,16 @@ interface LiveOrder {
   createdAt: string;
   recipientName: string;
   totalAmount: number;
-  courierName: string | null;
+  isB2b: boolean;
   itemSummary: { name: string; quantity: number }[];
   totalItems: number;
 }
 
 interface InventoryFlash {
-  outOfStockCount: number;
-  lowStockCount: number;
-  healthyCount: number;
-  outOfStock: { id: string; nameId: string; sku: string; stock: number; productNameId: string | null }[];
-  lowStock: { id: string; nameId: string; sku: string; stock: number; productNameId: string | null }[];
+  outOfStock: { count: number };
+  lowStock: { count: number };
+  topSelling: { variantId: string; productName: string; variantName: string; totalQuantity: number; totalRevenue: number }[];
+  totalActiveVariants: number;
 }
 
 interface AuditLog {
@@ -104,7 +103,9 @@ interface UserSummary {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function getRelativeTime(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
+  const t = new Date(dateStr).getTime();
+  if (Number.isNaN(t)) return '—';
+  const diff = Date.now() - t;
   const m = Math.floor(diff / 60000);
   if (m < 1) return 'baru saja';
   if (m < 60) return `${m} menit lalu`;
@@ -166,6 +167,19 @@ const DATE_PRESETS = [
   { label: '30 Hari', getValue: () => { const t = new Date(); const start = new Date(t); start.setDate(t.getDate() - 29); return { from: start.toISOString().split('T')[0]!, to: t.toISOString().split('T')[0]! }; } },
 ];
 
+// Fetch wrapper that returns null instead of throwing, so a single failing
+// endpoint cannot take down the entire admin dashboard via the route's error.tsx.
+async function safeFetchJson<T>(url: string): Promise<T | null> {
+  try {
+    const res = await fetch(url);
+    const json = await res.json();
+    if (!json?.success) return null;
+    return json.data as T;
+  } catch {
+    return null;
+  }
+}
+
 export default function SuperadminDashboardClient() {
   const { data: session } = useSession();
   const [dismissedAlert, setDismissedAlert] = useState(false);
@@ -175,106 +189,63 @@ export default function SuperadminDashboardClient() {
   const [feedFilter, setFeedFilter] = useState('all');
   const [dateRange, setDateRange] = useState<{ from: string; to: string }>({ from: '', to: '' });
 
-  const { data: kpis } = useQuery<KPIData>({
+  const { data: kpis } = useQuery<KPIData | null>({
     queryKey: ['superadmin-kpis', dateRange.from, dateRange.to],
-    queryFn: async () => {
+    queryFn: () => {
       const params = new URLSearchParams();
       if (dateRange.from) params.set('from', dateRange.from);
       if (dateRange.to) params.set('to', dateRange.to);
-      const res = await fetch(`/api/admin/dashboard/kpis?${params.toString()}`);
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data;
+      return safeFetchJson<KPIData>(`/api/admin/dashboard/kpis?${params.toString()}`);
     },
     staleTime: 60000,
     refetchInterval: 30000,
   });
 
-  const { data: alerts } = useQuery<Alert[]>({
+  const { data: alerts } = useQuery<Alert[] | null>({
     queryKey: ['superadmin-alerts'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/dashboard/alerts');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data;
-    },
+    queryFn: () => safeFetchJson<Alert[]>('/api/admin/dashboard/alerts'),
     staleTime: 300000,
   });
 
-  const { data: orderFunnel, refetch: refetchFunnel, isFetching: funnelFetching } = useQuery<OrderFunnel>({
+  const { data: orderFunnel, refetch: refetchFunnel, isFetching: funnelFetching } = useQuery<OrderFunnel | null>({
     queryKey: ['order-funnel'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/dashboard/order-funnel');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data;
-    },
+    queryFn: () => safeFetchJson<OrderFunnel>('/api/admin/dashboard/order-funnel'),
     refetchInterval: 60000,
   });
 
-  const { data: actionQueue } = useQuery<ActionQueueItem[]>({
+  const { data: actionQueue } = useQuery<ActionQueueItem[] | null>({
     queryKey: ['action-queue'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/dashboard/action-queue');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data;
-    },
+    queryFn: () => safeFetchJson<ActionQueueItem[]>('/api/admin/dashboard/action-queue'),
     refetchInterval: 120000,
   });
 
-  const { data: liveFeed } = useQuery<LiveOrder[]>({
+  const { data: liveFeed } = useQuery<{ orders: LiveOrder[]; count: number } | null>({
     queryKey: ['live-feed'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/dashboard/live-feed?limit=20');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data;
-    },
+    queryFn: () => safeFetchJson<{ orders: LiveOrder[]; count: number }>('/api/admin/dashboard/live-feed?limit=20'),
     refetchInterval: 30000,
   });
 
-  const { data: inventoryFlash } = useQuery<InventoryFlash>({
+  const { data: inventoryFlash } = useQuery<InventoryFlash | null>({
     queryKey: ['inventory-flash'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/dashboard/inventory-flash');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data;
-    },
+    queryFn: () => safeFetchJson<InventoryFlash>('/api/admin/dashboard/inventory-flash'),
     refetchInterval: 120000,
   });
 
-  const { data: auditLogs } = useQuery<{ logs: AuditLog[]; total: number }>({
+  const { data: auditLogs } = useQuery<{ logs: AuditLog[]; total: number } | null>({
     queryKey: ['audit-logs'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/audit-logs?page=1');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data;
-    },
+    queryFn: () => safeFetchJson<{ logs: AuditLog[]; total: number }>('/api/admin/audit-logs?page=1'),
     staleTime: 300000,
   });
 
-  const { data: userSummary } = useQuery<UserSummary>({
+  const { data: userSummary } = useQuery<UserSummary | null>({
     queryKey: ['user-summary'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/users/summary');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data;
-    },
+    queryFn: () => safeFetchJson<UserSummary>('/api/admin/users/summary'),
     staleTime: 300000,
   });
 
-  const { data: revenueChartData } = useQuery<Array<{ date: string; label: string; revenue: number; orders: number }>>({
+  const { data: revenueChartData } = useQuery<Array<{ date: string; label: string; revenue: number; orders: number }> | null>({
     queryKey: ['revenue-chart'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/dashboard/revenue-chart');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      return json.data;
-    },
+    queryFn: () => safeFetchJson<Array<{ date: string; label: string; revenue: number; orders: number }>>('/api/admin/dashboard/revenue-chart'),
     staleTime: 300000,
   });
 
@@ -292,8 +263,8 @@ export default function SuperadminDashboardClient() {
     : 'bg-blue-50 border-blue-200 text-blue-700';
 
   const filteredFeed = feedFilter === 'all'
-    ? liveFeed ?? []
-    : (liveFeed ?? []).filter(o => o.status === feedFilter);
+    ? liveFeed?.orders ?? []
+    : (liveFeed?.orders ?? []).filter(o => o.status === feedFilter);
 
   return (
     <div className="space-y-5 pb-20 md:pb-6">
@@ -661,38 +632,34 @@ export default function SuperadminDashboardClient() {
             <>
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <div className="text-center p-3 bg-red-50 rounded-lg border border-red-100">
-                  <p className="text-2xl font-bold text-red-500">{inventoryFlash.outOfStockCount}</p>
+                  <p className="text-2xl font-bold text-red-500">{inventoryFlash.outOfStock.count}</p>
                   <p className="text-xs text-red-600 mt-0.5">Habis</p>
                 </div>
                 <div className="text-center p-3 bg-amber-50 rounded-lg border border-amber-100">
-                  <p className="text-2xl font-bold text-amber-500">{inventoryFlash.lowStockCount}</p>
+                  <p className="text-2xl font-bold text-amber-500">{inventoryFlash.lowStock.count}</p>
                   <p className="text-xs text-amber-600 mt-0.5">Menipis</p>
                 </div>
                 <div className="text-center p-3 bg-green-50 rounded-lg border border-green-100">
-                  <p className="text-2xl font-bold text-green-600">{inventoryFlash.healthyCount}</p>
+                  <p className="text-2xl font-bold text-green-600">{inventoryFlash.totalActiveVariants - inventoryFlash.outOfStock.count - inventoryFlash.lowStock.count}</p>
                   <p className="text-xs text-green-700 mt-0.5">Sehat</p>
                 </div>
               </div>
-              <div className="space-y-1.5">
-                {inventoryFlash.outOfStock.slice(0, 3).map(item => (
-                  <div key={item.id} className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">
-                    <div>
-                      <p className="text-sm text-red-600 font-medium">{item.productNameId} — {item.nameId}</p>
-                      <p className="text-xs text-gray-400">{item.sku}</p>
+              {inventoryFlash.topSelling.length > 0 && (
+                <div className="space-y-1.5 border-t border-gray-100 pt-3 mt-2">
+                  <p className="text-xs font-medium text-text-secondary mb-1">Top Penjualan 30 Hari</p>
+                  {inventoryFlash.topSelling.slice(0, 3).map(item => (
+                    <div key={item.variantId} className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">
+                      <div>
+                        <p className="text-sm text-text-primary font-medium">{item.productName}</p>
+                        <p className="text-xs text-gray-400">{item.variantName}</p>
+                      </div>
+                      <span className="text-xs font-bold text-brand-red bg-red-50 px-2 py-0.5 rounded">
+                        {item.totalQuantity} pcs
+                      </span>
                     </div>
-                    <span className="text-xs font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded">0 unit</span>
-                  </div>
-                ))}
-                {inventoryFlash.lowStock.slice(0, 3).map(item => (
-                  <div key={item.id} className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">
-                    <div>
-                      <p className="text-sm text-amber-600 font-medium">{item.productNameId} — {item.nameId}</p>
-                      <p className="text-xs text-gray-400">{item.sku}</p>
-                    </div>
-                    <span className="text-xs font-bold text-amber-500 bg-amber-50 px-2 py-0.5 rounded">{item.stock} unit</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </>
           ) : (
             <div className="space-y-2">
@@ -795,7 +762,7 @@ export default function SuperadminDashboardClient() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {auditLogs?.logs.slice(0, 15).map(log => (
+              {auditLogs?.logs?.slice(0, 15).map(log => (
                 <tr key={log.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-5 py-3 text-xs text-gray-400 whitespace-nowrap">
                     {formatWIB(new Date(log.createdAt))}

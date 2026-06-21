@@ -611,7 +611,9 @@ export const systemSettings = pgTable('system_settings', {
   description: text('description'),
   updatedBy: uuid('updated_by').references(() => users.id),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => ({
+  keyIdx: index('idx_system_settings_key').on(table.key),
+}));
 
 export const orderDailyCounters = pgTable('order_daily_counters', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -655,6 +657,11 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   pointsHistory: many(pointsHistory),
   couponUsages: many(couponUsages),
   b2bProfile: one(b2bProfiles),
+  adminActivityLogs: many(adminActivityLogs),
+}));
+
+export const adminActivityLogsRelations = relations(adminActivityLogs, ({ one }) => ({
+  user: one(users, { fields: [adminActivityLogs.userId], references: [users.id] }),
 }));
 
 export const productsRelations = relations(products, ({ one, many }) => ({

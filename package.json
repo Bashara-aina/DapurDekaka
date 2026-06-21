@@ -19,6 +19,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.ts",
+    "db:seed:roles": "tsx scripts/seed-roles.ts",
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
