@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { ZodError } from 'zod';
+import { logger } from '@/lib/utils/logger';
 
 export function success<T>(data: T, status = 200) {
   return NextResponse.json({ success: true, data }, { status });
@@ -49,6 +50,13 @@ export function conflict(message: string) {
   );
 }
 
+export function unprocessableEntity(message: string, code = 'UNPROCESSABLE_ENTITY') {
+  return NextResponse.json(
+    { success: false, error: message, code },
+    { status: 422 }
+  );
+}
+
 export function badRequest(message: string) {
   return NextResponse.json(
     { success: false, error: message, code: 'BAD_REQUEST' },
@@ -63,8 +71,15 @@ export function tooManyRequests(message = 'Too many requests') {
   );
 }
 
+export function serviceUnavailable(message: string, code = 'SERVICE_UNAVAILABLE') {
+  return NextResponse.json(
+    { success: false, error: message, code },
+    { status: 503 }
+  );
+}
+
 export function serverError(error: unknown) {
-  console.error('[API Error]', error);
+  logger.error('[API Error]', { error: error instanceof Error ? error.message : String(error) });
   return NextResponse.json(
     { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
     { status: 500 }

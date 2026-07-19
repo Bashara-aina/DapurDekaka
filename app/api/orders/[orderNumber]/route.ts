@@ -47,15 +47,14 @@ export async function GET(
       return unauthorized('Email tidak cocok dengan pesanan');
     }
 
-    // No session and no email - return minimal info for status tracking + pending payment page
+    // No session and no email — return NON-sensitive status only. Payment
+    // details (amount, VA number, payment type) require ownership/email
+    // verification (P0#7): an order number alone must not leak them.
     return success({
       order: {
         orderNumber: order.orderNumber,
         status: order.status,
         deliveryMethod: order.deliveryMethod,
-        totalAmount: order.totalAmount,
-        midtransVaNumber: order.midtransVaNumber,
-        midtransPaymentType: order.midtransPaymentType,
         paymentExpiresAt: order.paymentExpiresAt,
         createdAt: order.createdAt,
       },

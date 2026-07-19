@@ -16,10 +16,11 @@ const addressSchema = z.object({
   addressLine: z.string().min(10, 'Alamat terlalu pendek'),
   district: z.string().min(1, 'Kecamatan harus diisi'),
   city: z.string().min(1, 'Kota harus diisi'),
-  cityId: z.string().min(1, 'ID kota harus diisi'),
   province: z.string().min(1, 'Provinsi harus diisi'),
-  provinceId: z.string().min(1, 'ID provinsi harus diisi'),
   postalCode: z.string().min(5, 'Kode pos tidak valid'),
+  latitude: z.number(),
+  longitude: z.number(),
+  biteshipAreaId: z.string().max(50).optional(),
   isDefault: z.boolean().optional(),
 });
 
@@ -74,10 +75,13 @@ export async function POST(req: NextRequest) {
       addressLine: data.addressLine,
       district: data.district,
       city: data.city,
-      cityId: data.cityId,
+      cityId: 'map',
       province: data.province,
-      provinceId: data.provinceId,
+      provinceId: 'map',
       postalCode: data.postalCode,
+      latitude: String(data.latitude),
+      longitude: String(data.longitude),
+      biteshipAreaId: data.biteshipAreaId ?? null,
       isDefault: data.isDefault || false,
     }).returning();
 
@@ -121,7 +125,21 @@ export async function PUT(req: NextRequest) {
     }
 
     const updated = await db.update(addresses)
-      .set(parsed.data)
+      .set({
+        label: parsed.data.label || null,
+        recipientName: parsed.data.recipientName,
+        recipientPhone: parsed.data.recipientPhone,
+        addressLine: parsed.data.addressLine,
+        district: parsed.data.district,
+        city: parsed.data.city,
+        cityId: 'map',
+        province: parsed.data.province,
+        provinceId: 'map',
+        postalCode: parsed.data.postalCode,
+        latitude: String(parsed.data.latitude),
+        longitude: String(parsed.data.longitude),
+        biteshipAreaId: parsed.data.biteshipAreaId ?? null,
+      })
       .where(and(
         eq(addresses.id, id),
         eq(addresses.userId, session.user.id)

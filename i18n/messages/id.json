@@ -51,6 +51,17 @@
     "description": "Yuk, temukan dimsum favoritmu!",
     "cta": "Mulai Belanja"
   },
+  "homePageCTA": {
+    "heroTitle": "Siap Mencicipi Kelezatan Dapur Dekaka?",
+    "heroSubtitle": "Pesan sekarang dan nikmati dimsum, siomay, dan bakso premium langsung di rumahmu",
+    "exploreProducts": "Jelajahi Produk",
+    "continueShoppingTitle": "Lanjutkan Belanja?",
+    "continueShoppingSubtitle": "Kamu punya {totalItems} item di keranjang. Lanjutkan belanja dan kumpulkan poin!",
+    "retryShoppingTitle": "Mau Pesan Lagi?",
+    "retryShoppingSubtitle": "Mau pesan lagi? Yuk jelajahi produk favoritmu.",
+    "viewCart": "Lihat Keranjang",
+    "startShopping": "Mulai Belanja"
+  },
   "coupon": {
     "label": "Kode Kupon",
     "placeholder": "Masukkan kode kupon",
@@ -87,7 +98,10 @@
     "cart": {
       "added": "{productName} ditambahkan ke keranjang",
       "viewCart": "Lihat Keranjang"
-    }
+    },
+    "frozenHandling": "Dikirim beku dengan ice pack. Simpan di freezer maks. 1 jam setelah diterima.",
+    "oosNotifyWa": "Beritahu saya kalau ready via WhatsApp",
+    "oosWaMessage": "Halo Dapur Dekaka, saya ingin diberitahu saat {product} ready lagi."
   },
   "about": {
     "label": "Tentang Kami",
@@ -246,7 +260,8 @@
   },
   "testimonials": {
     "title": "Kata Mereka yang Sudah Percaya",
-    "error": "Gagal memuat testimoni"
+    "errorTitle": "Kata Mereka yang Sudah Percaya",
+    "errorDesc": "Gagal memuat testimoni. Silakan coba lagi nanti."
   },
   "shippingOptions": {
     "selectCourier": "Pilih Kurir",
@@ -292,7 +307,9 @@
     "discount": "Diskon",
     "pointsUsed": "Poin Digunakan",
     "total": "Total",
-    "continueToCheckout": "Lanjutkan ke Checkout"
+    "continueToCheckout": "Lanjutkan ke Checkout",
+    "validating": "Memvalidasi…",
+    "priceUpdated": "Harga berubah — total diperbarui."
   },
   "pointsRedeemer": {
     "usePoints": "Gunakan Poin",
@@ -345,7 +362,9 @@
     "stockIssueDesc": "Stok telah diperbarui. Silakan kurangi jumlah atau hapus item yang tidak tersedia.",
     "validatingStock": "Memvalidasi stok...",
     "stockInsufficient": "Stok tidak mencukupi untuk jumlah yang diminta",
-    "stockInsufficientMessage": "Stok tidak mencukupi. Tersedia hanya {count} pcs."
+    "stockInsufficientMessage": "Stok tidak mencukupi. Tersedia hanya {count} pcs.",
+    "decreaseQuantity": "Kurangi jumlah",
+    "increaseQuantity": "Tambah jumlah"
   },
   "checkout": {
     "title": "Checkout",
@@ -365,7 +384,14 @@
     "nextToPayment": "Lanjut ke Pembayaran",
     "processing": "Memproses...",
     "calculatingShipping": "Menghitung ongkir...",
-    "continueToCourier": "Lanjut ke Kurir",
+    "continueToPayment": "Lanjut ke Pembayaran",
+    "mapPinLabel": "Peta alamat pengiriman",
+    "useMyLocation": "Gunakan lokasi saya",
+    "addressLine": "Alamat lengkap",
+    "district": "Kecamatan",
+    "city": "Kota",
+    "province": "Provinsi",
+    "postalCode": "Kode pos",
     "shippingCostError": "Gagal menghitung ongkir",
     "orderCreateError": "Gagal membuat pesanan",
     "cartEmpty": "Keranjangmu kosong",
@@ -437,7 +463,7 @@
     "successTitle": "Pesanan Berhasil!",
     "successThankYou": "Terima kasih atas pesanan Anda.",
     "successOrderNumber": "Nomor Pesanan",
-    "successDeliveryEstimate": "Dikirim via {courier} · Estimasi 2-3 hari kerja",
+    "successPendingConfirm": "Menunggu konfirmasi pembayaran… halaman ini akan refresh otomatis.",
     "successPointsEarned": "Kamu mendapat",
     "successPointsNote": "Poin akan dikreditkan setelah pembayaran dikonfirmasi oleh sistem",
     "viewOrderDetails": "Lihat Detail Pesanan",
@@ -452,7 +478,11 @@
     "net30Redirect": "Pesanan B2B Net-30 sedang diproses...",
     "midtransNotLoaded": "Midtrans belum dimuat. Silakan coba beberapa saat lagi.",
     "retryTokenError": "Gagal membuat token pembayaran baru",
-    "orderLoadError": "Gagal memuat data pesanan",
+    "successDeliveryEstimate": "Dikirim via {courier} · Estimasi 2-3 hari kerja",
+    "phaseNotReady": "Layanan tier ini belum tersedia di fase soft-launch. Pilih opsi lain.",
+    "intercityMinOrder": "Minimal subtotal Rp 250.000 untuk pengiriman beku antar kota.",
+    "pinConfirm": "Pin lokasi: {lat}, {lng}",
+    "pinConfirmEmpty": "Isi alamat lengkap di bawah — kurir mengantar ke pin, bukan catatan.",
     "emailMismatchError": "Email tidak cocok dengan pesanan",
     "verifyError": "Terjadi kesalahan saat verifikasi",
     "emailLabel": "Email",
@@ -594,7 +624,18 @@
     "orders": "Pesanan",
     "points": "Poin",
     "vouchers": "Voucher & Kupon",
+    "overview": "Ringkasan",
+    "signOut": "Keluar",
+    "signingOut": "Memproses...",
     "editProfile": "Edit Profil",
+    "myOrdersTitle": "Pesanan Saya — Dapur Dekaka",
+    "statusFilterAll": "Semua",
+    "statusFilterPendingPayment": "Menunggu Bayar",
+    "statusFilterProcessing": "Diproses",
+    "statusFilterPacked": "Dikemas",
+    "statusFilterShipped": "Dikirim",
+    "statusFilterDelivered": "Selesai",
+    "statusFilterCancelled": "Dibatalkan",
     "deleteAddress": "Hapus Alamat",
     "setDefault": "Jadikan Default",
     "viewOrder": "Lihat Pesanan",
@@ -749,6 +790,57 @@
     "shipmentTracking": "Pesanan Dikirim — Dapur Dekaka",
     "orderCancelled": "Pesanan Dibatalkan"
   },
+  "shippingTiers": {
+    "express": "Express",
+    "frozen_same_day": "Frozen Same-day",
+    "frozen_express": "Frozen Express",
+    "expressDescription": "GoSend/Grab — same day, tas pendingin di gudang",
+    "frozen_same_dayDescription": "Paxel/AnterAja ICE — same-day frozen",
+    "frozen_expressDescription": "SiCepat/JNE/AnterAja — nationwide frozen",
+    "noOptions": "Tidak ada kurir tersedia untuk alamat ini",
+    "cutoffToday": "Pesan & bayar sebelum {hour}:00 WIB untuk pengiriman hari ini",
+    "cutoffTomorrow": "Cut-off hari ini lewat — pengiriman besok (booking sebelum {hour}:00 WIB)",
+    "disabled": {
+      "paxel_weight_exceeded": "Paxel maks. 5 kg — pilih AnterAja ICE",
+      "instant_weight_exceeded": "Berat melebihi batas motor instant (15 kg)",
+      "courier_excluded": "Kurir tidak tersedia",
+      "phase_locked": "Belum tersedia — kriteria operasional belum terpenuhi",
+      "intercity_min_order": "Minimal Rp 250.000 untuk pengiriman beku antar kota"
+    }
+  },
+  "shippingInsurance": {
+    "title": "Asuransi Pengiriman (Opsional)",
+    "explanation": "Asuransi pengiriman melindungi nilai barang jika paket hilang atau rusak saat transit. Bukan jaminan suhu beku. Opsional — tanpa asuransi, klaim mungkin tidak tersedia.",
+    "none": "Tanpa asuransi",
+    "basic": "Basic (50% nilai barang)",
+    "premium": "Premium (100% nilai barang)"
+  },
+  "shippingInstantAck": {
+    "message": "Pengiriman express dikemas dalam tas pendingin di gudang kami. Segera masukkan ke freezer maks. 1 jam setelah diterima."
+  },
+  "trackingPage": {
+    "title": "Lacak Pesanan",
+    "subtitle": "Masukkan email yang digunakan saat checkout",
+    "orderLabel": "Nomor Pesanan",
+    "orderNumber": "Nomor Pesanan",
+    "email": "Email",
+    "emailLabel": "Email",
+    "emailPlaceholder": "email@contoh.com",
+    "trackButton": "Lacak",
+    "loading": "Memuat...",
+    "error": "Terjadi kesalahan. Coba lagi.",
+    "notFound": "Pesanan tidak ditemukan. Periksa nomor pesanan dan email.",
+    "statusLabel": "Status Pesanan",
+    "tier": "Tier pengiriman",
+    "pickupCode": "Kode ambil",
+    "awb": "No. Resi",
+    "liveTrack": "Lacak Live",
+    "driver": "Kurir",
+    "timeline": "Riwayat Status",
+    "trackAnother": "Lacak pesanan lain",
+    "backHome": "Kembali ke beranda",
+    "continueShopping": "Lanjut belanja"
+  },
   "metadata": {
     "homeTitle": "Dapur Dekaka | Frozen Food Premium dari Bandung",
     "homeDescription": "Cita rasa warisan Chinese-Indonesia, kini di rumahmu. Dimsum, siomay, bakso frozen premium dari Bandung. Pesan online, kirim ke seluruh Indonesia.",
@@ -768,5 +860,179 @@
     "allCategory": "Semua",
     "aboutTitle": "Tentang Kami | Dapur Dekaka",
     "aboutDescription": "Dapur Dekaka adalah produsen frozen food premium Chinese-Indonesia dari Bandung. Dimsum, siomay, bakso halal bersertifikat MUI."
+  },
+  "promise": {
+    "title": "Janji Kami ke Pelanggan",
+    "subtitle": "Apa yang Dapur Dekaka janjikan — dan apa yang tidak. Kami percaya janji yang terlalu tinggi lebih merugikan daripada yang terlalu rendah.",
+    "disclaimer": "Janji ini adalah sumber tunggal kebenaran untuk copy customer-facing. Semua copy di checkout, tracking, dan WA mengikuti dokumen ini.",
+    "charter": "Piagam Pelanggan Dapur Dekaka",
+    "wePromise": {
+      "1": "Semua produk halal dan diproduksi Dapur Dekaka Bandung — produk sama dengan offline/Shopee.",
+      "2": "Setiap paket dikemas beku dengan ice gel dan kemasan insulasi, difoto sebelum kirim.",
+      "3": "Pesanan pickup siap sesuai jam operasional; kode pickup = nomor pesanan.",
+      "4": "Kilat (Bandung): dipacking dan dijemput kurir di hari yang sama jika dibayar sebelum cut-off (jam cut-off tayang di checkout).",
+      "5": "Frozen Same-Day (Paxel/AnterAja): diserahkan ke kurir cold-chain hari yang sama/H+1 sebelum jam cut-off.",
+      "6": "Frozen Express (antar kota): dikirim H+1 maksimal, dengan packing khusus perjalanan 1–2 hari.",
+      "7": "Nomor resi dan link tracking dikirim via WA + email begitu kurir dibooking.",
+      "8": "Jika produk tiba tidak layak (basi/cair karena kegagalan kirim kami), kami ganti atau refund penuh — tanpa debat.",
+      "9": "Semua pembayaran diproses Midtrans; kami tidak pernah minta transfer manual di luar sistem.",
+      "10": "Pertanyaan WA dijawab dalam jam operasional, maksimal H+1.",
+      "11": "Harga website selalu di bawah harga Shopee untuk produk yang sama.",
+      "12": "Pembatalan sebelum dikirim = refund penuh (diproses 1–7 hari kerja)."
+    },
+    "weDoNotPromise": {
+      "1": "Jam tiba spesifik — hanya rentang estimasi kurir.",
+      "2": "Produk \"tetap beku\" saat tiba via kurir motor (Kilat) — kami jamin metode packing, bukan suhu saat tiba.",
+      "3": "Gratis ongkir atau subsidi ongkir ala marketplace.",
+      "4": "Ongkir sama dengan tarif publik kurir — ongkir kami termasuk penanganan frozen.",
+      "5": "Pengiriman ke daerah di luar cakupan layanan (hard block, bukan \"coba saja\").",
+      "6": "Same-day di hari libur/di luar jam operasional.",
+      "7": "COD.",
+      "8": "Kompensasi untuk keterlambatan murni di sisi kurir (kami bantu eskalasi, refund case-by-case).",
+      "9": "Perubahan alamat setelah kurir dibooking.",
+      "10": "Stok selalu tersedia — stok real-time bisa habis.",
+      "11": "Respon WA 24 jam.",
+      "12": "Harga sama dengan toko offline (offline tetap termurah — by design)."
+    },
+    "disputePlaybook": {
+      "spoilage": {
+        "title": "Dimsum saya cair/basi",
+        "stance": "Refund-first. Minta foto, jangan debat suhu. Ganti/refund penuh dalam 24 jam + WA personal dari owner. Log ke refund ledger. Ini bukan biaya — ini asuransi merek."
+      },
+      "ongkir": {
+        "title": "Kenapa ongkir lebih mahal dari Shopee?",
+        "stance": "Ongkir kami sudah termasuk packing frozen (ice gel + insulasi) dan hanya pakai layanan yang aman untuk frozen. Total harga produk + ongkir tetap lebih murah dari Shopee."
+      },
+      "lost": {
+        "title": "Paket belum sampai, resi tidak jalan",
+        "stance": "Kami eskalasi ke kurir hari itu juga; update tiap hari via WA. Jika hilang: refund/kirim ulang, klaim ke kurir urusan kami, bukan customer."
+      },
+      "wrongItem": {
+        "title": "Salah item / kurang",
+        "stance": "Foto → kirim susulan atau refund selisih, hari itu. No interrogation under Rp 50k value."
+      },
+      "negotiate": {
+        "title": "Bisa nego / harga offline?",
+        "stance": "Harga offline hanya di toko. Website sudah termurah untuk pesan-antar. Sebagai gantinya ada poin loyalti. Hold the price ladder — it protects all channels."
+      }
+    },
+    "sla": {
+      "pickup": "Siap diambil hari ini selama jam buka setelah pembayaran terkonfirmasi.",
+      "kilat": "Tiba 1–3 jam setelah kurir pickup (area Bandung). Dikemas cooler bag + ice gel; kurir motor tanpa pendingin aktif — mohon langsung simpan di freezer.",
+      "frozenSameDay": "Tiba hari ini/besok via kurir cold-chain (Paxel/AnterAja). Estimasi mengikuti kurir.",
+      "frozenExpress": "Tiba 1–2 hari via layanan frozen antar kota. Dikemas untuk perjalanan hingga 48 jam."
+    }
+  },
+  "tier": {
+    "express": "Kilat (Bandung, kurir motor)",
+    "frozenSameDay": "Frozen Same-Day",
+    "frozenExpress": "Frozen Express",
+    "pickup": "Ambil di Toko"
+  },
+  "tierTruth": {
+    "express": "Kurir motor tanpa pendingin aktif. Kami jamin metode packing (cooler bag + ice gel), bukan suhu saat tiba.",
+    "frozenSameDay": "Cold-chain refrigerated. Estimasi mengikuti kurir (Paxel/AnterAja).",
+    "frozenExpress": "Antar kota cepat (1–2 hari). Packing untuk perjalanan 48 jam — packing diuji sebelum Phase 2.",
+    "pickup": "Customer-owned dari handover. Ambil di toko setelah pembayaran terkonfirmasi."
+  },
+  "shipping": {
+    "bundledLabel": "Ongkir & Penanganan Frozen (termasuk ice gel + kemasan)"
+  },
+  "cartSummary": {
+    "weightGate5kg": "Pesanan di atas 5kg dikirim kurir reguler frozen (1–2 hari).",
+    "weightGate15kg": "Di atas 15kg hanya bisa Frozen Express."
+  },
+  "shippingInstantAck": {
+    "title": "Pengiriman Kilat",
+    "message": "Kurir motor tidak memiliki pendingin aktif. Produk dikemas dengan cooler bag dan ice gel, namun suhu saat tiba tergantung cuaca dan waktu pengiriman. Setelah diterima, segera simpan di freezer. Pilih opsi ini hanya jika Anda bisa langsung memasukkan ke freezer."
+  },
+  "opsCard": {
+    "title": "Kartu Ritual Harian Dapur Dekaka",
+    "subtitle": "15 menit, jam 08:30. Tandai setiap item setelah selesai.",
+    "line1": "Cek Vercel logs untuk error webhook Midtrans 24 jam terakhir.",
+    "line2": "Ada pesanan pending_payment > 1 jam? → cek dashboard Midtrans.",
+    "line3": "Pesanan sudah dibayar tapi belum masuk antrian packing?",
+    "line4": "Ada dispatch yang gagal atau sedang retry? → jalankan SOP Gagal Booking.",
+    "line5": "Biteship wallet ≥ 2× biaya kirim 7 hari terakhir? Senin: TOP UP.",
+    "line6": "Fonnte device online? Kirim tes ke nomor sendiri (cek tiap Senin).",
+    "line7": "Balas semua WA masuk semalam.",
+    "line8": "Kilat: pesanan paid sebelum 14:00 harus sudah dibooking sebelum 16:00.",
+    "line9": "Refund ledger: ada kewajiban > 3 hari? Proses sekarang.",
+    "line10": "Stok fisik vs sistem: cek 2 SKU acak.",
+    "weeklyHint": "Ritual Senin: top-up wallet, cek cron logs, refund ledger review."
+  },
+  "kpi": {
+    "title": "KPI & Sasaran 90 Hari",
+    "ordersThisWeek": "Pesanan minggu ini",
+    "ordersThisMonth": "Pesanan bulan ini",
+    "targetWeek12": "Target Week-12 (300/bulan)",
+    "cvr": "Estimasi CVR",
+    "repeatRate": "Repeat rate",
+    "refundRate": "Refund rate",
+    "phase1Status": "Status Phase 1",
+    "phaseCriteriaMet": "Kriteria Phase 1 tercapai",
+    "phaseCriteriaNotMet": "Kriteria Phase 1 belum tercapai — tetap di Phase 0",
+    "phase": "Phase aktif"
+  },
+  "disputes": {
+    "title": "Dispute & Refund Log",
+    "newButton": "Catat Dispute Baru",
+    "empty": "Belum ada dispute yang dicatat.",
+    "category": "Kategori",
+    "customerMessage": "Pesan Pelanggan",
+    "ownerNotes": "Catatan Owner",
+    "refundIssued": "Refund diproses",
+    "status": "Status",
+    "open": "Belum Ditangani",
+    "in_progress": "Sedang Diproses",
+    "resolved": "Selesai",
+    "rejected": "Ditolak",
+    "saveNote": "Simpan Catatan",
+    "markResolved": "Tandai Selesai",
+    "logRefund": "Catat Refund",
+    "refundAmount": "Jumlah Refund",
+    "refundReason": "Alasan Refund",
+    "formTitle": "Catat Dispute / Klaim Baru",
+    "formHint": "Isi pesan pelanggan, pilih kategori, dan tambahkan refund jika berlaku. Refund otomatis masuk ke ledger dengan status pending."
+  },
+  "softLaunch": {
+    "banner": "Soft Launch — Dapatkan diskon spesial untuk pesanan pertama Anda",
+    "bannerTitle": "Soft Launch Aktif",
+    "bannerBody": "Dapur Dekaka masih masa soft launch — dapatkan diskon spesial untuk pesanan pertama Anda",
+    "bannerCta": "Chat WhatsApp",
+    "metaHidden": "true"
+  },
+  "b2bMotion": {
+    "headline": "Untuk Restoran, Hotel, Catering, & Event",
+    "subline": "Konsultasi personal, sampel gratis, dan harga spesial untuk volume besar. Chat WhatsApp untuk inquiry.",
+    "cta": "Chat WhatsApp",
+    "sampleCta": "Minta Sampel",
+    "priceSheetCta": "Unduh Price Sheet PDF",
+    "noPortal": "Untuk saat ini, semua order B2B melalui WhatsApp — belum ada portal self-service."
+  },
+  "sampler": {
+    "banner": "Tambah Dimsum Rambutan GRATIS untuk pesanan ≥ {amount}.",
+    "consent": "Ya, tambahkan Dimsum Rambutan gratis.",
+    "note": "Promo otomatis aktif jika pesanan memenuhi minimum."
+  },
+  "blog": {
+    "postTitle_cara-menyimpan-dimsum-frozen": "Cara Menyimpan Dimsum Frozen yang Benar (Agar Tetap Segar Sampai Pulang)",
+    "postTitle_cara-mengukus-dimsum-ala-restoran": "Cara Mengukus Dimsum Ala Restoran — Tanpa Alat Khusus",
+    "postTitle_dimsum-halal-bandung-dapur-dekaka": "Dimsum Halal Bandung — Cerita Dapur Dekaka"
+  },
+  "adminDisputes": {
+    "category_hint": "Pilih kategori yang paling cocok dengan komplain pelanggan.",
+    "save": "Simpan",
+    "cancel": "Batal",
+    "savedSuccess": "Dispute tersimpan.",
+    "refundCreatedSuccess": "Refund tercatat. Mohon proses dalam 7 hari.",
+    "slaHours": "Terbuka {hours}j"
+  },
+  "maintenance": {
+    "title": "Sedang Dalam Perawatan",
+    "message": "Mohon maaf, saat ini website dalam mode terbatas. Pesanan pickup masih bisa dilakukan.",
+    "pickupOnly": "Untuk sementara kami hanya melayani Ambil di Toko.",
+    "whatsappFallback": "Untuk pesanan lain, silakan WhatsApp kami.",
+    "backHome": "Kembali ke Beranda"
   }
 }

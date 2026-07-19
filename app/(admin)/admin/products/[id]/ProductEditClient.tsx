@@ -38,6 +38,9 @@ interface ProductDetail {
     b2bPrice: number;
     stock: number;
     weightGram: number;
+    lengthCm: number;
+    widthCm: number;
+    heightCm: number;
     isActive: boolean;
   }[];
   images: {
@@ -201,6 +204,9 @@ export default function ProductEditClient({ productId }: ProductEditClientProps)
             b2bPrice: v.b2bPrice,
             stock: v.stock,
             weightGram: v.weightGram,
+            lengthCm: v.lengthCm,
+            widthCm: v.widthCm,
+            heightCm: v.heightCm,
             isActive: v.isActive,
           })),
           images: product.images.map(img => ({

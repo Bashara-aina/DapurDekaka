@@ -164,7 +164,8 @@
   },
   "testimonials": {
     "title": "What Our Customers Say",
-    "error": "Failed to load testimonials"
+    "errorTitle": "What Our Customers Say",
+    "errorDesc": "Failed to load testimonials. Please try again later."
   },
   "shippingOptions": {
     "selectCourier": "Select Courier",
@@ -210,7 +211,9 @@
     "discount": "Discount",
     "pointsUsed": "Points Used",
     "total": "Total",
-    "continueToCheckout": "Continue to Checkout"
+    "continueToCheckout": "Continue to Checkout",
+    "validating": "Validating…",
+    "priceUpdated": "Price updated — totals refreshed."
   },
   "pointsRedeemer": {
     "usePoints": "Use Points",
@@ -286,6 +289,17 @@
     "description": "Let's find your favorite dimsum!",
     "cta": "Start Shopping"
   },
+  "homePageCTA": {
+    "heroTitle": "Ready to Taste Dapur Dekaka's Deliciousness?",
+    "heroSubtitle": "Order now and enjoy premium dimsum, siomay, and bakso right at your home",
+    "exploreProducts": "Explore Products",
+    "continueShoppingTitle": "Continue Shopping?",
+    "continueShoppingSubtitle": "You have {totalItems} items in your cart. Continue shopping and collect points!",
+    "retryShoppingTitle": "Want to Order Again?",
+    "retryShoppingSubtitle": "Want to order again? Let's explore your favorite products.",
+    "viewCart": "View Cart",
+    "startShopping": "Start Shopping"
+  },
   "coupon": {
     "label": "Coupon Code",
     "placeholder": "Enter coupon code",
@@ -322,7 +336,10 @@
     "cart": {
       "added": "{productName} added to cart",
       "viewCart": "View Cart"
-    }
+    },
+    "frozenHandling": "Shipped frozen with ice packs. Store in freezer within 1 hour of delivery.",
+    "oosNotifyWa": "Notify me on WhatsApp when back in stock",
+    "oosWaMessage": "Hi Dapur Dekaka, please notify me when {product} is available again."
   },
   "cart": {
     "empty": "Your cart is empty",
@@ -345,7 +362,9 @@
     "stockIssueDesc": "Stock has been updated. Please reduce the quantity or remove unavailable items.",
     "validatingStock": "Validating stock...",
     "stockInsufficient": "Insufficient stock for the requested quantity",
-    "stockInsufficientMessage": "Insufficient stock. Only {count} pcs available."
+    "stockInsufficientMessage": "Insufficient stock. Only {count} pcs available.",
+    "decreaseQuantity": "Decrease quantity",
+    "increaseQuantity": "Increase quantity"
   },
   "checkout": {
     "title": "Checkout",
@@ -365,7 +384,14 @@
     "nextToPayment": "Continue to Payment",
     "processing": "Processing...",
     "calculatingShipping": "Calculating shipping...",
-    "continueToCourier": "Continue to Courier",
+    "continueToPayment": "Continue to Payment",
+    "mapPinLabel": "Delivery address map",
+    "useMyLocation": "Use my location",
+    "addressLine": "Full address",
+    "district": "District",
+    "city": "City",
+    "province": "Province",
+    "postalCode": "Postal code",
     "shippingCostError": "Failed to calculate shipping",
     "orderCreateError": "Failed to create order",
     "cartEmpty": "Your cart is empty",
@@ -437,6 +463,7 @@
     "successTitle": "Order Successful!",
     "successThankYou": "Thank you for your order.",
     "successOrderNumber": "Order number",
+    "successPendingConfirm": "Waiting for payment confirmation… this page refreshes automatically.",
     "successDeliveryEstimate": "Delivered via {courier} · Estimated 2-3 business days",
     "successPointsEarned": "You earned",
     "successPointsNote": "Points will be credited after payment is confirmed by the system",
@@ -453,6 +480,10 @@
     "midtransNotLoaded": "Midtrans not loaded yet. Please try again in a moment.",
     "retryTokenError": "Failed to create new payment token",
     "orderLoadError": "Failed to load order data",
+    "phaseNotReady": "This tier is not available during soft launch. Please choose another option.",
+    "intercityMinOrder": "Minimum subtotal Rp 250,000 for intercity frozen shipping.",
+    "pinConfirm": "Map pin: {lat}, {lng}",
+    "pinConfirmEmpty": "Enter full address below — couriers deliver to the pin, not notes.",
     "emailMismatchError": "Email does not match the order",
     "verifyError": "An error occurred during verification",
     "emailLabel": "Email",
@@ -594,7 +625,18 @@
     "orders": "Orders",
     "points": "Points",
     "vouchers": "Vouchers & Coupons",
+    "overview": "Overview",
+    "signOut": "Log Out",
+    "signingOut": "Processing...",
     "editProfile": "Edit Profile",
+    "myOrdersTitle": "My Orders — Dapur Dekaka",
+    "statusFilterAll": "All",
+    "statusFilterPendingPayment": "Awaiting Payment",
+    "statusFilterProcessing": "Processing",
+    "statusFilterPacked": "Packed",
+    "statusFilterShipped": "Shipped",
+    "statusFilterDelivered": "Delivered",
+    "statusFilterCancelled": "Cancelled",
     "deleteAddress": "Delete Address",
     "setDefault": "Set as Default",
     "viewOrder": "View Order",
@@ -749,6 +791,48 @@
     "shipmentTracking": "Order Shipped — Dapur Dekaka",
     "orderCancelled": "Order Cancelled"
   },
+  "shippingTiers": {
+    "express": "Express",
+    "frozen_same_day": "Frozen Same-day",
+    "frozen_express": "Frozen Express",
+    "expressDescription": "GoSend/Grab — same day with cooler bag packing",
+    "frozen_same_dayDescription": "Paxel/AnterAja ICE — same-day frozen",
+    "frozen_expressDescription": "SiCepat/JNE/AnterAja — nationwide frozen",
+    "noOptions": "No couriers available for this address",
+    "cutoffToday": "Order & pay before {hour}:00 WIB for same-day dispatch",
+    "cutoffTomorrow": "Today's cutoff passed — ships tomorrow (book before {hour}:00 WIB)",
+    "disabled": {
+      "paxel_weight_exceeded": "Paxel max 5 kg — choose AnterAja ICE",
+      "instant_weight_exceeded": "Weight exceeds instant bike limit (15 kg)",
+      "courier_excluded": "Courier unavailable",
+      "phase_locked": "Not available yet — operational criteria not met",
+      "intercity_min_order": "Minimum Rp 250.000 required for intercity frozen delivery"
+    }
+  },
+  "shippingInsurance": {
+    "title": "Shipping Insurance (Optional)",
+    "explanation": "Shipping insurance protects item value if the package is lost or damaged in transit. It is not a frozen-temperature guarantee. Optional — without insurance, claims may not be available.",
+    "none": "No insurance",
+    "basic": "Basic (50% item value)",
+    "premium": "Premium (100% item value)"
+  },
+  "shippingInstantAck": {
+    "message": "Express delivery is packed in a cooler bag at our warehouse. Put in freezer within 1 hour of receipt."
+  },
+  "trackingPage": {
+    "title": "Track Order",
+    "subtitle": "Enter the email used at checkout",
+    "orderNumber": "Order Number",
+    "email": "Email",
+    "trackButton": "Track",
+    "notFound": "Order not found. Check order number and email.",
+    "pickupCode": "Pickup code",
+    "awb": "Tracking No.",
+    "liveTrack": "Live Track",
+    "driver": "Driver",
+    "timeline": "Status Timeline",
+    "continueShopping": "Continue shopping"
+  },
   "metadata": {
     "homeTitle": "Dapur Dekaka | Premium Frozen Food from Bandung",
     "homeDescription": "Heritage Chinese-Indonesian flavors, now at your home. Premium frozen dimsum, siomay, bakso from Bandung. Order online, ship across Indonesia.",
@@ -770,5 +854,179 @@
     "allCategory": "All",
     "aboutTitle": "About Us | Dapur Dekaka",
     "aboutDescription": "Dapur Dekaka is a premium Chinese-Indonesian frozen food producer from Bandung. Halal-certified dimsum, siomay, and bakso."
+  },
+  "promise": {
+    "title": "Our Customer Promise",
+    "subtitle": "What Dapur Dekaka promises — and what it doesn't. We believe over-promising hurts customers more than under-promising.",
+    "disclaimer": "This charter is the single source of truth for all customer-facing shipping, SLA, and trust copy.",
+    "charter": "Dapur Dekaka Customer Promise Charter",
+    "wePromise": {
+      "1": "All products are halal and made in our Bandung facility — the same product as in our offline store and Shopee.",
+      "2": "Every order is packed frozen with ice gel and insulated packaging, photographed before dispatch.",
+      "3": "Pickup orders are ready during operating hours; your pickup code is your order number.",
+      "4": "Kilat (Bandung): packed and picked up by the courier the same day when paid before the cut-off (visible at checkout).",
+      "5": "Frozen Same-Day (Paxel/AnterAja): handed to the cold-chain courier same day or next day before the cut-off.",
+      "6": "Frozen Express (intercity): dispatched by next day at the latest, with packing rated for 1–2 day travel.",
+      "7": "Tracking number and link are sent via WhatsApp and email as soon as the courier is booked.",
+      "8": "If your order arrives damaged or thawed due to our shipping failure, we replace or refund in full — no debate.",
+      "9": "All payments are processed by Midtrans; we never ask for manual transfers outside the system.",
+      "10": "WhatsApp questions are answered within operating hours, by the next business day at the latest.",
+      "11": "Our website price is always below Shopee for the same product.",
+      "12": "Cancellations before dispatch = full refund (processed within 1–7 business days)."
+    },
+    "weDoNotPromise": {
+      "1": "Specific arrival times — only courier-provided estimates.",
+      "2": "Products arriving \"still frozen\" via motorcycle couriers (Kilat) — we guarantee the packing method, not the arrival temperature.",
+      "3": "Free shipping or marketplace-style shipping subsidies.",
+      "4": "Shipping rates that match public courier lists — our rate covers frozen handling on top.",
+      "5": "Shipping to destinations outside our coverage area (hard block, not \"try anyway\").",
+      "6": "Same-day delivery on public holidays or outside operating hours.",
+      "7": "Cash on delivery (COD).",
+      "8": "Compensation for courier-only delays (we escalate; refund decisions are case-by-case).",
+      "9": "Address changes after the courier has been booked.",
+      "10": "Permanent stock availability — real-time stock can sell out.",
+      "11": "24/7 WhatsApp response.",
+      "12": "Website price matching the offline store (offline stays cheapest — by design)."
+    },
+    "disputePlaybook": {
+      "spoilage": {
+        "title": "My dimsum arrived melted or spoiled",
+        "stance": "Refund-first. Ask for photos — don't argue about temperature. Replace or refund in full within 24 hours plus a personal WhatsApp from the owner. Log into the refund ledger. This is not a cost — it's brand insurance."
+      },
+      "ongkir": {
+        "title": "Why is shipping more expensive than Shopee?",
+        "stance": "Our shipping includes frozen handling (ice gel + insulation) and only uses couriers proven safe for frozen. Total product + shipping is still below Shopee."
+      },
+      "lost": {
+        "title": "Package hasn't arrived, no tracking movement",
+        "stance": "We escalate with the courier the same day; daily WhatsApp updates. If lost: refund or resend, and we handle the courier claim — never push it onto the customer."
+      },
+      "wrongItem": {
+        "title": "Wrong item / shortage",
+        "stance": "Photos → send replacement or refund the difference, same day. No interrogation under Rp 50k value."
+      },
+      "negotiate": {
+        "title": "Can you negotiate / match offline price?",
+        "stance": "Offline pricing is in-store only. The website is the cheapest channel for delivered orders. Loyalty points exist for repeat customers. Hold the price ladder — it protects all channels."
+      }
+    },
+    "sla": {
+      "pickup": "Ready for pickup today during opening hours after payment is confirmed.",
+      "kilat": "Arrives 1–3 hours after courier pickup (Bandung area). Packed in cooler bag + ice gel; motorcycle courier has no active cooling — please store in freezer immediately.",
+      "frozenSameDay": "Arrives today or tomorrow via cold-chain courier (Paxel/AnterAja). Estimated by courier.",
+      "frozenExpress": "Arrives within 1–2 days via intercity frozen service. Packed for up to 48 hours of transit."
+    }
+  },
+  "tier": {
+    "express": "Kilat (Bandung, motorcycle courier)",
+    "frozenSameDay": "Frozen Same-Day",
+    "frozenExpress": "Frozen Express",
+    "pickup": "Pickup at Store"
+  },
+  "tierTruth": {
+    "express": "Motorcycle courier has no active cooling. We guarantee the packing method (cooler bag + ice gel), not the arrival temperature.",
+    "frozenSameDay": "Refrigerated cold-chain. Estimate by courier (Paxel/AnterAja).",
+    "frozenExpress": "Fast intercity (1–2 days). Packing rated for 48 hours — pre-tested before Phase 2.",
+    "pickup": "Customer-owned from handover. Pick up at the store after payment is confirmed."
+  },
+  "shipping": {
+    "bundledLabel": "Shipping & Frozen Handling (incl. ice gel + packaging)"
+  },
+  "cartSummary": {
+    "weightGate5kg": "Orders above 5kg ship via regular frozen courier (1–2 days).",
+    "weightGate15kg": "Above 15kg, only Frozen Express is available."
+  },
+  "shippingInstantAck": {
+    "title": "Kilat (Instant) Delivery",
+    "message": "Motorcycle couriers have no active cooling. Products are packed in a cooler bag with ice gel, but arrival temperature depends on weather and travel time. After arrival, store in the freezer immediately. Choose this option only if you can transfer the order straight into a freezer."
+  },
+  "opsCard": {
+    "title": "Dapur Dekaka Daily Ops Card",
+    "subtitle": "15 minutes, at 08:30. Tick each item as you finish it.",
+    "line1": "Check Vercel logs for Midtrans webhook errors in the last 24 hours.",
+    "line2": "Orders stuck in pending_payment > 1 hour? → check Midtrans dashboard.",
+    "line3": "Paid orders not yet in the packing queue?",
+    "line4": "Failed or retrying dispatches? → run the Failed-Booking SOP.",
+    "line5": "Biteship wallet balance ≥ 2× last 7-day shipping cost? Monday: TOP UP.",
+    "line6": "Is the Fonnte device online? Send a test to your own number (every Monday).",
+    "line7": "Reply to all WhatsApp messages from overnight.",
+    "line8": "Kilat: paid-by-14:00 orders must be booked before 16:00.",
+    "line9": "Refund ledger: any obligations > 3 days old? Process now.",
+    "line10": "Physical vs system stock: random spot-check 2 SKUs.",
+    "weeklyHint": "Monday ritual: top up wallet, check cron logs, refund ledger review."
+  },
+  "kpi": {
+    "title": "KPI & 90-Day Targets",
+    "ordersThisWeek": "Orders this week",
+    "ordersThisMonth": "Orders this month",
+    "targetWeek12": "Week-12 target (300/month)",
+    "cvr": "Estimated CVR",
+    "repeatRate": "Repeat rate",
+    "refundRate": "Refund rate",
+    "phase1Status": "Phase 1 status",
+    "phaseCriteriaMet": "Phase 1 criteria met",
+    "phaseCriteriaNotMet": "Phase 1 criteria not met — stay in Phase 0",
+    "phase": "Active phase"
+  },
+  "disputes": {
+    "title": "Dispute & Refund Log",
+    "newButton": "Log New Dispute",
+    "empty": "No disputes logged yet.",
+    "category": "Category",
+    "customerMessage": "Customer Message",
+    "ownerNotes": "Owner Notes",
+    "refundIssued": "Refund issued",
+    "status": "Status",
+    "open": "Open",
+    "in_progress": "In progress",
+    "resolved": "Resolved",
+    "rejected": "Rejected",
+    "saveNote": "Save Note",
+    "markResolved": "Mark Resolved",
+    "logRefund": "Log Refund",
+    "refundAmount": "Refund Amount",
+    "refundReason": "Refund Reason",
+    "formTitle": "Log New Dispute / Claim",
+    "formHint": "Fill in the customer message, choose a category, and add a refund if applicable. The refund automatically enters the ledger with status pending."
+  },
+  "softLaunch": {
+    "banner": "Soft Launch — Get a special discount on your first order",
+    "bannerTitle": "Soft Launch Live",
+    "bannerBody": "Dapur Dekaka is in soft launch — get a special discount on your first order",
+    "bannerCta": "Chat WhatsApp",
+    "metaHidden": "true"
+  },
+  "b2bMotion": {
+    "headline": "For Restaurants, Hotels, Caterers & Events",
+    "subline": "Personal consultation, free samples, and volume pricing. Chat on WhatsApp to inquire.",
+    "cta": "Chat WhatsApp",
+    "sampleCta": "Request Samples",
+    "priceSheetCta": "Download Price Sheet PDF",
+    "noPortal": "For now, all B2B orders go through WhatsApp — no self-service portal yet."
+  },
+  "sampler": {
+    "banner": "Add a free Rambutan Dimsum to orders ≥ {amount}.",
+    "consent": "Yes, add a free Rambutan Dimsum.",
+    "note": "Promo auto-applies when the order minimum is met."
+  },
+  "blog": {
+    "postTitle_cara-menyimpan-dimsum-frozen": "How to Store Frozen Dimsum Properly (So It Stays Fresh Until You Get Home)",
+    "postTitle_cara-mengukus-dimsum-ala-restoran": "How to Steam Dimsum Like a Restaurant — No Special Equipment Needed",
+    "postTitle_dimsum-halal-bandung-dapur-dekaka": "Halal Dimsum Bandung — The Story of Dapur Dekaka"
+  },
+  "adminDisputes": {
+    "category_hint": "Choose the category that best fits the customer complaint.",
+    "save": "Save",
+    "cancel": "Cancel",
+    "savedSuccess": "Dispute saved.",
+    "refundCreatedSuccess": "Refund logged. Process within 7 days.",
+    "slaHours": "Open {hours}h"
+  },
+  "maintenance": {
+    "title": "Temporarily Under Maintenance",
+    "message": "We're sorry — the website is currently in limited mode. Pickup orders are still available.",
+    "pickupOnly": "For now, we only serve store pickups.",
+    "whatsappFallback": "For other orders, please reach us on WhatsApp.",
+    "backHome": "Back to Home"
   }
 }

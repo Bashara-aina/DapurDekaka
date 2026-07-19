@@ -7,6 +7,7 @@ import { eq, desc, and, isNull, sql, inArray, gte, lt, or, ilike } from 'drizzle
 import { success, unauthorized, forbidden, serverError, validationError } from '@/lib/utils/api-response';
 import { logger } from '@/lib/utils/logger';
 import { generateOrderNumber } from '@/lib/utils/generate-order-number';
+import { withRateLimit } from '@/lib/utils/rate-limit';
 import type { SQL } from 'drizzle-orm';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -22,7 +23,7 @@ const ORDER_STATUSES = [
   'refunded',
 ] as const;
 
-export async function GET(req: NextRequest) {
+export const GET = withRateLimit(async (req: NextRequest) => {
   try {
     const session = await auth();
     if (!session?.user) {
@@ -111,7 +112,7 @@ export async function GET(req: NextRequest) {
     logger.error('[Admin Orders GET]', { error });
     return serverError(error);
   }
-}
+}, { windowMs: 60000, maxRequests: 30 });
 
 const orderQuerySchema = z.object({
   recipientName: z.string().min(1),

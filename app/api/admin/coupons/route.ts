@@ -4,12 +4,13 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { coupons } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
-import { unauthorized, forbidden, serverError, conflict } from '@/lib/utils/api-response';
+import { success, unauthorized, forbidden, serverError, conflict, validationError } from '@/lib/utils/api-response';
 import { logger } from '@/lib/utils/logger';
+import { withRateLimit } from '@/lib/utils/rate-limit';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export async function GET(req: NextRequest) {
+export const GET = withRateLimit(async (req: NextRequest) => {
   try {
     const session = await auth();
     if (!session?.user) {
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
     logger.error('[Admin Coupons GET]', { error });
     return serverError(error);
   }
-}
+}, { windowMs: 60000, maxRequests: 30 });
 
 const CreateCouponSchema = z.discriminatedUnion('type', [
   z.object({
@@ -95,6 +96,8 @@ const CreateCouponSchema = z.discriminatedUnion('type', [
     freeShipping: z.boolean().default(false),
     buyQuantity: z.number().int().nonnegative().optional(),
     getQuantity: z.number().int().nonnegative().optional(),
+    applicableProductIds: z.array(z.string().uuid()).optional(),
+    applicableCategoryIds: z.array(z.string().uuid()).optional(),
     maxUses: z.number().int().nonnegative().optional().nullable(),
     maxUsesPerUser: z.number().int().nonnegative().optional().nullable(),
     isPublic: z.boolean().default(false),
@@ -116,10 +119,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsed = CreateCouponSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
-        { success: false, error: 'Validation failed', code: 'VALIDATION_ERROR', details: parsed.error.flatten().fieldErrors },
-        { status: 422 }
-      );
+      return validationError(parsed.error);
     }
 
     const code = parsed.data.code.toUpperCase().trim();
@@ -143,6 +143,8 @@ export async function POST(req: NextRequest) {
       freeShipping: parsed.data.freeShipping,
       buyQuantity: (parsed.data as { buyQuantity?: number | null }).buyQuantity ?? null,
       getQuantity: (parsed.data as { getQuantity?: number | null }).getQuantity ?? null,
+      applicableProductIds: (parsed.data as { applicableProductIds?: string[] | null }).applicableProductIds ?? null,
+      applicableCategoryIds: (parsed.data as { applicableCategoryIds?: string[] | null }).applicableCategoryIds ?? null,
       maxUses: parsed.data.maxUses ?? null,
       usedCount: 0,
       maxUsesPerUser: parsed.data.maxUsesPerUser ?? null,

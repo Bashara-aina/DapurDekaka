@@ -48,6 +48,7 @@ async function handleValidate(req: NextRequest) {
           id: true,
           stock: true,
           isActive: true,
+          price: true,
         },
       });
 
@@ -63,6 +64,7 @@ async function handleValidate(req: NextRequest) {
             cartQty,
             availableStock: 0,
             available: false,
+            unitPrice: 0,
           };
         }
 
@@ -74,6 +76,7 @@ async function handleValidate(req: NextRequest) {
           cartQty,
           availableStock,
           available,
+          unitPrice: variant.price,
         };
       });
 
@@ -98,6 +101,7 @@ async function handleValidate(req: NextRequest) {
           id: true,
           stock: true,
           isActive: true,
+          price: true,
         },
       });
 
@@ -113,6 +117,7 @@ async function handleValidate(req: NextRequest) {
             cartQty,
             availableStock: 0,
             available: false,
+            unitPrice: 0,
           };
         }
 
@@ -124,6 +129,7 @@ async function handleValidate(req: NextRequest) {
           cartQty,
           availableStock,
           available,
+          unitPrice: variant.price,
         };
       });
 

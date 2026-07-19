@@ -93,7 +93,7 @@ export function ProductCardHorizontal({ product, variant, className }: ProductCa
             onClick={handleAddToCart}
             disabled={isOutOfStock}
             className={cn(
-              'h-9 w-9 md:h-11 md:w-11 rounded-full flex items-center justify-center transition-colors flex-shrink-0',
+              'h-11 w-11 md:h-11 md:w-11 rounded-full flex items-center justify-center transition-colors flex-shrink-0',
               isOutOfStock
                 ? 'bg-text-disabled text-white cursor-not-allowed'
                 : 'bg-brand-red text-white hover:bg-brand-red-dark'

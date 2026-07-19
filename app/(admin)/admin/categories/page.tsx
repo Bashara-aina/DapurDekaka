@@ -1,7 +1,7 @@
-import { requireRole } from '@/lib/auth/check-role';
+import { requireAdmin } from '@/lib/auth/require-admin';
 import CategoriesClient from './CategoriesClient';
 
 export default async function CategoriesPage() {
-  await requireRole(['superadmin', 'owner']);
+  await requireAdmin(['superadmin', 'owner']);
   return <CategoriesClient />;
 }

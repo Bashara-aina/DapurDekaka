@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { products, productVariants, productImages } from '@/lib/db/schema';
 import { eq, and, ne, isNull } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
+import { headers } from 'next/headers';
 import { ProductDetailClient } from '@/components/store/products/ProductDetailClient';
 
 export const revalidate = 60;
@@ -13,6 +14,9 @@ interface ProductDetailPageProps {
 
 export async function generateMetadata({ params }: ProductDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
+  const headersList = await headers();
+  const acceptLanguage = headersList.get('accept-language') || 'id';
+  const isIndonesian = acceptLanguage.startsWith('id');
 
   const product = await db.query.products.findFirst({
     where: and(eq(products.slug, slug), eq(products.isActive, true), isNull(products.deletedAt)),
@@ -24,28 +28,33 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
     nameId: string;
     nameEn: string;
     slug: string;
-    category: { id: string; nameId: string; slug: string } | null;
+    category: { id: string; nameId: string; nameEn: string; slug: string } | null;
     metaTitleId: string | null;
+    metaTitleEn: string | null;
     metaDescriptionId: string | null;
+    metaDescriptionEn: string | null;
     shortDescriptionId: string | null;
+    shortDescriptionEn: string | null;
     images: Array<{ id: string; cloudinaryUrl: string }>;
   } | null);
 
   if (!product) {
     return {
-      title: 'Produk Tidak Ditemukan - Dapur Dekaka',
+      title: isIndonesian ? 'Produk Tidak Ditemukan - Dapur Dekaka' : 'Product Not Found - Dapur Dekaka',
     };
   }
 
-  const description = product.metaDescriptionId ||
-    product.shortDescriptionId ||
-    `Beli ${product.nameId} online. Harga terbaik, kirim ke seluruh Indonesia. ${product.category?.nameId || 'Frozen food'} premium dari Dapur Dekaka.`;
+  const description = isIndonesian
+    ? (product.metaDescriptionId || product.shortDescriptionId)
+    : (product.metaDescriptionEn || product.shortDescriptionEn);
 
-  const title = product.metaTitleId || `${product.nameId} - Dapur Dekaka`;
+  const title = isIndonesian
+    ? (product.metaTitleId || `${product.nameId} - Dapur Dekaka`)
+    : (product.metaTitleEn || `${product.nameEn} - Dapur Dekaka`);
 
   return {
     title,
-    description,
+    description: description ?? undefined,
     keywords: [
       product.nameId,
       product.nameEn,
@@ -59,7 +68,7 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
     },
     openGraph: {
       title: title,
-      description,
+      description: description ?? undefined,
       url: `https://dapurdekaka.com/products/${slug}`,
       type: 'website',
       images: product.images[0] ? [
@@ -74,7 +83,7 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
     twitter: {
       card: 'summary_large_image',
       title,
-      description,
+      description: description ?? undefined,
       images: product.images[0] ? [product.images[0].cloudinaryUrl] : [],
     },
     robots: {

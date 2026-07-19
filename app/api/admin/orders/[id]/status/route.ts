@@ -12,7 +12,8 @@ import { OrderCancellationEmail } from '@/lib/resend/templates/OrderCancellation
 import { formatWIB } from '@/lib/utils/format-date';
 import { logAdminActivity } from '@/lib/services/audit.service';
 import { refundTransaction } from '@/lib/midtrans/status';
-import { TRACKING_FORMATS } from '@/lib/constants/couriers';
+import { TRACKING_FORMATS, ALLOWED_COURIER_CODES } from '@/lib/constants/couriers';
+import { logger } from '@/lib/utils/logger';
 
 type OrderStatus = 'pending_payment' | 'paid' | 'processing' | 'packed' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
 export const dynamic = 'force-dynamic';
@@ -24,9 +25,13 @@ const statusUpdateSchema = z.object({
   trackingUrl: z.string().optional(),
   estimatedDays: z.string().optional(),
   cancellationReason: z.string().optional(),
+  courierCode: z.string().optional(),
 }).refine(
   (data) => data.status !== 'shipped' || (!!data.trackingNumber && data.trackingNumber.trim().length > 0),
   { message: 'Nomor resi harus diisi untuk mengubah status ke shipped', path: ['trackingNumber'] }
+).refine(
+  (data) => !data.courierCode || (ALLOWED_COURIER_CODES as readonly string[]).includes(data.courierCode.toLowerCase()),
+  { message: 'Kurir tidak valid — hanya kurir cold-chain yang diperbolehkan', path: ['courierCode'] }
 );
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
@@ -276,8 +281,10 @@ export async function PATCH(
     });
 
     if (newStatus === 'shipped' && trackingNumber) {
-      try {
-        const emailHtml = OrderShippedEmail({
+      sendEmail({
+        to: order.recipientEmail,
+        subject: `Pesanan ${order.orderNumber} sudah dikirim!`,
+        react: OrderShippedEmail({
           orderNumber: order.orderNumber,
           customerName: order.recipientName,
           courierName: order.courierName ?? 'Pengiriman',
@@ -290,21 +297,17 @@ export async function PATCH(
             quantity: item.quantity,
           })),
           totalAmount: order.totalAmount,
-        });
-
-        await sendEmail({
-          to: order.recipientEmail,
-          subject: `Pesanan ${order.orderNumber} sudah dikirim!`,
-          react: emailHtml,
-        });
-      } catch (emailError) {
-        console.error('[Status Update] Failed to send shipped email:', emailError);
-      }
+        }),
+      }).catch((emailError) => {
+        logger.error('[Email] Failed to send shipped email', { error: emailError instanceof Error ? emailError.message : String(emailError) });
+      });
     }
 
     if (newStatus === 'delivered') {
-      try {
-        const emailHtml = OrderDeliveredEmail({
+      sendEmail({
+        to: order.recipientEmail,
+        subject: `Pesanan ${order.orderNumber} sudah diterima! Terima kasih — Dapur Dekaka`,
+        react: OrderDeliveredEmail({
           orderNumber: order.orderNumber,
           customerName: order.recipientName,
           pointsEarned: order.pointsEarned ?? 0,
@@ -315,23 +318,19 @@ export async function PATCH(
           })),
           totalAmount: order.totalAmount,
           deliveredAt: formatWIB(new Date()),
-        });
-
-        await sendEmail({
-          to: order.recipientEmail,
-          subject: `Pesanan ${order.orderNumber} sudah diterima! Terima kasih — Dapur Dekaka`,
-          react: emailHtml,
-        });
-      } catch (emailError) {
-        console.error('[Status Update] Failed to send delivered email:', emailError);
-      }
+        }),
+      }).catch((emailError) => {
+        logger.error('[Email] Failed to send delivered email', { error: emailError instanceof Error ? emailError.message : String(emailError) });
+      });
     }
 
     if (newStatus === 'cancelled') {
-      try {
-        const reason = cancellationReason ?? 'Dibatalkan oleh admin';
-        const isPaidOrder = ['paid', 'processing', 'packed', 'shipped', 'delivered'].includes(currentStatus);
-        const cancellationEmailHtml = OrderCancellationEmail({
+      const reason = cancellationReason ?? 'Dibatalkan oleh admin';
+      const isPaidOrder = ['paid', 'processing', 'packed', 'shipped', 'delivered'].includes(currentStatus);
+      sendEmail({
+        to: order.recipientEmail,
+        subject: `Pesanan ${order.orderNumber} dibatalkan`,
+        react: OrderCancellationEmail({
           orderNumber: order.orderNumber,
           customerName: order.recipientName,
           items: order.items.map((item) => ({
@@ -349,16 +348,10 @@ export async function PATCH(
           cancelledAt: formatWIB(new Date()),
           refundAmount: isPaidOrder ? order.totalAmount : 0,
           refundInfo: isPaidOrder ? 'Refund akan diproses dalam 3-5 hari kerja ke metode pembayaran asal Anda.' : undefined,
-        });
-
-        await sendEmail({
-          to: order.recipientEmail,
-          subject: `Pesanan ${order.orderNumber} dibatalkan`,
-          react: cancellationEmailHtml,
-        });
-      } catch (emailError) {
-        console.error('[Status Update] Failed to send cancellation email:', emailError);
-      }
+        }),
+      }).catch((emailError) => {
+        logger.error('[Email] Failed to send cancellation email', { error: emailError instanceof Error ? emailError.message : String(emailError) });
+      });
     }
 
     // Audit log — non-blocking
@@ -369,7 +362,7 @@ export async function PATCH(
       targetId: order.id,
       beforeState: { status: currentStatus },
       afterState: { status: newStatus },
-    }).catch((e) => console.error('[Audit] Failed to log order status change:', e));
+    }).catch((e) => logger.error('[Audit] Failed to log order status change', { error: e instanceof Error ? e.message : String(e) }));
 
     return success({
       orderId: order.id,
@@ -379,7 +372,7 @@ export async function PATCH(
       deliveredAt: newStatus === 'delivered' ? new Date() : null,
     });
   } catch (error) {
-    console.error('[admin/orders/status]', error);
+    logger.error('[admin/orders/status]', { error: error instanceof Error ? error.message : String(error) });
     if (error instanceof Error && error.message === 'ORDER_STATUS_CHANGED_CONCURRENTLY') {
       return conflict('Status pesanan telah diubah oleh pengguna lain. Silakan refresh dan coba lagi.');
     }

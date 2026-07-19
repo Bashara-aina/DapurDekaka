@@ -7,9 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, Loader2 } from 'lucide-react';
-import ProfileSelector from './ProfileSelector';
-import LineItemRow from './LineItemRow';
+import { ArrowLeft, Plus, Trash2, Search, Loader2 } from 'lucide-react';
 
 interface VariantOption {
   id: string;
@@ -261,16 +259,71 @@ export default function NewB2BQuoteClient() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          <ProfileSelector
-            selectedProfileId={selectedProfileId}
-            onProfileChange={setSelectedProfileId}
-            showNewCustomer={showNewCustomer}
-            onShowNewCustomerChange={setShowNewCustomer}
-            newCustomer={newCustomer}
-            onNewCustomerChange={setNewCustomer}
-            loadingProfiles={loadingProfiles}
-            profiles={profiles}
-          />
+          {/* Profile Selection */}
+          <div className="bg-white rounded-xl border border-admin-border p-6">
+            <h2 className="font-semibold text-admin-text-primary mb-4">Pelanggan B2B</h2>
+            {!loadingProfiles ? (
+              <>
+                <select
+                  value={selectedProfileId}
+                  onChange={(e) => {
+                    setSelectedProfileId(e.target.value);
+                    setShowNewCustomer(e.target.value === 'new');
+                  }}
+                  className="w-full h-10 px-3 border border-admin-border rounded-lg text-sm focus:outline-none focus:border-brand-red"
+                >
+                  <option value="">Pilih pelanggan</option>
+                  <option value="new">+ Pelanggan Baru</option>
+                  {profiles.map(p => (
+                    <option key={p.id} value={p.id}>{p.companyName} — {p.picName}</option>
+                  ))}
+                </select>
+
+                {showNewCustomer && (
+                  <div className="mt-4 p-4 bg-slate-50 rounded-lg space-y-3">
+                    <p className="text-sm font-medium text-admin-text-primary">Data Pelanggan Baru</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Nama Perusahaan</Label>
+                        <Input
+                          value={newCustomer.companyName}
+                          onChange={e => setNewCustomer({ ...newCustomer, companyName: e.target.value })}
+                          placeholder="PT Example Indonesia"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Nama PIC</Label>
+                        <Input
+                          value={newCustomer.picName}
+                          onChange={e => setNewCustomer({ ...newCustomer, picName: e.target.value })}
+                          placeholder="John Doe"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Email PIC</Label>
+                        <Input
+                          type="email"
+                          value={newCustomer.picEmail}
+                          onChange={e => setNewCustomer({ ...newCustomer, picEmail: e.target.value })}
+                          placeholder="john@company.com"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">WhatsApp PIC</Label>
+                        <Input
+                          value={newCustomer.picPhone}
+                          onChange={e => setNewCustomer({ ...newCustomer, picPhone: e.target.value })}
+                          placeholder="62812xxxxxxxx"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="h-10 bg-gray-100 rounded animate-pulse" />
+            )}
+          </div>
 
           {/* Line Items */}
           <div className="bg-white rounded-xl border border-admin-border p-6">
@@ -294,18 +347,83 @@ export default function NewB2BQuoteClient() {
             ) : (
               <div className="space-y-4">
                 {items.map((item, index) => (
-                  <LineItemRow
-                    key={index}
-                    item={item}
-                    index={index}
-                    searchVariant={searchVariant}
-                    onSearchChange={setSearchVariant}
-                    filteredVariants={filteredVariants}
-                    loadingVariants={loadingVariants}
-                    onSelectVariant={handleSelectVariant}
-                    onUpdateItem={handleUpdateItem}
-                    onRemoveItem={handleRemoveItem}
-                  />
+                  <div key={index} className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg">
+                    <div className="flex-1">
+                      {item.variantId ? (
+                        <>
+                          <p className="font-medium text-admin-text-primary text-sm">
+                            {item.productName} — {item.variantName}
+                          </p>
+                          <p className="text-xs text-admin-text-secondary">
+                            {item.sku} · Rp {item.unitPrice.toLocaleString('id-ID')} / unit
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Search className="w-4 h-4 text-gray-400" />
+                            <Input
+                              placeholder="Cari produk..."
+                              value={searchVariant}
+                              onChange={e => setSearchVariant(e.target.value)}
+                              className="text-sm"
+                            />
+                          </div>
+                          {searchVariant && (
+                            <div className="mt-1 space-y-1 max-h-40 overflow-y-auto">
+                              {loadingVariants ? (
+                                <p className="text-xs text-gray-400 px-2 py-1">Memuat...</p>
+                              ) : filteredVariants.slice(0, 5).map(v => (
+                                <button
+                                  key={v.id}
+                                  type="button"
+                                  onClick={() => handleSelectVariant(index, v)}
+                                  className="w-full text-left px-2 py-1.5 text-sm hover:bg-blue-50 rounded transition-colors"
+                                >
+                                  <span className="font-medium">{v.productNameId}</span>
+                                  <span className="text-gray-400 mx-1">—</span>
+                                  <span>{v.nameId}</span>
+                                  <span className="text-gray-400 mx-1">·</span>
+                                  <span className="text-brand-red">Rp {(v.b2bPrice ?? v.price).toLocaleString('id-ID')}</span>
+                                  <span className={`ml-2 text-xs ${v.stock < 1 ? 'text-red-500' : 'text-green-600'}`}>
+                                    {v.stock < 1 ? 'Habis' : `Stok: ${v.stock}`}
+                                  </span>
+                                </button>
+                              ))}
+                              {filteredVariants.length === 0 && (
+                                <p className="text-xs text-gray-400 px-2 py-1">Produk tidak ditemukan</p>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    {item.variantId && (
+                      <>
+                        <div className="w-24">
+                          <Input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(e) => handleUpdateItem(index, 'quantity', e.target.value)}
+                            className="text-center"
+                          />
+                        </div>
+                        <div className="w-32 text-right">
+                          <p className="font-medium text-admin-text-primary">
+                            Rp {item.subtotal.toLocaleString('id-ID')}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(index)}
+                          className="p-2 text-error hover:bg-error-light rounded-lg"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 ))}
               </div>
             )}

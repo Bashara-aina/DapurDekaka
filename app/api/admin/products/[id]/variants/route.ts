@@ -72,6 +72,9 @@ export async function POST(
         b2bPrice: parsed.data.b2bPrice ?? null,
         stock: parsed.data.stock ?? 0,
         weightGram: parsed.data.weightGram,
+        lengthCm: parsed.data.lengthCm ?? 30,
+        widthCm: parsed.data.widthCm ?? 22,
+        heightCm: parsed.data.heightCm ?? 12,
         sortOrder: parsed.data.sortOrder ?? 0,
         isActive: parsed.data.isActive ?? true,
       })
@@ -95,6 +98,9 @@ const CreateVariantSchema = z.object({
   b2bPrice: z.number().int().nonnegative().optional().nullable(),
   stock: z.number().int().nonnegative().optional().default(0),
   weightGram: z.number().int().nonnegative('Berat harus bilangan bulat non-negatif'),
+  lengthCm: z.number().int().positive().optional().default(30),
+  widthCm: z.number().int().positive().optional().default(22),
+  heightCm: z.number().int().positive().optional().default(12),
   sortOrder: z.number().int().nonnegative().optional().default(0),
   isActive: z.boolean().optional().default(true),
 });

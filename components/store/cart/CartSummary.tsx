@@ -1,7 +1,9 @@
 'use client';
 
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { useCartStore } from '@/store/cart.store';
 import { cn } from '@/lib/utils/cn';
@@ -14,16 +16,52 @@ interface CartSummaryProps {
   addressEntered?: boolean;
 }
 
-export function CartSummary({ shippingCost = 0, discount = 0, pointsRedemption = 0, stockIssues = false, addressEntered = false }: CartSummaryProps) {
+/**
+ * Cart summary with bundled-ongkir label (L1 Decision 1) and weight-gate
+ * announcement (L3 Decision 3) before they bite at checkout.
+ */
+export function CartSummary({
+  shippingCost = 0,
+  discount = 0,
+  pointsRedemption = 0,
+  stockIssues = false,
+  addressEntered = false,
+}: CartSummaryProps) {
   const t = useTranslations('cartSummary');
+  const tShipping = useTranslations('shipping');
+  const tWeightGate = useTranslations('cartSummary');
+  const router = useRouter();
   const getSubtotal = useCartStore((s) => s.getSubtotal);
   const getTotalItems = useCartStore((s) => s.getTotalItems);
   const getTotalWeight = useCartStore((s) => s.getTotalWeight);
+  const validateStock = useCartStore((s) => s.validateStock);
+  const [checking, setChecking] = useState(false);
 
   const subtotal = getSubtotal();
   const totalItems = getTotalItems();
   const totalWeight = getTotalWeight();
   const total = subtotal + (shippingCost > 0 ? shippingCost : 0) - discount - pointsRedemption;
+
+  const showWeightGate15kg = totalWeight >= 15_000;
+  const showWeightGate5kg = !showWeightGate15kg && totalWeight >= 5_000;
+
+  const handleCheckout = async () => {
+    if (stockIssues || checking) return;
+    setChecking(true);
+    try {
+      const result = await validateStock();
+      if (result.priceChanged) {
+        toast.info(t('priceUpdated'));
+      }
+      if (!result.valid) {
+        result.errors.forEach((err) => toast.error(err));
+        return;
+      }
+      router.push('/checkout');
+    } finally {
+      setChecking(false);
+    }
+  };
 
   return (
     <div className={cn(
@@ -40,6 +78,21 @@ export function CartSummary({ shippingCost = 0, discount = 0, pointsRedemption =
         </div>
       )}
 
+      {showWeightGate15kg && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+          <p className="text-xs text-red-700 font-medium">
+            {tWeightGate('weightGate15kg')}
+          </p>
+        </div>
+      )}
+      {showWeightGate5kg && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+          <p className="text-xs text-amber-700 font-medium">
+            {tWeightGate('weightGate5kg')}
+          </p>
+        </div>
+      )}
+
       <div className="space-y-3 text-sm">
         <div className="flex justify-between">
           <span className="text-text-secondary">{t('totalItems', { count: totalItems })}</span>
@@ -48,17 +101,17 @@ export function CartSummary({ shippingCost = 0, discount = 0, pointsRedemption =
 
         <div className="flex justify-between">
           <span className="text-text-secondary">{t('estimatedWeight')}</span>
-          <span className="font-medium">{(totalWeight / 1000).toFixed(1)} kg</span>
+          <span className="font-medium">{(totalWeight / 1000).toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg</span>
         </div>
 
         {shippingCost > 0 ? (
           <div className="flex justify-between">
-            <span className="text-text-secondary">{t('shippingCost')}</span>
+            <span className="text-text-secondary">{tShipping('bundledLabel')}</span>
             <span className="font-medium">{formatIDR(shippingCost)}</span>
           </div>
         ) : !addressEntered ? (
           <div className="flex justify-between">
-            <span className="text-text-secondary">{t('shippingCost')}</span>
+            <span className="text-text-secondary">{tShipping('bundledLabel')}</span>
             <span className="font-medium text-text-disabled text-xs">{t('enterAddress')}</span>
           </div>
         ) : null}
@@ -83,22 +136,19 @@ export function CartSummary({ shippingCost = 0, discount = 0, pointsRedemption =
         </div>
       </div>
 
-      <Link
-        href="/checkout"
+      <button
+        type="button"
+        disabled={stockIssues || checking}
+        onClick={handleCheckout}
         className={cn(
           'mt-6 w-full h-12 font-bold rounded-button flex items-center justify-center transition-colors',
-          stockIssues
+          stockIssues || checking
             ? 'bg-gray-400 text-white cursor-not-allowed'
             : 'bg-brand-red text-white hover:bg-brand-red-dark'
         )}
-        onClick={(e) => {
-          if (stockIssues) {
-            e.preventDefault();
-          }
-        }}
       >
-        {t('continueToCheckout')}
-      </Link>
+        {checking ? t('validating') : t('continueToCheckout')}
+      </button>
     </div>
   );
 }

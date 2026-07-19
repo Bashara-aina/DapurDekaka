@@ -52,7 +52,7 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
 
   if (!MotionComp) {
     return (
-      <section className="py-8 section-container">
+      <section className="py-8 px-4 container mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="font-display text-2xl md:text-3xl font-semibold text-text-primary">
@@ -103,7 +103,7 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
 
   if (!products || products.length === 0) {
     return (
-      <section className="py-8 section-container">
+      <section className="py-8 px-4 container mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="font-display text-2xl md:text-3xl font-semibold text-text-primary">

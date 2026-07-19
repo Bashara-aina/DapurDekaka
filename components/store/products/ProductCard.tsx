@@ -51,31 +51,6 @@ export function ProductCard({ product, variant, className }: ProductCardProps) {
     }
   };
 
-  const handleQuickAdd = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (isOutOfStock) return;
-    addItem({
-      variantId: variant.id,
-      productId: product.id,
-      productNameId: product.nameId,
-      productNameEn: product.nameEn,
-      variantNameId: variant.nameId,
-      variantNameEn: variant.nameEn,
-      sku: variant.sku,
-      imageUrl: product.imageUrl || '/assets/logo/logo.png',
-      unitPrice: variant.price,
-      weightGram: variant.weightGram,
-      stock: variant.stock,
-    });
-    toast.success(`${product.nameId} ${tCart('addedToCart')}`, {
-      action: {
-        label: tCart('viewCart'),
-        onClick: () => router.push('/cart'),
-      },
-    });
-    await syncIfLoggedIn();
-  };
-
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (isOutOfStock) return;
@@ -145,7 +120,7 @@ export function ProductCard({ product, variant, className }: ProductCardProps) {
         {/* Quick Add Button */}
         {canQuickAdd && (
           <button
-            onClick={handleQuickAdd}
+            onClick={handleAddToCart}
             className="absolute bottom-2 right-2 w-11 h-11 bg-brand-red rounded-full flex items-center justify-center text-white shadow-lg hover:bg-brand-red-dark active:bg-brand-red-dark transition-colors"
             aria-label={t('addToCart')}
           >

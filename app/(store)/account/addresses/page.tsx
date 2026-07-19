@@ -11,23 +11,9 @@ import type { AddressFormData } from '@/components/store/account/AddressForm';
 
 export const dynamic = 'force-dynamic';
 
-interface Province {
-  id: string;
-  name: string;
-}
-
-interface City {
-  id: string;
-  name: string;
-  province_id: string;
-  type: string;
-}
-
 export default function AccountAddressesPage() {
   const t = useTranslations('account');
   const [addresses, setAddresses] = useState<Address[]>([]);
-  const [provinces, setProvinces] = useState<Province[]>([]);
-  const [cities, setCities] = useState<City[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
@@ -47,26 +33,9 @@ export default function AccountAddressesPage() {
     }
   }, [t]);
 
-  const fetchProvinces = useCallback(async () => {
-    try {
-      const [provinceRes, cityRes] = await Promise.all([
-        fetch('/api/shipping/provinces'),
-        fetch('/api/shipping/cities'),
-      ]);
-      const provinceData = await provinceRes.json();
-      const cityData = await cityRes.json();
-
-      if (provinceData.success) setProvinces(provinceData.data);
-      if (cityData.success) setCities(cityData.data);
-    } catch {
-      toast.error(t('loadShippingError') || 'Gagal memuat data pengiriman');
-    }
-  }, [t]);
-
   useEffect(() => {
     fetchAddresses();
-    fetchProvinces();
-  }, [fetchAddresses, fetchProvinces]);
+  }, [fetchAddresses]);
 
   const handleEdit = (address: Address) => {
     setEditingAddress(address);
@@ -176,8 +145,6 @@ export default function AccountAddressesPage() {
       {showForm && (
         <AddressForm
           address={editingAddress || undefined}
-          provinces={provinces}
-          cities={cities}
           onSubmit={handleSubmitAddress}
           onCancel={handleCancel}
           isLoading={isSubmitting}

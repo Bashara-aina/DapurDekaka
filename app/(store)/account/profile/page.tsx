@@ -362,12 +362,12 @@ export default function AccountProfilePage() {
           {/* Language Preference */}
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">
-              {t('language') || 'Bahasa'}
+              {t('language')}
             </label>
             <div className="flex items-center gap-2 h-11 px-3 border border-brand-cream-dark rounded-lg bg-gray-50">
               <span>🇮🇩 Indonesia</span>
               <span className="ml-auto text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
-                {t('englishComingSoon') || 'Bahasa Inggris segera hadir'}
+                {t('englishComingSoon')}
               </span>
             </div>
           </div>

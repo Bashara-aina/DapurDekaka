@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { eq, and, sql } from 'drizzle-orm';
-import { orders, orderItems, productVariants, inventoryLogs, coupons, couponUsages, pointsHistory, users, orderStatusHistory } from '@/lib/db/schema';
+import { orders, couponUsages, pointsHistory, users, orderStatusHistory } from '@/lib/db/schema';
 import { success, serverError, notFound, conflict, unauthorized, forbidden, validationError, tooManyRequests } from '@/lib/utils/api-response';
 import { z } from 'zod';
 import { createMidtransTransaction } from '@/lib/midtrans/create-transaction';
@@ -67,57 +67,18 @@ export async function POST(req: NextRequest) {
           note: 'Dibatalkan setelah 3 kali gagal pembayaran',
         });
 
-        // 3. Restore stock using GREATEST guard + affected-rows check (same pattern as webhook)
-        for (const item of order.items) {
-          if (item.quantity <= 0) continue;
-          // Restore uses GREATEST so no minimum stock check needed — any non-negative quantity is valid
-          const [updated] = await tx
-            .update(productVariants)
-            .set({ stock: sql`GREATEST(stock + ${item.quantity}, 0)`, updatedAt: new Date() })
-            .where(eq(productVariants.id, item.variantId))
-            .returning({ newStock: productVariants.stock });
+        // 3. P0#2 (P3 Decision 1): order was never paid — stock was NEVER deducted
+        // (settlement-only deduction model) and coupon used_count was NEVER
+        // incremented. Do NOT restore stock or decrement used_count here.
 
-          if (updated && updated.newStock !== undefined) {
-            await tx.insert(inventoryLogs).values({
-              variantId: item.variantId,
-              changeType: 'reversal',
-              quantityBefore: updated.newStock - item.quantity,
-              quantityAfter: updated.newStock,
-              quantityDelta: item.quantity,
-              orderId: order.id,
-              note: `Pembatalan retry ${order.orderNumber} — stok dikembalikan`,
-            });
-          }
-        }
-
-        // 4. Reverse coupon if used
+        // 4. Delete the provisional couponUsages row inserted at initiate.
         if (order.couponId) {
-          await tx.update(coupons)
-            .set({ usedCount: sql`GREATEST(used_count - 1, 0)` })
-            .where(eq(coupons.id, order.couponId));
           await tx.delete(couponUsages)
             .where(eq(couponUsages.orderId, order.id));
         }
 
-        // 5. Reverse points if redeemed (FIFO unconsume)
-        // H-04: STRESS TESTING NOTE — FIFO reversal fragility with concurrent redemptions:
-        //
-        // This reversal sets consumedAt: null on referenced earn records.
-        // If a subsequent order has already consumed the same earn records (same earnId was
-        // referenced by a newer redeem after this order's retry expired), the FIFO chain breaks.
-        // The older earn record becomes "double-spent" — partially unconsumed while the newer
-        // order already deducted its value from pointsBalance.
-        //
-        // Under high concurrency (multiple customers retrying at once with low points balance),
-        // this can cause pointsBalance to go negative or redeem records to reference already-
-        // consumed earnIds.
-        //
-        // Mitigation: pointsBalance uses GREATEST to prevent negative, but the FIFO chain
-        // itself can be corrupted. A full stress test with 100+ concurrent retries is needed
-        // to validate this edge case in production-like load.
-        //
-        // TODO: Consider adding a consumedAt version field or a lock table for earn records
-        // to prevent concurrent consumption of the same earn record.
+        // 5. Reverse points redeemed at initiate (FIFO unconsume). Points ARE
+        // deducted at initiate regardless of payment, so this reversal is correct.
         if (order.userId && order.pointsUsed && order.pointsUsed > 0) {
           const redeemRecords = await tx
             .select()

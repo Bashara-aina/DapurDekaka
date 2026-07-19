@@ -3,14 +3,15 @@ import { db } from '@/lib/db';
 import { savedCarts, productVariants, products } from '@/lib/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
-import { success, unauthorized } from '@/lib/utils/api-response';
+import { success, unauthorized, serverError } from '@/lib/utils/api-response';
 import { CartItem } from '@/store/cart.store';
 import { logger } from '@/lib/utils/logger';
+import { withRateLimit } from '@/lib/utils/rate-limit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export const GET = async (_req: NextRequest) => {
+export const GET = withRateLimit(async (_req: NextRequest) => {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -72,10 +73,7 @@ export const GET = async (_req: NextRequest) => {
 
     return success({ items, totalQuantity, subtotal });
   } catch (error) {
-    logger.error('[GET /api/auth/cart]', { error });
-    return NextResponse.json(
-      { success: false, error: 'Gagal memuat keranjang' },
-      { status: 500 }
-    );
+    logger.error('[GET /api/auth/cart]', { error: error instanceof Error ? error.message : String(error) });
+    return serverError(new Error('Gagal memuat keranjang'));
   }
-};
+}, { windowMs: 60000, maxRequests: 30 });

@@ -19,14 +19,27 @@ import {
   inventoryLogs,
 } from '@/lib/db/schema';
 import { eq, and, inArray, sql, or, desc, gte, gt } from 'drizzle-orm';
-import { success, serverError, validationError, conflict, unauthorized } from '@/lib/utils/api-response';
+import { success, serverError, validationError, conflict, unauthorized, serviceUnavailable, unprocessableEntity } from '@/lib/utils/api-response';
 import { z } from 'zod';
 import { generateOrderNumber } from '@/lib/utils/generate-order-number';
 import { createMidtransTransaction } from '@/lib/midtrans/create-transaction';
-import { POINTS_EARN_RATE } from '@/lib/constants/points';
+import { POINTS_EARN_RATE, POINTS_EXPIRY_DAYS } from '@/lib/constants/points';
+import { calculatePointsEarned } from '@/lib/finance/points-calculator';
 import { getSetting } from '@/lib/settings/get-settings';
 import { withRateLimit } from '@/lib/utils/rate-limit';
 import { logger } from '@/lib/utils/logger';
+import {
+  validateSelectedQuote,
+  calculateInsuranceFee,
+  verifyInsuranceFee,
+  getMarkupAmount,
+} from '@/lib/shipping';
+import { enforceShippingPhaseGates } from '@/lib/shipping/phase-gate';
+import { MIN_ORDER_FOR_COUPON_IDR, B2B_CREDIT_ENABLED_DEFAULT } from '@/lib/constants/financial-rules';
+import { isFlagEnabled } from '@/lib/config/feature-flags';
+import { enforceCouponCap } from '@/lib/finance/points-calculator';
+import { parseQuoteId } from '@/lib/shipping/get-rates';
+import type { InsuranceType, ShippingItemInput, ShippingTier } from '@/lib/shipping/types';
 
 const initiateSchema = z.object({
   items: z
@@ -61,12 +74,40 @@ const initiateSchema = z.object({
   courierService: z.string().optional(),
   courierName: z.string().optional(),
   shippingCost: z.number().int().min(0).optional(),
+  shippingTier: z.enum(['express', 'frozen_same_day', 'frozen_express', 'pickup']).optional(),
+  selectedQuoteId: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
+  biteshipAreaId: z.string().optional(),
+  insuranceType: z.enum(['none', 'basic', 'premium']).optional(),
+  insuranceFee: z.number().int().min(0).optional(),
+  courierInstantAck: z.boolean().optional(),
+  biteshipActualCost: z.number().int().min(0).optional(),
+  customerShippingCost: z.number().int().min(0).optional(),
   couponCode: z.string().optional(),
   pointsUsed: z.number().int().min(0).optional(),
   customerNote: z.string().optional(),
   subtotal: z.number().int().positive(),
   discountAmount: z.number().int().min(0).optional(),
   pointsDiscount: z.number().int().min(0).optional(),
+}).superRefine((data, ctx) => {
+  // Delivery orders MUST carry a full destination address (P2/P0#6).
+  if (data.deliveryMethod === 'delivery') {
+    if (!data.addressLine || data.addressLine.trim().length < 5) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['addressLine'],
+        message: 'Alamat lengkap wajib diisi untuk pengiriman',
+      });
+    }
+    if (!data.postalCode || !/^\d{5}$/.test(data.postalCode.trim())) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['postalCode'],
+        message: 'Kode pos 5 digit wajib diisi untuk pengiriman',
+      });
+    }
+  }
 });
 
 export const POST = withRateLimit(
@@ -187,6 +228,16 @@ export const POST = withRateLimit(
         return conflict('Kupon tidak ditemukan atau sudah tidak berlaku');
       }
 
+      // L2 Rule 6: free_shipping coupons banned for 90 days
+      if (coupon.type === 'free_shipping') {
+        return conflict('Kupon free shipping belum tersedia (aturan L2)');
+      }
+      // L2 Rule 6: minimum order before any coupon applies
+      const minOrderRequired = MIN_ORDER_FOR_COUPON_IDR;
+      if (subtotal < minOrderRequired) {
+        return conflict(`Minimal pembelian Rp ${minOrderRequired.toLocaleString('id-ID')} untuk kupon`);
+      }
+
       if (coupon.minOrderAmount && subtotal < coupon.minOrderAmount) {
         return conflict(
           `Minimal pembelian ${coupon.minOrderAmount.toLocaleString('id-ID')} untuk kupon ini`
@@ -210,9 +261,6 @@ export const POST = withRateLimit(
         }
       } else if (coupon.type === 'fixed') {
         discountAmount = coupon.discountValue!;
-      } else if (coupon.type === 'free_shipping') {
-        // free_shipping: no monetary discount; shipping cost is zeroed below after courier selection
-        discountAmount = 0;
       } else if (coupon.type === 'buy_x_get_y') {
         // buy_x_get_y: no monetary discount, add free items to order
         const buyQty = coupon.buyQuantity ?? 1;
@@ -299,6 +347,11 @@ export const POST = withRateLimit(
       }
     }
 
+    // L2 Rule 6 cap: enforce ceiling on monetary discount across percentage/fixed coupons.
+    if (coupon && (coupon.type === 'percentage' || coupon.type === 'fixed')) {
+      discountAmount = enforceCouponCap(subtotal, discountAmount);
+    }
+
     // ── Step 3: Validate + deduct points inside transaction ────────────
     const requestedPointsDiscount = parsed.data.pointsDiscount ?? 0;
     // Enforce 50% of subtotal cap server-side (client may try to exceed)
@@ -359,13 +412,21 @@ export const POST = withRateLimit(
     let net30PaymentDueAt: Date | null = null;
 
     if (userId && session?.user?.role === 'b2b') {
-      const b2bProfile = await db.query.b2bProfiles.findFirst({
-        where: eq(b2bProfiles.userId, userId),
-      });
+      // Net-30 kill switch (L2): B2B credit is prepaid-only by default. The
+      // credit path only runs when explicitly enabled via system setting
+      // `b2b_credit_enabled`, falling back to B2B_CREDIT_ENABLED_DEFAULT (false).
+      const b2bCreditEnabled =
+        (await getSetting<boolean>('b2b_credit_enabled', 'boolean')) ?? B2B_CREDIT_ENABLED_DEFAULT;
 
-      if (b2bProfile?.isNet30Approved) {
-        isNet30Order = true;
-        net30PaymentDueAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+      if (b2bCreditEnabled) {
+        const b2bProfile = await db.query.b2bProfiles.findFirst({
+          where: eq(b2bProfiles.userId, userId),
+        });
+
+        if (b2bProfile?.isNet30Approved) {
+          isNet30Order = true;
+          net30PaymentDueAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+        }
       }
     }
 
@@ -399,12 +460,133 @@ export const POST = withRateLimit(
     }
 
     const baseShippingCost = deliveryMethod === 'pickup' ? 0 : (addressData.courierCode ? (parsed.data.shippingCost ?? 0) : 0);
-    const shippingCost = (coupon && coupon.type === 'free_shipping' && deliveryMethod === 'delivery')
+    let shippingCost = (coupon && coupon.type === 'free_shipping' && deliveryMethod === 'delivery')
       ? 0
       : baseShippingCost;
-    const totalAmount = subtotal - discountAmount - pointsDiscount + shippingCost;
-    const pointsEarnedBase = Math.floor(subtotal / 1000) * POINTS_EARN_RATE;
-    const pointsEarned = isB2bOrder ? pointsEarnedBase * 2 : pointsEarnedBase;
+
+    let insuranceFee = 0;
+    let resolvedInsuranceType: InsuranceType = 'none';
+    let biteshipActualCost: number | null = null;
+    let shippingMarkupAmount = 0;
+    let shippingTier: ShippingTier | null = null;
+    let estimatedDaysFromQuote: string | null = null;
+    let originLat: string | null = null;
+    let originLng: string | null = null;
+
+    if (deliveryMethod === 'delivery') {
+      const {
+        selectedQuoteId,
+        latitude,
+        longitude,
+        insuranceType = 'none',
+        courierInstantAck,
+        customerShippingCost,
+        biteshipActualCost: clientActualCost,
+      } = parsed.data;
+
+      if (!selectedQuoteId || latitude === undefined || longitude === undefined) {
+        return conflict('Alamat pengiriman dan opsi kurir wajib diisi');
+      }
+
+      shippingTier = parsed.data.shippingTier ?? parseQuoteId(selectedQuoteId).tier;
+
+      if (shippingTier === 'express' && !courierInstantAck) {
+        return conflict('Anda harus menyetujui ketentuan pengiriman express');
+      }
+
+      const shippingItems: ShippingItemInput[] = orderItemsData.map((item) => {
+        const variant = dbVariants.find((v) => v.id === item.variantId);
+        return {
+          variantId: item.variantId,
+          quantity: item.quantity,
+          weightGram: item.weightGram,
+          lengthCm: variant?.lengthCm ?? 30,
+          widthCm: variant?.widthCm ?? 22,
+          heightCm: variant?.heightCm ?? 12,
+          name: `${item.productNameId} - ${item.variantNameId}`,
+          value: item.subtotal,
+        };
+      });
+
+      originLat = await getSetting<string>('biteship_origin_lat', 'string');
+      originLng = await getSetting<string>('biteship_origin_lng', 'string');
+
+      const validatedQuote = await validateSelectedQuote(
+        selectedQuoteId,
+        {
+          destLat: latitude,
+          destLng: longitude,
+          items: shippingItems,
+          subtotal,
+          originLat: originLat ? parseFloat(originLat) : undefined,
+          originLng: originLng ? parseFloat(originLng) : undefined,
+        },
+        customerShippingCost ?? 0,
+        clientActualCost ?? 0
+      );
+
+      if (!validatedQuote) {
+        return conflict('Tarif ongkir tidak valid. Silakan refresh halaman checkout.');
+      }
+
+      // FD#3: insurance is hidden at launch — force 'none' server-side while the
+      // insuranceUI flag is off so a crafted payload cannot add an insurance fee.
+      const effectiveInsuranceType: InsuranceType = isFlagEnabled('insuranceUI')
+        ? (insuranceType as InsuranceType)
+        : 'none';
+      insuranceFee = calculateInsuranceFee(effectiveInsuranceType, subtotal);
+      if (
+        isFlagEnabled('insuranceUI') &&
+        !verifyInsuranceFee(effectiveInsuranceType, subtotal, parsed.data.insuranceFee ?? 0)
+      ) {
+        return conflict('Biaya asuransi tidak valid');
+      }
+      resolvedInsuranceType = effectiveInsuranceType;
+
+      shippingCost = validatedQuote.customerCost;
+      biteshipActualCost = validatedQuote.actualCost;
+      shippingMarkupAmount = getMarkupAmount(validatedQuote.actualCost, validatedQuote.customerCost);
+      addressData.courierCode = validatedQuote.courierCode;
+      addressData.courierService = validatedQuote.courierType;
+      addressData.courierName = validatedQuote.displayName;
+      estimatedDaysFromQuote = validatedQuote.estimatedDuration;
+
+      if (coupon && coupon.type === 'free_shipping') {
+        shippingCost = 0;
+        shippingMarkupAmount = 0;
+      }
+    } else {
+      shippingTier = 'pickup';
+    }
+
+    // L3 phase-criteria gate — frozen tiers require the configured phase to be
+    // active AND the numeric criteria (orders / spoilage / dispatch failures)
+    // to have been met. Runs after stock validation and after shipping tier is
+    // known, but before we open a Midtrans transaction.
+    if (shippingTier) {
+      const gate = await enforceShippingPhaseGates(shippingTier, subtotal);
+      if (!gate.ok) {
+        if (gate.httpStatus === 503) {
+          return serviceUnavailable(gate.message ?? 'Service unavailable', 'PHASE_NOT_READY');
+        }
+        if (gate.httpStatus === 422) {
+          return unprocessableEntity(gate.message ?? 'Unprocessable entity', 'INTERCITY_MIN_ORDER');
+        }
+      }
+    }
+
+    const totalAmount = subtotal - discountAmount - pointsDiscount + shippingCost + insuranceFee;
+    // L2 Rule 3: points earn on net product payment (subtotal - coupon - points redeemed).
+    // L2 Rule 10: B2B customers earn the same rate as retail (no 2x multiplier).
+    const pointsEarned = isNet30Order
+      ? calculatePointsEarned({
+          subtotal,
+          couponDiscount: discountAmount,
+          pointsDiscount,
+          shippingCost,
+          isB2b: isB2bOrder,
+        })
+      : 0; // non-Net-30 orders: points are awarded at webhook settlement, computed from net-of-discount base.
 
     // ── Step 5: Generate order number using atomic DB counter ───────────
     const today = new Date().toISOString().slice(0, 10); // "2026-05-14"
@@ -535,7 +717,20 @@ export const POST = withRateLimit(
           courierCode: addressData.courierCode,
           courierService: addressData.courierService,
           courierName: addressData.courierName,
+          estimatedDays: estimatedDaysFromQuote,
           shippingCost,
+          shippingTier: shippingTier ?? undefined,
+          latitude: parsed.data.latitude?.toString(),
+          longitude: parsed.data.longitude?.toString(),
+          originLatitude: originLat,
+          originLongitude: originLng,
+          biteshipAreaId: parsed.data.biteshipAreaId,
+          biteshipActualCost: biteshipActualCost,
+          shippingMarkupAmount,
+          insuranceType: resolvedInsuranceType,
+          insuranceFee,
+          dispatchStatus: deliveryMethod === 'pickup' ? 'not_required' : 'pending',
+          courierInstantAck: parsed.data.courierInstantAck ?? false,
           subtotal,
           discountAmount,
           pointsDiscount,
@@ -588,10 +783,8 @@ export const POST = withRateLimit(
         await tx.insert(orderItems).values(freeItemsWithOrderId);
       }
 
-      // For Net-30 B2B orders: deduct stock in same transaction
-      // DO NOT award points here — Net-30 skips Midtrans, so there is no webhook
-      // to award points later. Points are awarded ONLY when admin confirms payment
-      // via POST /api/admin/orders/[id]/confirm-payment
+      // For Net-30 B2B orders: deduct stock + award points in same transaction
+      // Net-30 skips Midtrans so no webhook fires — award points immediately here.
       if (isNet30Order) {
         const allOrderItems = [...orderItemsData, ...freeItems];
         for (const item of allOrderItems) {
@@ -622,8 +815,28 @@ export const POST = withRateLimit(
           });
         }
 
-        // NOTE: Points are NOT awarded here. They are awarded ONLY via
-        // POST /api/admin/orders/[id]/confirm-payment when payment is confirmed.
+        // Award loyalty points immediately for Net-30 (same FIFO pattern as settlement webhook).
+        // Net-30 skips Midtrans so there is no webhook to award points later.
+        if (userId && pointsEarned > 0) {
+          const updatedUsers = await tx
+            .update(users)
+            .set({ pointsBalance: sql`points_balance + ${pointsEarned}` })
+            .where(eq(users.id, userId))
+            .returning({ pointsBalance: users.pointsBalance });
+
+          const newBalance = updatedUsers[0]?.pointsBalance ?? pointsEarned;
+
+          await tx.insert(pointsHistory).values({
+            userId,
+            type: 'earn',
+            pointsAmount: pointsEarned,
+            pointsBalanceAfter: newBalance,
+            descriptionId: `Pembelian B2B Net-30 ${created.orderNumber}`,
+            descriptionEn: `B2B Net-30 purchase ${created.orderNumber}`,
+            orderId: created.id,
+            expiresAt: new Date(Date.now() + POINTS_EXPIRY_DAYS * 24 * 60 * 60 * 1000),
+          });
+        }
 
         // Confirm coupon usage for Net-30 (upsert the provisional row if per-user limit was enforced)
         if (coupon && coupon.maxUsesPerUser && userId) {
@@ -722,6 +935,15 @@ export const POST = withRateLimit(
           price: shippingCost,
           quantity: 1,
           name: `Ongkir ${addressData.courierName ?? ''}`.substring(0, 50),
+        });
+      }
+
+      if (insuranceFee > 0) {
+        itemDetails.push({
+          id: 'insurance',
+          price: insuranceFee,
+          quantity: 1,
+          name: 'Asuransi Pengiriman',
         });
       }
 

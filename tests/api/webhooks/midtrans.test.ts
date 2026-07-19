@@ -18,14 +18,15 @@ vi.mock('@/lib/resend/send-email', () => ({
   sendEmail: vi.fn().mockResolvedValue(undefined),
 }));
 
+const TEST_SERVER_KEY = 'test-server-key';
+
 function createValidWebhook(body: Record<string, unknown>) {
   const orderId = body.order_id as string;
   const statusCode = body.status_code as string;
   const grossAmount = body.gross_amount as string;
-  const serverKey = 'test-server-key';
   const signature = crypto
     .createHash('sha512')
-    .update(orderId + statusCode + grossAmount + serverKey)
+    .update(orderId + statusCode + grossAmount + TEST_SERVER_KEY)
     .digest('hex');
   return { ...body, signature_key: signature };
 }
@@ -33,6 +34,7 @@ function createValidWebhook(body: Record<string, unknown>) {
 describe('POST /api/webhooks/midtrans', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.MIDTRANS_SERVER_KEY = TEST_SERVER_KEY;
   });
 
   it('rejects webhook with invalid signature', async () => {
@@ -49,7 +51,8 @@ describe('POST /api/webhooks/midtrans', () => {
     });
 
     const res = await POST(req);
-    expect(res.status).toBe(400);
+    // Invalid body signature → 401 Unauthorized (P0#1).
+    expect(res.status).toBe(401);
   });
 
   it('is idempotent for duplicate settlement webhooks', async () => {
@@ -111,7 +114,7 @@ describe('POST /api/webhooks/midtrans', () => {
     const res = await POST(req);
     const json = await res.json();
     expect(json.success).toBe(true);
-    expect(json.note).toBe('already_processed');
+    expect(json.data.note).toBe('already_processed');
   });
 
   it('handles cancellation idempotency', async () => {
@@ -173,7 +176,7 @@ describe('POST /api/webhooks/midtrans', () => {
     const res = await POST(req);
     const json = await res.json();
     expect(json.success).toBe(true);
-    expect(json.note).toBe('already_cancelled');
+    expect(json.data.note).toBe('already_cancelled');
   });
 
   it('rejects amount mismatch on settlement', async () => {

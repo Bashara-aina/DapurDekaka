@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { orders, orderStatusHistory } from '@/lib/db/schema';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { success, serverError, notFound, forbidden, conflict, validationError } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
 import { z } from 'zod';
@@ -22,11 +22,11 @@ export async function GET(req: NextRequest) {
       return forbidden('Anda tidak memiliki akses ke fitur ini');
     }
 
-    const packedOrders = await db.query.orders.findMany({
+    const dispatchOrders = await db.query.orders.findMany({
       where: and(
         eq(orders.status, 'packed'),
         eq(orders.deliveryMethod, 'delivery'),
-        isNull(orders.trackingNumber),
+        inArray(orders.dispatchStatus, ['pending', 'failed', 'retrying', 'booking']),
       ),
       with: {
         items: true,
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
       orderBy: (orders, { asc }) => [asc(orders.createdAt)],
     });
 
-    return success(packedOrders);
+    return success(dispatchOrders);
   } catch (error) {
     console.error('[admin/field/tracking-queue GET]', error);
     return serverError(error);
@@ -46,8 +46,6 @@ const shipSchema = z.object({
   orderId: z.string().uuid(),
   trackingNumber: z.string().min(1, 'Nomor resi harus diisi'),
   trackingUrl: z.string().optional(),
-  courierCode: z.string().optional(),
-  courierName: z.string().optional(),
   estimatedDays: z.string().optional(),
 });
 
@@ -69,10 +67,11 @@ export async function PATCH(req: NextRequest) {
       return validationError(parsed.error);
     }
 
-    const { orderId, trackingNumber, trackingUrl, courierCode, courierName, estimatedDays } = parsed.data;
+    const { orderId, trackingNumber, trackingUrl, estimatedDays } = parsed.data;
 
     const order = await db.query.orders.findFirst({
       where: eq(orders.id, orderId),
+      with: { items: true },
     });
 
     if (!order) {
@@ -83,6 +82,10 @@ export async function PATCH(req: NextRequest) {
       return conflict('Hanya order dengan status packed yang dapat dikirim');
     }
 
+    if (!order.items || order.items.length === 0) {
+      return notFound('Item pesanan tidak ditemukan');
+    }
+
     const updateData: Record<string, unknown> = {
       status: 'shipped',
       trackingNumber,
@@ -90,8 +93,6 @@ export async function PATCH(req: NextRequest) {
       updatedAt: new Date(),
     };
     if (trackingUrl) updateData.trackingUrl = trackingUrl;
-    if (courierCode) updateData.courierCode = courierCode;
-    if (courierName) updateData.courierName = courierName;
     if (estimatedDays) updateData.estimatedDays = estimatedDays;
 
     await db.update(orders).set(updateData).where(eq(orders.id, orderId));
@@ -103,7 +104,7 @@ export async function PATCH(req: NextRequest) {
       changedByUserId: session.user.id,
       changedByType: 'user',
       note: `Resi ${trackingNumber} ditambahkan, dikirim oleh ${session.user.name}`,
-      metadata: { trackingNumber, courierCode, courierName },
+      metadata: { trackingNumber },
     });
 
     // Fire-and-forget shipped email
@@ -112,34 +113,28 @@ export async function PATCH(req: NextRequest) {
       JNE: `https://www.jne.co.id/id/tracking/trace/${trackingNumber}`,
       ANTERAJA: `https://anteraja.id/tracking/${trackingNumber}`,
     };
+    const orderCourierCode = order.courierCode ?? '';
     const builtTrackingUrl = trackingUrl ??
-      (courierCode ? COURIER_TRACKING_URLS[courierCode.toUpperCase()] ?? '' : '');
+      (orderCourierCode ? COURIER_TRACKING_URLS[orderCourierCode.toUpperCase()] ?? '' : '');
 
-    const fetchedOrder = await db.query.orders.findFirst({
-      where: eq(orders.id, orderId),
-      with: { items: true },
-    });
-
-    if (fetchedOrder) {
-      sendEmail({
-        to: fetchedOrder.recipientEmail,
-        subject: `Pesanan ${fetchedOrder.orderNumber} sudah dikirim!`,
-        react: OrderShippedEmail({
-          orderNumber: fetchedOrder.orderNumber,
-          customerName: fetchedOrder.recipientName,
-          courierName: courierName ?? fetchedOrder.courierName ?? 'Pengiriman',
-          trackingNumber,
-          trackingUrl: builtTrackingUrl,
-          estimatedDays: estimatedDays ?? '',
-          items: fetchedOrder.items?.map((item) => ({
-            name: item.productNameId,
-            variant: item.variantNameId,
-            quantity: item.quantity,
-          })) ?? [],
-          totalAmount: fetchedOrder.totalAmount,
-        }),
-      }).catch(console.error);
-    }
+    await sendEmail({
+      to: order.recipientEmail,
+      subject: `Pesanan ${order.orderNumber} sudah dikirim!`,
+      react: OrderShippedEmail({
+        orderNumber: order.orderNumber,
+        customerName: order.recipientName,
+        courierName: order.courierName ?? 'Pengiriman',
+        trackingNumber,
+        trackingUrl: builtTrackingUrl,
+        estimatedDays: estimatedDays ?? '',
+        items: order.items?.map((item) => ({
+          name: item.productNameId,
+          variant: item.variantNameId,
+          quantity: item.quantity,
+        })) ?? [],
+        totalAmount: order.totalAmount,
+      }),
+    }).catch(console.error);
 
     return success({ orderId, status: 'shipped', trackingNumber });
   } catch (error) {

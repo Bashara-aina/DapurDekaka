@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { products } from '@/lib/db/schema';
-import { inArray } from 'drizzle-orm';
-import { success, unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
+import { products, orderItems } from '@/lib/db/schema';
+import { inArray, and } from 'drizzle-orm';
+import { success, unauthorized, forbidden, serverError, conflict } from '@/lib/utils/api-response';
+import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -36,13 +37,39 @@ export async function PATCH(req: NextRequest) {
     } else if (action === 'enable') {
       await db.update(products).set({ isActive: true }).where(inArray(products.id, ids));
     } else if (action === 'archive') {
+      // H-02: Check for active orders before archiving
+      const activeOrderStatuses = ['pending_payment', 'paid', 'processing', 'packed', 'shipped'];
+      const activeOrders = await db.query.orderItems.findMany({
+        where: and(
+          inArray(orderItems.productId, ids),
+          orderItems.orderId  // This is a reference, we need to join with orders to check status
+        ),
+        with: {
+          order: {
+            columns: { id: true, status: true, orderNumber: true },
+          },
+        },
+      });
+
+      // Check if any referenced order has an active status
+      const affectedOrderNumbers = activeOrders
+        .filter(item => item.order && activeOrderStatuses.includes(item.order.status))
+        .map(item => item.order!.orderNumber);
+
+      if (affectedOrderNumbers.length > 0) {
+        return NextResponse.json(
+          { success: false, error: `Tidak dapat arsip: produk terkait dengan pesanan aktif (${affectedOrderNumbers.slice(0, 5).join(', ')}${affectedOrderNumbers.length > 5 ? '...' : ''})`, code: 'HAS_ACTIVE_ORDERS' },
+          { status: 409 }
+        );
+      }
+
       const now = new Date();
       await db.update(products).set({ deletedAt: now }).where(inArray(products.id, ids));
     }
 
     return success({ updated: ids.length });
   } catch (error) {
-    console.error('[Admin Products Bulk PATCH]', error);
+    logger.error('[Admin Products Bulk PATCH]', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
 }
@@ -67,7 +94,7 @@ export async function DELETE(req: NextRequest) {
 
     return success({ deleted: ids.length });
   } catch (error) {
-    console.error('[Admin Products Bulk DELETE]', error);
+    logger.error('[Admin Products Bulk DELETE]', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
 }

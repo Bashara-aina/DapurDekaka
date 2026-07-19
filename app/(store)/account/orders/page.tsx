@@ -13,23 +13,16 @@ import { ORDER_STATUS_LABELS_SHORT, ORDER_STATUS_COLORS } from '@/lib/constants/
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-  title: 'Pesanan Saya — Dapur Dekaka',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('account');
+  return {
+    title: t('myOrdersTitle'),
+  };
+}
 
 interface OrdersPageProps {
   searchParams: Promise<{ page?: string; status?: string }>;
 }
-
-const STATUS_FILTERS = [
-  { key: 'all', label: 'Semua' },
-  { key: 'pending_payment', label: 'Menunggu Bayar' },
-  { key: 'processing', label: 'Diproses' },
-  { key: 'packed', label: 'Dikemas' },
-  { key: 'shipped', label: 'Dikirim' },
-  { key: 'delivered', label: 'Selesai' },
-  { key: 'cancelled', label: 'Dibatalkan' },
-];
 
 export default async function AccountOrdersPage({ searchParams }: OrdersPageProps) {
   const session = await auth();

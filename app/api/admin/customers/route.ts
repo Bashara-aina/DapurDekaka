@@ -5,10 +5,11 @@ import { users } from '@/lib/db/schema';
 import { eq, like, or, desc, sql, and } from 'drizzle-orm';
 import { success, forbidden, serverError, unauthorized } from '@/lib/utils/api-response';
 import { logger } from '@/lib/utils/logger';
+import { withRateLimit } from '@/lib/utils/rate-limit';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export async function GET(req: NextRequest) {
+export const GET = withRateLimit(async (req: NextRequest) => {
   try {
     const session = await auth();
     if (!session?.user) return unauthorized('Silakan login');
@@ -24,15 +25,25 @@ export async function GET(req: NextRequest) {
 
     let whereClause;
 
+    const conditions: ReturnType<typeof eq>[] = [];
+
     if (search) {
-      whereClause = or(
+      conditions.push(or(
         like(users.name, `%${search}%`),
         like(users.email, `%${search}%`)
-      );
-    } else if (roleFilter) {
-      whereClause = eq(users.role, roleFilter as 'customer' | 'b2b');
-    } else if (isActiveFilter !== null && isActiveFilter !== '') {
-      whereClause = eq(users.isActive, isActiveFilter === 'true');
+      ) as ReturnType<typeof eq>);
+    }
+
+    if (roleFilter) {
+      conditions.push(eq(users.role, roleFilter as 'customer' | 'b2b'));
+    }
+
+    if (isActiveFilter !== null && isActiveFilter !== '') {
+      conditions.push(eq(users.isActive, isActiveFilter === 'true'));
+    }
+
+    if (conditions.length > 0) {
+      whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
     }
 
     const [data, countResult] = await Promise.all([
@@ -68,4 +79,4 @@ export async function GET(req: NextRequest) {
     logger.error('[Admin/Customers/GET]', { error });
     return serverError(error);
   }
-}
+}, { windowMs: 60000, maxRequests: 30 });

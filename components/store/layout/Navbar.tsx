@@ -8,6 +8,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils/cn';
 import { useCartStore } from '@/store/cart.store';
+import { LanguageSwitcher } from '@/components/store/layout/LanguageSwitcher';
 import { usePathname, useRouter } from 'next/navigation';
 
 const NAV_LINKS = (t: (key: string) => string) => [
@@ -71,7 +72,7 @@ export function Navbar() {
 
           {/* Actions */}
           <div className="flex items-center gap-3">
-            {/* <LanguageSwitcher /> */}
+            <LanguageSwitcher />
             <Link
               href="/products"
               className="p-2 text-text-secondary hover:text-brand-red transition-colors"
@@ -138,7 +139,7 @@ export function Navbar() {
           </Link>
 
           <div className="flex items-center gap-2">
-            {/* <LanguageSwitcher /> */}
+            <LanguageSwitcher />
             <Link
               href="/cart"
               className="relative p-2 text-text-secondary"

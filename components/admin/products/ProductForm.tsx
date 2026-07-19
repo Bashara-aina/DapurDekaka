@@ -13,6 +13,7 @@ import Image from 'next/image';
 import { useState, useCallback } from 'react';
 import TiptapEditor from '@/components/admin/blog/TiptapEditor';
 import { toast } from 'sonner';
+import { revalidatePath } from 'next/cache';
 
 interface ProductFormProps {
   initialData?: {
@@ -54,6 +55,9 @@ interface VariantData {
   b2bPrice: number;
   stock: number;
   weightGram: number;
+  lengthCm: number;
+  widthCm: number;
+  heightCm: number;
   isActive: boolean;
 }
 
@@ -100,6 +104,9 @@ const ProductSchema = z.object({
     b2bPrice: z.number().int().min(1000, 'Harga B2B minimal Rp 1.000').optional(),
     stock: z.number().int().nonnegative('Stok harus bilangan bulat'),
     weightGram: z.number().int().nonnegative(),
+    lengthCm: z.number().int().positive().default(30),
+    widthCm: z.number().int().positive().default(22),
+    heightCm: z.number().int().positive().default(12),
     isActive: z.boolean().default(true),
   })).min(1, 'Minimal harus ada 1 varian'),
   images: z.array(z.object({
@@ -157,7 +164,8 @@ export function ProductForm({ initialData, categories, onSubmit, isSubmitting }:
       metaDescriptionEn: initialData?.metaDescriptionEn ?? '',
       shopeeUrl: initialData?.shopeeUrl ?? '',
       variants: initialData?.variants?.length ? initialData.variants : [{
-        nameId: '', nameEn: '', sku: '', price: 0, b2bPrice: 0, stock: 0, weightGram: 0, isActive: true,
+        nameId: '', nameEn: '', sku: '', price: 0, b2bPrice: 0, stock: 0, weightGram: 0,
+        lengthCm: 30, widthCm: 22, heightCm: 12, isActive: true,
       }],
     },
   });
@@ -211,6 +219,7 @@ export function ProductForm({ initialData, categories, onSubmit, isSubmitting }:
       images,
     };
     await onSubmit(payload as ProductFormData);
+    revalidatePath('/admin/products');
   }
 
   return (
@@ -381,7 +390,10 @@ export function ProductForm({ initialData, categories, onSubmit, isSubmitting }:
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => appendVariant({ nameId: '', nameEn: '', sku: '', price: 0, b2bPrice: 0, stock: 0, weightGram: 0, isActive: true })}
+            onClick={() => appendVariant({
+              nameId: '', nameEn: '', sku: '', price: 0, b2bPrice: 0, stock: 0,
+              weightGram: 0, lengthCm: 30, widthCm: 22, heightCm: 12, isActive: true,
+            })}
           >
             <Plus className="w-4 h-4 mr-1" /> Tambah Varian
           </Button>
@@ -441,6 +453,36 @@ export function ProductForm({ initialData, categories, onSubmit, isSubmitting }:
                     type="number"
                     {...form.register(`variants.${idx}.weightGram`, { valueAsNumber: true })}
                     placeholder="150"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor={`variants.${idx}.lengthCm`}>Panjang (cm)</Label>
+                  <Input
+                    id={`variants.${idx}.lengthCm`}
+                    type="number"
+                    {...form.register(`variants.${idx}.lengthCm`, { valueAsNumber: true })}
+                    placeholder="30"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor={`variants.${idx}.widthCm`}>Lebar (cm)</Label>
+                  <Input
+                    id={`variants.${idx}.widthCm`}
+                    type="number"
+                    {...form.register(`variants.${idx}.widthCm`, { valueAsNumber: true })}
+                    placeholder="22"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor={`variants.${idx}.heightCm`}>Tinggi (cm)</Label>
+                  <Input
+                    id={`variants.${idx}.heightCm`}
+                    type="number"
+                    {...form.register(`variants.${idx}.heightCm`, { valueAsNumber: true })}
+                    placeholder="12"
                   />
                 </div>
 

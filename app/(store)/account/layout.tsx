@@ -4,6 +4,7 @@ import { ReactNode, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils/cn';
 import {
   LayoutDashboard,
@@ -20,18 +21,19 @@ interface AccountLayoutProps {
 }
 
 const navItems = [
-  { href: '/account', label: 'Overview', icon: LayoutDashboard },
-  { href: '/account/orders', label: 'Pesanan', icon: Package },
-  { href: '/account/addresses', label: 'Alamat', icon: MapPin },
-  { href: '/account/points', label: 'Poin', icon: Gift },
-  { href: '/account/vouchers', label: 'Voucher', icon: Ticket },
-  { href: '/account/profile', label: 'Profil', icon: User },
+  { href: '/account', labelKey: 'overview', icon: LayoutDashboard },
+  { href: '/account/orders', labelKey: 'orders', icon: Package },
+  { href: '/account/addresses', labelKey: 'addresses', icon: MapPin },
+  { href: '/account/points', labelKey: 'points', icon: Gift },
+  { href: '/account/vouchers', labelKey: 'vouchers', icon: Ticket },
+  { href: '/account/profile', labelKey: 'profile', icon: User },
 ];
 
 export default function AccountLayout({ children }: AccountLayoutProps) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const t = useTranslations('account');
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -62,7 +64,7 @@ export default function AccountLayout({ children }: AccountLayoutProps) {
                       )}
                     >
                       <item.icon className="w-5 h-5" />
-                      {item.label}
+                      {t(item.labelKey)}
                     </Link>
                   );
                 })}
@@ -75,7 +77,7 @@ export default function AccountLayout({ children }: AccountLayoutProps) {
                   className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-text-secondary hover:bg-brand-cream hover:text-text-primary transition-colors w-full disabled:opacity-50"
                 >
                   <LogOut className="w-5 h-5" />
-                  {isSigningOut ? 'Memproses...' : 'Keluar'}
+                  {isSigningOut ? t('signingOut') : t('signOut')}
                 </button>
               </div>
             </nav>
@@ -100,7 +102,7 @@ export default function AccountLayout({ children }: AccountLayoutProps) {
                     )}
                   >
                     <item.icon className="w-3.5 h-3.5" />
-                    {item.label}
+                    {t(item.labelKey)}
                   </Link>
                 );
               })}

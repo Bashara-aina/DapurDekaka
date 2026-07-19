@@ -85,6 +85,9 @@ export async function PATCH(
     if (data.price !== undefined) updateData.price = data.price;
     if (data.b2bPrice !== undefined) updateData.b2bPrice = data.b2bPrice;
     if (data.weightGram !== undefined) updateData.weightGram = data.weightGram;
+    if (data.lengthCm !== undefined) updateData.lengthCm = data.lengthCm;
+    if (data.widthCm !== undefined) updateData.widthCm = data.widthCm;
+    if (data.heightCm !== undefined) updateData.heightCm = data.heightCm;
     if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
 
@@ -189,6 +192,9 @@ const UpdateVariantSchema = z.object({
   b2bPrice: z.number().int().nonnegative().optional().nullable(),
   stock: z.number().int().nonnegative().optional(),
   weightGram: z.number().int().nonnegative().optional(),
+  lengthCm: z.number().int().positive().optional(),
+  widthCm: z.number().int().positive().optional(),
+  heightCm: z.number().int().positive().optional(),
   sortOrder: z.number().int().nonnegative().optional(),
   isActive: z.boolean().optional(),
 });

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { orders, orderItems, productVariants, inventoryLogs, coupons, couponUsages, pointsHistory, users, orderStatusHistory } from '@/lib/db/schema';
+import { orders, couponUsages, pointsHistory, users, orderStatusHistory } from '@/lib/db/schema';
 import { eq, and, lt, sql } from 'drizzle-orm';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { checkTransactionStatus } from '@/lib/midtrans/status';
@@ -89,27 +89,9 @@ export async function GET(req: NextRequest) {
             note: `Otomatis dibatalkan karena tidak dibayar dalam 15 menit`,
           });
 
-          // BUG-01 FIX: Restore stock atomically using GREATEST pattern
-          // This prevents stock going negative if there's a race condition
-          for (const item of order.items) {
-            const [updated] = await tx
-              .update(productVariants)
-              .set({ stock: sql`GREATEST(stock + ${item.quantity}, 0)`, updatedAt: new Date() })
-              .where(eq(productVariants.id, item.variantId))
-              .returning({ newStock: productVariants.stock });
-
-            if (updated) {
-              await tx.insert(inventoryLogs).values({
-                variantId: item.variantId,
-                changeType: 'reversal',
-                quantityBefore: updated.newStock - item.quantity,
-                quantityAfter: updated.newStock,
-                quantityDelta: item.quantity,
-                orderId: order.id,
-                note: `Pembatalan expired order ${order.orderNumber} — stok dikembalikan`,
-              });
-            }
-          }
+          // P0#2 (P3 Decision 1): this order was never paid, so stock was NEVER
+          // deducted (settlement-only deduction model). Restoring it here would
+          // inflate inventory. No stock op.
 
           // Reverse points if used — full FIFO reversal from webhook handler
           if (order.userId && order.pointsUsed > 0) {
@@ -138,13 +120,10 @@ export async function GET(req: NextRequest) {
               .where(eq(users.id, order.userId));
           }
 
-          // Reverse coupon usage: decrement used_count AND delete couponUsage row
+          // Delete the provisional couponUsages row inserted at initiate. Do NOT
+          // decrement used_count — it is only incremented at settlement, and this
+          // order never settled (P0#2).
           if (order.couponId) {
-            await tx
-              .update(coupons)
-              .set({ usedCount: sql`GREATEST(used_count - 1, 0)` })
-              .where(eq(coupons.id, order.couponId));
-
             await tx.delete(couponUsages).where(eq(couponUsages.orderId, order.id));
           }
         });

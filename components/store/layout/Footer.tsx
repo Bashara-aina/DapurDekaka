@@ -61,7 +61,7 @@ export default async function Footer() {
             <h4 className="font-semibold text-brand-cream mb-4">{t('followUs')}</h4>
             <div className="flex gap-4">
               <a
-                href="https://instagram.com/dapurdekaka"
+                href={process.env.NEXT_PUBLIC_INSTAGRAM_URL || 'https://instagram.com/dapurdekaka'}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-brand-cream transition-colors duration-150"

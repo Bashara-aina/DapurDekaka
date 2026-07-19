@@ -57,6 +57,14 @@ const TRANSITIONS: Record<string, { status: string; label: string }[]> = {
   shipped: [{ status: 'delivered', label: 'Terima' }],
 };
 
+// H-03: Filter transitions based on role — warehouse can only do packed→shipped
+function getAllowedTransitions(status: string, role: string) {
+  if (role === 'warehouse') {
+    return status === 'packed' ? TRANSITIONS[status] ?? [] : [];
+  }
+  return TRANSITIONS[status] ?? [];
+}
+
 export default function OrdersClient({
   initialOrders,
   userRole,
@@ -223,7 +231,7 @@ export default function OrdersClient({
             </thead>
             <tbody className="divide-y divide-admin-border">
               {orders.map((order) => {
-                const allowedTransitions = TRANSITIONS[order.status] || [];
+                const allowedTransitions = getAllowedTransitions(order.status, userRole);
                 const isOpen = openDropdown === order.id;
 
                 return (

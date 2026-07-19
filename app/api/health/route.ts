@@ -42,7 +42,8 @@ export async function GET(_req: NextRequest) {
   return NextResponse.json(
     {
       status: 'unhealthy',
-      checks: { database: { status: 'error', error: errorMessage, latency: null } },
+      error: 'Service unavailable',
+      checks: { database: { status: 'error', error: 'Service unavailable', latency: null } },
       timestamp: new Date().toISOString(),
     },
     { status: 503 }

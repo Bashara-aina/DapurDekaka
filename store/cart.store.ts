@@ -27,7 +27,7 @@ interface CartStore {
   getTotalItems: () => number;
   getSubtotal: () => number;
   getTotalWeight: () => number;
-  validateStock: () => Promise<{ valid: boolean; errors: string[] }>;
+  validateStock: () => Promise<{ valid: boolean; errors: string[]; priceChanged: boolean }>;
   syncToDb: () => Promise<{ success: boolean; error?: string }>;
   loadFromDb: () => Promise<{ success: boolean; error?: string }>;
   checkExternalChange: (currentVersion: number) => boolean;
@@ -57,11 +57,12 @@ export const useCartStore = create<CartStore>()(
             ),
           }));
         } else {
-          // Allow adding out-of-stock items (stock=0) — no longer blocked
-          const maxQty = Math.min(99, item.stock ?? 99);
+          if ((item.stock ?? 0) <= 0) return;
+          const maxQty = Math.min(99, item.stock);
+          if (maxQty <= 0) return;
           set((state) => ({
             ...bumpVersion(state),
-            items: [...state.items, { ...item, quantity: Math.min(1, maxQty) }],
+            items: [...state.items, { ...item, quantity: 1 }],
           }));
         }
       },
@@ -104,9 +105,10 @@ export const useCartStore = create<CartStore>()(
 
       validateStock: async function validateStockInner() {
         const items = get().items;
-        if (items.length === 0) return { valid: true, errors: [] };
+        if (items.length === 0) return { valid: true, errors: [], priceChanged: false };
 
         const errors: string[] = [];
+        let priceChanged = false;
 
         try {
           const res = await fetch('/api/cart/validate', {
@@ -116,27 +118,39 @@ export const useCartStore = create<CartStore>()(
           });
           const json = await res.json();
           if (json.success && json.data?.items) {
-            const stockMap = new Map<string, number>(
-              json.data.items.map((s: { variantId: string; availableStock: number }) => [s.variantId, s.availableStock])
+            const stockMap = new Map<string, { stock: number; price: number }>(
+              json.data.items.map((s: { variantId: string; availableStock: number; unitPrice: number }) => [
+                s.variantId,
+                { stock: s.availableStock, price: s.unitPrice },
+              ])
             );
             set((state) => ({
               ...bumpVersion(state),
-              items: state.items.map(i => ({
-                ...i,
-                stock: stockMap.get(i.variantId) ?? i.stock,
-              } as CartItem)),
+              items: state.items.map(i => {
+                const server = stockMap.get(i.variantId);
+                if (!server) return i;
+                if (server.price !== i.unitPrice) priceChanged = true;
+                return {
+                  ...i,
+                  stock: server.stock,
+                  unitPrice: server.price,
+                } as CartItem;
+              }),
             }));
           }
         } catch {
           errors.push('Gagal memvalidasi stok. Silakan coba lagi.');
         }
 
-        const insufficientItems = get().items.filter(i => i.quantity > i.stock && i.stock > 0);
-        for (const item of insufficientItems) {
-          errors.push(`"${item.productNameId}" - stok tidak mencukupi (tersedia ${item.stock})`);
+        for (const item of get().items) {
+          if (item.stock <= 0) {
+            errors.push(`"${item.productNameId}" — stok habis`);
+          } else if (item.quantity > item.stock) {
+            errors.push(`"${item.productNameId}" - stok tidak mencukupi (tersedia ${item.stock})`);
+          }
         }
 
-        return { valid: errors.length === 0, errors };
+        return { valid: errors.length === 0, errors, priceChanged };
       },
 
       syncToDb: async () => {
@@ -174,13 +188,24 @@ export const useCartStore = create<CartStore>()(
           const dbItems: CartItem[] = json.data.items;
           const localItems = get().items;
 
-          const merged = dbItems.map(dbItem => {
-            const localItem = localItems.find(l => l.variantId === dbItem.variantId);
-            if (localItem) {
-              return { ...dbItem, quantity: localItem.quantity > dbItem.stock ? dbItem.stock : localItem.quantity };
+          const mergedMap = new Map<string, CartItem>();
+          for (const dbItem of dbItems) {
+            mergedMap.set(dbItem.variantId, dbItem);
+          }
+          for (const localItem of localItems) {
+            const existing = mergedMap.get(localItem.variantId);
+            if (existing) {
+              mergedMap.set(localItem.variantId, {
+                ...existing,
+                quantity: Math.min(Math.max(localItem.quantity, 1), existing.stock),
+                unitPrice: localItem.unitPrice,
+              });
+            } else {
+              mergedMap.set(localItem.variantId, localItem);
             }
-            return dbItem;
-          }).filter(item => item.stock > 0);
+          }
+
+          const merged = Array.from(mergedMap.values()).filter((item) => item.stock > 0);
 
           set((state) => ({
             ...bumpVersion(state),

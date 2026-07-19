@@ -3,15 +3,15 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { useCartStore } from '@/store/cart.store';
 
 export function HomePageCTA() {
+  const t = useTranslations('homePageCTA');
   const { data: session } = useSession();
-  const hydrated = false;
-
-  // We need to handle hydration safely
-  const [mounted, setMounted] = useState(false);
   const getTotalItems = useCartStore((s) => s.getTotalItems);
+
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -19,68 +19,51 @@ export function HomePageCTA() {
 
   const totalItems = mounted ? getTotalItems() : 0;
 
-  if (!mounted) {
-    return (
-      <section className="py-12 px-4 bg-brand-red">
-        <div className="container mx-auto text-center">
-          <h2 className="font-display text-2xl font-bold text-white mb-4">
-            Siap Mencicipi Kelezatan Dapur Dekaka?
-          </h2>
-          <p className="text-white/80 mb-6 max-w-md mx-auto">
-            Pesan sekarang dan nikmati dimsum, siomay, dan bakso premium langsung di rumahmu
-          </p>
-          <Link
-            href="/products"
-            className="inline-flex items-center h-12 px-8 bg-white text-brand-red font-bold rounded-button shadow-lg hover:bg-brand-cream transition-colors"
-          >
-            Jelajahi Produk
-          </Link>
-        </div>
-      </section>
-    );
-  }
-
-  // Logged in user
-  if (session?.user) {
-    return (
-      <section className="py-12 px-4 bg-brand-red">
-        <div className="container mx-auto text-center">
-          <h2 className="font-display text-2xl font-bold text-white mb-4">
-            {totalItems > 0 ? 'Lanjutkan Belanja?' : 'Mau Pesan Lagi?'}
-          </h2>
-          <p className="text-white/80 mb-6 max-w-md mx-auto">
-            {totalItems > 0
-              ? `Kamu punya ${totalItems} item di keranjang. Lanjutkan belanja dan kumpulkan poin!`
-              : 'Mau pesan lagi? Yuk jelajahi produk favoritmu.'}
-          </p>
-          <Link
-            href="/products"
-            className="inline-flex items-center h-12 px-8 bg-white text-brand-red font-bold rounded-button shadow-lg hover:bg-brand-cream transition-colors"
-          >
-            {totalItems > 0 ? 'Lihat Keranjang' : 'Mulai Belanja'}
-          </Link>
-        </div>
-      </section>
-    );
-  }
-
-  // Guest user
-  return (
+  const guestContent = (
     <section className="py-12 px-4 bg-brand-red">
       <div className="container mx-auto text-center">
         <h2 className="font-display text-2xl font-bold text-white mb-4">
-          Siap Mencicipi Kelezatan Dapur Dekaka?
+          {t('heroTitle')}
         </h2>
         <p className="text-white/80 mb-6 max-w-md mx-auto">
-          Pesan sekarang dan nikmati dimsum, siomay, dan bakso premium langsung di rumahmu
+          {t('heroSubtitle')}
         </p>
         <Link
           href="/products"
           className="inline-flex items-center h-12 px-8 bg-white text-brand-red font-bold rounded-button shadow-lg hover:bg-brand-cream transition-colors"
         >
-          Jelajahi Produk
+          {t('exploreProducts')}
         </Link>
       </div>
     </section>
   );
+
+  if (!mounted) {
+    return guestContent;
+  }
+
+  if (session?.user) {
+    return (
+      <section className="py-12 px-4 bg-brand-red">
+        <div className="container mx-auto text-center">
+          <h2 className="font-display text-2xl font-bold text-white mb-4">
+            {totalItems > 0 ? t('continueShoppingTitle') : t('retryShoppingTitle')}
+          </h2>
+          <p className="text-white/80 mb-6 max-w-md mx-auto">
+            {totalItems > 0
+              ? t('continueShoppingSubtitle', { totalItems })
+              : t('retryShoppingSubtitle')}
+          </p>
+          <Link
+            href="/products"
+            className="inline-flex items-center h-12 px-8 bg-white text-brand-red font-bold rounded-button shadow-lg hover:bg-brand-cream transition-colors"
+          >
+            {totalItems > 0 ? t('viewCart') : t('startShopping')}
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  return guestContent;
 }

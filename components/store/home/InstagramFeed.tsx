@@ -7,6 +7,8 @@ import { useTranslations } from 'next-intl';
 const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dsnhwfuxh';
 const CLOUDINARY_BASE = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/f_webp,q_auto,w_600`;
 
+const INSTAGRAM_URL = process.env.NEXT_PUBLIC_INSTAGRAM_URL || 'https://instagram.com/dapurdekaka';
+
 const galleryPosts = [
   { id: 1, cloudinaryPublicId: 'dapurdekaka/gallery/gallery-01', alt: 'Dimsum premium' },
   { id: 2, cloudinaryPublicId: 'dapurdekaka/gallery/gallery-02', alt: 'Bakso frozen' },
@@ -28,7 +30,7 @@ export function InstagramFeed() {
           </h2>
           <p className="text-text-secondary text-sm">{t('home.gallery.description')}</p>
           <a
-            href="https://instagram.com/dapurdekaka"
+            href={INSTAGRAM_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 mt-3 text-sm text-brand-red hover:underline"
@@ -45,7 +47,7 @@ export function InstagramFeed() {
           {galleryPosts.map((post) => (
             <a
               key={post.id}
-              href="https://instagram.com/dapurdekaka"
+              href={INSTAGRAM_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="aspect-square relative rounded-lg overflow-hidden bg-brand-cream-dark group"

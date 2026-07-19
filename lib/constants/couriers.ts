@@ -1,81 +1,69 @@
+import { getTrackingUrl } from '@/lib/utils/tracking-url';
+
 /**
- * Only cold-chain couriers allowed for frozen products.
- * These are the ONLY couriers we show — no JNE REG, Pos Indonesia, etc.
+ * Biteship courier configuration for Shipping V2 three-tier model.
+ * RajaOngkir removed — all rates via Biteship API.
  */
-export const ALLOWED_COURIERS = [
-  { code: 'sicepat', service: 'FROZEN', displayName: 'SiCepat FROZEN' },
-  { code: 'jne', service: 'YES', displayName: 'JNE YES (Next Day)' },
-  { code: 'anteraja', service: 'FROZEN', displayName: 'AnterAja Frozen' },
-  { code: 'jnt', service: 'FROZEN', displayName: 'J&T FROZEN' },
-  { code: 'rex', service: 'FROZEN', displayName: 'Rex FROZEN' },
+
+export const BORZO_EXCLUDED = 'borzo';
+
+export const TIER_EXPRESS_COURIERS = ['gojek', 'grab'] as const;
+
+export const TIER_FROZEN_SAME_DAY_COURIERS = ['paxel', 'anteraja'] as const;
+
+export const TIER_FROZEN_EXPRESS_COURIERS = ['sicepat', 'jne', 'anteraja'] as const;
+
+export const ALLOWED_COURIER_CODES = [
+  ...TIER_EXPRESS_COURIERS,
+  ...TIER_FROZEN_SAME_DAY_COURIERS,
+  ...TIER_FROZEN_EXPRESS_COURIERS,
 ] as const;
 
-export type AllowedCourier = typeof ALLOWED_COURIERS[number];
+export const ALLOWED_COURIERS = ALLOWED_COURIER_CODES.map((code) => ({
+  code,
+  service: 'FROZEN',
+  displayName: code.toUpperCase(),
+}));
 
-/**
- * Tracking number format validation regex by courier code.
- * Used to validate tracking numbers before saving.
- */
-export const TRACKING_FORMATS: Record<string, RegExp> = {
-  sicepat: /^[A-Z0-9]{10,20}$/,
-  jne: /^[A-Z0-9]{10,15}$/,
-  anteraja: /^[A-Z0-9]{12}$/,
-  jnt: /^[A-Z0-9]{10,15}$/,
-  rex: /^[A-Z0-9]{10,15}$/,
-};
+export const PAXEL_MAX_WEIGHT_KG = 5;
 
-/**
- * RajaOngkir origin city ID for shipping cost calculations.
- * Defaults to Bandung (23) from env var RAJAONGKIR_ORIGIN_CITY_ID.
- * If using RajaOngkir Starter tier with Jakarta-registered account, set to '501'.
- * For accurate Bandung-origin shipping rates, use RajaOngkir Pro with origin "23".
- */
-export const RAJAONGKIR_ORIGIN_CITY_ID =
-  (process.env.RAJAONGKIR_ORIGIN_CITY_ID ?? '23') as string;
+export const INSTANT_MAX_WEIGHT_KG = 15;
 
-/**
- * @deprecated Use RAJAONGKIR_ORIGIN_CITY_ID instead. RajaOngkir Starter only supports
- * origin 501 (Jakarta) but this project uses Bandung (23) for accurate frozen shipping rates.
- */
-export const ORIGIN_CITY_ID = RAJAONGKIR_ORIGIN_CITY_ID;
-
-/**
- * Minimum billable weight in grams
- */
 export const MIN_WEIGHT_GRAM = 1000;
 
-/**
- * Tracking URL templates by courier code.
- * @deprecated Use getTrackingUrl from lib/utils/tracking-url.ts instead
- */
-export const COURIER_TRACKING_URLS: Record<string, string> = {
-  sicepat: 'https://www.sicepat.com/check/waybill/{{trackingNumber}}',
-  jne: 'https://www.jne.co.id/tracking/trace/{{trackingNumber}}',
-  anteraja: 'https://anteraja.id/trace/{{trackingNumber}}',
-  jnt: 'https://www.jtexpress.co.id/check/waybill',
-  rex: 'https://rex.cus-rex.com',
+export const SHIPPING_TIER_LABELS: Record<string, { id: string; en: string }> = {
+  express: { id: 'Express (GoSend/Grab)', en: 'Express (GoSend/Grab)' },
+  frozen_same_day: { id: 'Frozen Same-day', en: 'Frozen Same-day' },
+  frozen_express: { id: 'Frozen Express', en: 'Frozen Express' },
+  pickup: { id: 'Ambil di Toko', en: 'Store Pickup' },
 };
 
-/**
- * Generate tracking URL for a given courier code and tracking number.
- * @deprecated Use getTrackingUrl from lib/utils/tracking-url.ts instead
- */
-export function buildTrackingUrl(courierCode: string, trackingNumber: string): string {
-  const template = COURIER_TRACKING_URLS[courierCode?.toLowerCase()];
-  if (!template || !trackingNumber) return '';
-  return template.replace('{{trackingNumber}}', trackingNumber);
-}
+export const TRACKING_FORMATS: Record<string, RegExp> = {
+  gojek: /^[A-Z0-9-]{6,30}$/i,
+  grab: /^[A-Z0-9-]{6,30}$/i,
+  paxel: /^[A-Z0-9]{8,20}$/i,
+  sicepat: /^[A-Z0-9]{10,20}$/i,
+  jne: /^[A-Z0-9]{10,15}$/i,
+  anteraja: /^[A-Z0-9]{12}$/i,
+};
 
 /**
  * Validate tracking number format for a given courier.
- * Returns error message if invalid, null if valid.
  */
-export function validateTrackingFormat(courierCode: string, trackingNumber: string): string | null {
+export function validateTrackingFormat(
+  courierCode: string,
+  trackingNumber: string
+): string | null {
   if (!trackingNumber) return null;
   const format = TRACKING_FORMATS[courierCode?.toLowerCase()];
-  if (!format) return 'Kurir tidak dikenali';
+  if (!format) return null;
   if (!format.test(trackingNumber)) {
     return `Format nomor resi tidak valid untuk ${courierCode.toUpperCase()}`;
   }
   return null;
+}
+
+/** @deprecated Use getTrackingUrl from lib/utils/tracking-url.ts */
+export function buildTrackingUrl(courierCode: string, trackingNumber: string): string {
+  return getTrackingUrl(courierCode, trackingNumber) ?? '';
 }

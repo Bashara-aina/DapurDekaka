@@ -29,6 +29,21 @@ export async function GET(req: NextRequest) {
       orderBy: (orders, { asc }) => [asc(orders.createdAt)],
     });
 
+    const tierPriority = (tier: string | null): number => {
+      if (tier === 'express') return 0;
+      if (tier === 'frozen_same_day') return 1;
+      if (tier === 'frozen_express') return 2;
+      if (tier === 'pickup') return 3;
+      return 4;
+    };
+
+    paidOrders.sort((a, b) => {
+      const ta = tierPriority(a.shippingTier);
+      const tb = tierPriority(b.shippingTier);
+      if (ta !== tb) return ta - tb;
+      return (a.paidAt?.getTime() ?? 0) - (b.paidAt?.getTime() ?? 0);
+    });
+
     return success(paidOrders);
   } catch (error) {
     console.error('[admin/field/packing-queue GET]', error);
@@ -38,6 +53,8 @@ export async function GET(req: NextRequest) {
 
 const packSchema = z.object({
   orderId: z.string().uuid(),
+  note: z.string().optional(),
+  coldChainCondition: z.string().optional(),
 });
 
 export async function PATCH(req: NextRequest) {
@@ -58,7 +75,7 @@ export async function PATCH(req: NextRequest) {
       return validationError(parsed.error);
     }
 
-    const { orderId } = parsed.data;
+    const { orderId, note, coldChainCondition } = parsed.data;
 
     const order = await db.query.orders.findFirst({
       where: eq(orders.id, orderId),
@@ -104,8 +121,25 @@ export async function PATCH(req: NextRequest) {
         toStatus: 'packed',
         changedByUserId: session.user.id,
         changedByType: 'user',
-        note: `Order dikemas oleh ${session.user.name}`,
+        note: note
+          ? `Order dikemas oleh ${session.user.name}: ${note}`
+          : `Order dikemas oleh ${session.user.name}`,
+        metadata: coldChainCondition ? { coldChainCondition } : undefined,
       });
+
+      if (order.deliveryMethod === 'delivery') {
+        await tx
+          .update(orders)
+          .set({ dispatchStatus: 'pending' })
+          .where(eq(orders.id, orderId));
+      }
+
+      if (order.deliveryMethod === 'delivery') {
+        await tx
+          .update(orders)
+          .set({ dispatchStatus: 'pending' })
+          .where(eq(orders.id, orderId));
+      }
     });
 
     return success({ orderId, status: 'packed' });

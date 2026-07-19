@@ -10,6 +10,7 @@ import {
   jsonb,
   index,
   unique,
+  numeric,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 
@@ -28,6 +29,18 @@ export const orderStatusEnum = pgEnum('order_status_enum', [
 
 export const deliveryMethodEnum = pgEnum('delivery_method_enum', [
   'delivery', 'pickup',
+]);
+
+export const shippingTierEnum = pgEnum('shipping_tier_enum', [
+  'express', 'frozen_same_day', 'frozen_express', 'pickup',
+]);
+
+export const insuranceTypeEnum = pgEnum('insurance_type_enum', [
+  'none', 'basic', 'premium',
+]);
+
+export const dispatchStatusEnum = pgEnum('dispatch_status_enum', [
+  'not_required', 'pending', 'booking', 'booked', 'failed', 'retrying',
 ]);
 
 export const couponTypeEnum = pgEnum('coupon_type_enum', [
@@ -52,6 +65,28 @@ export const b2bInquiryStatusEnum = pgEnum('b2b_inquiry_status_enum', [
 
 export const b2bQuoteStatusEnum = pgEnum('b2b_quote_status_enum', [
   'draft', 'sent', 'accepted', 'rejected', 'expired',
+]);
+
+// ── Constitution enums (L1 / L2 / L4) ──────────────────────────────────────
+export const refundReasonEnum = pgEnum('refund_reason_enum', [
+  'customer_request', 'cold_chain_failure', 'stock_out',
+  'fraud', 'other',
+]);
+
+export const refundMethodEnum = pgEnum('refund_method_enum', [
+  'midtrans', 'manual',
+]);
+
+export const refundStatusEnum = pgEnum('refund_status_enum', [
+  'pending', 'processing', 'completed', 'failed',
+]);
+
+export const disputeStatusEnum = pgEnum('dispute_status_enum', [
+  'open', 'in_progress', 'resolved', 'rejected',
+]);
+
+export const disputeCategoryEnum = pgEnum('dispute_category_enum', [
+  'spoilage', 'ongkir', 'lost', 'wrong_item', 'other',
 ]);
 
 // ─────────────────────────────────────────
@@ -135,6 +170,9 @@ export const addresses = pgTable('addresses', {
   province: varchar('province', { length: 255 }).notNull(),
   provinceId: varchar('province_id', { length: 10 }).notNull(),
   postalCode: varchar('postal_code', { length: 10 }).notNull(),
+  latitude: numeric('latitude', { precision: 10, scale: 7 }),
+  longitude: numeric('longitude', { precision: 10, scale: 7 }),
+  biteshipAreaId: varchar('biteship_area_id', { length: 50 }),
   isDefault: boolean('is_default').notNull().default(false),
   ...timestamps,
 }, (table) => ({
@@ -222,6 +260,9 @@ export const productVariants = pgTable('product_variants', {
   b2bPrice: integer('b2b_price'),
   stock: integer('stock').notNull().default(0),
   weightGram: integer('weight_gram').notNull(),
+  lengthCm: integer('length_cm').notNull().default(30),
+  widthCm: integer('width_cm').notNull().default(22),
+  heightCm: integer('height_cm').notNull().default(12),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   ...timestamps,
@@ -314,6 +355,27 @@ export const orders = pgTable('orders', {
   trackingNumber: varchar('tracking_number', { length: 255 }),
   trackingUrl: text('tracking_url'),
   pickupCode: varchar('pickup_code', { length: 20 }),
+  shippingTier: shippingTierEnum('shipping_tier'),
+  latitude: numeric('latitude', { precision: 10, scale: 7 }),
+  longitude: numeric('longitude', { precision: 10, scale: 7 }),
+  originLatitude: numeric('origin_latitude', { precision: 10, scale: 7 }),
+  originLongitude: numeric('origin_longitude', { precision: 10, scale: 7 }),
+  biteshipAreaId: varchar('biteship_area_id', { length: 50 }),
+  biteshipOrderId: varchar('biteship_order_id', { length: 100 }),
+  biteshipReferenceId: varchar('biteship_reference_id', { length: 50 }),
+  biteshipActualCost: integer('biteship_actual_cost'),
+  shippingMarkupAmount: integer('shipping_markup_amount'),
+  insuranceType: insuranceTypeEnum('insurance_type').default('none'),
+  insuranceFee: integer('insurance_fee').notNull().default(0),
+  dispatchStatus: dispatchStatusEnum('dispatch_status').default('not_required'),
+  dispatchAttempts: integer('dispatch_attempts').notNull().default(0),
+  dispatchLastError: text('dispatch_last_error'),
+  dispatchBookedAt: timestamp('dispatch_booked_at', { withTimezone: true }),
+  driverName: varchar('driver_name', { length: 255 }),
+  driverPhone: varchar('driver_phone', { length: 30 }),
+  driverPlate: varchar('driver_plate', { length: 20 }),
+  liveTrackUrl: text('live_track_url'),
+  courierInstantAck: boolean('courier_instant_ack').notNull().default(false),
   isB2b: boolean('is_b2b').notNull().default(false),
   paymentMethod: varchar('payment_method', { length: 50 }),
   paymentDueAt: timestamp('payment_due_at', { withTimezone: true }),
@@ -322,6 +384,9 @@ export const orders = pgTable('orders', {
   shippedAt: timestamp('shipped_at', { withTimezone: true }),
   deliveredAt: timestamp('delivered_at', { withTimezone: true }),
   cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+  refundDueDate: timestamp('refund_due_date', { withTimezone: true }),
+  needsAttention: boolean('needs_attention').notNull().default(false),
+  needsAttentionReason: varchar('needs_attention_reason', { length: 100 }),
 }, (table) => ({
   userIdIdx: index('idx_orders_user_id').on(table.userId),
   statusExpiresIdx: index('idx_orders_status_expires').on(table.status, table.paymentExpiresAt),
@@ -645,6 +710,59 @@ export const adminActivityLogs = pgTable('admin_activity_logs', {
 });
 
 // ─────────────────────────────────────────
+// REFUNDS & DISPUTES (L2 Financial Constitution)
+// ─────────────────────────────────────────
+
+export const refunds = pgTable('refunds', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  orderId: uuid('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  amount: integer('amount').notNull(),
+  reason: refundReasonEnum('reason').notNull(),
+  method: refundMethodEnum('method').notNull().default('midtrans'),
+  status: refundStatusEnum('status').notNull().default('pending'),
+  initiatedBy: uuid('initiated_by').references(() => users.id),
+  processedAt: timestamp('processed_at', { withTimezone: true }),
+  midtransRefundId: varchar('midtrans_refund_id', { length: 255 }),
+  notes: text('notes'),
+  ...timestamps,
+}, (table) => ({
+  orderIdIdx: index('idx_refunds_order_id').on(table.orderId),
+  statusIdx: index('idx_refunds_status').on(table.status),
+}));
+
+export const disputes = pgTable('disputes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  orderId: uuid('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  category: disputeCategoryEnum('category').notNull(),
+  customerMessage: text('customer_message').notNull(),
+  ownerNotes: text('owner_notes'),
+  status: disputeStatusEnum('status').notNull().default('open'),
+  refundId: uuid('refund_id').references(() => refunds.id),
+  handledBy: uuid('handled_by').references(() => users.id),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  ...timestamps,
+}, (table) => ({
+  orderIdIdx: index('idx_disputes_order_id').on(table.orderId),
+  statusIdx: index('idx_disputes_status').on(table.status),
+  categoryIdx: index('idx_disputes_category').on(table.category),
+}));
+
+export const webhookEvents = pgTable('webhook_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  source: varchar('source', { length: 50 }).notNull(),
+  eventType: varchar('event_type', { length: 100 }).notNull(),
+  externalId: varchar('external_id', { length: 255 }),
+  payload: jsonb('payload'),
+  processedAt: timestamp('processed_at', { withTimezone: true }),
+  errorMessage: text('error_message'),
+  ...timestamps,
+}, (table) => ({
+  sourceIdx: index('idx_webhook_events_source').on(table.source),
+  createdAtIdx: index('idx_webhook_events_created_at').on(table.createdAt),
+  errorIdx: index('idx_webhook_events_error').on(table.errorMessage),
+}));
+
+// ─────────────────────────────────────────
 // RELATIONS
 // ─────────────────────────────────────────
 
@@ -686,6 +804,19 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
   items: many(orderItems),
   statusHistory: many(orderStatusHistory),
   coupon: one(coupons, { fields: [orders.couponId], references: [coupons.id] }),
+  refunds: many(refunds),
+  disputes: many(disputes),
+}));
+
+export const refundsRelations = relations(refunds, ({ one }) => ({
+  order: one(orders, { fields: [refunds.orderId], references: [orders.id] }),
+  initiator: one(users, { fields: [refunds.initiatedBy], references: [users.id] }),
+}));
+
+export const disputesRelations = relations(disputes, ({ one }) => ({
+  order: one(orders, { fields: [disputes.orderId], references: [orders.id] }),
+  refund: one(refunds, { fields: [disputes.refundId], references: [refunds.id] }),
+  handledByUser: one(users, { fields: [disputes.handledBy], references: [users.id] }),
 }));
 
 export const orderItemsRelations = relations(orderItems, ({ one }) => ({
@@ -748,6 +879,11 @@ export type CarouselSlide = typeof carouselSlides.$inferSelect;
 export type B2bProfile = typeof b2bProfiles.$inferSelect;
 export type SystemSetting = typeof systemSettings.$inferSelect;
 export type OrderDailyCounter = typeof orderDailyCounters.$inferSelect;
+export type Refund = typeof refunds.$inferSelect;
+export type NewRefund = typeof refunds.$inferInsert;
+export type Dispute = typeof disputes.$inferSelect;
+export type NewDispute = typeof disputes.$inferInsert;
+export type WebhookEvent = typeof webhookEvents.$inferSelect;
 
 // ─────────────────────────────────────────
 // INDEXES

@@ -1,6 +1,6 @@
 import { IntegrationError } from './integration-helpers';
 
-export type IntegrationName = 'midtrans' | 'rajaongkir' | 'resend' | 'cloudinary' | 'minimax';
+export type IntegrationName = 'midtrans' | 'biteship' | 'resend' | 'cloudinary' | 'minimax';
 
 export interface IntegrationHealth {
   name: IntegrationName;
@@ -17,7 +17,7 @@ export interface HealthCheckResult {
 
 const TIMEOUT_MAP: Record<IntegrationName, number> = {
   midtrans: 5000,
-  rajaongkir: 8000,
+  biteship: 8000,
   resend: 10000,
   cloudinary: 15000,
   minimax: 15000,
@@ -92,8 +92,8 @@ export async function checkIntegrationHealth(): Promise<HealthCheckResult> {
   );
 
   checks.push(
-    checkIntegration('rajaongkir', async () => {
-      const key = process.env.RAJAONGKIR_API_KEY;
+    checkIntegration('biteship', async () => {
+      const key = process.env.BITESHIP_API_KEY;
       return Boolean(key && key.length > 10);
     })
   );

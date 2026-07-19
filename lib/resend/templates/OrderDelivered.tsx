@@ -15,23 +15,25 @@ import {
 interface OrderDeliveredEmailProps {
   orderNumber: string;
   customerName: string;
-  pointsEarned: number;
-  items: Array<{
+  pointsEarned?: number;
+  items?: Array<{
     name: string;
     variant: string;
     quantity: number;
   }>;
-  totalAmount: number;
-  deliveredAt: string;
+  totalAmount?: number;
+  deliveredAt?: string;
+  trackPageUrl?: string;
 }
 
 export function OrderDeliveredEmail({
   orderNumber,
   customerName,
-  pointsEarned,
-  items,
-  totalAmount,
-  deliveredAt,
+  pointsEarned = 0,
+  items = [],
+  totalAmount = 0,
+  deliveredAt = '',
+  trackPageUrl,
 }: OrderDeliveredEmailProps) {
   const formatPrice = (price: number) =>
     new Intl.NumberFormat('id-ID', {

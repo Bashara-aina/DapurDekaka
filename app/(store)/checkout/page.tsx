@@ -18,13 +18,15 @@ import { CheckoutStepper } from '@/components/store/checkout/CheckoutStepper';
 import { IdentityForm } from '@/components/store/checkout/IdentityForm';
 import type { IdentityFormData } from '@/components/store/checkout/IdentityForm';
 import { DeliveryMethodToggle } from '@/components/store/checkout/DeliveryMethodToggle';
-import { ShippingOptions } from '@/components/store/checkout/ShippingOptions';
-import type { ShippingOption } from '@/components/store/checkout/ShippingOptions';
 import { OrderSummaryCard } from '@/components/store/checkout/OrderSummaryCard';
 import { EmptyState } from '@/components/store/common/EmptyState';
 import { PaymentStep } from '@/components/store/checkout/PaymentStep';
 import { PickupInfoPanel } from '@/components/store/checkout/PickupInfoPanel';
-import { CheckoutAddressStep } from '@/components/store/checkout/CheckoutAddressStep';
+import { AddressMapPicker } from '@/components/store/checkout/AddressMapPicker';
+import { CheckoutShippingStep } from '@/components/store/checkout/CheckoutShippingStep';
+import type { ShippingSelection } from '@/components/store/checkout/CheckoutShippingStep';
+import type { ShippingRatesResult } from '@/lib/shipping/types';
+import { loadCheckoutDraft, saveCheckoutDraft, clearCheckoutDraft } from '@/lib/checkout/draft';
 import type { SavedAddress } from '@/components/store/checkout/SavedAddressPicker';
 
 const MidtransPayment = nextDynamic(
@@ -55,6 +57,15 @@ interface CheckoutFormData {
   courierService: string;
   courierName: string;
   shippingCost: number;
+  latitude: number;
+  longitude: number;
+  shippingTier: string;
+  selectedQuoteId: string;
+  biteshipActualCost: number;
+  customerShippingCost: number;
+  insuranceType: 'none' | 'basic' | 'premium';
+  insuranceFee: number;
+  courierInstantAck: boolean;
   couponCode: string;
   pointsUsed: number;
   customerNote: string;
@@ -92,18 +103,50 @@ export default function CheckoutPage() {
     courierService: '',
     courierName: '',
     shippingCost: 0,
+    latitude: 0,
+    longitude: 0,
+    shippingTier: '',
+    selectedQuoteId: '',
+    biteshipActualCost: 0,
+    customerShippingCost: 0,
+    insuranceType: 'none',
+    insuranceFee: 0,
+    courierInstantAck: false,
     couponCode: '',
     pointsUsed: 0,
     customerNote: '',
   });
 
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [couponError, setCouponError] = useState('');
+  const [couponType, setCouponType] = useState<string | null>(null);
+  const [isFreeShippingCoupon, setIsFreeShippingCoupon] = useState(false);
+  const [couponBuyXgetY, setCouponBuyXgetY] = useState<{ buyQuantity: number; getQuantity: number } | null>(null);
+  const [shippingRates, setShippingRates] = useState<ShippingRatesResult | null>(null);
+  const [loadingShipping, setLoadingShipping] = useState(false);
+  const [usePoints, setUsePoints] = useState(false);
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string | null>(null);
+  const [showAddressPicker, setShowAddressPicker] = useState(false);
+  const [showNewAddressForm, setShowNewAddressForm] = useState(false);
+
+  // HIGH-4: Persist coupon, points, and shipping state to sessionStorage so mid-checkout
+  // refresh doesn't wipe these values (couponDiscount, couponType, isFreeShippingCoupon,
+  // shippingOptions, usePoints are React state that were previously lost on refresh).
   useEffect(() => {
     const draft = sessionStorage.getItem('checkout-draft');
     if (draft) {
       try {
         const parsed = JSON.parse(draft);
-        setFormData(parsed.formData);
+        setFormData(parsed.formData ?? formData);
         setStep(parsed.step || 'identity');
+        setCouponDiscount(parsed.couponDiscount ?? 0);
+        setCouponError(parsed.couponError ?? '');
+        setCouponType(parsed.couponType ?? null);
+        setIsFreeShippingCoupon(parsed.isFreeShippingCoupon ?? false);
+        setCouponBuyXgetY(parsed.couponBuyXgetY ?? null);
+        setShippingRates(parsed.shippingRates ?? null);
+        setUsePoints(parsed.usePoints ?? false);
       } catch {
         // ignore corrupt data
       }
@@ -113,21 +156,48 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (snapToken) return;
-    sessionStorage.setItem('checkout-draft', JSON.stringify({ formData, step }));
-  }, [formData, step, snapToken]);
+    sessionStorage.setItem('checkout-draft', JSON.stringify({
+      formData,
+      step,
+      couponDiscount,
+      couponError,
+      couponType,
+      isFreeShippingCoupon,
+      couponBuyXgetY,
+      shippingRates,
+      usePoints,
+    }));
+  }, [formData, step, snapToken, couponDiscount, couponError, couponType, isFreeShippingCoupon, couponBuyXgetY, shippingRates, usePoints]);
 
-  const [couponDiscount, setCouponDiscount] = useState(0);
-  const [couponError, setCouponError] = useState('');
-  const [couponType, setCouponType] = useState<string | null>(null);
-  const [isFreeShippingCoupon, setIsFreeShippingCoupon] = useState(false);
-  const [couponBuyXgetY, setCouponBuyXgetY] = useState<{ buyQuantity: number; getQuantity: number } | null>(null);
-  const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
-  const [loadingShipping, setLoadingShipping] = useState(false);
-  const [usePoints, setUsePoints] = useState(false);
-  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
-  const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string | null>(null);
-  const [showAddressPicker, setShowAddressPicker] = useState(false);
-  const [showNewAddressForm, setShowNewAddressForm] = useState(false);
+  const fetchShippingRates = async (lat: number, lng: number, addressUpdates: Partial<CheckoutFormData>) => {
+    setLoadingShipping(true);
+    updateForm(addressUpdates);
+    try {
+      const res = await fetch('/api/shipping/rates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          destLat: lat,
+          destLng: lng,
+          destAddress: addressUpdates.addressLine ?? formData.addressLine,
+          postalCode: addressUpdates.postalCode ?? formData.postalCode,
+          items: items.map((i) => ({ variantId: i.variantId, quantity: i.quantity })),
+          subtotal: getSubtotal(),
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        toast.error(data.error || t('shippingCostError'));
+        return;
+      }
+      setShippingRates(data.data);
+      setStep('courier');
+    } catch {
+      toast.error(t('shippingCostError'));
+    } finally {
+      setLoadingShipping(false);
+    }
+  };
 
   const { data: pointsData } = useQuery({
     queryKey: ['account', 'points'],
@@ -238,7 +308,7 @@ export default function CheckoutPage() {
   const pointsDiscount = usePoints && formData.pointsUsed > 0
     ? formData.pointsUsed * POINTS_VALUE_IDR
     : 0;
-  const totalAmount = subtotal - couponDiscount - pointsDiscount + formData.shippingCost;
+  const totalAmount = subtotal - couponDiscount - pointsDiscount + formData.shippingCost + formData.insuranceFee;
 
   const updateForm = (updates: Partial<CheckoutFormData>) => {
     setFormData((prev) => ({ ...prev, ...updates }));
@@ -261,72 +331,41 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleAddressSubmit = async (addressData: {
+  const handleMapPinConfirm = async (pin: {
+    latitude: number;
+    longitude: number;
     addressLine: string;
     district: string;
     city: string;
-    cityId: string;
     province: string;
-    provinceId: string;
-    postalCode?: string;
+    postalCode: string;
   }) => {
-    updateForm(addressData);
-
-    if (formData.deliveryMethod === 'pickup') {
-      setStep('payment');
-      return;
-    }
-
-    setLoadingShipping(true);
-    try {
-      const res = await fetch('/api/shipping/cost', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ destination: addressData.cityId, weight: totalWeight }),
-      });
-      const data = await res.json();
-
-      if (!data.success) {
-        toast.error(data.error || t('shippingCostError'));
-        setLoadingShipping(false);
-        return;
-      }
-
-      setShippingOptions(data.data.services);
-      setStep('courier');
-    } catch {
-      toast.error(t('shippingCostError'));
-    }
-    setLoadingShipping(false);
+    await fetchShippingRates(pin.latitude, pin.longitude, {
+      latitude: pin.latitude,
+      longitude: pin.longitude,
+      addressLine: pin.addressLine,
+      district: pin.district,
+      city: pin.city,
+      province: pin.province,
+      postalCode: pin.postalCode,
+      cityId: '0',
+      provinceId: '0',
+    });
   };
 
-  const fetchShippingCost = async (cityId: string) => {
-    try {
-      const res = await fetch('/api/shipping/cost', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ destination: cityId, weight: totalWeight }),
-      });
-      const data = await res.json();
-      if (!data.success) {
-        toast.error(data.error || t('shippingCostError'));
-        setLoadingShipping(false);
-        return;
-      }
-      setShippingOptions(data.data.services);
-      setStep('courier');
-    } catch {
-      toast.error(t('shippingCostError'));
-    }
-    setLoadingShipping(false);
-  };
-
-  const handleCourierSelect = (option: ShippingOption) => {
+  const handleShippingConfirm = (selection: ShippingSelection) => {
     updateForm({
-      courierCode: option.courier,
-      courierService: option.service,
-      courierName: option.displayName,
-      shippingCost: option.cost,
+      shippingTier: selection.shippingTier,
+      selectedQuoteId: selection.selectedQuoteId,
+      courierCode: selection.courierCode,
+      courierService: selection.courierService,
+      courierName: selection.courierName,
+      shippingCost: selection.shippingCost,
+      biteshipActualCost: selection.biteshipActualCost,
+      customerShippingCost: selection.customerShippingCost,
+      insuranceType: selection.insuranceType,
+      insuranceFee: selection.insuranceFee,
+      courierInstantAck: selection.courierInstantAck,
     });
     setStep('payment');
   };
@@ -405,10 +444,27 @@ export default function CheckoutPage() {
       const data = await res.json();
 
       if (!data.success) {
-        toast.error(data.error || t('orderCreateError'));
+        if (data.code === 'PHASE_NOT_READY') {
+          toast.error(t('phaseNotReady'));
+          setStep('courier');
+        } else if (data.code === 'INTERCITY_MIN_ORDER') {
+          toast.error(t('intercityMinOrder'));
+          setStep('courier');
+        } else if (res.status === 409 && data.error?.includes('Stok')) {
+          toast.error(data.error);
+          router.push('/cart');
+        } else if (data.error?.includes('pilih ulang kurir') || data.error?.includes('Tarif ongkir')) {
+          toast.error(data.error);
+          setStep('courier');
+        } else {
+          toast.error(data.error || t('orderCreateError'));
+        }
         setIsLoading(false);
         return;
       }
+
+      clearCheckoutDraft();
+      sessionStorage.removeItem('checkout-draft');
 
       if (data.data.net30) {
         clearCart();
@@ -426,7 +482,8 @@ export default function CheckoutPage() {
   };
 
   const handleMidtransSuccess = () => {
-    clearCart();
+    // Do NOT clear cart here — webhook confirms payment asynchronously.
+    // Cart clearing is handled by the success page after verifying order is paid.
     router.push(`/checkout/success?order=${orderNumber}`);
   };
 
@@ -445,7 +502,7 @@ export default function CheckoutPage() {
   const effectiveShippingCost = isFreeShippingCoupon && formData.deliveryMethod === 'delivery'
     ? 0
     : formData.shippingCost;
-  const finalTotal = subtotal - couponDiscount - pointsDiscount + effectiveShippingCost;
+  const finalTotal = subtotal - couponDiscount - pointsDiscount + effectiveShippingCost + formData.insuranceFee;
 
   return (
     <div className="min-h-screen bg-brand-cream pb-24 md:pb-0">
@@ -513,37 +570,25 @@ export default function CheckoutPage() {
                 />
 
                 {formData.deliveryMethod === 'delivery' && (
-                  <CheckoutAddressStep
-                    session={session ?? undefined}
-                    savedAddresses={savedAddresses}
-                    selectedSavedAddressId={selectedSavedAddressId}
-                    showNewAddressForm={showNewAddressForm}
-                    loadingShipping={loadingShipping}
-                    formData={formData}
-                    totalWeight={totalWeight}
-                    updateForm={updateForm}
-                    fetchShippingCost={fetchShippingCost}
-                    onAddressSubmit={handleAddressSubmit}
-                    onBack={handleBack}
-                    onShowNewAddressForm={() => setShowNewAddressForm(true)}
-                    onHideNewAddressForm={() => setShowNewAddressForm(false)}
-                    onSelectSavedAddress={(address) => {
-                      if (address === null) {
-                        setShowNewAddressForm(true);
-                      } else {
-                        setSelectedSavedAddressId(address.id);
-                        updateForm({
-                          addressLine: address.addressLine,
-                          district: address.district,
-                          city: address.city,
-                          cityId: address.cityId,
-                          province: address.province,
-                          provinceId: address.provinceId,
-                          postalCode: address.postalCode,
-                        });
-                      }
-                    }}
-                  />
+                  <div className="mt-4 bg-white rounded-card p-4 shadow-card">
+                    {loadingShipping ? (
+                      <p className="text-center py-8 text-text-secondary">{t('calculatingShipping')}</p>
+                    ) : (
+                      <AddressMapPicker
+                        defaultValues={{
+                          latitude: formData.latitude || undefined,
+                          longitude: formData.longitude || undefined,
+                          addressLine: formData.addressLine,
+                          district: formData.district,
+                          city: formData.city,
+                          province: formData.province,
+                          postalCode: formData.postalCode,
+                        }}
+                        onConfirm={handleMapPinConfirm}
+                        onBack={handleBack}
+                      />
+                    )}
+                  </div>
                 )}
 
                 {formData.deliveryMethod === 'pickup' && (
@@ -559,23 +604,13 @@ export default function CheckoutPage() {
               </>
             )}
 
-            {step === 'courier' && (
-              <ShippingOptions
-                options={shippingOptions}
-                selected={
-                  formData.courierCode
-                    ? {
-                        courier: formData.courierCode,
-                        service: formData.courierService,
-                        displayName: formData.courierName,
-                        cost: formData.shippingCost,
-                        estimatedDays: '',
-                      }
-                    : null
-                }
-                onSelect={handleCourierSelect}
-                onBack={handleBack}
+            {step === 'courier' && shippingRates && (
+              <CheckoutShippingStep
+                rates={shippingRates}
+                subtotal={subtotal}
                 isLoading={loadingShipping}
+                onConfirm={handleShippingConfirm}
+                onBack={handleBack}
               />
             )}
 

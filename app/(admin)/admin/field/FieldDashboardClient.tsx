@@ -145,22 +145,22 @@ async function fetchInventory(): Promise<InventoryItem[]> {
   return json.data;
 }
 
-async function packOrder(orderId: string, data: { status: string; note?: string; coldChainCondition?: string }) {
-  const res = await fetch(`/api/admin/field/orders/${orderId}`, {
+async function packOrder(orderId: string, data: { note?: string; coldChainCondition?: string }) {
+  const res = await fetch('/api/admin/field/packing-queue', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify({ orderId, note: data.note, coldChainCondition: data.coldChainCondition }),
   });
   const json = await res.json();
   if (!json.success) throw new Error(json.error);
   return json.data;
 }
 
-async function addTracking(orderId: string, data: { trackingNumber: string; courierCode?: string }) {
-  const res = await fetch(`/api/admin/field/orders/${orderId}/tracking`, {
-    method: 'PATCH',
+async function bookCourier(orderId: string) {
+  const res = await fetch('/api/admin/field/dispatch', {
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify({ orderId }),
   });
   const json = await res.json();
   if (!json.success) throw new Error(json.error);
@@ -339,7 +339,7 @@ function PackingTab() {
 
   const { mutateAsync: packMutate, isPending: isPacking } = useMutation({
     mutationFn: ({ orderId, note, coldChain }: { orderId: string; note?: string; coldChain?: string }) =>
-      packOrder(orderId, { status: 'packed', note, coldChainCondition: coldChain }),
+      packOrder(orderId, { note, coldChainCondition: coldChain }),
     onSuccess: () => refetch(),
   });
 
@@ -481,52 +481,54 @@ function PackingTab() {
   );
 }
 
-// ── Tracking Tab ──────────────────────────────────────────────────────────────
+// ── Dispatch Tab (Book Courier) ───────────────────────────────────────────────
 
-function TrackingTab() {
+interface DispatchOrder extends Order {
+  shippingTier?: string | null;
+  dispatchStatus?: string | null;
+  dispatchLastError?: string | null;
+  insuranceType?: string | null;
+  addressLine?: string | null;
+  courierName?: string | null;
+}
+
+function DispatchTab() {
   const { data: orders, isLoading, refetch } = useQuery({
     queryKey: ['field', 'tracking-queue'],
     queryFn: fetchTrackingQueue,
     refetchInterval: 30000,
   });
 
-  const { mutateAsync: trackingMutate, isPending: isTracking } = useMutation({
-    mutationFn: ({ orderId, trackingNumber, courierCode }: { orderId: string; trackingNumber: string; courierCode?: string }) =>
-      addTracking(orderId, { trackingNumber, courierCode }),
+  const { mutateAsync: dispatchMutate, isPending: isDispatching } = useMutation({
+    mutationFn: (orderId: string) => bookCourier(orderId),
     onSuccess: () => refetch(),
   });
 
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [trackingNumber, setTrackingNumber] = useState('');
-  const [courierCode, setCourierCode] = useState('');
+  const [selectedOrder, setSelectedOrder] = useState<DispatchOrder | null>(null);
   const [error, setError] = useState('');
 
-  const handleSubmit = async () => {
-    setError('');
-    const trimmed = trackingNumber.trim().toUpperCase();
-    if (trimmed.length < 8) {
-      setError('Nomor resi minimal 8 karakter');
-      return;
-    }
+  const handleBook = async () => {
     if (!selectedOrder) return;
-    await trackingMutate({
-      orderId: selectedOrder.id,
-      trackingNumber: trimmed,
-      courierCode: courierCode || undefined,
-    });
-    setSelectedOrder(null);
-    setTrackingNumber('');
-    setCourierCode('');
+    setError('');
+    try {
+      await dispatchMutate(selectedOrder.id);
+      setSelectedOrder(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Dispatch gagal');
+    }
   };
 
+  const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '';
+
   if (isLoading) {
-    return <div className="space-y-4">{[1,2,3].map(i => <Skeleton key={i} className="h-44 w-full" />)}</div>;
+    return <div className="space-y-4">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-44 w-full" />)}</div>;
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold">Perlu Nomor Resi
+        <h2 className="text-base font-semibold">
+          Book Courier
           <span className="ml-2 text-sm font-normal text-gray-500">({orders?.length ?? 0} pesanan)</span>
         </h2>
         <Button variant="outline" size="sm" onClick={() => refetch()}>
@@ -538,17 +540,20 @@ function TrackingTab() {
         <Card>
           <CardContent className="py-10 text-center">
             <Truck className="w-12 h-12 mx-auto mb-3 text-green-400" />
-            <p className="font-medium text-gray-600">Semua pesanan sudah ada resi!</p>
+            <p className="font-medium text-gray-600">Tidak ada pesanan menunggu dispatch</p>
           </CardContent>
         </Card>
       ) : (
-        orders.map(order => (
+        (orders as DispatchOrder[]).map((order) => (
           <OrderCard
             key={order.id}
             order={order}
-            actionLabel="📦 Input Nomor Resi"
+            actionLabel="🚚 Book Courier"
             actionIcon={Truck}
-            onAction={o => { setSelectedOrder(o); setTrackingNumber(''); setCourierCode(''); setError(''); }}
+            onAction={(o) => {
+              setSelectedOrder(o as DispatchOrder);
+              setError('');
+            }}
           />
         ))
       )}
@@ -556,49 +561,41 @@ function TrackingTab() {
       <BottomSheet
         open={!!selectedOrder}
         onClose={() => setSelectedOrder(null)}
-        title={`Input Resi ${selectedOrder?.orderNumber}`}
+        title={`Book Courier — ${selectedOrder?.orderNumber}`}
       >
         <div className="space-y-4">
-          <div>
-            <p className="text-sm text-gray-600">
-              Kurir: <span className="font-medium">{[selectedOrder?.courierCode, selectedOrder?.courierService].filter(Boolean).join(' ') || '—'}</span>
-            </p>
+          <div className="text-sm text-gray-600 space-y-1">
+            <p>Tier: <span className="font-medium">{selectedOrder?.shippingTier ?? '—'}</span></p>
+            <p>Kurir: <span className="font-medium">{selectedOrder?.courierName ?? selectedOrder?.courierCode ?? '—'}</span></p>
+            <p>Asuransi: <span className="font-medium">{selectedOrder?.insuranceType ?? 'none'}</span></p>
+            <p>Alamat: <span className="font-medium">{selectedOrder?.addressLine ?? selectedOrder?.district ?? '—'}</span></p>
+            {selectedOrder?.dispatchLastError && (
+              <p className="text-red-600 text-xs bg-red-50 p-2 rounded">Error: {selectedOrder.dispatchLastError}</p>
+            )}
           </div>
-          <div>
-            <Label htmlFor="tracking" className="text-xs font-semibold text-gray-500 uppercase">Nomor Resi *</Label>
-            <Input
-              id="tracking"
-              value={trackingNumber}
-              onChange={e => setTrackingNumber(e.target.value.toUpperCase())}
-              placeholder="Ketik atau scan resi..."
-              className="mt-1 font-mono text-base"
-              inputMode="text"
-              autoComplete="off"
-            />
-            {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-          </div>
-          <div>
-            <Label htmlFor="courier" className="text-xs font-semibold text-gray-500 uppercase">Override Kurir (opsional)</Label>
-            <Input
-              id="courier"
-              value={courierCode}
-              onChange={e => setCourierCode(e.target.value)}
-              placeholder="Contoh: JNE, J&T, SiCepat"
-              className="mt-1"
-            />
-          </div>
+          {error && <p className="text-xs text-red-500">{error}</p>}
           <div className="flex gap-3 pt-2">
             <Button variant="outline" className="flex-1" onClick={() => setSelectedOrder(null)}>
               Batal
             </Button>
             <Button
-              className="flex-1 min-h-[48px] font-semibold"
-              onClick={handleSubmit}
-              disabled={isTracking || !trackingNumber.trim()}
+              className="flex-1 min-h-[48px] font-semibold bg-brand-red hover:bg-brand-red-dark"
+              onClick={handleBook}
+              disabled={isDispatching}
             >
-              {isTracking ? 'Menyimpan…' : '✅ Simpan Resi'}
+              {isDispatching ? 'Booking…' : '🚚 Book Courier'}
             </Button>
           </div>
+          {waNumber && (
+            <a
+              href={`https://wa.me/${waNumber}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block text-center text-sm text-brand-red underline"
+            >
+              Hubungi ops via WhatsApp jika gagal
+            </a>
+          )}
         </div>
       </BottomSheet>
     </div>
@@ -1089,7 +1086,7 @@ export default function FieldDashboardClient() {
               className="hover:opacity-80 transition-opacity"
             >
               <p className="text-2xl font-bold text-indigo-700">{trackingQueue?.length ?? 0}</p>
-              <p className="text-xs text-indigo-600">🚚 Perlu Resi</p>
+              <p className="text-xs text-indigo-600">🚚 Perlu Book Kurir</p>
             </button>
             <button
               onClick={() => setActiveTab('completed')}
@@ -1138,7 +1135,7 @@ export default function FieldDashboardClient() {
 
       <div>
         {activeTab === 'packing' && <PackingTab />}
-        {activeTab === 'tracking' && <TrackingTab />}
+        {activeTab === 'tracking' && <DispatchTab />}
         {activeTab === 'pickup' && <PickupTab />}
         {activeTab === 'inventory' && <InventoryTab />}
         {activeTab === 'completed' && <CompletedTab />}

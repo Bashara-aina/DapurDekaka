@@ -4,8 +4,15 @@ import { db } from '@/lib/db';
 import { coupons, couponUsages, orders, products } from '@/lib/db/schema';
 import { eq, and, sql, inArray } from 'drizzle-orm';
 import { success, validationError, conflict, serverError } from '@/lib/utils/api-response';
+import {
+  MAX_COUPON_VALUE_IDR,
+  MAX_COUPON_PERCENT,
+  MIN_ORDER_FOR_COUPON_IDR,
+} from '@/lib/constants/financial-rules';
+import { enforceCouponCap } from '@/lib/finance/points-calculator';
 import { auth } from '@/lib/auth';
 import { withRateLimit } from '@/lib/utils/rate-limit';
+import { logger } from '@/lib/utils/logger';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -41,6 +48,14 @@ export const POST = withRateLimit(async (req: NextRequest) => {
 
     if (!coupon) {
       return conflict('Kupon tidak ditemukan atau sudah tidak berlaku');
+    }
+
+    // ── L2 Rule 6 caps (constitutional) ──────────────────────────────────
+    if (coupon.type === 'free_shipping') {
+      return conflict('Kupon free shipping tidak tersedia saat ini (90 hari pertama)');
+    }
+    if (subtotal < MIN_ORDER_FOR_COUPON_IDR) {
+      return conflict(`Minimal belanja Rp ${MIN_ORDER_FOR_COUPON_IDR.toLocaleString('id-ID')} untuk menggunakan kupon`);
     }
 
     // Rule 1: starts_at check — coupon not yet active
@@ -140,6 +155,9 @@ export const POST = withRateLimit(async (req: NextRequest) => {
       }
     }
 
+    // L2 Rule 6: cap discount at MAX_COUPON_VALUE_IDR or 10% of subtotal (whichever lower).
+    discountAmount = enforceCouponCap(subtotal, discountAmount);
+
     return success({
       valid: true,
       code: coupon.code,
@@ -152,7 +170,7 @@ export const POST = withRateLimit(async (req: NextRequest) => {
       descriptionEn: coupon.descriptionEn,
     });
   } catch (error) {
-    console.error('[checkout/validate-coupon]', error);
+    logger.error('[checkout/validate-coupon]', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
 }, { windowMs: 60000, maxRequests: 10 });

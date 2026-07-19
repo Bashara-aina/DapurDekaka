@@ -261,6 +261,24 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
             <StockBadge stock={selectedVariant?.stock || 0} />
           </div>
 
+          {/* Frozen handling expectation (P1 backlog #4) */}
+          <div className="mt-4 rounded-lg bg-brand-cream-dark/60 px-3 py-2">
+            <p className="text-xs text-text-secondary leading-relaxed">{t('frozenHandling')}</p>
+          </div>
+
+          {isOutOfStock && (
+            <div className="mt-4">
+              <a
+                href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER}?text=${encodeURIComponent(t('oosWaMessage', { product: product.nameId }))}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-medium text-brand-red hover:underline"
+              >
+                {t('oosNotifyWa')}
+              </a>
+            </div>
+          )}
+
           {/* Description */}
           {product.descriptionId && (
             <div className="mt-4 pt-4 border-t border-brand-cream-dark">

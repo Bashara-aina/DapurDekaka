@@ -20,16 +20,13 @@ interface FailedOrderItem {
   unitPrice: number;
   quantity: number;
   weightGram: number;
+  stock: number;
   imageUrl?: string;
 }
 
 /**
- * FIX 8 (workaround): Cart store's addItem blocks stock=0 items.
- * On payment failure, we restore items to cart for retry.
- * Since real stock is re-validated server-side at checkout initiation,
- * using a placeholder stock value (999) here is safe — the server will
- * return an error if any items are actually out of stock at retry time.
- * This workaround avoids a deeper cart-store refactor for now.
+ * Cart store allows stock=0 items for payment retry scenarios.
+ * Stock will be re-validated server-side at checkout initiation.
  */
 export default function CheckoutFailedPage() {
   const t = useTranslations('checkout');
@@ -68,8 +65,7 @@ export default function CheckoutFailedPage() {
     setIsRestoring(true);
     try {
       for (const item of orderItems) {
-        // FIX 8: Use 999 as placeholder stock since cart store blocks stock=0.
-        // Stock will be re-validated server-side at checkout initiation.
+        // Use actual stock (may be 0 if out of stock) — server re-validates at checkout initiation
         addItem({
           variantId: item.variantId,
           productId: item.productId,
@@ -81,7 +77,7 @@ export default function CheckoutFailedPage() {
           imageUrl: item.imageUrl ?? '',
           unitPrice: item.unitPrice,
           weightGram: item.weightGram,
-          stock: 999,
+          stock: item.stock ?? 999, // will be re-validated at checkout
         });
       }
       router.push('/checkout');
@@ -91,7 +87,7 @@ export default function CheckoutFailedPage() {
   };
 
   return (
-    <div className="min-h-screen bg-brand-cream flex items-center justify-center p-4">
+    <div className="min-h-screen bg-brand-cream flex items-center justify-center p-4 pb-24 md:pb-0">
       <div className="text-center max-w-md">
         <div className="w-20 h-20 bg-error/10 rounded-full flex items-center justify-center mx-auto mb-6">
           <XCircle className="w-10 h-10 text-error" />

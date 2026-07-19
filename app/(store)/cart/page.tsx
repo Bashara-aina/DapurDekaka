@@ -92,7 +92,7 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-brand-cream pb-20">
+    <div className="min-h-screen bg-brand-cream pb-20 md:pb-0">
       <div className="bg-white border-b border-brand-cream-dark py-6 px-4">
         <div className="flex items-center justify-between">
           <div>

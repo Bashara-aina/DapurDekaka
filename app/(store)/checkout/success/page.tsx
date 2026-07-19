@@ -8,6 +8,7 @@ import { useTranslations } from 'next-intl';
 import confetti from 'canvas-confetti';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { CheckCircle } from 'lucide-react';
+import { useCartStore } from '@/store/cart.store';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,22 +38,28 @@ function SuccessContent() {
     },
     enabled: !!orderNumber,
     staleTime: 60000,
+    refetchInterval: (query) =>
+      query.state.data?.order?.status === 'paid' ? false : 3000,
+    retry: 20,
   });
 
-  // FIX 15: Only fire confetti when order is verified (paid status), on initial transition only
+  // FIX HIGH-1: Only clear cart + fire confetti when order is verified (paid status).
+  // Cart clearing moved from checkout page's handleMidtransSuccess to here so it only
+  // happens AFTER the webhook has confirmed payment. This prevents cart loss if webhook fails.
   useEffect(() => {
-    // Only fire confetti once — when status first becomes 'paid'
     if (orderData?.order?.status === 'paid') {
       confetti({
         particleCount: 100,
         spread: 70,
         origin: { y: 0.6 },
       });
+      // Clear cart only after confirming payment is settled
+      useCartStore.getState().clearCart();
     }
   }, [orderData?.order?.status]);
 
   return (
-    <div className="min-h-screen bg-brand-cream flex items-center justify-center p-4">
+    <div className="min-h-screen bg-brand-cream flex items-center justify-center p-4 pb-24 md:pb-0">
       <div className="text-center max-w-md w-full">
         <div className="mb-6">
           <CheckCircle className="w-16 h-16 text-success mx-auto" />
@@ -66,6 +73,10 @@ function SuccessContent() {
         <p className="text-text-secondary mb-4">
           {t('successOrderNumber')}: <span className="font-bold text-brand-red">{orderNumber}</span>
         </p>
+
+        {orderData?.order?.status !== 'paid' && !isLoading && orderNumber && (
+          <p className="text-sm text-text-secondary mb-4">{t('successPendingConfirm')}</p>
+        )}
 
         {orderData?.order?.courierName && orderData?.order?.deliveryMethod === 'delivery' && (
           <p className="text-sm text-text-secondary mb-4">
@@ -119,7 +130,7 @@ function SuccessContent() {
 
 function LoadingFallback() {
   return (
-    <div className="min-h-screen bg-brand-cream flex items-center justify-center p-4">
+    <div className="min-h-screen bg-brand-cream flex items-center justify-center p-4 pb-24 md:pb-0">
       <div className="text-center">
         <div className="animate-pulse">
           <div className="mb-6">

@@ -272,7 +272,7 @@ function PendingContent() {
 
 export default function CheckoutPendingPage() {
   return (
-    <div className="min-h-screen bg-brand-cream flex items-center justify-center p-4">
+    <div className="min-h-screen bg-brand-cream flex items-center justify-center p-4 pb-24 md:pb-0">
       <Suspense fallback={
         <div className="text-center">
           <div className="w-20 h-20 bg-brand-cream-dark rounded-full animate-pulse mx-auto mb-6" />

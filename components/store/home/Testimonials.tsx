@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils/cn';
 
 interface Testimonial {
@@ -16,6 +17,7 @@ interface Testimonial {
 }
 
 export function Testimonials() {
+  const t = useTranslations('home');
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
@@ -51,10 +53,10 @@ export function Testimonials() {
         <section className="py-12 px-4 bg-white">
           <div className="container mx-auto text-center">
             <h2 className="font-display text-2xl md:text-3xl font-semibold text-center mb-8">
-              Kata Mereka yang Sudah Percaya
+              {t('errorTitle')}
             </h2>
             <p className="text-text-secondary text-sm">
-              Gagal memuat testimoni. Silakan coba lagi nanti.
+              {t('errorDesc')}
             </p>
           </div>
         </section>
@@ -63,7 +65,7 @@ export function Testimonials() {
     return null;
   }
 
-  const t = testimonials[current];
+  const testimonial = testimonials[current];
 
   return (
     <section
@@ -73,7 +75,7 @@ export function Testimonials() {
     >
       <div className="container mx-auto">
         <h2 className="font-display text-2xl md:text-3xl font-semibold text-center mb-8">
-          Kata Mereka yang Sudah Percaya
+          {t('title')}
         </h2>
 
         <div className="relative max-w-2xl mx-auto">
@@ -82,20 +84,20 @@ export function Testimonials() {
               className="flex transition-transform duration-500 ease-out"
               style={{ transform: `translateX(-${current * 100}%)` }}
             >
-              {testimonials.map((t) => (
-                <div key={t.id} className="w-full flex-shrink-0 px-4">
+              {testimonials.map((item) => (
+                <div key={item.id} className="w-full flex-shrink-0 px-4">
                   <div className="bg-brand-cream rounded-card p-6 text-center">
                     <div className="flex gap-1 justify-center mb-3">
-                      {Array.from({ length: t.rating }).map((_, i) => (
+                      {Array.from({ length: item.rating }).map((_, i) => (
                         <span key={i} className="text-brand-gold text-lg">
                           ★
                         </span>
                       ))}
                     </div>
-                    <p className="font-display text-text-primary mb-4 italic text-base leading-relaxed">&quot;{t.contentId}&quot;</p>
+                    <p className="font-display text-text-primary mb-4 italic text-base leading-relaxed">&quot;{item.contentId}&quot;</p>
                     <p className="font-semibold text-brand-red">
-                      {t.customerName?.split(' ')[0] ?? 'Customer'}
-                      {t.customerLocation && <span className="font-normal text-text-secondary text-sm">, {t.customerLocation}</span>}
+                      {item.customerName?.split(' ')[0] ?? 'Customer'}
+                      {item.customerLocation && <span className="font-normal text-text-secondary text-sm">, {item.customerLocation}</span>}
                     </p>
                   </div>
                 </div>
