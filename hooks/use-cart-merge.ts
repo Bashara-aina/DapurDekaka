@@ -30,8 +30,7 @@ export function useCartMerge() {
           toast.error(loadResult.error || 'Gagal memuat keranjang setelah login');
           return;
         }
-
-        clearCart();
+        // loadFromDb already overwrites store items with merged data, no need to clearCart
       } catch (error) {
         console.error('[useCartMerge] Failed to merge cart:', error);
         toast.error('Gagal menggabungkan keranjang');

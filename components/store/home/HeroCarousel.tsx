@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 
 const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dsnhwfuxh';
 const CLOUDINARY_BASE = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/f_webp,q_auto,w_1600`;
@@ -29,6 +29,7 @@ interface HeroCarouselProps {
 
 export function HeroCarousel({ slides, autoRotateSpeed = 5000 }: HeroCarouselProps) {
   const t = useTranslations('hero.fallback');
+  const locale = useLocale();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [MotionComp, setMotionComp] = useState<typeof import('framer-motion') | null>(null);
 
@@ -93,19 +94,19 @@ export function HeroCarousel({ slides, autoRotateSpeed = 5000 }: HeroCarouselPro
       />
       <div className="relative z-20 h-full flex flex-col items-center justify-center text-center px-4 sm:px-6">
         <h1 className="font-display text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-2 sm:mb-3 whitespace-pre-line leading-tight">
-          {activeSlide.titleId}
+          {locale === 'id' ? activeSlide.titleId : (activeSlide.titleEn || activeSlide.titleId)}
         </h1>
-        {activeSlide.subtitleId && (
+        {(locale === 'id' ? activeSlide.subtitleId : (activeSlide.subtitleEn || activeSlide.subtitleId)) && (
           <p className="text-white/90 text-base md:text-lg mb-6 max-w-xl">
-            {activeSlide.subtitleId}
+            {locale === 'id' ? activeSlide.subtitleId : (activeSlide.subtitleEn || activeSlide.subtitleId)}
           </p>
         )}
-        {activeSlide.ctaLabelId && activeSlide.ctaUrl && (
+        {(locale === 'id' ? activeSlide.ctaLabelId : (activeSlide.ctaLabelEn || activeSlide.ctaLabelId)) && activeSlide.ctaUrl && (
           <Link
             href={activeSlide.ctaUrl}
             className="inline-flex items-center h-12 px-6 bg-white text-brand-red font-bold rounded-button shadow-lg hover:bg-brand-cream transition-colors"
           >
-            {activeSlide.ctaLabelId}
+            {locale === 'id' ? activeSlide.ctaLabelId : (activeSlide.ctaLabelEn || activeSlide.ctaLabelId)}
           </Link>
         )}
       </div>

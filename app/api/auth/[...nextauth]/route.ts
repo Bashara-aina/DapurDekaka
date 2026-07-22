@@ -13,18 +13,8 @@ async function rateLimitedPost(req: NextRequest): Promise<Response> {
 }
 
 const wrappedHandlers = {
-  GET: withRateLimit(rateLimitedGet, {
-    windowMs: 60000,
-    maxRequests: 10,
-    keyGenerator: (req: NextRequest) =>
-      req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? req.headers.get('x-real-ip') ?? 'unknown',
-  }),
-  POST: withRateLimit(rateLimitedPost, {
-    windowMs: 60000,
-    maxRequests: 10,
-    keyGenerator: (req: NextRequest) =>
-      req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? req.headers.get('x-real-ip') ?? 'unknown',
-  }),
+  GET: withRateLimit(rateLimitedGet, 'auth'),
+  POST: withRateLimit(rateLimitedPost, 'auth'),
 } as const;
 
 export const GET: typeof handlers.GET = wrappedHandlers.GET;

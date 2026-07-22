@@ -74,4 +74,4 @@ export const POST = withRateLimit(async (req: NextRequest) => {
     logger.error('[admin/disputes POST]', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
-}, { windowMs: 60_000, maxRequests: 30 });
+}, 'admin');

@@ -64,7 +64,7 @@ const nextConfig = {
     ],
   },
   experimental: {
-    optimizePackageImports: ['lucide-react', 'recharts', '@radix-ui'],
+    optimizePackageImports: ['lucide-react', 'recharts'],
   },
   async headers() {
     return [

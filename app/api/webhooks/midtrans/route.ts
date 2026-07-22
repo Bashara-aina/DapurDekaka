@@ -27,11 +27,9 @@ import { recordWebhookEvent } from '@/lib/utils/webhook-events';
 import { sendWhatsApp, pickupReadyMessage } from '@/lib/services/fonnte';
 import { getSetting } from '@/lib/settings/get-settings';
 import { flagNeedsAttention } from '@/lib/ops/needs-attention';
+import { isAlreadyProcessed, markProcessed, buildWebhookIdempotencyKey } from '@/lib/utils/webhook-idempotency';
 
-export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-
-const WEBHOOK_RATE_LIMIT = { windowMs: 60000, maxRequests: 30 };
 
 export const POST = withRateLimit(async (req: NextRequest) => {
   try {
@@ -58,6 +56,11 @@ export const POST = withRateLimit(async (req: NextRequest) => {
     };
 
     // ── P0#1: verify Midtrans body signature (NOT a header) ──────────────
+    const eventId = buildWebhookIdempotencyKey('midtrans', order_id ?? '', transaction_status ?? '');
+    if (await isAlreadyProcessed(eventId)) {
+      return success({ received: true, note: 'already_processed_idempotent' });
+    }
+
     const valid = verifyMidtransSignature(
       { orderId: order_id, statusCode: status_code, grossAmount: gross_amount, signatureKey: signature_key },
       process.env.MIDTRANS_SERVER_KEY
@@ -87,14 +90,17 @@ export const POST = withRateLimit(async (req: NextRequest) => {
       return NextResponse.json({ received: false }, { status: 404 });
     }
 
-    // ── Step 3: Idempotency ──────────────────────────────────────────────
+    // ── Step 3: Idempotency (DB-level dedup) ────────────────────────────
     if (transactionId && order.midtransTransactionId === transactionId) {
+      await markProcessed(eventId);
       return success({ received: true, note: 'already_processed' });
     }
     if (order.status === 'paid' && transaction_status === 'settlement') {
+      await markProcessed(eventId);
       return success({ received: true, note: 'already_processed' });
     }
     if (order.status === 'cancelled' && ['cancel', 'deny', 'expire'].includes(transaction_status ?? '')) {
+      await markProcessed(eventId);
       return success({ received: true, note: 'already_cancelled' });
     }
 
@@ -223,12 +229,13 @@ export const POST = withRateLimit(async (req: NextRequest) => {
       });
     }
 
+    await markProcessed(eventId);
     return success({ received: true });
   } catch (error) {
     logger.error('[Midtrans Webhook] Error', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
-}, WEBHOOK_RATE_LIMIT);
+}, 'webhook');
 
 function findWebhookOrder(midtransOrderId: string) {
   return db.query.orders.findFirst({
@@ -246,15 +253,21 @@ async function createRefundObligation(
   reason: string
 ): Promise<void> {
   if (amount <= 0) return;
-  const existing = await db.select({ id: refunds.id }).from(refunds).where(eq(refunds.orderId, orderId)).limit(1);
-  if (existing.length > 0) return;
-  await db.insert(refunds).values({
-    orderId,
-    amount,
-    reason: 'customer_request',
-    method: 'midtrans',
-    status: 'pending',
-    notes: `Auto-created on late Midtrans ${reason} for ${orderNumber}`,
+  await db.transaction(async (tx) => {
+    const existing = await tx
+      .select({ id: refunds.id })
+      .from(refunds)
+      .where(and(eq(refunds.orderId, orderId), eq(refunds.status, 'pending')))
+      .limit(1);
+    if (existing.length > 0) return;
+    await tx.insert(refunds).values({
+      orderId,
+      amount,
+      reason: 'customer_request',
+      method: 'midtrans',
+      status: 'pending',
+      notes: `Auto-created on late Midtrans ${reason} for ${orderNumber}`,
+    });
   });
 }
 

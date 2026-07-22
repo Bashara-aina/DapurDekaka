@@ -47,7 +47,8 @@ export const useCartStore = create<CartStore>()(
       addItem: (item) => {
         const existing = get().items.find((i) => i.variantId === item.variantId);
         if (existing) {
-          const maxQty = Math.min(99, item.stock ?? 99);
+          if ((existing.stock ?? 0) <= 0) return;
+          const maxQty = Math.min(99, existing.stock ?? 99);
           set((state) => ({
             ...bumpVersion(state),
             items: state.items.map((i) =>

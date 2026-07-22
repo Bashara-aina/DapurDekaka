@@ -7,6 +7,7 @@ import { success, unauthorized, forbidden, serverError } from '@/lib/utils/api-r
 import { logger } from '@/lib/utils/logger';
 import { withRateLimit } from '@/lib/utils/rate-limit';
 import { getWalletFloorCheck } from '@/lib/shipping/wallet-floor';
+import { evaluateHiringTrigger } from '@/lib/ops/hiring-trigger';
 import {
   DEFAULT_REFUND_RESERVE_PERCENT,
   SOLO_OPS_CEILING_ORDERS_PER_WEEK,
@@ -22,6 +23,7 @@ const THREE_DAYS_AGO = () => new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
 const SEVEN_DAYS_AGO = () => new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 const TWO_HOURS_AGO = () => new Date(Date.now() - 2 * 60 * 60 * 1000);
 const SIX_HOURS_AGO = () => new Date(Date.now() - 6 * 60 * 60 * 1000);
+const EIGHT_WEEKS_AGO = () => new Date(Date.now() - 8 * 7 * 24 * 60 * 60 * 1000);
 
 interface CountRow { value: number; }
 interface TotalRow { total: number; }
@@ -34,7 +36,7 @@ export const GET = withRateLimit(async (req: NextRequest) => {
   try {
     const session = await auth();
     if (!session?.user) return unauthorized('Silakan login');
-    if (!['superadmin', 'owner', 'warehouse'].includes(session.user.role)) return forbidden();
+    if (!['superadmin', 'owner'].includes(session.user.role)) return forbidden();
 
     const [
       webhookErrRows,
@@ -52,6 +54,7 @@ export const GET = withRateLimit(async (req: NextRequest) => {
       shippedNoScanRows,
       pickupStaleRows,
       paidTodayRows,
+      weeklyHistoryRows,
     ] = await Promise.all([
       db
         .select({ value: count() })
@@ -151,6 +154,20 @@ export const GET = withRateLimit(async (req: NextRequest) => {
         .select({ value: count() })
         .from(orders)
         .where(and(eq(orders.status, 'paid'), gte(orders.paidAt, sql`CURRENT_DATE`))),
+      db
+        .select({
+          weekStartIso: sql<string>`to_char(${orders.paidAt}, 'IYYY-IW')`,
+          orderCount: count(),
+        })
+        .from(orders)
+        .where(
+          and(
+            eq(orders.status, 'paid'),
+            gte(orders.paidAt, EIGHT_WEEKS_AGO())
+          )
+        )
+        .groupBy(sql`to_char(${orders.paidAt}, 'IYYY-IW')`)
+        .orderBy(sql`to_char(${orders.paidAt}, 'IYYY-IW')`),
     ]);
 
     const webhookErrCountRow: CountRow = webhookErrRows[0] ?? { value: 0 };
@@ -163,6 +180,11 @@ export const GET = withRateLimit(async (req: NextRequest) => {
     const reserveTarget = Math.floor(weeklyGrossRow.total * (DEFAULT_REFUND_RESERVE_PERCENT / 100));
 
     const wallet = getWalletFloorCheck(weeklyDispatchRow.total);
+
+    const hiringTrigger = evaluateHiringTrigger({
+      ordersPerWeek: weeklyHistoryRows.map((r) => ({ weekStartIso: r.weekStartIso, orderCount: r.orderCount })),
+      consecutiveWeeks: 4,
+    });
 
     return success({
       webhookErrorCount24h: webhookErrCountRow.value,
@@ -185,9 +207,10 @@ export const GET = withRateLimit(async (req: NextRequest) => {
       shippedNoScanOver6h: shippedNoScanRows[0]?.value ?? 0,
       pickupUnclaimedOver24h: pickupStaleRows[0]?.value ?? 0,
       paidOrdersToday: paidTodayRows[0]?.value ?? 0,
+      hiringTrigger,
     });
   } catch (error) {
     logger.error('[admin/ops]', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
-}, { windowMs: 60_000, maxRequests: 30 });
+}, 'admin');

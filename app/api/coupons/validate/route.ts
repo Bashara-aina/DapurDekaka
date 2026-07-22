@@ -62,7 +62,7 @@ export const POST = withRateLimit(
       if (!userId && coupon.maxUsesPerUser) {
         return Response.json({
           success: false,
-          error: 'Koupon ini tidak dapat digunakan untuk guest checkout',
+          error: 'Kupon ini tidak dapat digunakan untuk guest checkout',
           code: 'GUEST_NOT_ALLOWED',
         }, { status: 422 });
       }
@@ -159,5 +159,5 @@ export const POST = withRateLimit(
       return serverError(error);
     }
   },
-  { windowMs: 60000, maxRequests: 10 }
+  'money'
 );

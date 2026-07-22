@@ -387,6 +387,7 @@ export const orders = pgTable('orders', {
   refundDueDate: timestamp('refund_due_date', { withTimezone: true }),
   needsAttention: boolean('needs_attention').notNull().default(false),
   needsAttentionReason: varchar('needs_attention_reason', { length: 100 }),
+  dPlus2SentAt: timestamp('d_plus_2_sent_at', { withTimezone: true }),
 }, (table) => ({
   userIdIdx: index('idx_orders_user_id').on(table.userId),
   statusExpiresIdx: index('idx_orders_status_expires').on(table.status, table.paymentExpiresAt),

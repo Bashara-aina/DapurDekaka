@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { MessageCircle, ChefHat, ShieldCheck, Snowflake, Truck, Award, Heart } from 'lucide-react';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('metadata');

@@ -46,7 +46,7 @@ async function getVolumeLabel(volumeId: string | null): Promise<string> {
 
 export async function POST(req: NextRequest) {
   const ip = req.ip || req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
-  const rateLimit = await checkRateLimitAsync(ip, 10, '1 m');
+  const rateLimit = await checkRateLimitAsync(ip, 'public');
   if (!rateLimit.success) {
     return badRequest('Terlalu banyak permintaan. Silakan coba lagi nanti.');
   }

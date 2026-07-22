@@ -93,6 +93,12 @@ export function CartSummary({
         </div>
       )}
 
+      <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+        <p className="text-xs text-green-700 font-medium">
+          {t('guaranteeBadge')}
+        </p>
+      </div>
+
       <div className="space-y-3 text-sm">
         <div className="flex justify-between">
           <span className="text-text-secondary">{t('totalItems', { count: totalItems })}</span>

@@ -10,9 +10,8 @@ import { Testimonials } from '@/components/store/home/Testimonials';
 import { HomePageCTA } from '@/components/store/home/HomePageCTA';
 import { db } from '@/lib/db';
 import { products, productVariants, productImages, categories, carouselSlides, systemSettings } from '@/lib/db/schema';
-import { eq, and, desc, isNull, lte, gte, isNull as isNullCond, sql } from 'drizzle-orm';
+import { eq, and, desc, isNull, sql } from 'drizzle-orm';
 
-export const dynamic = 'force-dynamic';
 export const revalidate = 1800;
 
 export async function generateMetadata(): Promise<Metadata> {

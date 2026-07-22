@@ -106,6 +106,7 @@ export async function dispatchOrder(
         .set({
           biteshipOrderId: result.biteshipOrderId,
           biteshipReferenceId: order.orderNumber,
+          biteshipActualCost: result.actualCost,
           trackingNumber: result.waybillId,
           trackingUrl: trackUrl,
           liveTrackUrl: result.trackingUrl,

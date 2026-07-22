@@ -94,7 +94,7 @@
     "refundTitle": "Refund Policy",
     "refundLastUpdated": "Last updated: May 2026",
     "noRefundTitle": "Frozen Food Cannot Be Returned",
-    "noRefundDesc": "Given the nature of our products as frozen food, all Dapur Dekaka products cannot be returned after receipt. This is in accordance with Indonesian food safety regulations that do not allow frozen food that has left the cold chain to be returned to commerce.",
+    "noRefundDesc": "Given the nature of our products as frozen food, all Dapur Dekaka products cannot be returned after receipt. This is in accordance with Indonesian food safety regulations that do not allow frozen food that has left the cold chain to be returned to trade.",
     "claimableTitle": "Claimable Conditions",
     "claimableDesc": "We accept claims under the following conditions:",
     "claimableItem1": "Product received is wrong or not as ordered",
@@ -213,7 +213,10 @@
     "total": "Total",
     "continueToCheckout": "Continue to Checkout",
     "validating": "Validating…",
-    "priceUpdated": "Price updated — totals refreshed."
+    "priceUpdated": "Price updated — totals refreshed.",
+    "guaranteeBadge": "Guarantee: product spoiled? Full replacement or refund, no questions asked.",
+    "weightGate5kg": "Orders above 5kg ship via regular frozen courier (1–2 days).",
+    "weightGate15kg": "Above 15kg, only Frozen Express is available."
   },
   "pointsRedeemer": {
     "usePoints": "Use Points",
@@ -379,7 +382,7 @@
     "stepDelivery": "Delivery",
     "stepCourier": "Courier",
     "stepPayment": "Payment",
-    "stepsPickup": "Identity;Delivery;Payment",
+    "stepsPickup": "Identity;Pickup;Payment",
     "back": "Back",
     "nextToPayment": "Continue to Payment",
     "processing": "Processing...",
@@ -708,7 +711,10 @@
     "costError": "Failed to calculate shipping",
     "noService": "Sorry, frozen delivery service is not available to your area. Please contact us via WhatsApp for a custom shipping solution.",
     "weightExceedsLimit": "Sorry, order weight exceeds the frozen delivery limit (30 kg). Please contact us via WhatsApp for a custom shipping solution.",
-    "calculating": "Calculating shipping..."
+    "calculating": "Calculating shipping...",
+    "bundledLabel": "Shipping & Frozen Handling (incl. ice gel + packaging)",
+    "beyondPolygon": "Destination {destination} is outside our current service area. Please contact us via WhatsApp for alternative shipping options.",
+    "beyondPolygonCta": "Contact WhatsApp"
   },
   "apiErrors": {
     "couponNotFound": "Coupon not found",
@@ -783,7 +789,10 @@
     "articlesFound": "{count} articles",
     "readTime": "{minutes} min read",
     "writtenBy": "Written by",
-    "shareArticle": "Share this article:"
+    "shareArticle": "Share this article:",
+    "postTitle_cara-menyimpan-dimsum-frozen": "How to Store Frozen Dimsum Properly (So It Stays Fresh Until You Get Home)",
+    "postTitle_cara-mengukus-dimsum-ala-restoran": "How to Steam Dimsum Like a Restaurant — No Special Equipment Needed",
+    "postTitle_dimsum-halal-bandung-dapur-dekaka": "Halal Dimsum Bandung — The Story of Dapur Dekaka"
   },
   "email": {
     "orderConfirmation": "Order Confirmation",
@@ -817,20 +826,30 @@
     "premium": "Premium (100% item value)"
   },
   "shippingInstantAck": {
-    "message": "Express delivery is packed in a cooler bag at our warehouse. Put in freezer within 1 hour of receipt."
+    "title": "Kilat (Instant) Delivery",
+    "message": "Motorcycle couriers have no active cooling. Products are packed in a cooler bag with ice gel, but arrival temperature depends on weather and travel time. After arrival, store in the freezer immediately. Choose this option only if you can transfer the order straight into a freezer."
   },
   "trackingPage": {
     "title": "Track Order",
     "subtitle": "Enter the email used at checkout",
+    "orderLabel": "Order Number",
     "orderNumber": "Order Number",
     "email": "Email",
+    "emailLabel": "Email",
+    "emailPlaceholder": "email@example.com",
     "trackButton": "Track",
+    "loading": "Loading...",
+    "error": "An error occurred. Please try again.",
     "notFound": "Order not found. Check order number and email.",
+    "statusLabel": "Order Status",
+    "tier": "Shipping tier",
     "pickupCode": "Pickup code",
     "awb": "Tracking No.",
     "liveTrack": "Live Track",
     "driver": "Driver",
     "timeline": "Status Timeline",
+    "trackAnother": "Track another order",
+    "backHome": "Back to Home",
     "continueShopping": "Continue shopping"
   },
   "metadata": {
@@ -860,6 +879,13 @@
     "subtitle": "What Dapur Dekaka promises — and what it doesn't. We believe over-promising hurts customers more than under-promising.",
     "disclaimer": "This charter is the single source of truth for all customer-facing shipping, SLA, and trust copy.",
     "charter": "Dapur Dekaka Customer Promise Charter",
+    "headings": {
+      "wePromise": "Our Promise",
+      "weDoNotPromise": "What We Don't Promise",
+      "slaPerTier": "SLA by Tier",
+      "disputePlaybook": "Dispute Playbook",
+      "contactCta": "Questions? Contact Us on WhatsApp"
+    },
     "wePromise": {
       "1": "All products are halal and made in our Bandung facility — the same product as in our offline store and Shopee.",
       "2": "Every order is packed frozen with ice gel and insulated packaging, photographed before dispatch.",
@@ -929,17 +955,6 @@
     "frozenExpress": "Fast intercity (1–2 days). Packing rated for 48 hours — pre-tested before Phase 2.",
     "pickup": "Customer-owned from handover. Pick up at the store after payment is confirmed."
   },
-  "shipping": {
-    "bundledLabel": "Shipping & Frozen Handling (incl. ice gel + packaging)"
-  },
-  "cartSummary": {
-    "weightGate5kg": "Orders above 5kg ship via regular frozen courier (1–2 days).",
-    "weightGate15kg": "Above 15kg, only Frozen Express is available."
-  },
-  "shippingInstantAck": {
-    "title": "Kilat (Instant) Delivery",
-    "message": "Motorcycle couriers have no active cooling. Products are packed in a cooler bag with ice gel, but arrival temperature depends on weather and travel time. After arrival, store in the freezer immediately. Choose this option only if you can transfer the order straight into a freezer."
-  },
   "opsCard": {
     "title": "Dapur Dekaka Daily Ops Card",
     "subtitle": "15 minutes, at 08:30. Tick each item as you finish it.",
@@ -1008,11 +1023,6 @@
     "banner": "Add a free Rambutan Dimsum to orders ≥ {amount}.",
     "consent": "Yes, add a free Rambutan Dimsum.",
     "note": "Promo auto-applies when the order minimum is met."
-  },
-  "blog": {
-    "postTitle_cara-menyimpan-dimsum-frozen": "How to Store Frozen Dimsum Properly (So It Stays Fresh Until You Get Home)",
-    "postTitle_cara-mengukus-dimsum-ala-restoran": "How to Steam Dimsum Like a Restaurant — No Special Equipment Needed",
-    "postTitle_dimsum-halal-bandung-dapur-dekaka": "Halal Dimsum Bandung — The Story of Dapur Dekaka"
   },
   "adminDisputes": {
     "category_hint": "Choose the category that best fits the customer complaint.",

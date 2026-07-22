@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { and, eq, lte, sql } from 'drizzle-orm';
+import { and, eq, lte } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { orders } from '@/lib/db/schema';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';

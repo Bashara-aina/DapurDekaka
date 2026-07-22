@@ -8,6 +8,7 @@
  */
 
 import type { ShippingTier } from './types';
+import { getSetting } from '@/lib/settings/get-settings';
 
 export const BANDUNG_TZ = 'Asia/Jakarta';
 
@@ -43,6 +44,38 @@ function nextBookingSlot(now: Date, cutoffHour: number): Date {
 /**
  * Resolve the live cutoff status for a tier, in WIB.
  */
+export async function getAdjustedCutoffs(): Promise<typeof CUTOFFS> {
+  const adjustment = await getSetting<string>('seasonal_cutoff_adjustment', 'string');
+  const cutoffs = { ...CUTOFFS };
+  if (adjustment === 'rainy') {
+    cutoffs.express_payment = 15;
+    cutoffs.express_booking = 15;
+  } else if (adjustment === 'ramadan') {
+    cutoffs.express_payment = 13;
+    cutoffs.express_booking = 14;
+    cutoffs.same_day = 11;
+    cutoffs.intercity = 11;
+  }
+  return cutoffs;
+}
+
+export async function getAdjustedCutoffStatus(tier: ShippingTier, now: Date = new Date()): Promise<CutoffStatus> {
+  const cutoffs = await getAdjustedCutoffs();
+  const cutoffHour =
+    tier === 'express'
+      ? cutoffs.express_booking
+      : tier === 'frozen_same_day'
+        ? cutoffs.same_day
+        : tier === 'frozen_express'
+          ? cutoffs.intercity
+          : 23;
+  return {
+    beforeCutoff: wibHour(now) < cutoffHour,
+    nextSlot: nextBookingSlot(now, cutoffHour),
+    cutoffHourWIB: cutoffHour,
+  };
+}
+
 export function getCutoffStatus(tier: ShippingTier, now: Date = new Date()): CutoffStatus {
   const cutoffHour =
     tier === 'express'

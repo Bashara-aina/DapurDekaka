@@ -92,5 +92,5 @@ export const POST = withRateLimit(
       return serverError(error);
     }
   },
-  { windowMs: 60000, maxRequests: 10 }
+  'money'
 );

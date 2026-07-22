@@ -10,7 +10,8 @@ export type NeedsAttentionReason =
   | 'pickup_no_show'
   | 'dispatch_failed'
   | 'gross_mismatch_spam'
-  | 'refund_failed';
+  | 'refund_failed'
+  | 'reconcile_recovery';
 
 /**
  * Flag an order for solo-operator review and ping WA (P3 backlog #5).

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { CheckCircle2, X } from 'lucide-react';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('promise');
@@ -55,7 +55,7 @@ export default async function TrustPage() {
         </header>
 
         <section aria-labelledby="we-promise" className="space-y-3 mb-10">
-          <h2 id="we-promise" className="font-semibold text-lg text-text-primary">Kami berjanji</h2>
+          <h2 id="we-promise" className="font-semibold text-lg text-text-primary">{t('headings.wePromise')}</h2>
           <ul className="space-y-2">
             {promises.map((line, idx) => (
               <li key={`p-${idx}`} className="flex items-start gap-3 bg-white p-3 rounded-card border border-brand-cream-dark">
@@ -67,7 +67,7 @@ export default async function TrustPage() {
         </section>
 
         <section aria-labelledby="we-do-not" className="space-y-3 mb-10">
-          <h2 id="we-do-not" className="font-semibold text-lg text-text-primary">Kami tidak berjanji</h2>
+          <h2 id="we-do-not" className="font-semibold text-lg text-text-primary">{t('headings.weDoNotPromise')}</h2>
           <ul className="space-y-2">
             {nonPromises.map((line, idx) => (
               <li key={`n-${idx}`} className="flex items-start gap-3 bg-white p-3 rounded-card border border-brand-cream-dark">
@@ -79,7 +79,7 @@ export default async function TrustPage() {
         </section>
 
         <section aria-labelledby="sla" className="space-y-3 mb-10">
-          <h2 id="sla" className="font-semibold text-lg text-text-primary">Janji waktu per-tier</h2>
+          <h2 id="sla" className="font-semibold text-lg text-text-primary">{t('headings.slaPerTier')}</h2>
           <div className="grid gap-3 md:grid-cols-2">
             {slaLines.map((s) => (
               <div key={s.tier} className="bg-white p-4 rounded-card border border-brand-cream-dark">
@@ -91,7 +91,7 @@ export default async function TrustPage() {
         </section>
 
         <section aria-labelledby="dispute" className="space-y-3 mb-10">
-          <h2 id="dispute" className="font-semibold text-lg text-text-primary">Dispute playbook</h2>
+          <h2 id="dispute" className="font-semibold text-lg text-text-primary">{t('headings.disputePlaybook')}</h2>
           <div className="space-y-3">
             {disputes.map((d) => (
               <div key={d.key} className="bg-white p-4 rounded-card border border-brand-cream-dark">
@@ -100,7 +100,7 @@ export default async function TrustPage() {
               </div>
             ))}
           </div>
-          <p className="text-xs text-text-muted italic">Kalau ada apa-apa, hubungi kami via WhatsApp — itu jalur tepercaya kami.</p>
+          <p className="text-xs text-text-muted italic">{t('headings.contactCta')}</p>
           <a href={waHref} className="inline-block mt-2 bg-brand-red text-white px-5 py-3 rounded-button text-sm font-semibold">Chat WhatsApp</a>
         </section>
       </div>

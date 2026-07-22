@@ -29,7 +29,7 @@ export const GET = withRateLimit(async (req: NextRequest) => {
     logger.error('[Admin Coupons GET]', { error });
     return serverError(error);
   }
-}, { windowMs: 60000, maxRequests: 30 });
+}, 'admin');
 
 const CreateCouponSchema = z.discriminatedUnion('type', [
   z.object({

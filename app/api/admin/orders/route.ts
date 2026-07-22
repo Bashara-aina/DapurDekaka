@@ -112,7 +112,7 @@ export const GET = withRateLimit(async (req: NextRequest) => {
     logger.error('[Admin Orders GET]', { error });
     return serverError(error);
   }
-}, { windowMs: 60000, maxRequests: 30 });
+}, 'admin');
 
 const orderQuerySchema = z.object({
   recipientName: z.string().min(1),

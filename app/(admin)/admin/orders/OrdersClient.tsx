@@ -156,25 +156,34 @@ export default function OrdersClient({
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2">
-        <div className="relative flex-1">
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Cari no. pesanan, nama, email..."
-            className="w-full h-10 pl-3 pr-10 rounded-md border border-input bg-white text-sm"
-          />
-          {searchInput && (
-            <button
-              type="button"
-              onClick={() => { setSearchInput(''); clearSearch(); }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              aria-label="Clear search"
-            >
-              ×
-            </button>
-          )}
-        </div>
+        <form onSubmit={handleSearch} className="flex flex-1 gap-2">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Cari no. pesanan, nama, email..."
+              className="w-full h-10 pl-3 pr-10 rounded-md border border-input bg-white text-sm"
+            />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => { setSearchInput(''); clearSearch(); }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                aria-label="Clear search"
+              >
+                ×
+              </button>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            className="h-10 px-4 bg-admin-sidebar text-white text-sm font-medium rounded-md hover:bg-admin-sidebar-hover transition-colors"
+          >
+            Cari
+          </button>
+        </form>
 
         <select
           value={searchParams.get('status') ?? 'all'}
@@ -201,14 +210,6 @@ export default function OrdersClient({
           <option value="cancelled">Dibatalkan</option>
           <option value="refunded">Dikembalikan</option>
         </select>
-
-        <button
-          type="submit"
-          onClick={handleSearch}
-          className="h-10 px-4 bg-admin-sidebar text-white text-sm font-medium rounded-md hover:bg-admin-sidebar-hover transition-colors"
-        >
-          Cari
-        </button>
       </div>
       {searchQuery && (
         <p className="text-sm text-gray-500">

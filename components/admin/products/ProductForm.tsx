@@ -7,13 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/cn';
 import { Plus, Trash2, Upload, X } from 'lucide-react';
 import Image from 'next/image';
 import { useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import TiptapEditor from '@/components/admin/blog/TiptapEditor';
 import { toast } from 'sonner';
-import { revalidatePath } from 'next/cache';
 
 interface ProductFormProps {
   initialData?: {
@@ -42,8 +42,6 @@ interface ProductFormProps {
     images?: ImageData[];
   };
   categories: { id: string; nameId: string }[];
-  onSubmit: (data: ProductFormData) => Promise<void>;
-  isSubmitting?: boolean;
 }
 
 interface VariantData {
@@ -134,7 +132,9 @@ function formatIDR(num: number): string {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
 }
 
-export function ProductForm({ initialData, categories, onSubmit, isSubmitting }: ProductFormProps) {
+export function ProductForm({ initialData, categories }: ProductFormProps) {
+  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [images, setImages] = useState<ImageData[]>(initialData?.images ?? []);
   const [uploading, setUploading] = useState(false);
   const [descriptionId, setDescriptionId] = useState(initialData?.descriptionId ?? '');
@@ -212,14 +212,36 @@ export function ProductForm({ initialData, categories, onSubmit, isSubmitting }:
   };
 
   async function handleSubmit(data: ProductFormData) {
-    const payload = {
-      ...data,
-      descriptionId,
-      descriptionEn,
-      images,
-    };
-    await onSubmit(payload as ProductFormData);
-    revalidatePath('/admin/products');
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        ...data,
+        descriptionId,
+        descriptionEn,
+        images,
+      };
+      const isEdit = !!initialData?.id;
+      const url = isEdit ? `/api/admin/products/${initialData.id}` : '/api/admin/products';
+      const method = isEdit ? 'PATCH' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || (isEdit ? 'Gagal mengupdate produk' : 'Gagal membuat produk'));
+      }
+
+      router.push('/admin/products');
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Terjadi kesalahan');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (

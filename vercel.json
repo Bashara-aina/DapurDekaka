@@ -1,5 +1,6 @@
 {
   "framework": "nextjs",
+  "regions": ["sin1"],
   "crons": [
     {
       "path": "/api/cron/cancel-expired-orders",
@@ -40,10 +41,20 @@
   ],
   "functions": {
     "app/api/webhooks/midtrans/route.ts": {
-      "maxDuration": 30
+      "maxDuration": 30,
+      "memory": 1024
     },
     "app/api/checkout/initiate/route.ts": {
-      "maxDuration": 30
+      "maxDuration": 30,
+      "memory": 1024
+    },
+    "app/api/webhooks/biteship/route.ts": {
+      "maxDuration": 30,
+      "memory": 512
+    },
+    "app/api/cron/*.ts": {
+      "maxDuration": 60,
+      "memory": 512
     }
   }
 }

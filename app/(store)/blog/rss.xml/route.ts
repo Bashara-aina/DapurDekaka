@@ -3,7 +3,6 @@ import { blogPosts } from '@/lib/db/schema';
 import { eq, desc, and, isNull } from 'drizzle-orm';
 
 export const revalidate = 3600;
-export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const posts = await db.query.blogPosts.findMany({
@@ -35,7 +34,7 @@ export async function GET() {
   return new Response(rss, {
     headers: {
       'Content-Type': 'application/rss+xml; charset=utf-8',
-      'Cache-Control': 's-maxage=3600',
+      'Cache-Control': 's-maxage=3600, stale-while-revalidate=600',
     },
   });
 }

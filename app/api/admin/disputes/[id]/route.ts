@@ -47,4 +47,4 @@ export const PATCH = withRateLimit(async (req: NextRequest, ctx: { params: Promi
     logger.error('[admin/disputes PATCH]', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
-}, { windowMs: 60_000, maxRequests: 30 });
+}, 'admin');

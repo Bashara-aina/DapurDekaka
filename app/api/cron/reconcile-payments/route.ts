@@ -10,6 +10,7 @@ import { OrderConfirmationEmail } from '@/lib/resend/templates/OrderConfirmation
 import { formatWIB } from '@/lib/utils/format-date';
 import { settleOrderTx, InsufficientStockError } from '@/lib/finance/settle-order';
 import { sendWhatsApp } from '@/lib/services/fonnte';
+import { flagNeedsAttention } from '@/lib/ops/needs-attention';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -34,13 +35,15 @@ export async function GET(req: NextRequest) {
     }
 
     const thirtyMinsAgo = new Date(Date.now() - 30 * 60 * 1000);
+    const BATCH_LIMIT = 100;
 
     const pendingOrders = await db.query.orders.findMany({
       where: and(eq(orders.status, 'pending_payment'), lt(orders.createdAt, thirtyMinsAgo)),
       with: { user: true },
+      limit: BATCH_LIMIT,
     });
 
-    const results = { checked: 0, reconciled: 0, cancelled: 0, errors: 0 };
+    const results = { checked: 0, reconciled: 0, cancelled: 0, errors: 0, hasMore: pendingOrders.length === BATCH_LIMIT };
 
     for (const order of pendingOrders) {
       let outcome: 'settlement' | 'cancel' | 'skip' | 'error' = 'skip';
@@ -77,6 +80,9 @@ export async function GET(req: NextRequest) {
     }
 
     logger.info('[Reconcile] Payment reconciliation complete', results);
+    if (results.hasMore) {
+      logger.warn('[Reconcile] More pending orders than BATCH_LIMIT — backlog exists', { batchLimit: BATCH_LIMIT });
+    }
     return success(results);
   } catch (error) {
     logger.error('[Reconcile] Fatal error', { error: error instanceof Error ? error.message : String(error) });
@@ -103,6 +109,12 @@ async function recoverSettlement(orderId: string): Promise<'settlement' | 'skip'
   });
 
   if (!settled) return 'skip';
+
+  await flagNeedsAttention(
+    fullOrder.id,
+    'reconcile_recovery',
+    'Settlement pulih via reconcile cron (webhook tidak pernah tiba)'
+  );
 
   sendEmail({
     to: fullOrder.recipientEmail,

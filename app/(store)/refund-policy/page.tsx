@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 86400;
 
 export const metadata: Metadata = {
   title: 'Kebijakan Pengembalian - Dapur Dekaka',

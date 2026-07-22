@@ -1,7 +1,7 @@
-import { requireAdmin } from '@/lib/auth/require-admin';
+import { requireRole } from '@/lib/auth/check-role';
 import TestimonialsClient from './TestimonialsClient';
 
 export default async function TestimonialsPage() {
-  await requireAdmin(['superadmin', 'owner']);
+  await requireRole(['superadmin', 'owner']);
   return <TestimonialsClient />;
 }

@@ -102,7 +102,7 @@ function LoginForm() {
             }
           } catch (err) {
             localStorage.removeItem('dapur-cart');
-            toast.error('Gagal menggabungkan keranjang. Item di lok Lokal akan dihapus.');
+            toast.error('Gagal menggabungkan keranjang. Item lokal akan dihapus.');
             logger.error('[auth/login] Cart merge failed', { error: err });
           }
         }

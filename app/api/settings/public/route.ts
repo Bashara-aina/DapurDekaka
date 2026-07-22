@@ -4,7 +4,7 @@ import { systemSettings } from '@/lib/db/schema';
 import { inArray } from 'drizzle-orm';
 import { success, serverError, badRequest } from '@/lib/utils/api-response';
 import { checkRateLimitAsync } from '@/lib/utils/rate-limit';
-export const dynamic = 'force-dynamic';
+export const revalidate = 600;
 export const runtime = 'nodejs';
 
 const PUBLIC_SETTING_KEYS = [
@@ -18,7 +18,7 @@ const PUBLIC_SETTING_KEYS = [
 
 export async function GET(req: NextRequest) {
   const ip = req.ip || req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
-  const rateLimit = await checkRateLimitAsync(ip, 30, '1 m');
+  const rateLimit = await checkRateLimitAsync(ip, 'public');
   if (!rateLimit.success) {
     return badRequest('Terlalu banyak permintaan. Silakan coba lagi nanti.');
   }

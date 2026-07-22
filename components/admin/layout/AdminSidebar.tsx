@@ -7,6 +7,7 @@ import {
   MessageSquare, Image, Settings, Box, Truck, FileText, Bot, ClipboardList,
   BarChart3, X, Layers, Star
 } from 'lucide-react';
+import { isFlagEnabled } from '@/lib/config/feature-flags';
 import { cn } from '@/lib/utils/cn';
 import { useEffect } from 'react';
 import { useSession } from 'next-auth/react';
@@ -60,6 +61,13 @@ export function AdminSidebar({ mobileOpen = false, onMobileClose }: AdminSidebar
       if ('separator' in item) return true;
       const navItem = item as { roles?: string[] };
       return !navItem.roles || navItem.roles.includes(userRole);
+    }).filter(item => {
+      if ('separator' in item) return true;
+      const navItem = item as { href: string };
+      if (navItem.href === '/admin/b2b-inquiries' && !isFlagEnabled('b2bPortal')) return false;
+      if (navItem.href === '/admin/blog' && !isFlagEnabled('blogCMS')) return false;
+      if (navItem.href === '/admin/ai-content' && !isFlagEnabled('aiContent')) return false;
+      return true;
     });
 
     return (

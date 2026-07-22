@@ -15,7 +15,7 @@ import { TableOfContents } from '@/components/store/blog/TableOfContents';
 import { BlogCTA } from '@/components/store/blog/BlogCTA';
 import { CopyLinkButton } from '@/components/store/blog/CopyLinkButton';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 600;
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
@@ -76,8 +76,6 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
     },
   };
 }
-
-export const revalidate = 86400;
 
 export async function generateStaticParams() {
   try {

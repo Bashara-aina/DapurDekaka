@@ -94,6 +94,20 @@ export async function settleOrderTx(
   await recordCouponUsage(tx, order);
   await awardPoints(tx, order);
 
+  // Persist computed pointsEarned so emails show the correct value (not stale 0)
+  const earnedPoints = calculatePointsEarned({
+    subtotal: order.subtotal,
+    couponDiscount: order.discountAmount ?? 0,
+    pointsDiscount: order.pointsDiscount ?? 0,
+    shippingCost: order.shippingCost,
+    isB2b: order.isB2b ?? false,
+  });
+  if (earnedPoints > 0) {
+    await tx.update(orders)
+      .set({ pointsEarned: earnedPoints })
+      .where(eq(orders.id, order.id));
+  }
+
   await tx.insert(orderStatusHistory).values({
     orderId: order.id,
     fromStatus: 'pending_payment',
@@ -137,19 +151,15 @@ async function deductStock(tx: Tx, order: SettleOrderInput): Promise<void> {
 async function recordCouponUsage(tx: Tx, order: SettleOrderInput): Promise<void> {
   if (!order.couponId) return;
 
-  const existing = await tx
-    .select({ id: couponUsages.id })
-    .from(couponUsages)
-    .where(and(eq(couponUsages.couponId, order.couponId), eq(couponUsages.orderId, order.id)))
-    .limit(1);
+  // Always increment used_count at settlement (the provisional row from initiate
+  // only prevents double-insert of couponUsages, but used_count must be bumped
+  // here since initiate only bumps it for Net-30 orders).
+  await tx
+    .update(coupons)
+    .set({ usedCount: sql`${coupons.usedCount} + 1` })
+    .where(and(eq(coupons.id, order.couponId), eq(coupons.isActive, true)));
 
-  if (existing.length === 0) {
-    await tx
-      .update(coupons)
-      .set({ usedCount: sql`used_count + 1` })
-      .where(eq(coupons.id, order.couponId));
-  }
-
+  // Insert couponUsages row (idempotent — skip if already exists from initiate)
   await tx
     .insert(couponUsages)
     .values({

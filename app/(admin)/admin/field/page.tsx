@@ -1,7 +1,7 @@
-import { requireAdmin } from '@/lib/auth/require-admin';
+import { requireRole } from '@/lib/auth/check-role';
 import FieldDashboardClient from './FieldDashboardClient';
 
 export default async function FieldDashboardPage() {
-  await requireAdmin(['superadmin', 'owner', 'warehouse']);
+  await requireRole(['superadmin', 'owner', 'warehouse']);
   return <FieldDashboardClient />;
 }

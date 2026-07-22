@@ -143,7 +143,7 @@ async function handleValidate(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   const ip = req.ip || req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
-  const rateLimit = await checkRateLimitAsync(ip, 30, '1 m');
+  const rateLimit = await checkRateLimitAsync(ip, 'money');
   if (!rateLimit.success) {
     return NextResponse.json(
       {
@@ -160,7 +160,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const ip = req.ip || req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
-  const rateLimit = await checkRateLimitAsync(ip, 30, '1 m');
+  const rateLimit = await checkRateLimitAsync(ip, 'money');
   if (!rateLimit.success) {
     return NextResponse.json(
       {

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { ProductCard } from '@/components/store/products/ProductCard';
+import { ProductSearch } from '@/components/store/products/ProductSearch';
 import {
   Select,
   SelectContent,
@@ -61,6 +62,7 @@ export function ProductCatalog({ products, categories, initialCategory = '', ini
   const router = useRouter();
   const searchParams = useSearchParams();
   const [sort, setSort] = useState<SortOption>('default');
+  const [searchValue, setSearchValue] = useState(searchParams.get('q') || initialSearch);
 
   const category = searchParams.get('category') || initialCategory;
   const q = searchParams.get('q') || initialSearch;
@@ -137,8 +139,28 @@ export function ProductCatalog({ products, categories, initialCategory = '', ini
         </div>
       </div>
 
-      {/* Category Pills + Sort */}
+      {/* Search */}
       <div className="py-4 px-4">
+        <div className="container mx-auto">
+          <ProductSearch
+            value={searchValue}
+            onChange={(v) => {
+              setSearchValue(v);
+              const params = new URLSearchParams(searchParams.toString());
+              if (v) {
+                params.set('q', v);
+              } else {
+                params.delete('q');
+              }
+              router.push(`/products?${params.toString()}`, { scroll: false });
+            }}
+            className="mb-4"
+          />
+        </div>
+      </div>
+
+      {/* Category Pills + Sort */}
+      <div className="pb-4 px-4">
         <div className="container mx-auto">
           <div className="flex items-center justify-between gap-4 mb-4">
             {/* Category Pills */}

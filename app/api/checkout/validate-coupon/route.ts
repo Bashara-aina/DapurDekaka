@@ -173,4 +173,4 @@ export const POST = withRateLimit(async (req: NextRequest) => {
     logger.error('[checkout/validate-coupon]', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
-}, { windowMs: 60000, maxRequests: 10 });
+}, 'money');

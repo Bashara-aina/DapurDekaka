@@ -4,6 +4,7 @@ import { Menu, ChevronRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import { AdminSidebar } from './AdminSidebar';
 
 const BREADCRUMB_MAP: Record<string, string> = {
@@ -59,6 +60,7 @@ function Breadcrumb() {
 }
 
 export function AdminHeader() {
+  const { data: session } = useSession();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
 
@@ -87,9 +89,8 @@ export function AdminHeader() {
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-400 hidden md:inline">Admin</span>
 
-          {/* User avatar placeholder */}
           <div className="w-8 h-8 rounded-full bg-admin-sidebar text-white flex items-center justify-center text-xs font-bold select-none">
-            B
+            {session?.user?.name?.[0] ?? 'U'}
           </div>
         </div>
       </header>

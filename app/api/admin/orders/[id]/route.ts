@@ -76,5 +76,5 @@ export const GET = withRateLimit(
       return serverError(error);
     }
   },
-  { windowMs: 60000, maxRequests: 30 }
+  'admin'
 );

@@ -1,6 +1,8 @@
 import createMiddleware from 'next-intl/middleware';
 import { routing } from '@/i18n/routing';
 import { auth } from '@/lib/auth';
+import { isFlagEnabled } from '@/lib/config/feature-flags';
+import { isMaintenanceModeEnv } from '@/lib/ops/maintenance';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -40,6 +42,38 @@ export default async function middleware(req: NextRequest) {
       const allowed = ['/admin/inventory', '/admin/shipments', '/admin/field'];
       if (!allowed.some((p) => pathname.startsWith(p))) {
         return NextResponse.redirect(new URL('/admin/inventory', req.url));
+      }
+    }
+  }
+
+  // Feature kill-list guards (L4) — check if the route should be hidden
+  if (pathname.startsWith('/admin/blog') && !isFlagEnabled('blogCMS')) {
+    return NextResponse.redirect(new URL('/admin', req.url));
+  }
+  if (pathname.startsWith('/admin/ai-content') && !isFlagEnabled('aiContent')) {
+    return NextResponse.redirect(new URL('/admin', req.url));
+  }
+  if (pathname.startsWith('/admin/b2b-inquiries') && !isFlagEnabled('b2bPortal')) {
+    return NextResponse.redirect(new URL('/admin', req.url));
+  }
+
+  // Maintenance mode guard (L4 circuit breaker) — block storefront when MAINTENANCE_MODE=true
+  // Allows admin and webhooks to keep working during an incident.
+  if (isMaintenanceModeEnv() && !pathname.startsWith('/maintenance')) {
+    const isAdminPath = pathname.startsWith('/admin') || pathname.startsWith('/api/admin');
+    const isWebhookPath = pathname.startsWith('/api/webhooks') || pathname.startsWith('/api/cron');
+    const isAuthPath = pathname.startsWith('/api/auth');
+    if (!isAdminPath && !isWebhookPath && !isAuthPath) {
+      if (
+        pathname.startsWith('/checkout') ||
+        pathname.startsWith('/api/checkout') ||
+        pathname.startsWith('/cart') ||
+        pathname.startsWith('/api/shipping') ||
+        pathname.startsWith('/products') ||
+        pathname === '/' ||
+        pathname.startsWith('/blog')
+      ) {
+        return NextResponse.redirect(new URL('/maintenance', req.url));
       }
     }
   }

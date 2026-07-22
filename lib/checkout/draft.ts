@@ -1,5 +1,5 @@
 /** SessionStorage key for checkout form persistence (P2 backlog #8). */
-export const CHECKOUT_DRAFT_KEY = 'ddk-checkout-draft';
+export const CHECKOUT_DRAFT_KEY = 'checkout-draft';
 
 export interface CheckoutDraft {
   readonly recipientName: string;

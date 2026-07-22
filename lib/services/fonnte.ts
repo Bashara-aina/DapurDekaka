@@ -97,7 +97,14 @@ export function pickupReminderMessage(name: string, orderNumber: string): string
   );
 }
 
-/** D+2 follow-up template (P5 backlog #6). */
+/**
+ * D+2 follow-up template (P5 backlog #6).
+ *
+ * P5 strategy: manual-but-templated is acceptable at <60 orders/week.
+ * The cron route (`/api/cron/d-plus2-followup`) will be created once
+ * weekly volume exceeds that threshold. For now, use this function
+ * directly from the admin panel to send manual follow-ups.
+ */
 export function dPlus2FollowUpMessage(params: {
   name: string;
   product: string;

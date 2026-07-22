@@ -5,8 +5,6 @@ import { products, productVariants, productImages, categories } from '@/lib/db/s
 import { eq, and, isNull, desc, lt } from 'drizzle-orm';
 import { ProductCatalog } from '@/components/store/products/ProductCatalog';
 
-export const dynamic = 'force-dynamic';
-
 const PRODUCTS_PER_PAGE = 20;
 
 interface ProductsPageProps {

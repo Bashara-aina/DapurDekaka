@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ProductForm } from '@/components/admin/products/ProductForm';
-import type { ProductFormData } from '@/components/admin/products/ProductForm';
 import { ChevronLeft, Trash2 } from 'lucide-react';
 
 interface ProductDetail {
@@ -63,7 +62,6 @@ export default function ProductEditClient({ productId }: ProductEditClientProps)
   const [categories, setCategories] = useState<{ id: string; nameId: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -94,29 +92,6 @@ export default function ProductEditClient({ productId }: ProductEditClientProps)
 
     fetchData();
   }, [productId]);
-
-  async function handleSubmit(data: ProductFormData) {
-    setIsSubmitting(true);
-    try {
-      const res = await fetch(`/api/admin/products/${productId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Gagal mengupdate produk');
-      }
-
-      router.push('/admin/products');
-      router.refresh();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Gagal mengupdate produk');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
 
   async function handleDelete() {
     if (!confirm('Yakin ingin menghapus produk ini? Tindakan ini tidak dapat dibatalkan.')) return;
@@ -219,8 +194,6 @@ export default function ProductEditClient({ productId }: ProductEditClientProps)
           })),
         }}
         categories={categories.length > 0 ? categories : (product.category ? [{ id: product.category.id, nameId: product.category.nameId }] : [])}
-        onSubmit={handleSubmit}
-        isSubmitting={isSubmitting}
       />
     </div>
   );

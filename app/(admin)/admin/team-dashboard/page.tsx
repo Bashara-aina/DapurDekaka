@@ -1,7 +1,7 @@
-import { requireAdmin } from '@/lib/auth/require-admin';
+import { requireRole } from '@/lib/auth/check-role';
 import TeamDashboardClient from './TeamDashboardClient';
 
 export default async function TeamDashboardPage() {
-  await requireAdmin(['superadmin']);
+  await requireRole(['superadmin']);
   return <TeamDashboardClient />;
 }

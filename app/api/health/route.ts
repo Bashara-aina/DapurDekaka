@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { sql } from 'drizzle-orm';
-export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 /**
@@ -35,7 +34,11 @@ export async function GET(_req: NextRequest) {
         checks: { database: { status: 'ok', latency: latencyMs } },
         timestamp: new Date().toISOString(),
       },
-      { status: 200 }
+      {
+        headers: {
+          'Cache-Control': 's-maxage=60, stale-while-revalidate=30',
+        },
+      }
     );
   }
 
@@ -46,6 +49,11 @@ export async function GET(_req: NextRequest) {
       checks: { database: { status: 'error', error: 'Service unavailable', latency: null } },
       timestamp: new Date().toISOString(),
     },
-    { status: 503 }
+    {
+      status: 503,
+      headers: {
+        'Cache-Control': 's-maxage=0, must-revalidate',
+      },
+    }
   );
 }

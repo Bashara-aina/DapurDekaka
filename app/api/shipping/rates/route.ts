@@ -10,6 +10,7 @@ import type { ShippingItemInput } from '@/lib/shipping/types';
 import { getSetting } from '@/lib/settings/get-settings';
 import { WAREHOUSE_ORIGIN_LAT, WAREHOUSE_ORIGIN_LNG } from '@/lib/shipping/constants';
 import { resolveEffectivePhase, applyPhaseLockToRates } from '@/lib/shipping/phase-gate';
+import { isServiceable } from '@/lib/shipping/geo-policy';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -70,6 +71,12 @@ export const POST = withRateLimit(
         (await getSetting<number>('biteship_origin_lng', 'number')) ??
         WAREHOUSE_ORIGIN_LNG;
 
+      const effectivePhase = await resolveEffectivePhase();
+      const geoCheck = isServiceable(destLat, destLng, 'pickup', 0, effectivePhase, subtotal);
+      if (geoCheck.destinationClass === 'beyond') {
+        return conflict('Wilayah belum didukung. Silakan hubungi kami via WhatsApp.');
+      }
+
       const rates = await getShippingRates({
         originLat,
         originLng,
@@ -81,7 +88,6 @@ export const POST = withRateLimit(
 
       // FD#2: lock frozen tiers not permitted by the effective phase so they are
       // shown as disabled instead of quoted-then-503'd at initiate.
-      const effectivePhase = await resolveEffectivePhase();
       const gatedRates = applyPhaseLockToRates(rates, effectivePhase, subtotal);
 
       return success(gatedRates);
@@ -89,5 +95,5 @@ export const POST = withRateLimit(
       return serverError(error);
     }
   },
-  { windowMs: 60000, maxRequests: 20 }
+  'public'
 );

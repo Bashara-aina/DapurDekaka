@@ -24,9 +24,13 @@ export const GET = withRateLimit(async (req: NextRequest) => {
     if (!['superadmin', 'owner', 'warehouse'].includes(session.user.role)) return forbidden();
 
     const [weeklyDispatchRow] = await db
-      .select({ total: sql<number>`COALESCE(SUM(${orders.shippingCost}),0)::int` })
+      .select({ total: sql<number>`COALESCE(SUM(${orders.biteshipActualCost}),0)::int` })
       .from(orders)
-      .where(and(eq(orders.status, 'paid'), gte(orders.createdAt, SEVEN_DAYS_AGO())));
+      .where(and(
+        eq(orders.deliveryMethod, 'delivery'),
+        gte(orders.createdAt, SEVEN_DAYS_AGO()),
+        sql`${orders.dispatchStatus} IN ('booking','booked')`
+      ));
 
     const check = getWalletFloorCheck(weeklyDispatchRow?.total ?? 0);
     return success(check);
@@ -34,4 +38,4 @@ export const GET = withRateLimit(async (req: NextRequest) => {
     logger.error('[admin/health/wallet]', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
-}, { windowMs: 60_000, maxRequests: 30 });
+}, 'admin');

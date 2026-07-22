@@ -59,5 +59,5 @@ export const POST = withRateLimit(
       return serverError(error);
     }
   },
-  { windowMs: 60000, maxRequests: 5 }
+  'auth'
 );

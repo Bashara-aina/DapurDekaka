@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
+import { isFlagEnabled } from '@/lib/config/feature-flags';
 import { cn } from '@/lib/utils/cn';
 import {
   LayoutDashboard,
@@ -20,7 +21,7 @@ interface AccountLayoutProps {
   children: ReactNode;
 }
 
-const navItems = [
+const rawNavItems = [
   { href: '/account', labelKey: 'overview', icon: LayoutDashboard },
   { href: '/account/orders', labelKey: 'orders', icon: Package },
   { href: '/account/addresses', labelKey: 'addresses', icon: MapPin },
@@ -28,6 +29,10 @@ const navItems = [
   { href: '/account/vouchers', labelKey: 'vouchers', icon: Ticket },
   { href: '/account/profile', labelKey: 'profile', icon: User },
 ];
+
+const navItems = rawNavItems.filter(
+  item => item.href !== '/account/vouchers' || isFlagEnabled('vouchersPage')
+);
 
 export default function AccountLayout({ children }: AccountLayoutProps) {
   const pathname = usePathname();

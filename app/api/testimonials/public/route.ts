@@ -4,12 +4,12 @@ import { testimonials } from '@/lib/db/schema';
 import { eq, sql, asc, and } from 'drizzle-orm';
 import { success, serverError, badRequest } from '@/lib/utils/api-response';
 import { checkRateLimitAsync } from '@/lib/utils/rate-limit';
-export const dynamic = 'force-dynamic';
+export const revalidate = 300;
 export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   const ip = req.ip || req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
-  const rateLimit = await checkRateLimitAsync(ip, 30, '1 m');
+  const rateLimit = await checkRateLimitAsync(ip, 'public');
   if (!rateLimit.success) {
     return badRequest('Terlalu banyak permintaan. Silakan coba lagi nanti.');
   }

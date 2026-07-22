@@ -15,8 +15,8 @@ import { sendWhatsApp, deliveredMessage, opsDispatchFailedMessage } from '@/lib/
 import { logger } from '@/lib/utils/logger';
 import { withRateLimit } from '@/lib/utils/rate-limit';
 import { recordWebhookEvent } from '@/lib/utils/webhook-events';
+import { isAlreadyProcessed, markProcessed, buildWebhookIdempotencyKey } from '@/lib/utils/webhook-idempotency';
 
-export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export const POST = withRateLimit(
@@ -45,6 +45,10 @@ export const POST = withRateLimit(
       }
 
       const eventId = biteshipEventId(payload);
+      const idempotencyKey = buildWebhookIdempotencyKey('biteship', eventId, payload.status ?? '');
+      if (await isAlreadyProcessed(idempotencyKey)) {
+        return success({ received: true, note: 'already_processed' });
+      }
 
       const order = await db.query.orders.findFirst({
         where: payload.reference_id
@@ -73,6 +77,7 @@ export const POST = withRateLimit(
       );
 
       if (alreadyHandled) {
+        await markProcessed(idempotencyKey);
         return success({ received: true, note: 'already_processed' });
       }
 
@@ -129,6 +134,7 @@ export const POST = withRateLimit(
           errorMessage: `dispatch_failed:${payload.status ?? 'unknown'}`,
         });
 
+        await markProcessed(idempotencyKey);
         return success({ received: true });
       }
 
@@ -205,11 +211,12 @@ export const POST = withRateLimit(
         payload,
       });
 
+      await markProcessed(idempotencyKey);
       return success({ received: true });
     } catch (error) {
       logger.error('[biteship webhook]', { error });
       return serverError(error);
     }
   },
-  { windowMs: 60000, maxRequests: 60 }
+  'webhook'
 );

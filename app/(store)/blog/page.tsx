@@ -8,8 +8,7 @@ import { eq, desc, and, or, like, sql } from 'drizzle-orm';
 import { BlogCard } from '@/components/store/blog/BlogCard';
 import { BlogSearchForm } from '@/components/store/blog/BlogSearchForm';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 3600;
+export const revalidate = 600;
 
 interface BlogPageProps {
   params: Promise<Record<string, string>>;

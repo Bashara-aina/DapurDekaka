@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { getSnapUrl } from '@/lib/midtrans/client';
 
 interface SnapApi {
@@ -31,28 +30,23 @@ export function MidtransPayment({
   snapToken,
   callbacks,
 }: MidtransPaymentProps) {
-  const router = useRouter();
   const scriptLoaded = useRef(false);
 
   const handleSuccess = useCallback((result: unknown) => {
     callbacks?.onSuccess?.(result);
-    router.push(`/checkout/success?order=${new URLSearchParams(window.location.search).get('order') ?? ''}`);
-  }, [callbacks, router]);
+  }, [callbacks]);
 
   const handlePending = useCallback((result: unknown) => {
     callbacks?.onPending?.(result);
-    router.push(`/checkout/pending?order=${new URLSearchParams(window.location.search).get('order') ?? ''}`);
-  }, [callbacks, router]);
+  }, [callbacks]);
 
   const handleError = useCallback((error: unknown) => {
     callbacks?.onError?.(error);
-    router.push(`/checkout/failed?order=${new URLSearchParams(window.location.search).get('order') ?? ''}`);
-  }, [callbacks, router]);
+  }, [callbacks]);
 
   const handleClose = useCallback(() => {
     callbacks?.onClose?.();
-    router.push(`/checkout/failed?order=${new URLSearchParams(window.location.search).get('order') ?? ''}`);
-  }, [callbacks, router]);
+  }, [callbacks]);
 
   useEffect(() => {
     if (scriptLoaded.current) return;

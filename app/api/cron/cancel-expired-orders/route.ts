@@ -21,10 +21,11 @@ export async function GET(req: NextRequest) {
     }
 
     const now = new Date();
+    const BATCH_LIMIT = 200;
     let cancelled = 0;
     let errors: string[] = [];
 
-    // Find all pending_payment orders past their expiry time
+    // Find all pending_payment orders past their expiry time (bounded)
     const expiredOrders = await db.query.orders.findMany({
       where: and(
         eq(orders.status, 'pending_payment'),
@@ -33,6 +34,7 @@ export async function GET(req: NextRequest) {
       with: {
         items: true,
       },
+      limit: BATCH_LIMIT,
     });
 
     for (const order of expiredOrders) {
@@ -137,6 +139,9 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    if (expiredOrders.length === BATCH_LIMIT) {
+      logger.warn('[CancelExpired] Hit batch limit — may have more expired orders next run', { batchLimit: BATCH_LIMIT });
+    }
     logger.info('[CancelExpired] Completed', { cancelled, errorsCount: errors.length });
     if (errors.length > 0) {
       errors.forEach((e) => logger.error('[CancelExpired] Error', { message: e }));

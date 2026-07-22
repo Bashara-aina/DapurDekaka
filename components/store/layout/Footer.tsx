@@ -37,18 +37,10 @@ export default async function Footer() {
           <div>
             <h4 className="font-semibold text-brand-cream mb-4">{t('helpTitle')}</h4>
             <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/orders" className="hover:text-brand-cream">{t('trackOrder')}</Link>
-              </li>
-              <li>
-                <Link href="/refund-policy" className="hover:text-brand-cream">{t('refundPolicy')}</Link>
-              </li>
-              <li>
-                <Link href="/privacy-policy" className="hover:text-brand-cream">{t('privacyPolicy')}</Link>
-              </li>
+
               <li>
                 <a
-                  href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER}`}
+                  href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? ''}`}
                   className="hover:text-brand-cream"
                 >
                   {t('whatsapp')}
@@ -72,7 +64,7 @@ export default async function Footer() {
                 </svg>
               </a>
               <a
-                href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER}`}
+                href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? ''}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-brand-cream transition-colors duration-150"

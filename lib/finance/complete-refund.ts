@@ -70,4 +70,8 @@ export async function applyRefundCompletionTx(
     descriptionId: `Clawback poin refund ${input.orderNumber}`,
     descriptionEn: `Refund points clawback ${input.orderNumber}`,
   });
+
+  // Stock is NOT restored by default — P5 Decision 1: frozen returns are almost
+  // never resellable. The optional stock-restore checkbox can be added to the
+  // admin refund UI when needed.
 }

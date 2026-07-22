@@ -34,9 +34,11 @@ import {
   verifyInsuranceFee,
   getMarkupAmount,
 } from '@/lib/shipping';
-import { enforceShippingPhaseGates } from '@/lib/shipping/phase-gate';
+import { enforceShippingPhaseGates, resolveEffectivePhase } from '@/lib/shipping/phase-gate';
+import { isServiceable } from '@/lib/shipping/geo-policy';
 import { MIN_ORDER_FOR_COUPON_IDR, B2B_CREDIT_ENABLED_DEFAULT } from '@/lib/constants/financial-rules';
 import { isFlagEnabled } from '@/lib/config/feature-flags';
+import { isMaintenanceModeEnv } from '@/lib/ops/maintenance';
 import { enforceCouponCap } from '@/lib/finance/points-calculator';
 import { parseQuoteId } from '@/lib/shipping/get-rates';
 import type { InsuranceType, ShippingItemInput, ShippingTier } from '@/lib/shipping/types';
@@ -93,7 +95,7 @@ const initiateSchema = z.object({
 }).superRefine((data, ctx) => {
   // Delivery orders MUST carry a full destination address (P2/P0#6).
   if (data.deliveryMethod === 'delivery') {
-    if (!data.addressLine || data.addressLine.trim().length < 5) {
+    if (!data.addressLine || data.addressLine.trim().length < 10) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['addressLine'],
@@ -114,6 +116,11 @@ export const POST = withRateLimit(
   async (req: NextRequest) => {
     try {
       const session = await auth();
+
+      if (isMaintenanceModeEnv()) {
+        return serviceUnavailable('Toko sedang dalam mode pemeliharaan. Silakan coba lagi nanti.', 'MAINTENANCE_MODE');
+      }
+
       const body = await req.json();
       const parsed = initiateSchema.safeParse(body);
 
@@ -559,6 +566,34 @@ export const POST = withRateLimit(
       shippingTier = 'pickup';
     }
 
+    // L3 geo-policy gate — reject destinations outside our polygon before
+    // phase gating.
+    if (shippingTier && shippingTier !== 'pickup') {
+      const totalWeightGram = orderItemsData.reduce(
+        (sum, item) => sum + item.weightGram * item.quantity,
+        0
+      );
+      const effectivePhase = await resolveEffectivePhase();
+      const geoCheck = isServiceable(
+        parsed.data.latitude ?? 0,
+        parsed.data.longitude ?? 0,
+        shippingTier,
+        totalWeightGram || 0,
+        effectivePhase,
+        subtotal
+      );
+      if (!geoCheck.ok) {
+        if (geoCheck.reason === 'beyond_polygon_contact_whatsapp') {
+          return conflict('Maaf, wilayah tujuan belum didukung untuk pengiriman ' + shippingTier + '. Silakan hubungi kami via WhatsApp.');
+        }
+        if (geoCheck.reason && geoCheck.reason.startsWith('tier_locked')) {
+          // Already handled by phase gate; skip
+        } else if (geoCheck.reason) {
+          return conflict('Pengiriman tidak tersedia: ' + geoCheck.reason);
+        }
+      }
+    }
+
     // L3 phase-criteria gate — frozen tiers require the configured phase to be
     // active AND the numeric criteria (orders / spoilage / dispatch failures)
     // to have been met. Runs after stock validation and after shipping tier is
@@ -705,7 +740,7 @@ export const POST = withRateLimit(
           isB2b: isB2bOrder,
           deliveryMethod,
           recipientName,
-          recipientEmail,
+          recipientEmail: recipientEmail.toLowerCase(),
           recipientPhone,
           addressLine: addressData.addressLine,
           district: addressData.district,
@@ -934,7 +969,7 @@ export const POST = withRateLimit(
           id: 'shipping',
           price: shippingCost,
           quantity: 1,
-          name: `Ongkir ${addressData.courierName ?? ''}`.substring(0, 50),
+          name: 'Ongkir & Penanganan Frozen (ice gel + kemasan)',
         });
       }
 
@@ -968,13 +1003,44 @@ export const POST = withRateLimit(
       midtransOrderId = midtransResult.midtransOrderId;
       snapToken = midtransResult.snapToken;
     } catch (midtransError) {
-      // BUG-07 FIX: If Midtrans fails, roll back the order so there's no orphaned record
+      // BUG-07 FIX: If Midtrans fails, roll back the order and all side effects
       await db.transaction(async (tx) => {
-        await tx.delete(orderItems).where(eq(orderItems.orderId, order.id));
-        await tx.delete(orders).where(eq(orders.id, order.id));
+        // Restore points that were deducted at initiate (FIFO redeem)
+        if (userId && pointsDeducted && pointsUsed && pointsUsed > 0) {
+          const redeemRecords = await tx
+            .select()
+            .from(pointsHistory)
+            .where(
+              and(
+                eq(pointsHistory.userId, userId),
+                eq(pointsHistory.type, 'redeem'),
+                eq(pointsHistory.orderId, order.id)
+              )
+            );
+          for (const redeem of redeemRecords) {
+            if (redeem.referencedEarnId) {
+              await tx.update(pointsHistory).set({ consumedAt: null }).where(eq(pointsHistory.id, redeem.referencedEarnId));
+            }
+          }
+          await tx
+            .update(users)
+            .set({ pointsBalance: sql`points_balance + ${pointsUsed}` })
+            .where(eq(users.id, userId));
+        }
+        // Delete redeemed pointsHistory entries (non-cascade FK)
+        await tx.delete(pointsHistory).where(
+          and(eq(pointsHistory.orderId, order.id), eq(pointsHistory.type, 'redeem'))
+        );
+        // Delete coupon usages (non-cascade FK)
         if (coupon && coupon.maxUsesPerUser && userId) {
           await tx.delete(couponUsages).where(eq(couponUsages.orderId, order.id));
         }
+        // Delete order items (cascade FK)
+        await tx.delete(orderItems).where(eq(orderItems.orderId, order.id));
+        // Delete order status history (cascade FK)
+        await tx.delete(orderStatusHistory).where(eq(orderStatusHistory.orderId, order.id));
+        // Delete the order last
+        await tx.delete(orders).where(eq(orders.id, order.id));
       });
       throw midtransError;
     }
@@ -999,5 +1065,5 @@ export const POST = withRateLimit(
       return serverError(error);
     }
   },
-  { windowMs: 60000, maxRequests: 10 }
+  'money'
 );

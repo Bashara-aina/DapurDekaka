@@ -348,8 +348,6 @@ export default function CheckoutPage() {
       city: pin.city,
       province: pin.province,
       postalCode: pin.postalCode,
-      cityId: '0',
-      provinceId: '0',
     });
   };
 

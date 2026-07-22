@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { Wrench } from 'lucide-react';
 
-export const dynamic = 'force-dynamic';
+
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('maintenance');

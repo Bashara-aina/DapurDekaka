@@ -2,7 +2,7 @@
  * Centralized launch-time feature-flag registry.
  *
  * Every feature that has been deferred or hidden per the L4 kill list must
- * gate here. Reads from env (process.env.FLAG_*) at startup; falls back to
+ * gate here. Reads from env (process.env.NEXT_PUBLIC_FLAG_*) at startup; falls back to
  * the documented default. Use `isFlagEnabled('name')` from any UI guard or
  * middleware to keep the gate declarative.
  *
@@ -20,37 +20,37 @@ export interface FlagConfig {
 export const FLAGS = {
   insuranceUI: {
     default: false,
-    envKey: 'FLAG_INSURANCE_UI',
+    envKey: 'NEXT_PUBLIC_FLAG_INSURANCE_UI',
     note: 'Hide insurance selector until L1 Decision 3 resolved (L4 kill list)',
   },
   b2bPortal: {
     default: false,
-    envKey: 'FLAG_B2B_PORTAL',
+    envKey: 'NEXT_PUBLIC_FLAG_B2B_PORTAL',
     note: 'Hide /b2b/portal/* routes; keep landing + WA inquiry only (L5 Decision 3)',
   },
   blogCMS: {
     default: false,
-    envKey: 'FLAG_BLOG_CMS',
+    envKey: 'NEXT_PUBLIC_FLAG_BLOG_CMS',
     note: 'Hide admin blog editor; keep public blog listing (L4 kill list)',
   },
   aiContent: {
     default: false,
-    envKey: 'FLAG_AI_CONTENT',
+    envKey: 'NEXT_PUBLIC_FLAG_AI_CONTENT',
     note: 'Hide /admin/ai-content (L4 kill list)',
   },
   vouchersPage: {
     default: false,
-    envKey: 'FLAG_VOUCHERS',
+    envKey: 'NEXT_PUBLIC_FLAG_VOUCHERS',
     note: 'Hide /account/vouchers (L4 kill list)',
   },
   softLaunch: {
     default: true,
-    envKey: 'FLAG_SOFT_LAUNCH',
+    envKey: 'NEXT_PUBLIC_FLAG_SOFT_LAUNCH',
     note: 'Soft-launch banner + noindex robots (L5 Week 0–2)',
   },
   samplerPromo: {
     default: false,
-    envKey: 'FLAG_SAMPLER_PROMO',
+    envKey: 'NEXT_PUBLIC_FLAG_SAMPLER_PROMO',
     note: 'Free SKU add-on for orders ≥ Rp 150k (L5 Decision 3 + SAMPLER_MIN)',
   },
 } as const satisfies Record<string, FlagConfig>;

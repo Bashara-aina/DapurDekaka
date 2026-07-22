@@ -98,4 +98,4 @@ export const PATCH = withRateLimit(async (req: NextRequest, ctx: { params: Promi
     });
     return serverError(error);
   }
-}, { windowMs: 60_000, maxRequests: 30 });
+}, 'admin');

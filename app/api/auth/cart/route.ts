@@ -76,4 +76,4 @@ export const GET = withRateLimit(async (_req: NextRequest) => {
     logger.error('[GET /api/auth/cart]', { error: error instanceof Error ? error.message : String(error) });
     return serverError(new Error('Gagal memuat keranjang'));
   }
-}, { windowMs: 60000, maxRequests: 30 });
+}, 'money');
