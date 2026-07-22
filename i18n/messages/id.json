@@ -16,7 +16,8 @@
     "imageAlt": "{name}",
     "productsNotFound": "Produk tidak ditemukan",
     "productsNotFoundDesc": "Coba kategori lain atau hapus filter",
-    "showAllProducts": "Tampilkan Semua Produk"
+    "showAllProducts": "Tampilkan Semua Produk",
+    "muiCertification": "MUI 001/2020"
   },
   "stock": {
     "habis": "Habis",
@@ -319,9 +320,6 @@
     "balance": "Saldo: {points} poin",
     "savings": "(≈ hemat {amount})",
     "maxRedeem": "Maks. {points} poin ({amount})"
-  },
-  "productCard": {
-    "muiCertification": "MUI 001/2020"
   },
   "home": {
     "gallery": {

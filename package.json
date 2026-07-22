@@ -22,7 +22,9 @@
     "db:seed:roles": "tsx scripts/seed-roles.ts",
     "db:migrate": "drizzle-kit migrate",
     "smoke:biteship": "tsx --env-file=.env scripts/smoke-biteship.ts",
-    "smoke:biteship:full": "tsx --env-file=.env scripts/biteship-smoke/run-matrix.ts"
+    "smoke:biteship:full": "tsx --env-file=.env scripts/biteship-smoke/run-matrix.ts",
+    "seed:admin-e2e": "tsx --env-file=.env scripts/seed-admin-e2e-order.ts",
+    "smoke:admin-order": "tsx --env-file=.env scripts/smoke-admin-order-flow.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.7.0",
@@ -86,6 +88,7 @@
     "eslint-config-next": "^14.2.35",
     "lucide-react": "^1.14.0",
     "next-themes": "^0.4.6",
+    "playwright": "^1.61.1",
     "postcss": "^8.5.14",
     "prettier": "^3.3.0",
     "prettier-plugin-tailwindcss": "^0.6.0",

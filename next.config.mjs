@@ -5,7 +5,8 @@ const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 const cspDirectives = [
   "default-src 'self'",
   // 'unsafe-inline' required for Next.js inline script hashing (/_next/static chunks)
-  "script-src 'self' 'unsafe-inline' https://app.midtrans.com https://app.sandbox.midtrans.com https://maps.googleapis.com",
+  // 'unsafe-eval' required by framer-motion for dynamic animation evaluation
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://app.midtrans.com https://app.sandbox.midtrans.com https://maps.googleapis.com",
   "frame-src 'self' https://app.midtrans.com https://app.sandbox.midtrans.com",
   "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
@@ -53,7 +54,8 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'res.cloudinary.com',
-        pathname: `/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || '*'}/**`,
+        // Match any cloud name (the env var and the fallback dsnhwfuxh may differ)
+        pathname: '/*/**',
       },
       {
         protocol: 'https',

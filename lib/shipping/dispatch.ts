@@ -102,51 +102,65 @@ export async function dispatchOrder(
     const customerTrackUrl = `${appUrl}/orders/track/${order.orderNumber}`;
     const trackUrl = result.trackingUrl ?? customerTrackUrl;
 
-    await db.transaction(async (tx) => {
-      await tx
-        .update(orders)
-        .set({
-          biteshipOrderId: result.biteshipOrderId,
-          biteshipReferenceId: order.orderNumber,
-          biteshipActualCost: result.actualCost,
-          trackingNumber: result.waybillId,
-          trackingUrl: trackUrl,
-          liveTrackUrl: result.trackingUrl,
-          dispatchStatus: 'booked',
-          dispatchBookedAt: new Date(),
-          dispatchLastError: null,
-          status: 'shipped',
-          shippedAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(eq(orders.id, order.id));
+    // neon-http has no transactions — sequential writes with status guards
+    await db
+      .update(orders)
+      .set({
+        biteshipOrderId: result.biteshipOrderId,
+        biteshipReferenceId: order.orderNumber,
+        biteshipActualCost: result.actualCost,
+        trackingNumber: result.waybillId,
+        trackingUrl: trackUrl,
+        liveTrackUrl: result.trackingUrl,
+        dispatchStatus: 'booked',
+        dispatchBookedAt: new Date(),
+        dispatchLastError: null,
+        status: 'shipped',
+        shippedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, order.id));
 
-      await tx.insert(orderStatusHistory).values({
-        orderId: order.id,
-        fromStatus: 'packed',
-        toStatus: 'shipped',
-        changedByUserId,
-        changedByType: changedByUserId ? 'user' : 'system',
-        note: `Courier booked via Biteship — AWB ${result.waybillId ?? 'pending'}`,
-      });
+    await db.insert(orderStatusHistory).values({
+      orderId: order.id,
+      fromStatus: 'packed',
+      toStatus: 'shipped',
+      changedByUserId,
+      changedByType: changedByUserId ? 'user' : 'system',
+      note: `Courier booked via Biteship — AWB ${result.waybillId ?? 'pending'}`,
     });
 
-    sendEmail({
-      to: order.recipientEmail,
-      subject: `Pesanan ${order.orderNumber} sudah dikirim!`,
-      react: OrderShippedEmail({
-        orderNumber: order.orderNumber,
-        customerName: order.recipientName,
-        courierName: order.courierName ?? order.courierCode ?? 'Kurir',
-        trackingNumber: result.waybillId ?? '-',
-        trackingUrl: customerTrackUrl,
-        estimatedDays: order.estimatedDays ?? '',
-        items: order.items.map((i) => ({ name: i.productNameId, variant: i.variantNameId, quantity: i.quantity })),
-        totalAmount: order.totalAmount,
-      }),
-    }).catch((err) => logger.error('[dispatch] email failed', { error: err instanceof Error ? err.message : String(err) }));
+    // Notify after booking succeeds — never fail dispatch on email/WA render errors
+    try {
+      void sendEmail({
+        to: order.recipientEmail,
+        subject: `Pesanan ${order.orderNumber} sudah dikirim!`,
+        react: OrderShippedEmail({
+          orderNumber: order.orderNumber,
+          customerName: order.recipientName,
+          courierName: order.courierName ?? order.courierCode ?? 'Kurir',
+          trackingNumber: result.waybillId ?? '-',
+          trackingUrl: customerTrackUrl,
+          estimatedDays: order.estimatedDays ?? '',
+          items: order.items.map((i) => ({
+            name: i.productNameId,
+            variant: i.variantNameId,
+            quantity: i.quantity,
+          })),
+          totalAmount: order.totalAmount,
+        }),
+      }).catch((err) =>
+        logger.error('[dispatch] email failed', {
+          error: err instanceof Error ? err.message : String(err),
+        })
+      );
+    } catch (emailErr) {
+      logger.error('[dispatch] email render failed', {
+        error: emailErr instanceof Error ? emailErr.message : String(emailErr),
+      });
+    }
 
-    sendWhatsApp({
+    void sendWhatsApp({
       phone: order.recipientPhone,
       message: dispatchMessage({
         orderNumber: order.orderNumber,

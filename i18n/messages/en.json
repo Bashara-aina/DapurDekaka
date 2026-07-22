@@ -224,9 +224,6 @@
     "savings": "(≈ save {amount})",
     "maxRedeem": "Max. {points} points ({amount})"
   },
-  "productCard": {
-    "muiCertification": "MUI 001/2020"
-  },
   "home": {
     "gallery": {
       "title": "Our Gallery",
@@ -257,7 +254,8 @@
     "imageAlt": "{name}",
     "productsNotFound": "No products found",
     "productsNotFoundDesc": "Try another category or remove filters",
-    "showAllProducts": "Show All Products"
+    "showAllProducts": "Show All Products",
+    "muiCertification": "MUI 001/2020"
   },
   "stock": {
     "habis": "Out of Stock",

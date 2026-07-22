@@ -89,50 +89,44 @@ export async function PATCH(req: NextRequest) {
       return conflict('Hanya order dengan status paid yang dapat dipack');
     }
 
-    await db.transaction(async (tx) => {
-      // First: paid → processing
-      await tx.update(orders)
-        .set({ status: 'processing', updatedAt: new Date() })
-        .where(and(eq(orders.id, orderId), eq(orders.status, 'paid')));
+    await db
+      .update(orders)
+      .set({ status: 'processing', updatedAt: new Date() })
+      .where(and(eq(orders.id, orderId), eq(orders.status, 'paid')));
 
-      await tx.insert(orderStatusHistory).values({
-        orderId,
-        fromStatus: 'paid',
-        toStatus: 'processing',
-        changedByUserId: session.user.id,
-        changedByType: 'user',
-        note: `Auto-progressed by packing queue`,
-      });
+    await db.insert(orderStatusHistory).values({
+      orderId,
+      fromStatus: 'paid',
+      toStatus: 'processing',
+      changedByUserId: session.user.id,
+      changedByType: 'user',
+      note: `Auto-progressed by packing queue`,
+    });
 
-      // Then: processing → packed
-      const [packed] = await tx
-        .update(orders)
-        .set({ status: 'packed', updatedAt: new Date() })
-        .where(and(eq(orders.id, orderId), eq(orders.status, 'processing')))
-        .returning({ id: orders.id });
+    const [packed] = await db
+      .update(orders)
+      .set({
+        status: 'packed',
+        updatedAt: new Date(),
+        ...(order.deliveryMethod === 'delivery' ? { dispatchStatus: 'pending' as const } : {}),
+      })
+      .where(and(eq(orders.id, orderId), eq(orders.status, 'processing')))
+      .returning({ id: orders.id });
 
-      if (!packed) {
-        throw new Error('PACK_FAILED_STATUS_CHANGED');
-      }
+    if (!packed) {
+      return conflict('Status order berubah saat packing — refresh dan coba lagi');
+    }
 
-      await tx.insert(orderStatusHistory).values({
-        orderId,
-        fromStatus: 'processing',
-        toStatus: 'packed',
-        changedByUserId: session.user.id,
-        changedByType: 'user',
-        note: note
-          ? `Order dikemas oleh ${session.user.name}: ${note}`
-          : `Order dikemas oleh ${session.user.name}`,
-        metadata: coldChainCondition ? { coldChainCondition } : undefined,
-      });
-
-      if (order.deliveryMethod === 'delivery') {
-        await tx
-          .update(orders)
-          .set({ dispatchStatus: 'pending' })
-          .where(eq(orders.id, orderId));
-      }
+    await db.insert(orderStatusHistory).values({
+      orderId,
+      fromStatus: 'processing',
+      toStatus: 'packed',
+      changedByUserId: session.user.id,
+      changedByType: 'user',
+      note: note
+        ? `Order dikemas oleh ${session.user.name}: ${note}`
+        : `Order dikemas oleh ${session.user.name}`,
+      metadata: coldChainCondition ? { coldChainCondition } : undefined,
     });
 
     return success({ orderId, status: 'packed' });

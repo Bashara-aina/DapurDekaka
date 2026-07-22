@@ -223,9 +223,9 @@ export default function TeamDashboardClient() {
   });
 
   const { data: inventoryAlerts } = useQuery<InventoryAlert>({
-    queryKey: ['inventory-alerts'],
+    queryKey: ['low-stock-alerts'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/team-dashboard/inventory-alerts');
+      const res = await fetch('/api/admin/team-dashboard/low-stock-alerts');
       const json = await res.json();
       if (!json.success) throw new Error(json.error);
       return json.data;
@@ -236,6 +236,7 @@ export default function TeamDashboardClient() {
   const { data: b2bPipeline } = useQuery<B2BPipeline>({
     queryKey: ['b2b-pipeline'],
     queryFn: async () => {
+      // Pipeline widget needs inquiry+quote funnel metrics (not active-quotes list).
       const res = await fetch('/api/admin/team-dashboard/b2b-pipeline');
       const json = await res.json();
       if (!json.success) throw new Error(json.error);
