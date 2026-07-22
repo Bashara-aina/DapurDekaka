@@ -6,7 +6,7 @@ import { DrizzleAdapter } from '@auth/drizzle-adapter';
 import NextAuth from 'next-auth';
 import { getDb, db } from '@/lib/db';
 import { users, accounts, sessions, verificationTokens } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 
 const googleId = process.env.AUTH_GOOGLE_ID;
@@ -77,6 +77,18 @@ export const authConfig = {
     async jwt({ token, user, trigger, session: updateData }) {
       const t = token as Record<string, unknown>;
 
+      async function fetchTokenVersion(userId: string): Promise<number | undefined> {
+        try {
+          const result = await db.execute<{ token_version: number }>(
+            sql`SELECT token_version FROM ${users} WHERE id = ${userId}`
+          );
+          return result.rows?.[0]?.token_version ?? 0;
+        } catch {
+          // Column doesn't exist yet (pre-migration). Default to 0.
+          return 0;
+        }
+      }
+
       // On sign-in (both Credentials and OAuth) the `user` arg is populated.
       // Copy role, isActive, tokenVersion into the JWT so the session callback
       // can surface them.  tokenVersion lets us invalidate all existing sessions
@@ -86,11 +98,7 @@ export const authConfig = {
         if (u.id) token.sub = u.id;
         if (u.role) t.role = u.role;
         if (typeof u.isActive === 'boolean') t.isActive = u.isActive;
-        const dbUser = await db.query.users.findFirst({
-          where: eq(users.id, u.id!),
-          columns: { tokenVersion: true },
-        });
-        if (dbUser) t.tokenVersion = dbUser.tokenVersion;
+        if (u.id) t.tokenVersion = await fetchTokenVersion(u.id);
       }
 
       // When the client calls update() (e.g. after login), refresh role/isActive
@@ -100,13 +108,13 @@ export const authConfig = {
         const userId = (token.sub || t.userId) as string;
         const dbUser = await db.query.users.findFirst({
           where: eq(users.id, userId),
-          columns: { role: true, isActive: true, tokenVersion: true },
+          columns: { role: true, isActive: true },
         });
         if (dbUser) {
           t.role = dbUser.role;
           t.isActive = dbUser.isActive;
-          t.tokenVersion = dbUser.tokenVersion;
         }
+        t.tokenVersion = await fetchTokenVersion(userId);
       }
 
       return token;
