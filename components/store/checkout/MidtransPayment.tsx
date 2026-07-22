@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
-import { getSnapUrl } from '@/lib/midtrans/client';
+import { getSnapUrl } from '@/lib/midtrans/snap-url';
 
 interface SnapApi {
   pay: (token: string, callbacks?: SnapCallbacks) => void;

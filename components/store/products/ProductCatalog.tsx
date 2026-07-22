@@ -135,7 +135,7 @@ function ProductCatalogInner({ products, categories, initialCategory = '', initi
         <div className="container mx-auto">
           <h1 className="font-display text-2xl font-bold text-text-primary">{t('nav.products')}</h1>
           <p className="text-text-secondary text-sm mt-1">
-            {t('productsFound', { count: filteredProducts.length })}
+            {t('metadata.productsFound', { count: filteredProducts.length })}
           </p>
         </div>
       </div>
@@ -172,7 +172,7 @@ function ProductCatalogInner({ products, categories, initialCategory = '', initi
                   !category ? 'bg-brand-red text-white' : 'bg-white text-text-primary border border-brand-cream-dark'
                 }`}
               >
-                {t('allCategory')}
+                {t('metadata.allCategory')}
               </button>
               {categories.map((cat) => (
                 <button
@@ -195,7 +195,7 @@ function ProductCatalogInner({ products, categories, initialCategory = '', initi
                 </SelectTrigger>
                 <SelectContent>
                   {SORT_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{t(opt.labelKey)}</SelectItem>
+                    <SelectItem key={opt.value} value={opt.value}>{t(`metadata.${opt.labelKey}`)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -229,9 +229,9 @@ function ProductCatalogInner({ products, categories, initialCategory = '', initi
         ) : (
           <EmptyState
             variant="search"
-            title={t('productsNotFound')}
-            description={t('productsNotFoundDesc')}
-            action={{ label: t('showAllProducts'), onClick: () => handleCategoryChange(null) }}
+            title={t('metadata.productsNotFound')}
+            description={t('metadata.productsNotFoundDesc')}
+            action={{ label: t('metadata.showAllProducts'), onClick: () => handleCategoryChange(null) }}
           />
         )}
 
@@ -245,7 +245,7 @@ function ProductCatalogInner({ products, categories, initialCategory = '', initi
               }}
               className="px-6 py-3 bg-white border border-brand-cream-dark text-text-primary font-medium rounded-button hover:bg-brand-cream transition-colors"
             >
-              {t('loadMore')}
+              {t('metadata.loadMore')}
             </button>
           </div>
         )}

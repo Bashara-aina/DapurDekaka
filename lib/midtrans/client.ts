@@ -8,8 +8,4 @@ export const snap = new Midtrans.Snap({
   clientKey: process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY!,
 });
 
-export function getSnapUrl(): string {
-  return isProduction
-    ? 'https://app.midtrans.com/snap/snap.js'
-    : 'https://app.sandbox.midtrans.com/snap/snap.js';
-}
+export { getSnapUrl } from './snap-url';

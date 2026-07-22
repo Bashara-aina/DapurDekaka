@@ -42,7 +42,14 @@ export function IdentityForm({
     formState: { errors },
   } = useForm<IdentityFormData>({
     resolver: zodResolver(identitySchema),
-    defaultValues,
+    defaultValues: {
+      recipientName: '',
+      recipientEmail: '',
+      recipientPhone: '',
+      customerNote: '',
+      ...defaultValues,
+    },
+    mode: 'onTouched',
   });
 
   return (

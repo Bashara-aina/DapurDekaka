@@ -92,7 +92,15 @@ export function ShippingTierTabs({
             ? t('cutoffToday', { hour: cutoff.cutoffHourWIB })
             : t('cutoffTomorrow', { hour: cutoff.cutoffHourWIB })}
         </p>
-        <p className="text-xs text-text-muted italic">{tTierTruth(activeTier === 'frozen_same_day' ? 'frozenSameDay' : activeTier)}</p>
+        <p className="text-xs text-text-muted italic">
+          {tTierTruth(
+            activeTier === 'frozen_same_day'
+              ? 'frozenSameDay'
+              : activeTier === 'frozen_express'
+                ? 'frozenExpress'
+                : 'express'
+          )}
+        </p>
       </div>
 
       <p className="text-xs text-text-muted">{t(`${activeTier}Description`)}</p>

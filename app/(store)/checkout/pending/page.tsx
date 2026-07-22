@@ -7,7 +7,7 @@ import Script from 'next/script';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Clock, RefreshCw, ArrowRight, Copy, CheckCircle } from 'lucide-react';
-import { getSnapUrl } from '@/lib/midtrans/client';
+import { getSnapUrl } from '@/lib/midtrans/snap-url';
 import { cn } from '@/lib/utils/cn';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { formatWIB } from '@/lib/utils/format-date';

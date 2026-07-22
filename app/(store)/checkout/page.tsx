@@ -14,6 +14,7 @@ import { POINTS_MIN_REDEEM, POINTS_VALUE_IDR } from '@/lib/constants/points';
 
 export const dynamic = 'force-dynamic';
 
+import { Button } from '@/components/ui/button';
 import { CheckoutStepper } from '@/components/store/checkout/CheckoutStepper';
 import { IdentityForm } from '@/components/store/checkout/IdentityForm';
 import type { IdentityFormData } from '@/components/store/checkout/IdentityForm';
@@ -141,14 +142,38 @@ export default function CheckoutPage() {
     if (draft) {
       try {
         const parsed = JSON.parse(draft);
-        setFormData(parsed.formData ?? formData);
-        setStep(parsed.step || 'identity');
+        const restoredForm = parsed.formData ?? formData;
+        const hasIdentity = Boolean(
+          restoredForm.recipientName?.trim() &&
+            restoredForm.recipientEmail?.trim() &&
+            restoredForm.recipientPhone?.trim()
+        );
+        let restoredStep = parsed.step || 'identity';
+        const restoredRates = parsed.shippingRates ?? null;
+
+        // Don't land on payment/courier with incomplete identity or missing rates.
+        if ((restoredStep === 'payment' || restoredStep === 'courier') && !hasIdentity) {
+          restoredStep = 'identity';
+        }
+        if (restoredStep === 'courier' && !restoredRates) {
+          restoredStep = 'delivery';
+        }
+        if (
+          restoredStep === 'payment' &&
+          restoredForm.deliveryMethod === 'delivery' &&
+          !restoredForm.selectedQuoteId
+        ) {
+          restoredStep = restoredRates ? 'courier' : 'delivery';
+        }
+
+        setFormData(restoredForm);
+        setStep(restoredStep);
         setCouponDiscount(parsed.couponDiscount ?? 0);
         setCouponError(parsed.couponError ?? '');
         setCouponType(parsed.couponType ?? null);
         setIsFreeShippingCoupon(parsed.isFreeShippingCoupon ?? false);
         setCouponBuyXgetY(parsed.couponBuyXgetY ?? null);
-        setShippingRates(parsed.shippingRates ?? null);
+        setShippingRates(restoredRates);
         setUsePoints(parsed.usePoints ?? false);
       } catch {
         // ignore corrupt data
@@ -644,6 +669,19 @@ export default function CheckoutPage() {
                 onConfirm={handleShippingConfirm}
                 onBack={handleBack}
               />
+            )}
+
+            {step === 'courier' && !shippingRates && (
+              <div className="bg-white rounded-card p-6 shadow-card space-y-4">
+                <p className="text-text-secondary text-sm">{t('courierRatesMissing')}</p>
+                <Button
+                  type="button"
+                  className="w-full bg-brand-red hover:bg-brand-red-dark"
+                  onClick={() => setStep('delivery')}
+                >
+                  {t('recalculateShipping')}
+                </Button>
+              </div>
             )}
 
             {step === 'payment' && (

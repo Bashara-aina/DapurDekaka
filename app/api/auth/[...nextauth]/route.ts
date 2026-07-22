@@ -1,21 +1,19 @@
 import type { NextRequest } from 'next/server';
 import { handlers } from '@/lib/auth';
 import { withRateLimit } from '@/lib/utils/rate-limit';
-import type { NextResponse } from 'next/server';
 
-// Wrap NextAuth handlers with rate limiting to prevent brute-force attacks
-async function rateLimitedGet(req: NextRequest): Promise<Response> {
+/**
+ * NextAuth GET (session/csrf/providers/oauth callback) must not use the strict
+ * auth tier — SessionProvider polls /api/auth/session and 5/15min blocks checkout.
+ * POST (credentials sign-in) stays on the auth brute-force tier.
+ */
+async function getHandler(req: NextRequest): Promise<Response> {
   return handlers.GET(req);
 }
 
-async function rateLimitedPost(req: NextRequest): Promise<Response> {
+async function postHandler(req: NextRequest): Promise<Response> {
   return handlers.POST(req);
 }
 
-const wrappedHandlers = {
-  GET: withRateLimit(rateLimitedGet, 'auth'),
-  POST: withRateLimit(rateLimitedPost, 'auth'),
-} as const;
-
-export const GET: typeof handlers.GET = wrappedHandlers.GET;
-export const POST: typeof handlers.POST = wrappedHandlers.POST;
+export const GET = withRateLimit(getHandler, 'public');
+export const POST = withRateLimit(postHandler, 'auth');

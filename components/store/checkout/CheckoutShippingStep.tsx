@@ -35,6 +35,20 @@ interface CheckoutShippingStepProps {
   onBack: () => void;
 }
 
+function getDefaultAvailableTier(rates: ShippingRatesResult): ShippingTier {
+  const order: Array<{ tier: ShippingTier; key: 'express' | 'frozenSameDay' | 'frozenExpress' }> = [
+    { tier: 'express', key: 'express' },
+    { tier: 'frozen_same_day', key: 'frozenSameDay' },
+    { tier: 'frozen_express', key: 'frozenExpress' },
+  ];
+  for (const { tier, key } of order) {
+    if (rates.tiers[key].options.some((option) => !option.disabled)) {
+      return tier;
+    }
+  }
+  return 'express';
+}
+
 /**
  * Courier tier selection step with insurance and instant ack.
  */
@@ -46,7 +60,8 @@ export function CheckoutShippingStep({
   onBack,
 }: CheckoutShippingStepProps) {
   const t = useTranslations('checkout');
-  const [activeTier, setActiveTier] = useState<ShippingTier>('frozen_express');
+  const initialTier = getDefaultAvailableTier(rates);
+  const [activeTier, setActiveTier] = useState<ShippingTier>(initialTier);
   const [selectedQuote, setSelectedQuote] = useState<QuoteOption | null>(null);
   const [insuranceType, setInsuranceType] = useState<InsuranceType>('none');
   const [instantAck, setInstantAck] = useState(false);

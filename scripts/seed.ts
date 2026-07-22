@@ -64,7 +64,7 @@ async function seed() {
   // 3. Create system settings
   console.log('Creating system settings...');
   const settings = [
-    { key: 'store_whatsapp_number', value: '6281234567890', type: 'string' },
+    { key: 'store_whatsapp_number', value: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '6289673737886', type: 'string' },
     { key: 'store_opening_hours', value: '09:00 - 17:00 WIB', type: 'string' },
     { key: 'store_open_days', value: 'Senin - Sabtu', type: 'string' },
     { key: 'store_sunday_hours', value: '09:00 - 15:00 WIB', type: 'string' },

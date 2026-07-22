@@ -100,7 +100,7 @@ export function CartItemComponent({ item, stockValidation }: CartItemProps) {
               onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
               className="w-11 h-11 flex items-center justify-center text-brand-red hover:bg-brand-cream transition-colors disabled:opacity-40"
               disabled={item.quantity >= maxQty}
-              aria-label={t('ProductDetail.increaseQty')}
+              aria-label={t('increaseQuantity')}
             >
               <Plus className="w-4 h-4" />
             </button>

@@ -71,6 +71,11 @@ export function AddressMapPicker({
   const [mapsLoadFailed, setMapsLoadFailed] = useState(false);
 
   useEffect(() => {
+    const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    if (!key) {
+      setMapsLoadFailed(true);
+      return;
+    }
     if (mapReady) return;
     const timeout = setTimeout(() => {
       const g = (window as Window & { google?: GoogleMapsApi }).google;
@@ -155,14 +160,17 @@ export function AddressMapPicker({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!addressLine.trim()) return;
+    if (!addressLine.trim()) {
+      e.currentTarget.querySelector<HTMLInputElement>('#addressLine')?.reportValidity();
+      return;
+    }
     onConfirm({
       latitude: lat,
       longitude: lng,
       addressLine: addressLine.trim(),
       district: district.trim() || city,
-      city: city.trim(),
-      province: province.trim(),
+      city: city.trim() || 'Bandung',
+      province: province.trim() || 'Jawa Barat',
       postalCode: postalCode.trim(),
     });
   };

@@ -6,6 +6,7 @@ import { WhatsAppButton } from '@/components/store/layout/WhatsAppButton';
 import { SoftLaunchBanner } from '@/components/store/layout/SoftLaunchBanner';
 import { getSetting } from '@/lib/settings/get-settings';
 import { isFlagEnabled } from '@/lib/config/feature-flags';
+import { resolveWhatsAppNumber } from '@/lib/utils/whatsapp-number';
 
 export async function generateMetadata(): Promise<Metadata> {
   if (!isFlagEnabled('softLaunch')) return {};
@@ -23,7 +24,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function StoreLayout({ children }: { children: React.ReactNode }) {
-  const whatsappNumber = await getSetting('store_whatsapp_number').catch(() => null);
+  const dbWhatsapp = await getSetting<string>('store_whatsapp_number').catch(() => null);
+  const whatsappNumber = resolveWhatsAppNumber(dbWhatsapp);
 
   return (
     <>
@@ -37,7 +39,7 @@ export default async function StoreLayout({ children }: { children: React.ReactN
       <Navbar />
       <main id="main-content" className="min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">{children}</main>
       <Footer />
-      <WhatsAppButton whatsappNumber={whatsappNumber ?? undefined} />
+      <WhatsAppButton whatsappNumber={whatsappNumber} />
       <BottomNav />
     </>
   );
