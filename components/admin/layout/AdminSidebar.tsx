@@ -42,6 +42,8 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ mobileOpen = false, onMobileClose }: AdminSidebarProps) {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const userRole = (session?.user as { role?: string })?.role ?? '';
 
   // Prevent body scroll when mobile menu is open
   useEffect(() => {
@@ -53,24 +55,20 @@ export function AdminSidebar({ mobileOpen = false, onMobileClose }: AdminSidebar
     return () => { document.body.style.overflow = ''; };
   }, [mobileOpen]);
 
-  const NavContent = () => {
-    const { data: session } = useSession();
-    const userRole = (session?.user as { role?: string })?.role ?? '';
+  const visibleItems = NAV_ITEMS.filter(item => {
+    if ('separator' in item) return true;
+    const navItem = item as { roles?: string[] };
+    return !navItem.roles || navItem.roles.includes(userRole);
+  }).filter(item => {
+    if ('separator' in item) return true;
+    const navItem = item as { href: string };
+    if (navItem.href === '/admin/b2b-inquiries' && !isFlagEnabled('b2bPortal')) return false;
+    if (navItem.href === '/admin/blog' && !isFlagEnabled('blogCMS')) return false;
+    if (navItem.href === '/admin/ai-content' && !isFlagEnabled('aiContent')) return false;
+    return true;
+  });
 
-    const visibleItems = NAV_ITEMS.filter(item => {
-      if ('separator' in item) return true;
-      const navItem = item as { roles?: string[] };
-      return !navItem.roles || navItem.roles.includes(userRole);
-    }).filter(item => {
-      if ('separator' in item) return true;
-      const navItem = item as { href: string };
-      if (navItem.href === '/admin/b2b-inquiries' && !isFlagEnabled('b2bPortal')) return false;
-      if (navItem.href === '/admin/blog' && !isFlagEnabled('blogCMS')) return false;
-      if (navItem.href === '/admin/ai-content' && !isFlagEnabled('aiContent')) return false;
-      return true;
-    });
-
-    return (
+  const sidebarContent = (
     <>
       {/* Logo */}
       <div className="p-6 border-b border-white/10 flex items-center justify-between">
@@ -125,14 +123,13 @@ export function AdminSidebar({ mobileOpen = false, onMobileClose }: AdminSidebar
         </Link>
       </div>
     </>
-    );
-  };
+  );
 
   return (
     <>
       {/* Desktop Sidebar — fixed */}
       <aside className="hidden lg:flex flex-col w-60 bg-admin-sidebar min-h-screen fixed left-0 top-0 z-30">
-        <NavContent />
+        {sidebarContent}
       </aside>
 
       {/* Mobile overlay backdrop */}
@@ -151,7 +148,7 @@ export function AdminSidebar({ mobileOpen = false, onMobileClose }: AdminSidebar
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <NavContent />
+        {sidebarContent}
       </aside>
     </>
   );
