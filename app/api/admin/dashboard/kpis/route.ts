@@ -2,8 +2,8 @@ import { NextRequest } from 'next/server';
 import { unstable_cache } from 'next/cache';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { orders, users, systemSettings } from '@/lib/db/schema';
-import { eq, gte, sql, and, lt, isNull } from 'drizzle-orm';
+import { orders, users, systemSettings, webhookEvents } from '@/lib/db/schema';
+import { eq, gte, sql, and, lt, isNull, desc } from 'drizzle-orm';
 import { success, unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -109,7 +109,7 @@ const getKpis = unstable_cache(async (fromDate?: Date, toDate?: Date) => {
   const guestCheckoutsToday = guestCheckoutsResult[0]?.count ?? 0;
   const averageOrderValue = todayCount > 0 ? Math.round(todayTotal / todayCount) : 0;
 
-  return {
+    return {
     revenueToday: todayTotal,
     revenueDelta,
     ordersToday: todayCount,
@@ -154,10 +154,60 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const kpis = await getKpis(fromDate, toDate);
-    return success(kpis);
+    const [kpis, systemHealth] = await Promise.all([
+      getKpis(fromDate, toDate),
+      getSystemHealth(),
+    ]);
+
+    return success({ ...(kpis ?? {}), systemHealth });
   } catch (error) {
     console.error('[admin/dashboard/kpis]', error);
     return serverError(error);
   }
+}
+
+async function getSystemHealth() {
+  const health = {
+    status: 'operational' as const,
+    midtransWebhook: 'ok' as const,
+    neonDB: 'ok' as const,
+    lastCronCheck: 'N/A' as const,
+  };
+
+  try {
+    const recentWebhook = await db.query.webhookEvents.findFirst({
+      where: eq(webhookEvents.source, 'midtrans'),
+      orderBy: [desc(webhookEvents.createdAt)],
+      columns: { createdAt: true },
+    });
+    const webhookAge = recentWebhook
+      ? Date.now() - new Date(recentWebhook.createdAt).getTime()
+      : Infinity;
+    if (webhookAge > 3600000) {
+      (health as Record<string, string>).midtransWebhook = 'late';
+      (health as Record<string, string>).status = 'degraded';
+    }
+    if (webhookAge > 86400000) {
+      (health as Record<string, string>).midtransWebhook = 'missing';
+      (health as Record<string, string>).status = 'degraded';
+    }
+  } catch {
+    (health as Record<string, string>).neonDB = 'slow';
+    (health as Record<string, string>).status = 'degraded';
+  }
+
+  try {
+    const lastCron = await db.query.systemSettings.findFirst({
+      where: eq(systemSettings.key, 'last_cron_check'),
+      columns: { value: true, updatedAt: true },
+    });
+    if (lastCron?.updatedAt) {
+      const dt = new Date(lastCron.updatedAt);
+      (health as Record<string, string>).lastCronCheck = dt.toISOString().split('T')[0] + ' ' + dt.toTimeString().split(' ')[0];
+    }
+  } catch {
+    // Non-critical
+  }
+
+  return health;
 }
