@@ -177,34 +177,34 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         />
 
         {/* Breadcrumb Navigation */}
-        <nav aria-label="Breadcrumb" className="mb-4 text-sm">
-          <ol className="flex items-center gap-1 text-text-secondary">
+        <nav aria-label="Breadcrumb" className="mb-6 text-sm">
+          <ol className="flex items-center gap-1.5 text-text-secondary">
             <li>
-              <a href="/" className="hover:text-brand-red transition-colors">
+              <Link href="/" className="hover:text-brand-red transition-colors">
                 Beranda
-              </a>
+              </Link>
             </li>
             <li className="text-text-muted">/</li>
             <li>
-              <a href="/blog" className="hover:text-brand-red transition-colors">
+              <Link href="/blog" className="hover:text-brand-red transition-colors">
                 Blog
-              </a>
+              </Link>
             </li>
             {post.category && (
               <>
                 <li className="text-text-muted">/</li>
                 <li>
-                  <a
+                  <Link
                     href={`/blog?category=${post.category.slug}`}
                     className="hover:text-brand-red transition-colors"
                   >
                     {post.category.nameId}
-                  </a>
+                  </Link>
                 </li>
               </>
             )}
             <li className="text-text-muted">/</li>
-            <li className="text-text-primary font-medium truncate max-w-[200px]" aria-current="page">
+            <li className="text-text-primary font-medium truncate max-w-[200px] md:max-w-xs" aria-current="page">
               {post.titleId}
             </li>
           </ol>
@@ -212,27 +212,15 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
         <div className="xl:grid xl:grid-cols-[1fr_256px] xl:gap-8 items-start">
           <article className="min-w-0">
-            {post.coverImageUrl ? (
-              <div className="relative w-full h-64 md:h-96 mb-8 rounded-xl overflow-hidden">
-                <Image
-                  src={post.coverImageUrl}
-                  alt={post.titleId}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 800px"
-                />
-              </div>
-            ) : (
-              <div className="relative w-full h-64 md:h-96 mb-8 rounded-xl overflow-hidden">
-                <Image
-                  src={`https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/f_webp,q_auto,w_1600/dapurdekaka/gallery/gallery-01`}
-                  alt={post.titleId}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 800px"
-                />
-              </div>
-            )}
+            <div className="relative w-full h-64 md:h-96 mb-8 rounded-xl overflow-hidden bg-brand-cream">
+              <Image
+                src={post.coverImageUrl || `https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/f_webp,q_auto,w_1600/dapurdekaka/gallery/gallery-01`}
+                alt={post.titleId}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 800px"
+              />
+            </div>
 
             <header className="mb-8">
               {post.category && (
