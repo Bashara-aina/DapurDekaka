@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
       // Validate newCustomer fields
       if (!body.newCustomer.companyName || !body.newCustomer.picName ||
           !body.newCustomer.picEmail || !body.newCustomer.picPhone) {
-        return validationError(new (await import('zod')).ZodError([{
+        return validationError(new z.ZodError([{
           code: 'custom', path: ['newCustomer'], message: 'Semua field pelanggan baru wajib diisi',
         }]));
       }
@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!body.items || body.items.length === 0) {
-      return validationError(new (await import('zod')).ZodError([{
+      return validationError(new z.ZodError([{
         code: 'custom', path: ['items'], message: 'Minimal 1 item diperlukan',
       }]));
     }
@@ -191,7 +191,7 @@ export async function POST(req: NextRequest) {
       const [newQuote] = await tx.insert(b2bQuotes).values({
         quoteNumber,
         b2bProfileId,
-        createdBy: profile.userId,
+        createdBy: session.user.id,
         status: 'draft',
         subtotal,
         discountAmount,

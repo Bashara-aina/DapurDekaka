@@ -52,8 +52,13 @@ const config: Config = {
         'whatsapp-green': '#25D366',
         'whatsapp-green-dark': '#1DA851',
         success: '#16A34A',
+        'success-light': '#DCFCE7',
         error: '#DC2626',
+        'error-light': '#FEE2E2',
         warning: '#F59E0B',
+        'warning-light': '#FEF3C7',
+        info: '#3B82F6',
+        'info-light': '#DBEAFE',
       },
       fontFamily: {
         display: ['Playfair Display', 'Georgia', 'serif'],

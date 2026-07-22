@@ -15,6 +15,7 @@ export interface CheckoutShippingInput {
   customerShippingCost?: number;
   biteshipActualCost?: number;
   courierInstantAck?: boolean;
+  cashOnDelivery?: boolean;
   subtotal: number;
   items: ShippingItemInput[];
   originLat?: number;
@@ -38,6 +39,8 @@ export interface ValidatedShipping {
   originLongitude: string;
   dispatchStatus: 'not_required' | 'pending';
   courierInstantAck: boolean;
+  cashOnDelivery: boolean;
+  cashOnDeliveryFee: number;
 }
 
 export class ShippingValidationError extends Error {
@@ -76,6 +79,8 @@ export async function validateCheckoutShipping(
       originLongitude: String(originLng),
       dispatchStatus: 'not_required',
       courierInstantAck: false,
+      cashOnDelivery: false,
+      cashOnDeliveryFee: 0,
     };
   }
 
@@ -120,6 +125,11 @@ export async function validateCheckoutShipping(
     throw new ShippingValidationError('Anda harus menyetujui syarat pengiriman express');
   }
 
+  const cashOnDelivery = input.cashOnDelivery ?? false;
+  if (cashOnDelivery && !quote.cashOnDeliveryAvailable) {
+    throw new ShippingValidationError('Kurir yang dipilih tidak mendukung pembayaran COD');
+  }
+
   const parsed = parseQuoteId(input.selectedQuoteId);
 
   return {
@@ -139,5 +149,7 @@ export async function validateCheckoutShipping(
     originLongitude: String(originLng),
     dispatchStatus: 'pending',
     courierInstantAck: input.courierInstantAck ?? false,
+    cashOnDelivery,
+    cashOnDeliveryFee: 0,
   };
 }

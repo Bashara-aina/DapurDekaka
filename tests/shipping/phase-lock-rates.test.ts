@@ -20,6 +20,7 @@ function opt(id: string, tier: QuoteOption['tier']): QuoteOption {
     disabled: false,
     disabledReason: null,
     insuranceAvailable: true,
+    cashOnDeliveryAvailable: false,
   };
 }
 

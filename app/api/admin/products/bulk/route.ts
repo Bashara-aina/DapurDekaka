@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { products, orderItems } from '@/lib/db/schema';
-import { inArray, and } from 'drizzle-orm';
+import { inArray, and, isNotNull } from 'drizzle-orm';
 import { success, unauthorized, forbidden, serverError, conflict } from '@/lib/utils/api-response';
 import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
@@ -42,7 +42,7 @@ export async function PATCH(req: NextRequest) {
       const activeOrders = await db.query.orderItems.findMany({
         where: and(
           inArray(orderItems.productId, ids),
-          orderItems.orderId  // This is a reference, we need to join with orders to check status
+          isNotNull(orderItems.orderId)
         ),
         with: {
           order: {

@@ -1,5 +1,4 @@
-import { auth } from '@/lib/auth';
-import { redirect } from 'next/navigation';
+import { requireRole } from '@/lib/auth/check-role';
 import { getTranslations } from 'next-intl/server';
 import { db } from '@/lib/db';
 import { orders, refunds, webhookEvents, disputes } from '@/lib/db/schema';
@@ -30,9 +29,7 @@ interface TotalRow { total: number; }
  * Daily Ops Card (L4) — 15-minute morning checklist.
  */
 export default async function OpsPage() {
-  const session = await auth();
-  if (!session?.user) redirect('/login');
-  if (!['superadmin', 'owner'].includes(session.user.role)) redirect('/admin');
+  const session = await requireRole(['superadmin', 'owner']);
 
   const t = await getTranslations('opsCard');
 

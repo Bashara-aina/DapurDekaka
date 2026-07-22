@@ -43,7 +43,7 @@ export default function ProfileSelector({
 }: ProfileSelectorProps) {
   return (
     <div className="bg-white rounded-xl border border-admin-border p-6">
-      <h2 className="font-semibold text-admin-text-primary mb-4">Pelanggan B2B</h2>
+      <h2 className="font-semibold text-text-primary mb-4">Pelanggan B2B</h2>
       {!loadingProfiles ? (
         <>
           <select
@@ -63,7 +63,7 @@ export default function ProfileSelector({
 
           {showNewCustomer && (
             <div className="mt-4 p-4 bg-slate-50 rounded-lg space-y-3">
-              <p className="text-sm font-medium text-admin-text-primary">Data Pelanggan Baru</p>
+              <p className="text-sm font-medium text-text-primary">Data Pelanggan Baru</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs">Nama Perusahaan</Label>

@@ -59,7 +59,11 @@ function Breadcrumb() {
   );
 }
 
-export function AdminHeader() {
+interface AdminHeaderProps {
+  role?: string;
+}
+
+export function AdminHeader({ role }: AdminHeaderProps) {
   const { data: session } = useSession();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
@@ -75,6 +79,7 @@ export function AdminHeader() {
         {/* Left: hamburger + breadcrumb */}
         <div className="flex items-center gap-3">
           <button
+            type="button"
             onClick={() => setMobileMenuOpen(true)}
             className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
             aria-label="Buka menu"
@@ -95,8 +100,10 @@ export function AdminHeader() {
         </div>
       </header>
 
-      {/* Mobile sidebar — rendered here so it overlays content */}
+      {/* Mobile drawer only — desktop sidebar lives in admin layout */}
       <AdminSidebar
+        role={role}
+        variant="mobile"
         mobileOpen={mobileMenuOpen}
         onMobileClose={() => setMobileMenuOpen(false)}
       />

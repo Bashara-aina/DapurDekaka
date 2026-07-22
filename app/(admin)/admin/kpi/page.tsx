@@ -1,5 +1,4 @@
-import { auth } from '@/lib/auth';
-import { redirect } from 'next/navigation';
+import { requireRole } from '@/lib/auth/check-role';
 import { getTranslations } from 'next-intl/server';
 import { db } from '@/lib/db';
 import { orders, refunds } from '@/lib/db/schema';
@@ -17,9 +16,7 @@ interface KpiRow {
 }
 
 export default async function KpiPage() {
-  const session = await auth();
-  if (!session?.user) redirect('/login');
-  if (!['superadmin', 'owner'].includes(session.user.role)) redirect('/admin');
+  await requireRole(['superadmin', 'owner']);
 
   const t = await getTranslations('kpi');
 

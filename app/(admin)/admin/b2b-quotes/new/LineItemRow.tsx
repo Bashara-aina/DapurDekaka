@@ -55,10 +55,10 @@ export default function LineItemRow({
       <div className="flex-1">
         {item.variantId ? (
           <>
-            <p className="font-medium text-admin-text-primary text-sm">
+            <p className="font-medium text-text-primary text-sm">
               {item.productName} — {item.variantName}
             </p>
-            <p className="text-xs text-admin-text-secondary">
+            <p className="text-xs text-text-secondary">
               {item.sku} · Rp {item.unitPrice.toLocaleString('id-ID')} / unit
             </p>
           </>
@@ -114,7 +114,7 @@ export default function LineItemRow({
             />
           </div>
           <div className="w-32 text-right">
-            <p className="font-medium text-admin-text-primary">
+            <p className="font-medium text-text-primary">
               Rp {item.subtotal.toLocaleString('id-ID')}
             </p>
           </div>

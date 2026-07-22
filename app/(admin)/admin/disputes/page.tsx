@@ -1,10 +1,9 @@
 import type { Metadata } from 'next';
+import { requireRole } from '@/lib/auth/check-role';
 import { getTranslations } from 'next-intl/server';
 import { db } from '@/lib/db';
 import { disputes, orders } from '@/lib/db/schema';
 import { desc, eq } from 'drizzle-orm';
-import { auth } from '@/lib/auth';
-import { redirect } from 'next/navigation';
 import { DisputesAdminClient } from './DisputesAdminClient';
 
 export const dynamic = 'force-dynamic';
@@ -21,9 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
  */
 export default async function DisputesPage() {
   const t = await getTranslations('disputes');
-  const session = await auth();
-  if (!session?.user) redirect('/login');
-  if (!['superadmin', 'owner'].includes(session.user.role)) redirect('/admin');
+  await requireRole(['superadmin', 'owner']);
 
   const rows = await db
     .select({

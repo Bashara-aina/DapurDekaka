@@ -6,6 +6,7 @@ import { success, serverError, notFound, forbidden, conflict, validationError } 
 import { auth } from '@/lib/auth';
 import { z, ZodError } from 'zod';
 import { sendEmail } from '@/lib/resend/send-email';
+import { cancelBiteshipOrder } from '@/lib/shipping/providers/biteship/orders';
 import { OrderShippedEmail } from '@/lib/resend/templates/OrderShipped';
 import { OrderDeliveredEmail } from '@/lib/resend/templates/OrderDelivered';
 import { OrderCancellationEmail } from '@/lib/resend/templates/OrderCancellation';
@@ -39,7 +40,7 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
   paid: ['processing', 'cancelled', 'refunded'],
   processing: ['packed', 'cancelled'],
   packed: ['shipped', 'cancelled'],
-  shipped: ['delivered'],
+  shipped: ['delivered', 'cancelled'],
 };
 
 // Warehouse can only do packed→shipped
@@ -120,6 +121,23 @@ export async function PATCH(
       updateData.deliveredAt = new Date();
     } else if (newStatus === 'cancelled') {
       updateData.cancelledAt = new Date();
+    }
+
+    // If cancelling a shipped order, first cancel via Biteship API
+    if (newStatus === 'cancelled' && currentStatus === 'shipped' && order.biteshipOrderId) {
+      try {
+        await cancelBiteshipOrder(
+          order.biteshipOrderId,
+          'others',
+          cancellationReason ?? 'Dibatalkan oleh admin'
+        );
+      } catch (biteshipErr) {
+        logger.error('[Biteship] Cancel failed', {
+          orderId: order.id,
+          biteshipOrderId: order.biteshipOrderId,
+          error: biteshipErr instanceof Error ? biteshipErr.message : String(biteshipErr),
+        });
+      }
     }
 
     // All status transitions happen in a transaction

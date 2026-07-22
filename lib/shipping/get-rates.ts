@@ -4,6 +4,7 @@ import {
   COURIER_DISPLAY_NAMES,
   WAREHOUSE_ORIGIN_LAT,
   WAREHOUSE_ORIGIN_LNG,
+  matchesTierServiceFilter,
 } from './constants';
 import { checkEligibility, excludeBorzo } from './eligibility';
 import { applyMarkup } from './markup';
@@ -36,8 +37,7 @@ function buildQuoteId(
 }
 
 function filterByService(courierType: string, serviceFilter?: RegExp): boolean {
-  if (!serviceFilter) return true;
-  return serviceFilter.test(courierType);
+  return matchesTierServiceFilter(courierType, serviceFilter);
 }
 
 function toQuoteOption(
@@ -49,6 +49,7 @@ function toQuoteOption(
     duration?: string;
     shipment_duration_range?: string;
     available_for_insurance?: boolean;
+    available_for_cash_on_delivery?: boolean;
   },
   totalWeightGram: number
 ): QuoteOption {
@@ -69,7 +70,8 @@ function toQuoteOption(
     estimatedDuration: duration,
     disabled: eligibility.disabled || !eligibility.eligible,
     disabledReason: eligibility.disabledReason,
-    insuranceAvailable: row.available_for_insurance ?? true,
+      insuranceAvailable: row.available_for_insurance ?? true,
+      cashOnDeliveryAvailable: row.available_for_cash_on_delivery ?? false,
   };
 }
 

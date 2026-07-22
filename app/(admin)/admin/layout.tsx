@@ -9,13 +9,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!['superadmin', 'owner', 'warehouse'].includes(session.user.role ?? '')) {
     redirect('/');
   }
+  const role = session.user.role ?? '';
+
   return (
     <div className="min-h-screen bg-admin-content flex">
-      <AdminSidebar />
+      <AdminSidebar role={role} variant="desktop" />
 
       {/* Main content — offset by sidebar width on desktop */}
       <div className="flex-1 flex flex-col lg:pl-60">
-        <AdminHeader />
+        <AdminHeader role={role} />
         <main className="flex-1 p-4 md:p-6">{children}</main>
       </div>
     </div>

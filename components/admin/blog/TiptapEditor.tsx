@@ -5,7 +5,6 @@ import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import { useEffect } from 'react';
-import { Toggle } from '@/components/ui/toggle';
 
 interface TiptapEditorProps {
   content: string;

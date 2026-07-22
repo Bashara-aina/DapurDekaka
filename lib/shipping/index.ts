@@ -9,7 +9,7 @@ export { applyMarkup, getMarkupAmount, verifyCustomerShippingCost } from './mark
 export { checkEligibility } from './eligibility';
 export { calculateInsuranceFee, verifyInsuranceFee } from './insurance';
 export { computeCartDimensions } from './weight-dims';
-export { createBiteshipOrder } from './providers/biteship/orders';
+export { createBiteshipOrder, cancelBiteshipOrder } from './providers/biteship/orders';
 export { fetchBiteshipTracking } from './providers/biteship/tracking';
 export { reverseGeocodeArea, searchAreas } from './providers/biteship/maps';
 export type {

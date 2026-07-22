@@ -1,29 +1,16 @@
 'use client';
 
-export default function Error({
-  error,
-  reset,
-}: {
-  error: Error & { digest?: string };
-  reset: () => void;
-}) {
+import { AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+export default function AdminGroupError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-4">
-      <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col items-center text-center">
-          <div className="mb-4 text-4xl">⚠️</div>
-          <h1 className="mb-2 text-xl font-semibold text-slate-900">Terjadi Kesalahan</h1>
-          <p className="mb-6 text-sm text-slate-600">
-            Ada yang tidak beres di sistem admin. Silakan coba lagi atau hubungi tim support jika masalah
-            persists.
-          </p>
-          <button
-            onClick={reset}
-            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 transition-colors"
-          >
-            🔄 Coba Lagi
-          </button>
-        </div>
+    <div className="min-h-screen bg-admin-content flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl p-8 text-center max-w-md w-full shadow-card">
+        <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">Terjadi Kesalahan</h2>
+        <p className="text-sm text-gray-500 mb-4">{error?.message || 'Terjadi kesalahan yang tidak terduga.'}</p>
+        <Button onClick={reset} className="bg-brand-red hover:bg-brand-red-dark">Coba Lagi</Button>
       </div>
     </div>
   );

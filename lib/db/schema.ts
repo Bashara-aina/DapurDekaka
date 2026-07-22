@@ -376,6 +376,8 @@ export const orders = pgTable('orders', {
   driverPlate: varchar('driver_plate', { length: 20 }),
   liveTrackUrl: text('live_track_url'),
   courierInstantAck: boolean('courier_instant_ack').notNull().default(false),
+  cashOnDelivery: boolean('cash_on_delivery').notNull().default(false),
+  cashOnDeliveryFee: integer('cash_on_delivery_fee').notNull().default(0),
   isB2b: boolean('is_b2b').notNull().default(false),
   paymentMethod: varchar('payment_method', { length: 50 }),
   paymentDueAt: timestamp('payment_due_at', { withTimezone: true }),
@@ -855,6 +857,11 @@ export const b2bProfilesRelations = relations(b2bProfiles, ({ one, many }) => ({
 export const b2bQuotesRelations = relations(b2bQuotes, ({ one, many }) => ({
   b2bProfile: one(b2bProfiles, { fields: [b2bQuotes.b2bProfileId], references: [b2bProfiles.id] }),
   items: many(b2bQuoteItems),
+}));
+
+export const b2bQuoteItemsRelations = relations(b2bQuoteItems, ({ one }) => ({
+  quote: one(b2bQuotes, { fields: [b2bQuoteItems.quoteId], references: [b2bQuotes.id] }),
+  variant: one(productVariants, { fields: [b2bQuoteItems.variantId], references: [productVariants.id] }),
 }));
 
 // ─────────────────────────────────────────

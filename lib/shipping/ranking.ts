@@ -1,6 +1,7 @@
 import type { QuoteOption } from './types';
 
 const ETA_PENALTY_PER_DAY = 500;
+const COD_BONUS = -3000;
 
 /**
  * Parse estimated duration string to approximate days for ranking.
@@ -16,10 +17,12 @@ function parseEtaDays(duration: string): number {
 }
 
 /**
- * Score option for auto-pick: lower is better (price + ETA penalty).
+ * Score option for auto-pick: lower is better (price + ETA penalty - COD bonus).
  */
 function scoreOption(option: QuoteOption): number {
-  return option.customerCost + parseEtaDays(option.estimatedDuration) * ETA_PENALTY_PER_DAY;
+  let score = option.customerCost + parseEtaDays(option.estimatedDuration) * ETA_PENALTY_PER_DAY;
+  if (option.cashOnDeliveryAvailable) score += COD_BONUS;
+  return score;
 }
 
 /**

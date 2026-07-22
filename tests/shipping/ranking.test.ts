@@ -13,6 +13,7 @@ function makeOption(overrides: Partial<QuoteOption> & Pick<QuoteOption, 'id' | '
     disabled: false,
     disabledReason: null,
     insuranceAvailable: true,
+    cashOnDeliveryAvailable: false,
     ...overrides,
   };
 }

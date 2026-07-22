@@ -49,8 +49,8 @@ export default async function B2BInquiriesPage({ searchParams }: PageProps) {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-admin-text-primary">Inquiries B2B</h1>
-          <p className="text-admin-text-secondary text-sm mt-1">
+          <h1 className="text-2xl font-bold text-text-primary">Inquiries B2B</h1>
+          <p className="text-text-secondary text-sm mt-1">
             {inquiries.length} inquiry masuk
           </p>
         </div>
@@ -62,31 +62,31 @@ export default async function B2BInquiriesPage({ searchParams }: PageProps) {
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-admin-border">
               <tr>
-                <th className="text-left px-4 py-3 text-xs font-medium text-admin-text-secondary uppercase tracking-wider">
+                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
                   <a href={sortUrl('companyName')} className="flex items-center gap-1 hover:text-brand-red">
                     Perusahaan
                     {sortField === 'companyName' && (sortDir === 'asc' ? ' ↑' : ' ↓')}
                   </a>
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-admin-text-secondary uppercase tracking-wider">
+                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
                   Kontak
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-admin-text-secondary uppercase tracking-wider">
+                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
                   Volume
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-admin-text-secondary uppercase tracking-wider">
+                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
                   <a href={sortUrl('status')} className="flex items-center gap-1 hover:text-brand-red">
                     Status
                     {sortField === 'status' && (sortDir === 'asc' ? ' ↑' : ' ↓')}
                   </a>
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-admin-text-secondary uppercase tracking-wider">
+                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
                   <a href={sortUrl('createdAt')} className="flex items-center gap-1 hover:text-brand-red">
                     Tanggal
                     {sortField === 'createdAt' && (sortDir === 'asc' ? ' ↑' : ' ↓')}
                   </a>
                 </th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-admin-text-secondary uppercase tracking-wider">
+                <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
                   Aksi
                 </th>
               </tr>
@@ -98,11 +98,11 @@ export default async function B2BInquiriesPage({ searchParams }: PageProps) {
                   <tr key={inquiry.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3">
                       <div>
-                        <p className="font-medium text-admin-text-primary text-sm">
+                        <p className="font-medium text-text-primary text-sm">
                           {inquiry.companyName}
                         </p>
                         {inquiry.companyType && (
-                          <p className="text-xs text-admin-text-secondary">
+                          <p className="text-xs text-text-secondary">
                             {inquiry.companyType}
                           </p>
                         )}
@@ -110,12 +110,12 @@ export default async function B2BInquiriesPage({ searchParams }: PageProps) {
                     </td>
                     <td className="px-4 py-3">
                       <div>
-                        <p className="text-sm text-admin-text-primary">{inquiry.picName}</p>
-                        <p className="text-xs text-admin-text-secondary">{inquiry.picEmail}</p>
+                        <p className="text-sm text-text-primary">{inquiry.picName}</p>
+                        <p className="text-xs text-text-secondary">{inquiry.picEmail}</p>
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <p className="text-sm text-admin-text-secondary">
+                      <p className="text-sm text-text-secondary">
                         {inquiry.estimatedVolumeId || '-'}
                       </p>
                     </td>
@@ -123,7 +123,7 @@ export default async function B2BInquiriesPage({ searchParams }: PageProps) {
                       <B2BInquiryStatusClient inquiryId={inquiry.id} currentStatus={inquiry.status} />
                     </td>
                     <td className="px-4 py-3">
-                      <p className="text-sm text-admin-text-secondary">
+                      <p className="text-sm text-text-secondary">
                         {formatWIB(inquiry.createdAt)}
                       </p>
                     </td>
@@ -141,7 +141,7 @@ export default async function B2BInquiriesPage({ searchParams }: PageProps) {
 
               {inquiries.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-admin-text-secondary">
+                  <td colSpan={6} className="px-4 py-12 text-center text-text-secondary">
                     Tidak ada inquiry B2B
                   </td>
                 </tr>

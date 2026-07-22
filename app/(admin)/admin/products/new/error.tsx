@@ -1,14 +1,16 @@
 'use client';
-import { useEffect } from 'react';
 
-export default function ProductNewError({ error, reset }: { error: Error; reset: () => void }) {
-  useEffect(() => { console.error(error); }, [error]);
+import { AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+export default function ProductNewError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
-    <div className="p-6">
-      <div className="bg-red-50 border border-red-200 rounded-card p-6 text-center">
-        <h2 className="text-xl font-semibold text-red-700 mb-2">Terjadi Kesalahan</h2>
-        <p className="text-red-600 mb-4">Gagal memuat halaman produk baru.</p>
-        <button onClick={reset} className="px-6 py-3 bg-brand-red text-white rounded-lg">Coba Lagi</button>
+    <div className="min-h-[60vh] flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl p-8 text-center max-w-md w-full shadow-card">
+        <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">Terjadi Kesalahan</h2>
+        <p className="text-sm text-gray-500 mb-4">{error?.message || 'Gagal memuat halaman produk baru.'}</p>
+        <Button onClick={reset} className="bg-brand-red hover:bg-brand-red-dark">Coba Lagi</Button>
       </div>
     </div>
   );

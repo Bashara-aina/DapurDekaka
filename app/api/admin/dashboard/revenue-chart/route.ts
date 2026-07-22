@@ -5,7 +5,6 @@ import { orders } from '@/lib/db/schema';
 import { gte, sql, and } from 'drizzle-orm';
 import { success, forbidden, serverError } from '@/lib/utils/api-response';
 export const dynamic = 'force-dynamic';
-export const revalidate = 300;
 export const runtime = 'nodejs';
 
 async function getRevenueChart() {

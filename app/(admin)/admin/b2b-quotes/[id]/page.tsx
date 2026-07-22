@@ -1,11 +1,10 @@
 import { db } from '@/lib/db';
 import { b2bQuotes, b2bQuoteItems } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { requireRole } from '@/lib/auth/check-role';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { formatIDR } from '@/lib/utils/format-currency';
-import { auth } from '@/lib/auth';
-import { redirect } from 'next/navigation';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -42,10 +41,7 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
 };
 
 export default async function B2BQuoteDetailPage({ params }: PageProps) {
-  const session = await auth();
-  if (!session?.user || !['owner', 'superadmin'].includes(session.user.role as string)) {
-    redirect('/admin');
-  }
+  await requireRole(['superadmin', 'owner']);
 
   const { id } = await params;
   const quote = await getQuote(id) as NonNullable<Awaited<ReturnType<typeof getQuote>>>;
@@ -68,10 +64,10 @@ export default async function B2BQuoteDetailPage({ params }: PageProps) {
             ←
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-admin-text-primary">
+            <h1 className="text-2xl font-bold text-text-primary">
               {quote.quoteNumber}
             </h1>
-            <p className="text-admin-text-secondary text-sm mt-1">
+            <p className="text-text-secondary text-sm mt-1">
               {quote.b2bProfile?.companyName}
             </p>
           </div>
@@ -87,21 +83,21 @@ export default async function B2BQuoteDetailPage({ params }: PageProps) {
           {/* Items */}
           <div className="bg-white rounded-xl border border-admin-border overflow-hidden">
             <div className="px-6 py-4 border-b border-admin-border">
-              <h2 className="font-semibold text-admin-text-primary">Item Quote</h2>
+              <h2 className="font-semibold text-text-primary">Item Quote</h2>
             </div>
             <table className="w-full">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-admin-text-secondary uppercase tracking-wider">
+                  <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
                     Produk
                   </th>
-                  <th className="text-center px-4 py-3 text-xs font-medium text-admin-text-secondary uppercase tracking-wider">
+                  <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
                     Qty
                   </th>
-                  <th className="text-right px-6 py-3 text-xs font-medium text-admin-text-secondary uppercase tracking-wider">
+                  <th className="text-right px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
                     Harga Unit
                   </th>
-                  <th className="text-right px-6 py-3 text-xs font-medium text-admin-text-secondary uppercase tracking-wider">
+                  <th className="text-right px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
                     Subtotal
                   </th>
                 </tr>
@@ -110,10 +106,10 @@ export default async function B2BQuoteDetailPage({ params }: PageProps) {
                 {quote.items.map((item) => (
                   <tr key={item.id}>
                     <td className="px-6 py-4">
-                      <p className="font-medium text-admin-text-primary text-sm">
+                      <p className="font-medium text-text-primary text-sm">
                         {item.productNameId}
                       </p>
-                      <p className="text-xs text-admin-text-secondary">
+                      <p className="text-xs text-text-secondary">
                         {item.variantNameId} | {item.sku}
                       </p>
                     </td>
@@ -137,7 +133,7 @@ export default async function B2BQuoteDetailPage({ params }: PageProps) {
             <div className="px-6 py-4 bg-slate-50 border-t border-admin-border">
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-admin-text-secondary">Subtotal</span>
+                  <span className="text-text-secondary">Subtotal</span>
                   <span className="font-medium">{formatIDR(quote.subtotal)}</span>
                 </div>
                 {quote.discountAmount > 0 && (
@@ -157,8 +153,8 @@ export default async function B2BQuoteDetailPage({ params }: PageProps) {
           {/* Notes */}
           {(quote.notesId || quote.notesEn) && (
             <div className="bg-white rounded-xl border border-admin-border p-6">
-              <h2 className="font-semibold text-admin-text-primary mb-3">Catatan</h2>
-              <p className="text-admin-text-secondary text-sm whitespace-pre-wrap">
+              <h2 className="font-semibold text-text-primary mb-3">Catatan</h2>
+              <p className="text-text-secondary text-sm whitespace-pre-wrap">
                 {quote.notesId || quote.notesEn}
               </p>
             </div>
@@ -169,22 +165,22 @@ export default async function B2BQuoteDetailPage({ params }: PageProps) {
         <div className="space-y-6">
           {/* Customer Info */}
           <div className="bg-white rounded-xl border border-admin-border p-6">
-            <h2 className="font-semibold text-admin-text-primary mb-4">Informasi Pelanggan</h2>
+            <h2 className="font-semibold text-text-primary mb-4">Informasi Pelanggan</h2>
             <div className="space-y-3 text-sm">
               <div>
-                <p className="text-admin-text-secondary">Perusahaan</p>
+                <p className="text-text-secondary">Perusahaan</p>
                 <p className="font-medium">{quote.b2bProfile?.companyName}</p>
               </div>
               <div>
-                <p className="text-admin-text-secondary">PIC</p>
+                <p className="text-text-secondary">PIC</p>
                 <p className="font-medium">{quote.b2bProfile?.picName}</p>
               </div>
               <div>
-                <p className="text-admin-text-secondary">Email</p>
+                <p className="text-text-secondary">Email</p>
                 <p className="font-medium">{quote.b2bProfile?.picEmail}</p>
               </div>
               <div>
-                <p className="text-admin-text-secondary">WhatsApp</p>
+                <p className="text-text-secondary">WhatsApp</p>
                 <p className="font-medium">{quote.b2bProfile?.picPhone}</p>
               </div>
             </div>
@@ -192,14 +188,14 @@ export default async function B2BQuoteDetailPage({ params }: PageProps) {
 
           {/* Quote Info */}
           <div className="bg-white rounded-xl border border-admin-border p-6">
-            <h2 className="font-semibold text-admin-text-primary mb-4">Info Quote</h2>
+            <h2 className="font-semibold text-text-primary mb-4">Info Quote</h2>
             <div className="space-y-3 text-sm">
               <div>
-                <p className="text-admin-text-secondary">Quote Number</p>
+                <p className="text-text-secondary">Quote Number</p>
                 <p className="font-mono font-medium">{quote.quoteNumber}</p>
               </div>
               <div>
-                <p className="text-admin-text-secondary">Dibuat</p>
+                <p className="text-text-secondary">Dibuat</p>
                 <p className="font-medium">
                   {new Date(quote.createdAt).toLocaleDateString('id-ID', {
                     day: 'numeric',
@@ -210,7 +206,7 @@ export default async function B2BQuoteDetailPage({ params }: PageProps) {
               </div>
               {quote.validUntil && (
                 <div>
-                  <p className="text-admin-text-secondary">Valid Until</p>
+                  <p className="text-text-secondary">Valid Until</p>
                   <p className="font-medium">
                     {new Date(quote.validUntil).toLocaleDateString('id-ID')}
                   </p>
@@ -218,7 +214,7 @@ export default async function B2BQuoteDetailPage({ params }: PageProps) {
               )}
               {quote.paymentTerms && (
                 <div>
-                  <p className="text-admin-text-secondary">Terms</p>
+                  <p className="text-text-secondary">Terms</p>
                   <p className="font-medium">{quote.paymentTerms}</p>
                 </div>
               )}
@@ -227,8 +223,8 @@ export default async function B2BQuoteDetailPage({ params }: PageProps) {
 
           {/* Actions */}
           <div className="bg-white rounded-xl border border-admin-border p-6">
-            <h2 className="font-semibold text-admin-text-primary mb-4">Aksi</h2>
-            <p className="text-sm text-admin-text-secondary">
+            <h2 className="font-semibold text-text-primary mb-4">Aksi</h2>
+            <p className="text-sm text-text-secondary">
               Fitur kirim email dan download PDF sedang dalam pengembangan.
             </p>
           </div>

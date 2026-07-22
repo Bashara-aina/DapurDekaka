@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { orders, orderStatusHistory } from '@/lib/db/schema';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { success, serverError, notFound, forbidden, conflict, validationError } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
 import { z } from 'zod';
@@ -126,13 +126,6 @@ export async function PATCH(req: NextRequest) {
           : `Order dikemas oleh ${session.user.name}`,
         metadata: coldChainCondition ? { coldChainCondition } : undefined,
       });
-
-      if (order.deliveryMethod === 'delivery') {
-        await tx
-          .update(orders)
-          .set({ dispatchStatus: 'pending' })
-          .where(eq(orders.id, orderId));
-      }
 
       if (order.deliveryMethod === 'delivery') {
         await tx

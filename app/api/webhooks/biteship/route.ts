@@ -86,12 +86,28 @@ export const POST = withRateLimit(
         : null;
 
       const driverUpdate = {
-        driverName: payload.courier?.name ?? order.driverName,
-        driverPhone: payload.courier?.phone ?? order.driverPhone,
-        driverPlate: payload.courier?.vehicle_number ?? order.driverPlate,
-        liveTrackUrl: payload.courier?.link ?? order.liveTrackUrl,
-        trackingNumber: payload.courier?.waybill_id ?? order.trackingNumber,
+        driverName: payload.courier_driver_name ?? order.driverName,
+        driverPhone: payload.courier_driver_phone ?? order.driverPhone,
+        driverPlate: payload.courier_driver_plate_number ?? order.driverPlate,
+        liveTrackUrl: payload.courier_link ?? order.liveTrackUrl,
+        trackingNumber: payload.courier_waybill_id ?? order.trackingNumber,
       };
+
+      // Handle order.price event: update actual cost when weight differs
+      if (payload.event === 'order.price' && payload.price != null && payload.price !== order.biteshipActualCost) {
+        await db
+          .update(orders)
+          .set({ biteshipActualCost: payload.price, updatedAt: new Date() })
+          .where(eq(orders.id, order.id));
+
+        await recordWebhookEvent({
+          source: 'biteship',
+          eventType: 'order.price',
+          externalId: order.orderNumber,
+          payload,
+          errorMessage: `actual_cost_updated: ${order.biteshipActualCost} -> ${payload.price}`,
+        });
+      }
 
       if (mapped === 'failed') {
         await db.transaction(async (tx) => {

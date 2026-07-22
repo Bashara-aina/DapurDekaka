@@ -1,5 +1,4 @@
 import { requireRole } from '@/lib/auth/check-role';
-import { auth } from '@/lib/auth';
 import { notFound } from 'next/navigation';
 import OrderDetailClient from './OrderDetailClient';
 

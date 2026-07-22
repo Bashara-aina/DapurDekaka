@@ -47,7 +47,7 @@ export function InquiryStatusUpdate({ inquiryId, currentStatus }: InquiryStatusU
 
   return (
     <div className="space-y-2">
-      <label className="text-xs text-admin-text-secondary uppercase tracking-wider">
+      <label className="text-xs text-text-secondary uppercase tracking-wider">
         Update Status
       </label>
       <div className="flex flex-wrap gap-2">

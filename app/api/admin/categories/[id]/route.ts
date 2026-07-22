@@ -74,8 +74,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       .update(categories)
       .set(updates)
       .where(eq(categories.id, id))
-      .returning()
-      .catch(() => []);
+      .returning();
 
     if (!updated) return notFound('Kategori tidak ditemukan');
     return success(updated);

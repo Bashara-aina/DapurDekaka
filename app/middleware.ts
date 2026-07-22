@@ -56,6 +56,9 @@ export default async function middleware(req: NextRequest) {
   if (pathname.startsWith('/admin/b2b-inquiries') && !isFlagEnabled('b2bPortal')) {
     return NextResponse.redirect(new URL('/admin', req.url));
   }
+  if (pathname.startsWith('/admin/b2b-quotes') && !isFlagEnabled('b2bPortal')) {
+    return NextResponse.redirect(new URL('/admin', req.url));
+  }
 
   // Maintenance mode guard (L4 circuit breaker) — block storefront when MAINTENANCE_MODE=true
   // Allows admin and webhooks to keep working during an incident.

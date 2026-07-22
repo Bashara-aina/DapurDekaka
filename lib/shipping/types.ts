@@ -19,6 +19,7 @@ export interface ShippingItemInput {
   heightCm: number;
   name: string;
   value: number;
+  category?: string;
 }
 
 export interface QuoteOption {
@@ -33,6 +34,7 @@ export interface QuoteOption {
   disabled: boolean;
   disabledReason: string | null;
   insuranceAvailable: boolean;
+  cashOnDeliveryAvailable: boolean;
 }
 
 export interface TierQuotes {
@@ -55,6 +57,7 @@ export interface DispatchResult {
   waybillId: string | null;
   trackingUrl: string | null;
   actualCost: number;
+  trackingId: string | null;
 }
 
 export interface BiteshipCoordinate {

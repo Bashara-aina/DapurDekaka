@@ -185,7 +185,6 @@ export default function SuperadminDashboardClient() {
   const [dismissedAlert, setDismissedAlert] = useState(false);
   const [dismissedActions, setDismissedActions] = useState<Set<string>>(new Set());
   const [downloading, setDownloading] = useState(false);
-  const [funnelFilter] = useState('all');
   const [feedFilter, setFeedFilter] = useState('all');
   const [dateRange, setDateRange] = useState<{ from: string; to: string }>({ from: '', to: '' });
 
@@ -786,7 +785,7 @@ export default function SuperadminDashboardClient() {
         </div>
       </div>
 
-      {/* ── Platform Health (stub) ────────────────────────────────────── */}
+      {/* ── Platform Health ────────────────────────────────────── */}
       <div className="bg-white rounded-xl p-5 border border-admin-border">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-text-primary">Platform Health</h2>

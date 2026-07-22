@@ -3,7 +3,7 @@ import { cache } from 'react';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { orders, users, orderItems, productVariants, products } from '@/lib/db/schema';
-import { gte, sql, and, eq, isNull, count } from 'drizzle-orm';
+import { gte, sql, and, isNotNull, isNull, count } from 'drizzle-orm';
 import { success, forbidden, serverError } from '@/lib/utils/api-response';
 
 export const dynamic = 'force-dynamic';
@@ -43,7 +43,7 @@ const getSnapshot = cache(async () => {
     db.select({ count: count() }).from(orders).where(gte(orders.createdAt, weekStart)),
     db.select({ count: sql<number>`count(distinct ${orders.userId})::int` })
       .from(orders)
-      .where(and(gte(orders.paidAt, monthStart), isNull(orders.userId))),
+      .where(and(gte(orders.paidAt, monthStart), isNotNull(orders.userId))),
     db.select({ count: count() }).from(users)
       .where(and(gte(users.createdAt, todayStart), isNull(users.deletedAt))),
     db.select({ count: count() }).from(orders)

@@ -44,8 +44,8 @@ export default async function B2BInquiryDetailPage({ params }: PageProps) {
           ←
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-admin-text-primary">Detail Inquiry</h1>
-          <p className="text-admin-text-secondary text-sm mt-1">
+          <h1 className="text-2xl font-bold text-text-primary">Detail Inquiry</h1>
+          <p className="text-text-secondary text-sm mt-1">
             {inquiry.companyName}
           </p>
         </div>
@@ -56,46 +56,46 @@ export default async function B2BInquiryDetailPage({ params }: PageProps) {
         <div className="lg:col-span-2 space-y-6">
           {/* Company Info */}
           <div className="bg-white rounded-xl border border-admin-border p-6">
-            <h2 className="font-semibold text-admin-text-primary mb-4">Informasi Perusahaan</h2>
+            <h2 className="font-semibold text-text-primary mb-4">Informasi Perusahaan</h2>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs text-admin-text-secondary uppercase tracking-wider mb-1">Nama Perusahaan</p>
-                <p className="font-medium text-admin-text-primary">{inquiry.companyName}</p>
+                <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">Nama Perusahaan</p>
+                <p className="font-medium text-text-primary">{inquiry.companyName}</p>
               </div>
               <div>
-                <p className="text-xs text-admin-text-secondary uppercase tracking-wider mb-1">Jenis Bisnis</p>
-                <p className="font-medium text-admin-text-primary">{inquiry.companyType || '-'}</p>
+                <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">Jenis Bisnis</p>
+                <p className="font-medium text-text-primary">{inquiry.companyType || '-'}</p>
               </div>
               <div>
-                <p className="text-xs text-admin-text-secondary uppercase tracking-wider mb-1">Estimasi Volume</p>
-                <p className="font-medium text-admin-text-primary">{inquiry.estimatedVolumeId || '-'}</p>
+                <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">Estimasi Volume</p>
+                <p className="font-medium text-text-primary">{inquiry.estimatedVolumeId || '-'}</p>
               </div>
             </div>
           </div>
 
           {/* Contact Info */}
           <div className="bg-white rounded-xl border border-admin-border p-6">
-            <h2 className="font-semibold text-admin-text-primary mb-4">Informasi Kontak</h2>
+            <h2 className="font-semibold text-text-primary mb-4">Informasi Kontak</h2>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs text-admin-text-secondary uppercase tracking-wider mb-1">Nama PIC</p>
-                <p className="font-medium text-admin-text-primary">{inquiry.picName}</p>
+                <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">Nama PIC</p>
+                <p className="font-medium text-text-primary">{inquiry.picName}</p>
               </div>
               <div>
-                <p className="text-xs text-admin-text-secondary uppercase tracking-wider mb-1">Email</p>
-                <p className="font-medium text-admin-text-primary">{inquiry.picEmail}</p>
+                <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">Email</p>
+                <p className="font-medium text-text-primary">{inquiry.picEmail}</p>
               </div>
               <div>
-                <p className="text-xs text-admin-text-secondary uppercase tracking-wider mb-1">WhatsApp</p>
-                <p className="font-medium text-admin-text-primary">{inquiry.picPhone}</p>
+                <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">WhatsApp</p>
+                <p className="font-medium text-text-primary">{inquiry.picPhone}</p>
               </div>
             </div>
           </div>
 
           {/* Message */}
           <div className="bg-white rounded-xl border border-admin-border p-6">
-            <h2 className="font-semibold text-admin-text-primary mb-4">Pesan</h2>
-            <p className="text-admin-text-secondary whitespace-pre-wrap">{inquiry.message}</p>
+            <h2 className="font-semibold text-text-primary mb-4">Pesan</h2>
+            <p className="text-text-secondary whitespace-pre-wrap">{inquiry.message}</p>
           </div>
         </div>
 
@@ -103,7 +103,7 @@ export default async function B2BInquiryDetailPage({ params }: PageProps) {
         <div className="space-y-6">
           {/* Status */}
           <div className="bg-white rounded-xl border border-admin-border p-6">
-            <h2 className="font-semibold text-admin-text-primary mb-4">Status</h2>
+            <h2 className="font-semibold text-text-primary mb-4">Status</h2>
             <div className="mb-4">
               <span className={`inline-flex px-3 py-1.5 text-sm font-medium rounded-full ${
                 inquiry.status === 'new' ? 'bg-warning-light text-warning' :
@@ -119,23 +119,23 @@ export default async function B2BInquiryDetailPage({ params }: PageProps) {
 
           {/* Internal Notes */}
           <div className="bg-white rounded-xl border border-admin-border p-6">
-            <h2 className="font-semibold text-admin-text-primary mb-4">Catatan Internal</h2>
-            <p className="text-admin-text-secondary text-sm whitespace-pre-wrap">
+            <h2 className="font-semibold text-text-primary mb-4">Catatan Internal</h2>
+            <p className="text-text-secondary text-sm whitespace-pre-wrap">
               {inquiry.internalNotes || 'Belum ada catatan.'}
             </p>
           </div>
 
           {/* Meta */}
           <div className="bg-white rounded-xl border border-admin-border p-6">
-            <h2 className="font-semibold text-admin-text-primary mb-4">Info Tambahan</h2>
+            <h2 className="font-semibold text-text-primary mb-4">Info Tambahan</h2>
             <div className="space-y-3 text-sm">
               <div>
-                <p className="text-admin-text-secondary">ID</p>
+                <p className="text-text-secondary">ID</p>
                 <p className="font-mono text-xs">{inquiry.id}</p>
               </div>
               <div>
-                <p className="text-admin-text-secondary">Dibuat</p>
-                <p className="text-admin-text-primary">
+                <p className="text-text-secondary">Dibuat</p>
+                <p className="text-text-primary">
                   {new Date(inquiry.createdAt).toLocaleDateString('id-ID', {
                     day: 'numeric',
                     month: 'long',
@@ -147,8 +147,8 @@ export default async function B2BInquiryDetailPage({ params }: PageProps) {
               </div>
               {inquiry.handledBy && (
                 <div>
-                  <p className="text-admin-text-secondary">Ditangani oleh</p>
-                  <p className="text-admin-text-primary">{inquiry.handledBy}</p>
+                  <p className="text-text-secondary">Ditangani oleh</p>
+                  <p className="text-text-primary">{inquiry.handledBy}</p>
                 </div>
               )}
             </div>

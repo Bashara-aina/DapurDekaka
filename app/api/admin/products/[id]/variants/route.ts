@@ -7,6 +7,21 @@ import { eq } from 'drizzle-orm';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+const CreateVariantSchema = z.object({
+  nameId: z.string().min(1).max(100, 'Nama Indonesia maksimal 100 karakter'),
+  nameEn: z.string().min(1).max(100, 'Nama English maksimal 100 karakter'),
+  sku: z.string().min(1).max(100, 'SKU maksimal 100 karakter'),
+  price: z.number().int().nonnegative('Harga harus bilangan bulat non-negatif'),
+  b2bPrice: z.number().int().nonnegative().optional().nullable(),
+  stock: z.number().int().nonnegative().optional().default(0),
+  weightGram: z.number().int().nonnegative('Berat harus bilangan bulat non-negatif'),
+  lengthCm: z.number().int().positive().optional().default(30),
+  widthCm: z.number().int().positive().optional().default(22),
+  heightCm: z.number().int().positive().optional().default(12),
+  sortOrder: z.number().int().nonnegative().optional().default(0),
+  isActive: z.boolean().optional().default(true),
+});
+
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -89,18 +104,3 @@ export async function POST(
     );
   }
 }
-
-const CreateVariantSchema = z.object({
-  nameId: z.string().min(1).max(100, 'Nama Indonesia maksimal 100 karakter'),
-  nameEn: z.string().min(1).max(100, 'Nama English maksimal 100 karakter'),
-  sku: z.string().min(1).max(100, 'SKU maksimal 100 karakter'),
-  price: z.number().int().nonnegative('Harga harus bilangan bulat non-negatif'),
-  b2bPrice: z.number().int().nonnegative().optional().nullable(),
-  stock: z.number().int().nonnegative().optional().default(0),
-  weightGram: z.number().int().nonnegative('Berat harus bilangan bulat non-negatif'),
-  lengthCm: z.number().int().positive().optional().default(30),
-  widthCm: z.number().int().positive().optional().default(22),
-  heightCm: z.number().int().positive().optional().default(12),
-  sortOrder: z.number().int().nonnegative().optional().default(0),
-  isActive: z.boolean().optional().default(true),
-});

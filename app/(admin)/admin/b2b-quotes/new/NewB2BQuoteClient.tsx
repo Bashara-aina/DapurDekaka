@@ -249,8 +249,8 @@ export default function NewB2BQuoteClient() {
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-admin-text-primary">Quote Baru</h1>
-          <p className="text-admin-text-secondary text-sm mt-1">
+          <h1 className="text-2xl font-bold text-text-primary">Quote Baru</h1>
+          <p className="text-text-secondary text-sm mt-1">
             Buat penawaran untuk pelanggan B2B
           </p>
         </div>
@@ -261,7 +261,7 @@ export default function NewB2BQuoteClient() {
         <div className="lg:col-span-2 space-y-6">
           {/* Profile Selection */}
           <div className="bg-white rounded-xl border border-admin-border p-6">
-            <h2 className="font-semibold text-admin-text-primary mb-4">Pelanggan B2B</h2>
+            <h2 className="font-semibold text-text-primary mb-4">Pelanggan B2B</h2>
             {!loadingProfiles ? (
               <>
                 <select
@@ -281,7 +281,7 @@ export default function NewB2BQuoteClient() {
 
                 {showNewCustomer && (
                   <div className="mt-4 p-4 bg-slate-50 rounded-lg space-y-3">
-                    <p className="text-sm font-medium text-admin-text-primary">Data Pelanggan Baru</p>
+                    <p className="text-sm font-medium text-text-primary">Data Pelanggan Baru</p>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <Label className="text-xs">Nama Perusahaan</Label>
@@ -328,7 +328,7 @@ export default function NewB2BQuoteClient() {
           {/* Line Items */}
           <div className="bg-white rounded-xl border border-admin-border p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-admin-text-primary">Item Quote</h2>
+              <h2 className="font-semibold text-text-primary">Item Quote</h2>
               <Button
                 variant="outline"
                 size="sm"
@@ -341,7 +341,7 @@ export default function NewB2BQuoteClient() {
             </div>
 
             {items.length === 0 ? (
-              <div className="text-center py-8 text-admin-text-secondary">
+              <div className="text-center py-8 text-text-secondary">
                 Belum ada item. Klik &quot;Tambah Item&quot; untuk memulai.
               </div>
             ) : (
@@ -351,10 +351,10 @@ export default function NewB2BQuoteClient() {
                     <div className="flex-1">
                       {item.variantId ? (
                         <>
-                          <p className="font-medium text-admin-text-primary text-sm">
+                          <p className="font-medium text-text-primary text-sm">
                             {item.productName} — {item.variantName}
                           </p>
-                          <p className="text-xs text-admin-text-secondary">
+                          <p className="text-xs text-text-secondary">
                             {item.sku} · Rp {item.unitPrice.toLocaleString('id-ID')} / unit
                           </p>
                         </>
@@ -410,7 +410,7 @@ export default function NewB2BQuoteClient() {
                           />
                         </div>
                         <div className="w-32 text-right">
-                          <p className="font-medium text-admin-text-primary">
+                          <p className="font-medium text-text-primary">
                             Rp {item.subtotal.toLocaleString('id-ID')}
                           </p>
                         </div>
@@ -431,7 +431,7 @@ export default function NewB2BQuoteClient() {
 
           {/* Notes */}
           <div className="bg-white rounded-xl border border-admin-border p-6">
-            <h2 className="font-semibold text-admin-text-primary mb-4">Catatan</h2>
+            <h2 className="font-semibold text-text-primary mb-4">Catatan</h2>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -445,15 +445,15 @@ export default function NewB2BQuoteClient() {
         {/* Summary Sidebar */}
         <div className="space-y-6">
           <div className="bg-white rounded-xl border border-admin-border p-6 sticky top-6">
-            <h2 className="font-semibold text-admin-text-primary mb-4">Ringkasan</h2>
+            <h2 className="font-semibold text-text-primary mb-4">Ringkasan</h2>
 
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-admin-text-secondary">Subtotal</span>
+                <span className="text-text-secondary">Subtotal</span>
                 <span className="font-medium">Rp {subtotal.toLocaleString('id-ID')}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-admin-text-secondary">Diskon</span>
+                <span className="text-text-secondary">Diskon</span>
                 <Input
                   type="number"
                   min="0"
@@ -472,7 +472,7 @@ export default function NewB2BQuoteClient() {
 
             <div className="mt-4 space-y-3">
               <div>
-                <Label className="text-xs text-admin-text-secondary uppercase tracking-wider">
+                <Label className="text-xs text-text-secondary uppercase tracking-wider">
                   Valid Selama (hari)
                 </Label>
                 <Input

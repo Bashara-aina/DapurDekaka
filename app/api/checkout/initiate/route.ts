@@ -85,6 +85,7 @@ const initiateSchema = z.object({
   insuranceType: z.enum(['none', 'basic', 'premium']).optional(),
   insuranceFee: z.number().int().min(0).optional(),
   courierInstantAck: z.boolean().optional(),
+  cashOnDelivery: z.boolean().optional(),
   biteshipActualCost: z.number().int().min(0).optional(),
   customerShippingCost: z.number().int().min(0).optional(),
   couponCode: z.string().optional(),
@@ -526,6 +527,7 @@ export const POST = withRateLimit(
         longitude,
         insuranceType = 'none',
         courierInstantAck,
+        cashOnDelivery,
         customerShippingCost,
         biteshipActualCost: clientActualCost,
       } = parsed.data;
@@ -573,6 +575,10 @@ export const POST = withRateLimit(
 
       if (!validatedQuote) {
         return conflict('Tarif ongkir tidak valid. Silakan refresh halaman checkout.');
+      }
+
+      if (cashOnDelivery && !validatedQuote.cashOnDeliveryAvailable) {
+        return conflict('Kurir yang dipilih tidak mendukung pembayaran COD');
       }
 
       // FD#3: insurance is hidden at launch — force 'none' server-side while the
@@ -805,6 +811,7 @@ export const POST = withRateLimit(
           insuranceFee,
           dispatchStatus: deliveryMethod === 'pickup' ? 'not_required' : 'pending',
           courierInstantAck: parsed.data.courierInstantAck ?? false,
+          cashOnDelivery: parsed.data.cashOnDelivery ?? false,
           subtotal,
           discountAmount,
           pointsDiscount,

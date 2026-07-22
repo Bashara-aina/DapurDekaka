@@ -93,6 +93,8 @@ export async function dispatchOrder(
       destinationContactPhone: order.recipientPhone,
       destinationPostalCode: order.postalCode ?? undefined,
       insuranceValue: order.insuranceType && order.insuranceType !== 'none' ? order.subtotal : undefined,
+      cashOnDeliveryValue: order.cashOnDelivery ? order.totalAmount : undefined,
+      cashOnDeliveryType: '7_days',
       items: rateItems,
     });
 

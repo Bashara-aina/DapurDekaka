@@ -6,7 +6,7 @@ import { SettingsClient } from './SettingsClient';
 
 export default async function SettingsPage() {
   const session = await requireRole(['superadmin']);
-  const userRole = (session.user as { role?: string }).role ?? 'owner';
+  const userRole = session.user.role;
 
   const settings = await db.query.systemSettings.findMany({
     orderBy: [asc(systemSettings.key)],

@@ -28,14 +28,28 @@ export const TIER_COURIER_CONFIG: TierCourierConfig[] = [
   {
     tier: 'frozen_same_day',
     couriers: ['paxel', 'anteraja'],
-    serviceFilter: /ice|frozen|same/i,
+    // Live Paxel uses medium/large package codes; also match ice/frozen/same when dashboard enables them.
+    // Never match plain "reg" (economy) — L3: no REG on cold-chain tiers.
+    serviceFilter: /ice|frozen|same|medium|large/i,
   },
   {
     tier: 'frozen_express',
     couriers: ['sicepat', 'jne', 'anteraja'],
-    serviceFilter: /best|frozen|yes|reg/i,
+    // L3: never REG/economy/cargo (jtr). Allow next-day/best/yes/frozen only.
+    serviceFilter: /best|frozen|yes/i,
   },
 ];
+
+/**
+ * Whether a Biteship courier_type/service code passes a tier's service filter.
+ */
+export function matchesTierServiceFilter(
+  courierType: string,
+  serviceFilter?: RegExp
+): boolean {
+  if (!serviceFilter) return true;
+  return serviceFilter.test(courierType);
+}
 
 export const INSURANCE_RATES: Record<'basic' | 'premium', number> = {
   basic: 0.002,

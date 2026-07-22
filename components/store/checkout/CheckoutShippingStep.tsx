@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 import { ShippingTierTabs } from './ShippingTierTabs';
 import { InsuranceSelector } from './InsuranceSelector';
 import { InstantDeliveryAck } from './InstantDeliveryAck';
+import { CodToggle } from './CodToggle';
 import type { QuoteOption, ShippingRatesResult, ShippingTier, InsuranceType } from '@/lib/shipping/types';
 import { calculateInsuranceFee } from '@/lib/shipping/insurance';
 import { isFlagEnabled } from '@/lib/config/feature-flags';
@@ -23,6 +24,7 @@ export interface ShippingSelection {
   insuranceType: InsuranceType;
   insuranceFee: number;
   courierInstantAck: boolean;
+  cashOnDelivery: boolean;
 }
 
 interface CheckoutShippingStepProps {
@@ -48,6 +50,7 @@ export function CheckoutShippingStep({
   const [selectedQuote, setSelectedQuote] = useState<QuoteOption | null>(null);
   const [insuranceType, setInsuranceType] = useState<InsuranceType>('none');
   const [instantAck, setInstantAck] = useState(false);
+  const [cashOnDelivery, setCashOnDelivery] = useState(false);
 
   const basicFee = calculateInsuranceFee('basic', subtotal);
   const premiumFee = calculateInsuranceFee('premium', subtotal);
@@ -72,6 +75,7 @@ export function CheckoutShippingStep({
       insuranceType,
       insuranceFee,
       courierInstantAck: activeTier === 'express' ? instantAck : false,
+      cashOnDelivery,
     });
   };
 
@@ -100,6 +104,10 @@ export function CheckoutShippingStep({
 
       {activeTier === 'express' && selectedQuote && (
         <InstantDeliveryAck checked={instantAck} onChange={setInstantAck} />
+      )}
+
+      {selectedQuote?.cashOnDeliveryAvailable && (
+        <CodToggle checked={cashOnDelivery} onChange={setCashOnDelivery} />
       )}
 
       {isFlagEnabled('insuranceUI') ? (

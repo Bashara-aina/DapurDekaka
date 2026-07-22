@@ -4,13 +4,16 @@ export interface BiteshipWebhookPayload {
   event?: string;
   order_id?: string;
   status?: string;
-  courier?: {
-    waybill_id?: string;
-    link?: string;
-    name?: string;
-    phone?: string;
-    vehicle_number?: string;
-  };
+  courier_tracking_id?: string;
+  courier_waybill_id?: string;
+  courier_company?: string;
+  courier_type?: string;
+  courier_driver_name?: string;
+  courier_driver_phone?: string;
+  courier_driver_photo_url?: string;
+  courier_driver_plate_number?: string;
+  courier_link?: string;
+  order_price?: number;
   price?: number;
   reference_id?: string;
 }

@@ -42,8 +42,8 @@ export default async function B2BQuotesPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-admin-text-primary">Quotes B2B</h1>
-          <p className="text-admin-text-secondary text-sm mt-1">
+          <h1 className="text-2xl font-bold text-text-primary">Quotes B2B</h1>
+          <p className="text-text-secondary text-sm mt-1">
             Kelola penawaran untuk pelanggan B2B
           </p>
         </div>
@@ -61,22 +61,22 @@ export default async function B2BQuotesPage() {
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-admin-border">
               <tr>
-                <th className="text-left px-4 py-3 text-xs font-medium text-admin-text-secondary uppercase tracking-wider">
+                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
                   Quote #
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-admin-text-secondary uppercase tracking-wider">
+                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
                   Pelanggan
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-admin-text-secondary uppercase tracking-wider">
+                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
                   Total
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-admin-text-secondary uppercase tracking-wider">
+                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
                   Status
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-admin-text-secondary uppercase tracking-wider">
+                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
                   Valid Until
                 </th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-admin-text-secondary uppercase tracking-wider">
+                <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
                   Aksi
                 </th>
               </tr>
@@ -87,20 +87,20 @@ export default async function B2BQuotesPage() {
                 return (
                   <tr key={quote.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3">
-                      <p className="font-mono text-sm font-medium text-admin-text-primary">
+                      <p className="font-mono text-sm font-medium text-text-primary">
                         {quote.quoteNumber}
                       </p>
                     </td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-admin-text-primary text-sm">
+                      <p className="font-medium text-text-primary text-sm">
                         {quote.b2bProfile?.companyName || '-'}
                       </p>
-                      <p className="text-xs text-admin-text-secondary">
+                      <p className="text-xs text-text-secondary">
                         {quote.b2bProfile?.picName}
                       </p>
                     </td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-admin-text-primary">
+                      <p className="font-medium text-text-primary">
                         {new Intl.NumberFormat('id-ID', {
                           style: 'currency',
                           currency: 'IDR',
@@ -114,7 +114,7 @@ export default async function B2BQuotesPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <p className="text-sm text-admin-text-secondary">
+                      <p className="text-sm text-text-secondary">
                         {quote.validUntil
                           ? new Date(quote.validUntil).toLocaleDateString('id-ID')
                           : '-'}
@@ -134,7 +134,7 @@ export default async function B2BQuotesPage() {
 
               {quotes.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-admin-text-secondary">
+                  <td colSpan={6} className="px-4 py-12 text-center text-text-secondary">
                     Belum ada quotes
                   </td>
                 </tr>
