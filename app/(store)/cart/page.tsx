@@ -73,6 +73,14 @@ export default function CartPage() {
     }
   }, [items.length, validateCartStock]);
 
+  // Sync cart to DB when logged in
+  useEffect(() => {
+    if (session?.user?.id && items.length > 0) {
+      useCartStore.getState().syncToDb();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id]);
+
   const getStockValidation = (variantId: string): StockValidation | undefined => {
     return stockValidations.find((v) => v.variantId === variantId);
   };

@@ -38,8 +38,12 @@ function SuccessContent() {
     },
     enabled: !!orderNumber,
     staleTime: 60000,
-    refetchInterval: (query) =>
-      query.state.data?.order?.status === 'paid' ? false : 3000,
+    refetchInterval: (query) => {
+      if (query.state.data?.order?.status === 'paid') return false;
+      const attemptCount = query.state.dataUpdateCount;
+      const delay = Math.min(2000 * Math.pow(1.5, attemptCount), 30000);
+      return Math.round(delay);
+    },
     retry: 20,
   });
 

@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { coupons, couponUsages } from '@/lib/db/schema';
 import { eq, and, sql, or, isNull, gte } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
+import { requireActiveUser } from '@/lib/auth/require-active';
 import { success, unauthorized, serverError } from '@/lib/utils/api-response';
 
 export const dynamic = 'force-dynamic';
@@ -15,6 +16,9 @@ export async function GET(req: NextRequest) {
     if (!session?.user?.id) {
       return unauthorized('Silakan masuk terlebih dahulu');
     }
+
+    const activeUser = await requireActiveUser();
+    if (!activeUser) return unauthorized('Akun Anda dinonaktifkan');
 
     const now = new Date();
 

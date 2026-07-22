@@ -56,7 +56,6 @@ function PendingContent() {
           // If order is paid, stop polling and redirect immediately
           if (order.status === 'paid') {
             stopped = true;
-            clearInterval(interval);
             router.push(`/checkout/success?order=${orderNumber}`);
           }
         }
@@ -65,12 +64,16 @@ function PendingContent() {
       }
     };
 
-    fetchOrderDetails();
-    const interval = setInterval(fetchOrderDetails, 5000);
-    return () => {
-      stopped = true;
-      clearInterval(interval);
+    let pollCount = 0;
+    const pollWithBackoff = () => {
+      if (stopped) return;
+      fetchOrderDetails();
+      pollCount++;
+      const delay = Math.min(2000 * Math.pow(1.4, pollCount - 1), 30000);
+      setTimeout(pollWithBackoff, delay);
     };
+    pollWithBackoff();
+    return () => { stopped = true; };
   }, [orderNumber, router]);
 
   // Countdown timer — wrapped in useCallback to prevent recreation on each render

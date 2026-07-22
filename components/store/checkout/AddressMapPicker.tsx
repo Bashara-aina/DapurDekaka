@@ -68,6 +68,18 @@ export function AddressMapPicker({
   const [postalCode, setPostalCode] = useState(defaultValues?.postalCode ?? '');
   const [loadingGeo, setLoadingGeo] = useState(false);
   const [mapReady, setMapReady] = useState(false);
+  const [mapsLoadFailed, setMapsLoadFailed] = useState(false);
+
+  useEffect(() => {
+    if (mapReady) return;
+    const timeout = setTimeout(() => {
+      const g = (window as Window & { google?: GoogleMapsApi }).google;
+      if (!mapReady && !g?.maps) {
+        setMapsLoadFailed(true);
+      }
+    }, 10000);
+    return () => clearTimeout(timeout);
+  }, [mapReady]);
 
   const initMap = useCallback(() => {
     const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -157,33 +169,41 @@ export function AddressMapPicker({
 
   return (
     <form onSubmit={handleSubmit} className={cn('space-y-4', className)}>
-      <div
-        ref={mapRef}
-        className="w-full h-48 md:h-64 rounded-card bg-brand-cream-dark overflow-hidden"
-        aria-label={t('mapPinLabel')}
-      />
+      {!mapsLoadFailed ? (
+        <>
+          <div
+            ref={mapRef}
+            className="w-full h-48 md:h-64 rounded-card bg-brand-cream-dark overflow-hidden"
+            aria-label={t('mapPinLabel')}
+          />
 
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full"
-        onClick={useMyLocation}
-        disabled={loadingGeo}
-      >
-        {loadingGeo ? (
-          <Loader2 className="w-4 h-4 animate-spin mr-2" />
-        ) : (
-          <MapPin className="w-4 h-4 mr-2" />
-        )}
-        {t('useMyLocation')}
-      </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={useMyLocation}
+            disabled={loadingGeo}
+          >
+            {loadingGeo ? (
+              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+            ) : (
+              <MapPin className="w-4 h-4 mr-2" />
+            )}
+            {t('useMyLocation')}
+          </Button>
 
-      <div className="rounded-lg bg-brand-cream-dark/50 px-3 py-2 text-xs text-text-secondary">
-        <p>{t('pinConfirm', { lat: lat.toFixed(5), lng: lng.toFixed(5) })}</p>
-        <p className="mt-1 font-medium text-text-primary">
-          {[addressLine, district, city, province].filter(Boolean).join(', ') || t('pinConfirmEmpty')}
-        </p>
-      </div>
+          <div className="rounded-lg bg-brand-cream-dark/50 px-3 py-2 text-xs text-text-secondary">
+            <p>{t('pinConfirm', { lat: lat.toFixed(5), lng: lng.toFixed(5) })}</p>
+            <p className="mt-1 font-medium text-text-primary">
+              {[addressLine, district, city, province].filter(Boolean).join(', ') || t('pinConfirmEmpty')}
+            </p>
+          </div>
+        </>
+      ) : (
+        <div className="bg-warning-light border border-warning/30 rounded-card p-4 text-sm text-warning">
+          <p>Peta tidak dapat dimuat. Silakan masukkan alamat secara manual.</p>
+        </div>
+      )}
 
       <div>
         <Label htmlFor="addressLine">{t('addressLine')}</Label>

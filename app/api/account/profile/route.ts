@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
+import { requireActiveUser } from '@/lib/auth/require-active';
 import { success, unauthorized, serverError, validationError } from '@/lib/utils/api-response';
 import { z } from 'zod';
 export const dynamic = 'force-dynamic';
@@ -15,6 +16,9 @@ export async function GET(req: NextRequest) {
     if (!session?.user?.id) {
       return unauthorized('Silakan masuk terlebih dahulu');
     }
+
+    const activeUser = await requireActiveUser();
+    if (!activeUser) return unauthorized('Akun Anda dinonaktifkan');
 
     const userWithAccounts = await db.query.users.findFirst({
       where: eq(users.id, session.user.id),
@@ -57,6 +61,9 @@ export async function PATCH(req: NextRequest) {
     if (!session?.user?.id) {
       return unauthorized('Silakan masuk terlebih dahulu');
     }
+
+    const activeUser = await requireActiveUser();
+    if (!activeUser) return unauthorized('Akun Anda dinonaktifkan');
 
     const body = await req.json();
     const parsed = UpdateProfileSchema.safeParse(body);
@@ -101,6 +108,9 @@ export async function PUT(req: NextRequest) {
     if (!session?.user?.id) {
       return unauthorized('Silakan masuk terlebih dahulu');
     }
+
+    const activeUser = await requireActiveUser();
+    if (!activeUser) return unauthorized('Akun Anda dinonaktifkan');
 
     // Check if user has password (OAuth users don't)
     const user = await db.query.users.findFirst({
@@ -167,6 +177,9 @@ export async function POST(req: NextRequest) {
     if (!session?.user?.id) {
       return unauthorized('Silakan masuk terlebih dahulu');
     }
+
+    const activeUser = await requireActiveUser();
+    if (!activeUser) return unauthorized('Akun Anda dinonaktifkan');
 
     const body = await req.json();
     const parsed = SetPasswordSchema.safeParse(body);

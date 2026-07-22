@@ -17,12 +17,15 @@ export interface SavedAddress {
   provinceId: string;
   postalCode: string;
   isDefault: boolean;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 interface SavedAddressPickerProps {
   addresses: SavedAddress[];
   selectedId?: string | null;
   onSelect: (address: SavedAddress | null) => void;
+  onAddNew?: () => void;
   onBack?: () => void;
   className?: string;
 }

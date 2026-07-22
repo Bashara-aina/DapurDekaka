@@ -28,6 +28,7 @@ import type { ShippingSelection } from '@/components/store/checkout/CheckoutShip
 import type { ShippingRatesResult } from '@/lib/shipping/types';
 import { loadCheckoutDraft, saveCheckoutDraft, clearCheckoutDraft } from '@/lib/checkout/draft';
 import type { SavedAddress } from '@/components/store/checkout/SavedAddressPicker';
+import { SavedAddressPicker } from '@/components/store/checkout/SavedAddressPicker';
 
 const MidtransPayment = nextDynamic(
   () => import('@/components/store/checkout/MidtransPayment').then((m) => m.MidtransPayment),
@@ -566,6 +567,36 @@ export default function CheckoutPage() {
                   onBack={handleBack}
                   pickupAddress={pickupAddress ?? undefined}
                 />
+
+                {session?.user && savedAddresses.length > 0 && !showNewAddressForm && (
+                  <div className="mb-4">
+                    <SavedAddressPicker
+                      addresses={savedAddresses}
+                      selectedId={selectedSavedAddressId}
+                      onSelect={(address) => {
+                        if (!address) {
+                          setShowNewAddressForm(true);
+                          return;
+                        }
+                        setSelectedSavedAddressId(address.id);
+                        const updates: Partial<CheckoutFormData> = {
+                          addressLine: address.addressLine ?? '',
+                          district: address.district ?? '',
+                          city: address.city ?? '',
+                          province: address.province ?? '',
+                          postalCode: address.postalCode ?? '',
+                          latitude: address.latitude ?? 0,
+                          longitude: address.longitude ?? 0,
+                        };
+                        updateForm(updates);
+                        if (address.latitude && address.longitude) {
+                          fetchShippingRates(address.latitude, address.longitude, updates);
+                        }
+                      }}
+                      onAddNew={() => setShowNewAddressForm(true)}
+                    />
+                  </div>
+                )}
 
                 {formData.deliveryMethod === 'delivery' && (
                   <div className="mt-4 bg-white rounded-card p-4 shadow-card">

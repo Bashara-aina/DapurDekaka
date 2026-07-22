@@ -8,6 +8,7 @@ import { createMidtransTransaction } from '@/lib/midtrans/create-transaction';
 import { formatWIB } from '@/lib/utils/format-date';
 import { getSetting } from '@/lib/settings/get-settings';
 import { auth } from '@/lib/auth';
+import { requireActiveUser } from '@/lib/auth/require-active';
 import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -19,6 +20,12 @@ const retrySchema = z.object({
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
+
+    if (session?.user?.id) {
+      const active = await requireActiveUser();
+      if (!active) return unauthorized('Akun Anda dinonaktifkan');
+    }
+
     const body = await req.json();
     const parsed = retrySchema.safeParse(body);
 

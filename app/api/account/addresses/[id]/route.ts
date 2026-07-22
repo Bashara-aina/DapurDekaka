@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { addresses } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
+import { requireActiveUser } from '@/lib/auth/require-active';
 import { success, unauthorized, notFound, serverError } from '@/lib/utils/api-response';
 import { logger } from '@/lib/utils/logger';
 
@@ -21,6 +22,9 @@ export async function DELETE(req: NextRequest, { params }: DeleteAddressParams) 
     if (!session?.user?.id) {
       return unauthorized('Silakan masuk terlebih dahulu');
     }
+
+    const activeUser = await requireActiveUser();
+    if (!activeUser) return unauthorized('Akun Anda dinonaktifkan');
 
     const existing = await db.query.addresses.findFirst({
       where: and(
@@ -56,6 +60,9 @@ export async function PUT(req: NextRequest, { params }: DeleteAddressParams) {
     if (!session?.user?.id) {
       return unauthorized('Silakan masuk terlebih dahulu');
     }
+
+    const activeUser = await requireActiveUser();
+    if (!activeUser) return unauthorized('Akun Anda dinonaktifkan');
 
     // Explicit ownership check before any modification (BOLA fix)
     const existing = await db.query.addresses.findFirst({

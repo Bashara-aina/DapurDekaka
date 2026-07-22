@@ -41,6 +41,7 @@ import { isFlagEnabled } from '@/lib/config/feature-flags';
 import { isMaintenanceModeEnv } from '@/lib/ops/maintenance';
 import { enforceCouponCap } from '@/lib/finance/points-calculator';
 import { parseQuoteId } from '@/lib/shipping/get-rates';
+import { requireActiveUser } from '@/lib/auth/require-active';
 import type { InsuranceType, ShippingItemInput, ShippingTier } from '@/lib/shipping/types';
 
 const initiateSchema = z.object({
@@ -89,6 +90,7 @@ const initiateSchema = z.object({
   couponCode: z.string().optional(),
   pointsUsed: z.number().int().min(0).optional(),
   customerNote: z.string().optional(),
+  idempotencyKey: z.string().uuid().optional(),
   subtotal: z.number().int().positive(),
   discountAmount: z.number().int().min(0).optional(),
   pointsDiscount: z.number().int().min(0).optional(),
@@ -116,6 +118,11 @@ export const POST = withRateLimit(
   async (req: NextRequest) => {
     try {
       const session = await auth();
+
+      if (session?.user?.id) {
+        const active = await requireActiveUser();
+        if (!active) return unauthorized('Akun Anda dinonaktifkan');
+      }
 
       if (isMaintenanceModeEnv()) {
         return serviceUnavailable('Toko sedang dalam mode pemeliharaan. Silakan coba lagi nanti.', 'MAINTENANCE_MODE');
@@ -367,8 +374,41 @@ export const POST = withRateLimit(
     let pointsDeducted = false;
     const userId = session?.user?.id ?? null;
 
-    // FIX 6: Guest checkout idempotency — 60-second dedup window
-    if (!userId && recipientEmail) {
+    let orderResult: any;
+    // Idempotency: use client-provided UUID key (or fall back to email-based dedup)
+    const idempotencyKey = parsed.data.idempotencyKey;
+    let existingOrderForIdempotency: typeof orderResult | null = null;
+
+    if (idempotencyKey) {
+      // Check Redis for this idempotency key
+      try {
+        const { Redis } = await import('@upstash/redis');
+        if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+          const redis = new Redis({
+            url: process.env.UPSTASH_REDIS_REST_URL,
+            token: process.env.UPSTASH_REDIS_REST_TOKEN,
+          });
+          const existingOrderId = await redis.get(`idemp:checkout:${idempotencyKey}`);
+          if (existingOrderId) {
+            const existingOrder = await db.query.orders.findFirst({
+              where: eq(orders.id, existingOrderId as string),
+            });
+            if (existingOrder?.midtransSnapToken) {
+              return success({
+                orderId: existingOrder.id,
+                orderNumber: existingOrder.orderNumber,
+                snapToken: existingOrder.midtransSnapToken,
+              });
+            }
+          }
+        }
+      } catch {
+        // Redis unavailable — fall through to DB-level dedup
+      }
+    }
+
+    // Fallback dedup: 60-second window for guests (by email + subtotal)
+    if (!userId && recipientEmail && !existingOrderForIdempotency) {
       const sixtySecsAgo = new Date(Date.now() - 60 * 1000);
       const recentGuestOrder = await db.query.orders.findFirst({
         where: and(
@@ -379,8 +419,8 @@ export const POST = withRateLimit(
         ),
         orderBy: [desc(orders.createdAt)],
       });
-
       if (recentGuestOrder?.midtransSnapToken) {
+        existingOrderForIdempotency = recentGuestOrder;
         return success({
           orderId: recentGuestOrder.id,
           orderNumber: recentGuestOrder.orderNumber,
@@ -389,8 +429,8 @@ export const POST = withRateLimit(
       }
     }
 
-    // Idempotency: return existing pending order if same user checks out within 30 seconds with same subtotal
-    if (userId) {
+    // Fallback dedup: 30-second window for logged-in users (by userId + subtotal)
+    if (userId && !existingOrderForIdempotency) {
       const existingPending = await db.query.orders.findFirst({
         where: and(
           eq(orders.userId, userId),
@@ -400,7 +440,6 @@ export const POST = withRateLimit(
         ),
         orderBy: [desc(orders.createdAt)],
       });
-
       if (existingPending?.midtransSnapToken) {
         return success({
           orderId: existingPending.id,
@@ -1053,6 +1092,22 @@ export const POST = withRateLimit(
         midtransSnapToken: snapToken,
       })
       .where(eq(orders.id, order.id));
+
+    // Store idempotency key in Redis
+    if (idempotencyKey) {
+      try {
+        const { Redis } = await import('@upstash/redis');
+        if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+          const redis = new Redis({
+            url: process.env.UPSTASH_REDIS_REST_URL,
+            token: process.env.UPSTASH_REDIS_REST_TOKEN,
+          });
+          await redis.set(`idemp:checkout:${idempotencyKey}`, order.id, { ex: 86400 });
+        }
+      } catch {
+        // Non-critical — dedup falls back to DB-level
+      }
+    }
 
     return success({
       orderId: order.id,

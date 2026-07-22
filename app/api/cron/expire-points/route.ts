@@ -20,45 +20,43 @@ export async function GET(req: NextRequest) {
 
     const now = new Date();
 
-    // Find all non-expired, non-redeemed earn points past expiry
-    const expiringRecords = await db.query.pointsHistory.findMany({
-      where: and(
-        eq(pointsHistory.type, 'earn'),
-        eq(pointsHistory.isExpired, false),
-        lt(pointsHistory.expiresAt, now),
-        isNull(pointsHistory.consumedAt),
-      ),
-      with: {
-        user: true,
-      },
-    });
+    const { expired, errors } = await db.transaction(async (tx) => {
+      // Find all non-expired, non-redeemed earn points past expiry
+      const expiringRecords = await tx
+        .select()
+        .from(pointsHistory)
+        .where(and(
+          eq(pointsHistory.type, 'earn'),
+          eq(pointsHistory.isExpired, false),
+          lt(pointsHistory.expiresAt, now),
+          isNull(pointsHistory.consumedAt),
+        ))
 
-    if (expiringRecords.length === 0) {
-      return success({ expired: 0, errors: [] });
-    }
-
-    // Group by user to calculate total to expire
-    const userExpiryMap = new Map<string, { userId: string; totalPoints: number; records: typeof expiringRecords }>();
-
-    for (const record of expiringRecords) {
-      if (!userExpiryMap.has(record.userId)) {
-        userExpiryMap.set(record.userId, {
-          userId: record.userId,
-          totalPoints: 0,
-          records: [],
-        });
+      if (expiringRecords.length === 0) {
+        return { expired: 0, errors: [] as string[] };
       }
-      const entry = userExpiryMap.get(record.userId)!;
-      entry.totalPoints += record.pointsAmount;
-      entry.records.push(record);
-    }
 
-    let expired = 0;
-    const errors: string[] = [];
+      // Group by user to calculate total to expire
+      const userExpiryMap = new Map<string, { userId: string; totalPoints: number; records: typeof expiringRecords }>();
 
-    for (const [, entry] of userExpiryMap) {
-      try {
-        await db.transaction(async (tx) => {
+      for (const record of expiringRecords) {
+        if (!userExpiryMap.has(record.userId)) {
+          userExpiryMap.set(record.userId, {
+            userId: record.userId,
+            totalPoints: 0,
+            records: [],
+          });
+        }
+        const entry = userExpiryMap.get(record.userId)!;
+        entry.totalPoints += record.pointsAmount;
+        entry.records.push(record);
+      }
+
+      let expired = 0;
+      const errors: string[] = [];
+
+      for (const [, entry] of userExpiryMap) {
+        try {
           // Mark all expiring records as expired
           const recordIds = entry.records.map((r) => r.id);
           await tx
@@ -100,25 +98,27 @@ export async function GET(req: NextRequest) {
               isExpired: true,
             });
           }
-        });
 
-        expired++;
-        logger.info('[ExpirePoints] User expired', {
-          userId: entry.userId,
-          pointsExpired: entry.totalPoints,
-          recordsCount: entry.records.length,
-        });
-      } catch (userError) {
-        const message = userError instanceof Error ? userError.message : String(userError);
-        errors.push(`Failed to expire points for user ${entry.userId}: ${message}`);
-        logger.error('[ExpirePoints] Error for user', { userId: entry.userId, error: message });
+          expired++;
+          logger.info('[ExpirePoints] User expired', {
+            userId: entry.userId,
+            pointsExpired: entry.totalPoints,
+            recordsCount: entry.records.length,
+          });
+        } catch (userError) {
+          const message = userError instanceof Error ? userError.message : String(userError);
+          errors.push(`Failed to expire points for user ${entry.userId}: ${message}`);
+          logger.error('[ExpirePoints] Error for user', { userId: entry.userId, error: message });
+        }
       }
-    }
 
-    logger.info('[ExpirePoints] Completed', { expired, errorsCount: errors.length });
-    if (errors.length > 0) {
-      errors.forEach((e) => logger.error('[ExpirePoints] Error', { message: e }));
-    }
+      logger.info('[ExpirePoints] Completed', { expired, errorsCount: errors.length });
+      if (errors.length > 0) {
+        errors.forEach((e) => logger.error('[ExpirePoints] Error', { message: e }));
+      }
+
+      return { expired, errors };
+    });
 
     return success({ expired, errors });
   } catch (error) {

@@ -18,7 +18,7 @@ export default async function OrdersPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const currentPage = Math.max(1, parseInt(params.page ?? '1', 10));
   const statusFilter = params.status ?? null;
-  const searchQuery = params.search ?? null;
+  const searchQuery = (params.search ?? '').slice(0, 100) || null;
   const offset = (currentPage - 1) * PAGE_SIZE;
 
   const whereClause = sql`

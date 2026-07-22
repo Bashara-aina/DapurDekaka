@@ -12,6 +12,11 @@ export async function requireRole(allowedRoles: UserRole[]) {
     redirect('/login');
   }
 
+  const userData = session.user as { isActive?: boolean };
+  if (userData.isActive === false) {
+    redirect('/login?inactive=1');
+  }
+
   const userRole = session.user.role as UserRole;
 
   if (!allowedRoles.includes(userRole)) {

@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { pointsHistory } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
+import { requireActiveUser } from '@/lib/auth/require-active';
 import { success, unauthorized, serverError } from '@/lib/utils/api-response';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -14,6 +15,9 @@ export async function GET(req: NextRequest) {
     if (!session?.user?.id) {
       return unauthorized('Silakan masuk terlebih dahulu');
     }
+
+    const activeUser = await requireActiveUser();
+    if (!activeUser) return unauthorized('Akun Anda dinonaktifkan');
 
     const { searchParams } = new URL(req.url);
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));

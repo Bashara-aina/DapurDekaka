@@ -7,8 +7,6 @@ import { SoftLaunchBanner } from '@/components/store/layout/SoftLaunchBanner';
 import { getSetting } from '@/lib/settings/get-settings';
 import { isFlagEnabled } from '@/lib/config/feature-flags';
 
-export const dynamic = 'force-dynamic';
-
 export async function generateMetadata(): Promise<Metadata> {
   if (!isFlagEnabled('softLaunch')) return {};
   return {

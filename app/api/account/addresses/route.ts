@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { addresses } from '@/lib/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
+import { requireActiveUser } from '@/lib/auth/require-active';
 import { success, created, unauthorized, badRequest, serverError, notFound, validationError } from '@/lib/utils/api-response';
 import { z } from 'zod';
 
@@ -32,6 +33,9 @@ export async function GET(req: NextRequest) {
       return unauthorized('Silakan masuk terlebih dahulu');
     }
 
+    const activeUser = await requireActiveUser();
+    if (!activeUser) return unauthorized('Akun Anda dinonaktifkan');
+
     const userAddresses = await db.query.addresses.findMany({
       where: eq(addresses.userId, session.user.id),
       orderBy: [desc(addresses.isDefault), desc(addresses.createdAt)],
@@ -51,6 +55,9 @@ export async function POST(req: NextRequest) {
     if (!session?.user?.id) {
       return unauthorized('Silakan masuk terlebih dahulu');
     }
+
+    const activeUser = await requireActiveUser();
+    if (!activeUser) return unauthorized('Akun Anda dinonaktifkan');
 
     const body = await req.json();
     const parsed = addressSchema.safeParse(body);
@@ -100,6 +107,9 @@ export async function PUT(req: NextRequest) {
     if (!session?.user?.id) {
       return unauthorized('Silakan masuk terlebih dahulu');
     }
+
+    const activeUser = await requireActiveUser();
+    if (!activeUser) return unauthorized('Akun Anda dinonaktifkan');
 
     const body = await req.json();
     const { id, ...updateData } = body;
