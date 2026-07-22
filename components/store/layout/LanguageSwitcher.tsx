@@ -1,10 +1,11 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useLocale } from 'next-intl';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils/cn';
 
-export function LanguageSwitcher({ className }: { className?: string }) {
+function LanguageSwitcherInner({ className }: { className?: string }) {
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
@@ -45,5 +46,13 @@ export function LanguageSwitcher({ className }: { className?: string }) {
         EN
       </button>
     </div>
+  );
+}
+
+export function LanguageSwitcher({ className }: { className?: string }) {
+  return (
+    <Suspense fallback={<div className={cn('flex items-center gap-1', className)}><span className="px-2 py-1 text-xs font-medium text-text-secondary">ID</span><span className="text-text-muted">/</span><span className="px-2 py-1 text-xs font-medium text-text-secondary">EN</span></div>}>
+      <LanguageSwitcherInner className={className} />
+    </Suspense>
   );
 }
