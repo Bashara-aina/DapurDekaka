@@ -24,16 +24,18 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function StoreLayout({ children }: { children: React.ReactNode }) {
   const whatsappNumber = await getSetting('store_whatsapp_number').catch(() => null);
-  const softLaunch = isFlagEnabled('softLaunch');
 
   return (
     <>
-      {softLaunch ? (
-        <meta name="robots" content="noindex,nofollow" />
-      ) : null}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-brand-red focus:text-white focus:rounded-button focus:shadow-lg"
+      >
+        Langsung ke konten utama
+      </a>
       <SoftLaunchBanner />
       <Navbar />
-      <main className="min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">{children}</main>
+      <main id="main-content" className="min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">{children}</main>
       <Footer />
       <WhatsAppButton whatsappNumber={whatsappNumber ?? undefined} />
       <BottomNav />

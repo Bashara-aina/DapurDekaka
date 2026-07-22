@@ -6,10 +6,12 @@ import { redirect } from 'next/navigation';
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session) redirect('/login');
-  if (!['superadmin', 'owner', 'warehouse'].includes(session.user.role ?? '')) {
+  const userData = session.user as { role?: string; isActive?: boolean };
+  if (userData.isActive === false) redirect('/login?inactive=1');
+  if (!['superadmin', 'owner', 'warehouse'].includes(userData.role ?? '')) {
     redirect('/');
   }
-  const role = session.user.role ?? '';
+  const role = userData.role ?? '';
 
   return (
     <div className="min-h-screen bg-admin-content flex">

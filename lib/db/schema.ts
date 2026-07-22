@@ -118,6 +118,7 @@ export const users = pgTable('users', {
   isActive: boolean('is_active').notNull().default(true),
   pointsBalance: integer('points_balance').notNull().default(0),
   languagePreference: varchar('language_preference', { length: 5 }).notNull().default('id'),
+  tokenVersion: integer('token_version').notNull().default(0),
   ...timestamps,
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
 }, (table) => ({

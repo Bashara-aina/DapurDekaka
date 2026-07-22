@@ -1,10 +1,11 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
 import { requireActiveUser } from '@/lib/auth/require-active';
 import { success, unauthorized, serverError, validationError } from '@/lib/utils/api-response';
+import { withRateLimit } from '@/lib/utils/rate-limit';
 import { z } from 'zod';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -101,7 +102,15 @@ const ChangePasswordSchema = z.object({
   newPassword: z.string().min(8, 'Password baru minimal 8 karakter').max(128),
 });
 
-export async function PUT(req: NextRequest) {
+const SetPasswordSchema = z.object({
+  newPassword: z.string().min(8, 'Password baru minimal 8 karakter').max(128),
+  confirmPassword: z.string().min(1, 'Konfirmasi password diperlukan'),
+}).refine(data => data.newPassword === data.confirmPassword, {
+  message: 'Konfirmasi password tidak cocok',
+  path: ['confirmPassword'],
+});
+
+export const PUT = withRateLimit(async (req: NextRequest) => {
   try {
     const session = await auth();
 
@@ -144,13 +153,15 @@ export async function PUT(req: NextRequest) {
       return serverError('Password saat ini salah');
     }
 
-    // Hash and update new password
+    // Hash and update new password; increment tokenVersion to invalidate
+    // all existing JWTs for this user.
     const newPasswordHash = await bcrypt.hash(parsed.data.newPassword, 12);
 
     await db
       .update(users)
       .set({
         passwordHash: newPasswordHash,
+        tokenVersion: sql`token_version + 1`,
         updatedAt: new Date(),
       })
       .where(eq(users.id, session.user.id));
@@ -160,17 +171,9 @@ export async function PUT(req: NextRequest) {
     console.error('[account/profile PUT]', error);
     return serverError(error);
   }
-}
+}, 'auth');
 
-const SetPasswordSchema = z.object({
-  newPassword: z.string().min(8, 'Password baru minimal 8 karakter').max(128),
-  confirmPassword: z.string().min(1, 'Konfirmasi password diperlukan'),
-}).refine(data => data.newPassword === data.confirmPassword, {
-  message: 'Konfirmasi password tidak cocok',
-  path: ['confirmPassword'],
-});
-
-export async function POST(req: NextRequest) {
+export const POST = withRateLimit(async (req: NextRequest) => {
   try {
     const session = await auth();
 
@@ -205,7 +208,8 @@ export async function POST(req: NextRequest) {
       return serverError('Password sudah ada. Gunakan halaman Ubah Password.');
     }
 
-    // Hash and set new password
+    // Hash and set new password; increment tokenVersion to invalidate
+    // any existing JWTs.
     const bcrypt = await import('bcryptjs');
     const newPasswordHash = await bcrypt.hash(parsed.data.newPassword, 12);
 
@@ -213,6 +217,7 @@ export async function POST(req: NextRequest) {
       .update(users)
       .set({
         passwordHash: newPasswordHash,
+        tokenVersion: sql`token_version + 1`,
         updatedAt: new Date(),
       })
       .where(eq(users.id, session.user.id));
@@ -222,4 +227,4 @@ export async function POST(req: NextRequest) {
     console.error('[account/profile POST]', error);
     return serverError(error);
   }
-}
+}, 'auth');

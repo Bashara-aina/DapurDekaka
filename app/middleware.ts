@@ -2,7 +2,7 @@ import createMiddleware from 'next-intl/middleware';
 import { routing } from '@/i18n/routing';
 import { auth } from '@/lib/auth';
 import { isFlagEnabled } from '@/lib/config/feature-flags';
-import { isMaintenanceModeEnv } from '@/lib/ops/maintenance';
+import { isMaintenanceMode } from '@/lib/ops/maintenance';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -62,16 +62,17 @@ export default async function middleware(req: NextRequest) {
 
   // Maintenance mode guard (L4 circuit breaker) — block storefront when MAINTENANCE_MODE=true
   // Allows admin and webhooks to keep working during an incident.
-  if (isMaintenanceModeEnv() && !pathname.startsWith('/maintenance')) {
+  // Checks BOTH the env var (fast path, set at deploy time) AND the DB setting
+  // (5-min cache, togglable from admin panel).
+  const maintenance = await isMaintenanceMode();
+  if (maintenance && !pathname.startsWith('/maintenance')) {
     const isAdminPath = pathname.startsWith('/admin') || pathname.startsWith('/api/admin');
     const isWebhookPath = pathname.startsWith('/api/webhooks') || pathname.startsWith('/api/cron');
     const isAuthPath = pathname.startsWith('/api/auth');
     if (!isAdminPath && !isWebhookPath && !isAuthPath) {
       if (
         pathname.startsWith('/checkout') ||
-        pathname.startsWith('/api/checkout') ||
         pathname.startsWith('/cart') ||
-        pathname.startsWith('/api/shipping') ||
         pathname.startsWith('/products') ||
         pathname === '/' ||
         pathname.startsWith('/blog')

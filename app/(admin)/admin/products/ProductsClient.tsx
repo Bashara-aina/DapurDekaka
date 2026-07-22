@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { formatIDR } from '@/lib/utils/format-currency';
-import { Plus, Power, Trash2 } from 'lucide-react';
+import { Plus, Power, Trash2, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -38,6 +38,18 @@ export default function ProductsClient({ allProducts }: ProductsClientProps) {
   const [bulkLoading, setBulkLoading] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [pendingDeleteCount, setPendingDeleteCount] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredProducts = useMemo(() => {
+    if (!searchQuery.trim()) return products;
+    const q = searchQuery.toLowerCase();
+    return products.filter(
+      (p) =>
+        p.nameId.toLowerCase().includes(q) ||
+        (p.slug ?? '').toLowerCase().includes(q) ||
+        (p.category?.nameId ?? '').toLowerCase().includes(q)
+    );
+  }, [products, searchQuery]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
@@ -49,10 +61,10 @@ export default function ProductsClient({ allProducts }: ProductsClientProps) {
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === products.length) {
+    if (selectedIds.size === filteredProducts.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(products.map(p => p.id)));
+      setSelectedIds(new Set(filteredProducts.map(p => p.id)));
     }
   };
 
@@ -133,6 +145,31 @@ export default function ProductsClient({ allProducts }: ProductsClientProps) {
         </div>
       )}
 
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Cari produk..."
+          className="w-full h-10 pl-9 pr-9 rounded-lg border border-admin-border text-sm focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      <p className="text-xs text-gray-500">
+        Menampilkan {filteredProducts.length} dari {products.length} produk
+        {searchQuery && ` (pencarian: "${searchQuery}")`}
+      </p>
+
       <div className="bg-white rounded-lg border border-admin-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -141,7 +178,7 @@ export default function ProductsClient({ allProducts }: ProductsClientProps) {
                 <th className="px-4 py-3 text-left">
                   <input
                     type="checkbox"
-                    checked={selectedIds.size === products.length && products.length > 0}
+                    checked={selectedIds.size === filteredProducts.length && filteredProducts.length > 0}
                     onChange={toggleSelectAll}
                     className="w-4 h-4 accent-brand-red"
                   />
@@ -154,7 +191,7 @@ export default function ProductsClient({ allProducts }: ProductsClientProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-admin-border">
-              {products.map((product) => {
+              {filteredProducts.map((product) => {
                 const lowestVariant = product.variants[0];
                 const image = product.images[0];
                 return (
@@ -213,10 +250,10 @@ export default function ProductsClient({ allProducts }: ProductsClientProps) {
                   </tr>
                 );
               })}
-              {products.length === 0 && (
+              {filteredProducts.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                    Belum ada produk
+                    {searchQuery ? `Tidak ditemukan produk untuk "${searchQuery}"` : 'Belum ada produk'}
                   </td>
                 </tr>
               )}

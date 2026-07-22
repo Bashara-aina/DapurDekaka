@@ -40,7 +40,14 @@ export async function requireAdmin(
     return unauthorized();
   }
 
-  const userRole = session.user.role as AdminRole;
+  const userData = session.user as { role?: string; isActive?: boolean };
+
+  // Deactivated users are not allowed to call admin APIs
+  if (userData.isActive === false) {
+    return unauthorized('Akun Anda telah dinonaktifkan');
+  }
+
+  const userRole = userData.role as AdminRole;
 
   if (!roles.includes(userRole)) {
     return forbidden('Anda tidak memiliki akses ke fitur ini');

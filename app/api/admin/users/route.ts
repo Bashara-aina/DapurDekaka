@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { desc } from 'drizzle-orm';
 import { success, unauthorized, forbidden, serverError, validationError, conflict } from '@/lib/utils/api-response';
+import { withRateLimit } from '@/lib/utils/rate-limit';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withRateLimit(async (req: NextRequest) => {
   try {
     const session = await auth();
     if (!session?.user) {
@@ -90,4 +91,4 @@ export async function POST(req: NextRequest) {
     console.error('[Admin/Users/POST]', error);
     return serverError(error);
   }
-}
+}, 'admin');

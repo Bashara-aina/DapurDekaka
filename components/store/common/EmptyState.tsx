@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { cn } from '@/lib/utils/cn';
 import { useEffect, useState } from 'react';
 
@@ -102,15 +103,22 @@ export function EmptyState({
         {description && (
           <p className="text-text-secondary mb-6 max-w-sm">{description}</p>
         )}
-        {action && (
-          <a
+        {action && action.href ? (
+          <Link
             href={action.href}
             onClick={action.onClick}
             className="inline-flex items-center justify-center h-12 px-6 bg-brand-red text-white font-semibold rounded-button shadow-button hover:shadow-button-hover transition-shadow"
           >
             {action.label}
-          </a>
-        )}
+          </Link>
+        ) : action?.onClick ? (
+          <button
+            onClick={action.onClick}
+            className="inline-flex items-center justify-center h-12 px-6 bg-brand-red text-white font-semibold rounded-button shadow-button hover:shadow-button-hover transition-shadow"
+          >
+            {action.label}
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -144,15 +152,22 @@ export function EmptyState({
       {description && (
         <p className="text-text-secondary mb-6 max-w-sm">{description}</p>
       )}
-      {action && (
-        <a
+      {action && action.href ? (
+        <Link
           href={action.href}
           onClick={action.onClick}
           className="inline-flex items-center justify-center h-12 px-6 bg-brand-red text-white font-semibold rounded-button shadow-button hover:shadow-button-hover transition-shadow"
         >
           {action.label}
-        </a>
-      )}
+        </Link>
+      ) : action?.onClick ? (
+        <button
+          onClick={action.onClick}
+          className="inline-flex items-center justify-center h-12 px-6 bg-brand-red text-white font-semibold rounded-button shadow-button hover:shadow-button-hover transition-shadow"
+        >
+          {action.label}
+        </button>
+      ) : null}
     </MotionFn.div>
   );
 }

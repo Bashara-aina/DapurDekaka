@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 import { db } from '@/lib/db';
-import { users, passwordResetTokens, sessions } from '@/lib/db/schema';
-import { eq, and, gt } from 'drizzle-orm';
+import { users, passwordResetTokens } from '@/lib/db/schema';
+import { eq, and, gt, sql } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { success, validationError, serverError, unauthorized } from '@/lib/utils/api-response';
@@ -41,12 +41,17 @@ export const POST = withRateLimit(
 
       const passwordHash = await bcrypt.hash(password, 12);
 
+      // Increment tokenVersion so all existing JWTs are invalidated.
+      // The next time the user makes a request, their old JWT will have a
+      // stale version, and the session.update() call (or re-login) will get
+      // a fresh token.
       await db.update(users)
-        .set({ passwordHash, updatedAt: new Date() })
+        .set({
+          passwordHash,
+          tokenVersion: sql`token_version + 1`,
+          updatedAt: new Date(),
+        })
         .where(eq(users.id, record.userId));
-
-      // Delete all existing sessions for this user so they must re-login
-      await db.delete(sessions).where(eq(sessions.userId, record.userId));
 
       await db.update(passwordResetTokens)
         .set({ usedAt: new Date() })

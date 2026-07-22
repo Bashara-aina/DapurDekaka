@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { serverSideUpload } from '@/lib/cloudinary/upload';
 import { success, unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
+import { withRateLimit } from '@/lib/utils/rate-limit';
 import { auth } from '@/lib/auth';
 import type { CloudinaryFolder } from '@/lib/cloudinary/upload';
 import { z } from 'zod';
@@ -15,7 +16,7 @@ const folderSchema = z.object({
  * Admin server-side upload from multipart form data.
  * Authenticated superadmin/owner only.
  */
-export async function POST(req: NextRequest) {
+export const POST = withRateLimit(async (req: NextRequest) => {
   try {
     const session = await auth();
 
@@ -98,4 +99,4 @@ export async function POST(req: NextRequest) {
     console.error('[AdminUpload] Error:', error);
     return serverError(error);
   }
-}
+}, 'admin');

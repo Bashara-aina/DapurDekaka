@@ -51,7 +51,7 @@ export const authConfig = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
         const user = await db.query.users.findFirst({
-          where: eq(users.email, credentials.email as string),
+          where: eq(users.email, (credentials.email as string).toLowerCase()),
         });
         if (!user?.passwordHash) return null;
         if (!user.isActive) return null;
@@ -75,26 +75,37 @@ export const authConfig = {
   session: { strategy: 'jwt', maxAge: 60 * 60 * 24 * 30, secure: process.env.NODE_ENV === 'production' },
   callbacks: {
     async jwt({ token, user, trigger, session: updateData }) {
+      const t = token as Record<string, unknown>;
+
       // On sign-in (both Credentials and OAuth) the `user` arg is populated.
-      // Copy role + isActive into the JWT so the session callback can surface them.
+      // Copy role, isActive, tokenVersion into the JWT so the session callback
+      // can surface them.  tokenVersion lets us invalidate all existing sessions
+      // when the user resets their password.
       if (user) {
         const u = user as AppSessionUser;
         if (u.id) token.sub = u.id;
-        if (u.role) (token as Record<string, unknown>).role = u.role;
-        if (typeof u.isActive === 'boolean') (token as Record<string, unknown>).isActive = u.isActive;
+        if (u.role) t.role = u.role;
+        if (typeof u.isActive === 'boolean') t.isActive = u.isActive;
+        const dbUser = await db.query.users.findFirst({
+          where: eq(users.id, u.id!),
+          columns: { tokenVersion: true },
+        });
+        if (dbUser) t.tokenVersion = dbUser.tokenVersion;
       }
 
       // When the client calls update() (e.g. after login), refresh role/isActive
-      // from the DB so a deactivated user is reflected on the next request.
-      if (trigger === 'update' && (token.sub || (token as Record<string, unknown>).userId)) {
-        const userId = (token.sub || (token as Record<string, unknown>).userId) as string;
+      // and tokenVersion from the DB so deactivation / password-reset takes
+      // effect on the next server round-trip.
+      if (trigger === 'update' && (token.sub || t.userId)) {
+        const userId = (token.sub || t.userId) as string;
         const dbUser = await db.query.users.findFirst({
           where: eq(users.id, userId),
-          columns: { role: true, isActive: true },
+          columns: { role: true, isActive: true, tokenVersion: true },
         });
         if (dbUser) {
-          (token as Record<string, unknown>).role = dbUser.role;
-          (token as Record<string, unknown>).isActive = dbUser.isActive;
+          t.role = dbUser.role;
+          t.isActive = dbUser.isActive;
+          t.tokenVersion = dbUser.tokenVersion;
         }
       }
 

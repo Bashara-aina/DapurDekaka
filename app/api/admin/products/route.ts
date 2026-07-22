@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { products, categories, productVariants, productImages } from '@/lib/db/schema';
 import { eq, desc, and, isNull, sql, like, or } from 'drizzle-orm';
 import { unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
+import { withRateLimit } from '@/lib/utils/rate-limit';
 import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -116,7 +117,7 @@ const CreateProductSchema = z.object({
   shopeeUrl: z.string().url().optional().nullable(),
 });
 
-export async function POST(req: NextRequest) {
+export const POST = withRateLimit(async (req: NextRequest) => {
   try {
     const session = await auth();
     if (!session?.user) {
@@ -201,4 +202,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, 'admin');

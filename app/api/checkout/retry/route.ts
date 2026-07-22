@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { eq, and, sql } from 'drizzle-orm';
 import { orders, couponUsages, pointsHistory, users, orderStatusHistory } from '@/lib/db/schema';
 import { success, serverError, notFound, conflict, unauthorized, forbidden, validationError, tooManyRequests } from '@/lib/utils/api-response';
+import { withRateLimit } from '@/lib/utils/rate-limit';
 import { z } from 'zod';
 import { createMidtransTransaction } from '@/lib/midtrans/create-transaction';
 import { formatWIB } from '@/lib/utils/format-date';
@@ -17,7 +18,7 @@ const retrySchema = z.object({
   orderNumber: z.string().regex(/^DDK-\d{8}-\d{4}(?:-retry-\d+)?$/, 'Format orderNumber tidak valid'),
 });
 
-export async function POST(req: NextRequest) {
+export const POST = withRateLimit(async (req: NextRequest) => {
   try {
     const session = await auth();
 
@@ -187,4 +188,4 @@ export async function POST(req: NextRequest) {
     logger.error('[checkout/retry]', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
-}
+}, 'money');

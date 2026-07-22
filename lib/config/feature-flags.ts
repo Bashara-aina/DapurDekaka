@@ -44,9 +44,9 @@ export const FLAGS = {
     note: 'Hide /account/vouchers (L4 kill list)',
   },
   softLaunch: {
-    default: true,
+    default: false,
     envKey: 'NEXT_PUBLIC_FLAG_SOFT_LAUNCH',
-    note: 'Soft-launch banner + noindex robots (L5 Week 0–2)',
+    note: 'Soft-launch banner + noindex robots (L5 Week 0–2). Set to true during soft launch.',
   },
   samplerPromo: {
     default: false,

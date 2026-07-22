@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { eq, asc } from 'drizzle-orm';
+import { eq, asc, desc } from 'drizzle-orm';
 import { z } from 'zod';
 import { success, unauthorized, forbidden, serverError, badRequest } from '@/lib/utils/api-response';
+import { withRateLimit } from '@/lib/utils/rate-limit';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { categories } from '@/lib/db/schema';
@@ -42,7 +43,7 @@ const createCategorySchema = z.object({
   isActive: z.boolean().optional().default(true),
 });
 
-export async function POST(req: NextRequest) {
+export const POST = withRateLimit(async (req: NextRequest) => {
   try {
     const session = await auth();
     if (!session?.user) {
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
     let finalSortOrder = sortOrder ?? 0;
     if (sortOrder === undefined) {
       const maxSort = await db.query.categories.findFirst({
-        orderBy: [asc(categories.sortOrder)],
+        orderBy: [desc(categories.sortOrder)],
         columns: { sortOrder: true },
       });
       if (maxSort && maxSort.sortOrder !== null) {
@@ -99,4 +100,4 @@ export async function POST(req: NextRequest) {
     console.error('[Admin/Categories/POST]', error);
     return serverError(error);
   }
-}
+}, 'admin');
