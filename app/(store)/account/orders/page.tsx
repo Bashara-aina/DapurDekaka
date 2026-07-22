@@ -69,7 +69,7 @@ export default async function AccountOrdersPage({ searchParams }: OrdersPageProp
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-2xl font-bold text-text-primary">{t('account.orderHistory')}</h1>
-        <p className="text-text-secondary text-sm mt-1">{t('account.noOrders')}</p>
+        {totalOrders === 0 && <p className="text-text-secondary text-sm mt-1">{t('account.noOrders')}</p>}
       </div>
 
       {/* Status Filter */}

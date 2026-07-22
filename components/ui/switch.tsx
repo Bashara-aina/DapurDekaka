@@ -17,7 +17,7 @@ function Switch({ className, checked, onCheckedChange, disabled, ...props }: Swi
       data-slot="switch"
       className={cn(
         "peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/20 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-50",
-        checked ? "bg-brand-red" : "bg-gray-200",
+        checked ? "bg-brand-red" : "bg-brand-cream-dark",
         className
       )}
       onClick={() => onCheckedChange?.(!checked)}

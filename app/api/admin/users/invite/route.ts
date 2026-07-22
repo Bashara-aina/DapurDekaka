@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
       expiresAt,
     });
 
-    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password/${token}`;
+    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password/${token}`;
 
     // Send invite email using React Email template
     await sendEmail({

@@ -79,7 +79,7 @@ export default async function AboutPage() {
 
       {/* Hero */}
       <section className="relative bg-brand-navy text-white py-20 md:py-28">
-        <div className="container">
+        <div className="container mx-auto px-4 md:px-6 lg:px-8">
           <div className="max-w-2xl">
             <p className="text-brand-gold font-medium text-sm tracking-wider uppercase mb-3">
               {t('heroTagline')}
@@ -96,7 +96,7 @@ export default async function AboutPage() {
 
       {/* Story */}
       <section className="py-16 bg-white">
-        <div className="container">
+        <div className="container mx-auto px-4 md:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div>
               <h2 className="font-display text-3xl font-bold mb-6">{t('storyTitle')}</h2>
@@ -126,7 +126,7 @@ export default async function AboutPage() {
 
       {/* Values */}
       <section className="py-16 bg-brand-cream">
-        <div className="container">
+        <div className="container mx-auto px-4 md:px-6 lg:px-8">
           <h2 className="font-display text-3xl font-bold text-center mb-12">{t('valuesTitle')}</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="bg-white rounded-2xl p-6 text-center">
@@ -162,7 +162,7 @@ export default async function AboutPage() {
 
       {/* Production Location */}
       <section className="py-16 bg-white">
-        <div className="container">
+        <div className="container mx-auto px-4 md:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="font-display text-3xl font-bold mb-6">{t('productionTitle')}</h2>
             <p className="text-text-secondary leading-relaxed mb-8">

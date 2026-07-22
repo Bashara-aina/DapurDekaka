@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Package, ShoppingCart, Users, Tag,
   MessageSquare, Image, Settings, Box, Truck, FileText, Bot, ClipboardList,
-  BarChart3, X, Layers, Star
+  BarChart3, X, Layers, Star, AlertTriangle
 } from 'lucide-react';
 import { isFlagEnabled } from '@/lib/config/feature-flags';
 import { cn } from '@/lib/utils/cn';
@@ -31,6 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/categories', label: 'Kategori', icon: Layers, roles: ['superadmin', 'owner'] },
   { href: '/admin/inventory', label: 'Inventori', icon: Box, roles: ['superadmin', 'owner', 'warehouse'] },
   { href: '/admin/shipments', label: 'Pengiriman', icon: Truck, roles: ['superadmin', 'owner', 'warehouse'] },
+  { href: '/admin/disputes', label: 'Disputes', icon: AlertTriangle, roles: ['superadmin', 'owner'] },
   { href: '/admin/customers', label: 'Pelanggan', icon: Users, roles: ['superadmin', 'owner'] },
   { href: '/admin/users', label: 'Users', icon: Users, roles: ['superadmin'] },
   { separator: true },

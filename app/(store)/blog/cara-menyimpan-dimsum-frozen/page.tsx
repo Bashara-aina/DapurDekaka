@@ -20,7 +20,7 @@ export default function CaraMenyimpanDimsumPage() {
           <h1 className="font-display text-3xl md:text-4xl font-bold mt-2">
             Cara Menyimpan Dimsum Frozen yang Benar (Agar Tetap Segar Sampai Pulang)
           </h1>
-          <p className="text-sm text-text-muted mt-3">5 menit baca · Ditulis oleh tim Dapur Dekaka</p>
+          <p className="text-sm text-text-secondary mt-3">5 menit baca · Ditulis oleh tim Dapur Dekaka</p>
         </header>
 
         <section className="mt-8 space-y-4 text-text-secondary">
@@ -36,7 +36,7 @@ export default function CaraMenyimpanDimsumPage() {
           <h2 className="font-semibold text-xl mt-6 text-text-primary">2. Pisahkan Berdasarkan Tanggal</h2>
           <p>
             Jika Anda memesan dalam jumlah besar, pisahkan ke beberapa wadah kecil bertanggal. Ini membuat Anda
-            hanya mencairkan (thawing) secukupnya. Hindari反复-反复 freeze-thaw yang merusak tekstur dimsum.
+            hanya mencairkan (thawing) secukupnya. Hindari freeze-thaw berulang yang merusak tekstur dimsum.
           </p>
           <h2 className="font-semibold text-xl mt-6 text-text-primary">3. Suhu Ideal</h2>
           <p>
@@ -57,9 +57,9 @@ export default function CaraMenyimpanDimsumPage() {
         </section>
 
         <footer className="mt-12 border-t pt-6">
-          <p className="text-sm text-text-muted">
+          <p className="text-sm text-text-secondary">
             Punya pertanyaan lain tentang penyimpanan?{' '}
-            <a className="text-brand-red underline" href="https://wa.me/62812xxxxxxxx" target="_blank" rel="noreferrer">
+            <a className="text-brand-red underline" href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER}`} target="_blank" rel="noreferrer">
               Chat WhatsApp kami
             </a>
             .

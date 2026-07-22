@@ -134,7 +134,7 @@ export default function CheckoutFailedPage() {
           </Link>
         </div>
 
-        <p className="text-xs text-text-muted mt-8">
+        <p className="text-xs text-text-secondary mt-8">
           {t('failedContactWhatsApp')}
         </p>
       </div>

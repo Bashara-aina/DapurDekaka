@@ -237,7 +237,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
                     ← {t('prev')}
                   </Link>
                 ) : (
-                  <span className="px-5 py-2.5 border border-brand-cream-dark rounded-button text-sm font-medium text-text-muted cursor-not-allowed">
+                  <span className="px-5 py-2.5 border border-brand-cream-dark rounded-button text-sm font-medium text-text-secondary cursor-not-allowed">
                     ← {t('prev')}
                   </span>
                 )}
@@ -252,7 +252,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
                     {t('next')} →
                   </Link>
                 ) : (
-                  <span className="px-5 py-2.5 border border-brand-cream-dark rounded-button text-sm font-medium text-text-muted cursor-not-allowed">
+                  <span className="px-5 py-2.5 border border-brand-cream-dark rounded-button text-sm font-medium text-text-secondary cursor-not-allowed">
                     {t('next')} →
                   </span>
                 )}

@@ -17,7 +17,7 @@ interface Testimonial {
 }
 
 export function Testimonials() {
-  const t = useTranslations('home');
+  const t = useTranslations('testimonials');
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);

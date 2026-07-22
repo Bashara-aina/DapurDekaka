@@ -79,22 +79,22 @@ export function CartSummary({
       )}
 
       {showWeightGate15kg && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-          <p className="text-xs text-red-700 font-medium">
+        <div className="bg-error-light border border-error/30 rounded-lg p-3 mb-4">
+          <p className="text-xs text-error font-medium">
             {tWeightGate('weightGate15kg')}
           </p>
         </div>
       )}
       {showWeightGate5kg && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-          <p className="text-xs text-amber-700 font-medium">
+        <div className="bg-warning-light border border-warning/30 rounded-lg p-3 mb-4">
+          <p className="text-xs text-warning font-medium">
             {tWeightGate('weightGate5kg')}
           </p>
         </div>
       )}
 
-      <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-        <p className="text-xs text-green-700 font-medium">
+      <div className="bg-success-light border border-success/30 rounded-lg p-3 mb-4">
+        <p className="text-xs text-success font-medium">
           {t('guaranteeBadge')}
         </p>
       </div>
@@ -125,14 +125,14 @@ export function CartSummary({
         {discount > 0 && (
           <div className="flex justify-between">
             <span className="text-text-secondary">{t('discount')}</span>
-            <span className="font-medium text-green-600">-{formatIDR(discount)}</span>
+            <span className="font-medium text-success">-{formatIDR(discount)}</span>
           </div>
         )}
 
         {pointsRedemption > 0 && (
           <div className="flex justify-between">
             <span className="text-text-secondary">{t('pointsUsed')}</span>
-            <span className="font-medium text-green-600">-{formatIDR(pointsRedemption)}</span>
+            <span className="font-medium text-success">-{formatIDR(pointsRedemption)}</span>
           </div>
         )}
 
@@ -149,7 +149,7 @@ export function CartSummary({
         className={cn(
           'mt-6 w-full h-12 font-bold rounded-button flex items-center justify-center transition-colors',
           stockIssues || checking
-            ? 'bg-gray-400 text-white cursor-not-allowed'
+            ? 'bg-text-disabled text-white cursor-not-allowed'
             : 'bg-brand-red text-white hover:bg-brand-red-dark'
         )}
       >

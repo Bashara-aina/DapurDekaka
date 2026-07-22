@@ -238,7 +238,7 @@
     "whatsapp": "WhatsApp",
     "followUs": "Ikuti Kami",
     "paymentMethods": "Metode Pembayaran",
-    "copyright": "© 2026 Dapur Dekaka. All rights reserved.",
+    "copyright": "© 2026 Dapur Dekaka. Hak cipta dilindungi undang-undang.",
     "priceIncludesVat": "Harga sudah termasuk PPN 11%",
     "halal": "Halal",
     "frozenFresh": "Frozen Fresh",
@@ -311,7 +311,7 @@
     "continueToCheckout": "Lanjutkan ke Checkout",
     "validating": "Memvalidasi…",
     "priceUpdated": "Harga berubah — total diperbarui.",
-    "guaranteeBadge": "Garansi: produk tidak layak? Ganti atau pengembalian dana penuh langsung kami ganti atau refund.",
+    "guaranteeBadge": "Garansi: produk tidak layak? Ganti atau refund penuh, tanpa syarat.",
     "weightGate5kg": "Pesanan di atas 5kg dikirim kurir reguler frozen (1–2 hari).",
     "weightGate15kg": "Di atas 15kg hanya bisa Frozen Express."
   },
@@ -652,6 +652,7 @@
     "availableVouchers": "Voucher Tersedia",
     "usedVouchers": "Voucher Sudah Dipakai",
     "expiredVouchers": "Voucher Kadaluarsa",
+    "addressLabel": "Label alamat",
     "loadAddressError": "Gagal memuat alamat",
     "loadShippingError": "Gagal memuat data pengiriman",
     "deleteAddressConfirm": "Yakin ingin menghapus alamat ini?",
@@ -779,16 +780,23 @@
     "total": "Total"
   },
   "blog": {
+    "title": "Blog",
+    "description": "Baca artikel, tips, dan cerita dari Dapur Dekaka seputar makanan frozen, memasak, dan gaya hidup halal.",
     "all": "Semua",
     "articles": "Artikel",
     "recipes": "Resep",
     "readMore": "Baca Selengkapnya",
     "publishedOn": "Dipublikasikan pada",
     "showing": "Menampilkan:",
-    "search": "Pencarian:",
+    "search": "Cari:",
     "category": "Kategori:",
-    "noArticles": "Artikel tidak ditemukan",
-    "tryDifferentKeywords": "Coba gunakan kata kunci lain atau hapus filter.",
+    "reset": "Reset",
+    "prev": "Sebelumnya",
+    "page": "Halaman",
+    "of": "dari",
+    "next": "Selanjutnya",
+    "noArticles": "Tidak ada artikel ditemukan",
+    "tryDifferentKeywords": "Coba kata kunci lain atau hapus filter.",
     "viewAllArticles": "Lihat Semua Artikel",
     "relatedArticles": "Artikel Terkait",
     "articlesFound": "{count} artikel",
@@ -880,7 +888,7 @@
   "promise": {
     "title": "Janji Kami ke Pelanggan",
     "subtitle": "Apa yang Dapur Dekaka janjikan — dan apa yang tidak. Kami percaya janji yang terlalu tinggi lebih merugikan daripada yang terlalu rendah.",
-    "disclaimer": "Janji ini adalah sumber tunggal kebenaran untuk copy customer-facing. Semua copy di checkout, tracking, dan WA mengikuti dokumen ini.",
+    "disclaimer": "Piagam Janji Pelanggan ini berisi komitmen kami, SLA pengiriman, dan cara kami menangani setiap keluhan.",
     "charter": "Piagam Pelanggan Dapur Dekaka",
     "headings": {
       "wePromise": "Kami Berjanji",
@@ -910,7 +918,7 @@
       "4": "Ongkir sama dengan tarif publik kurir — ongkir kami termasuk penanganan frozen.",
       "5": "Pengiriman ke daerah di luar cakupan layanan kami.",
       "6": "Same-day di hari libur/di luar jam operasional.",
-      "7": "COD.",
+      "7": "COD di luar area pengiriman lokal yang mendukung.",
       "8": "Kompensasi untuk keterlambatan murni di sisi kurir (kami bantu eskalasi, refund case-by-case).",
       "9": "Perubahan alamat setelah kurir dibooking.",
       "10": "Stok selalu tersedia — stok real-time bisa habis.",
@@ -920,7 +928,7 @@
     "disputePlaybook": {
       "spoilage": {
         "title": "Dimsum saya cair/basi",
-        "stance": "Refund-first. Minta foto, jangan debat suhu. Ganti/refund penuh dalam 24 jam + WA personal dari owner. Log ke refund ledger. Ini bukan biaya — ini asuransi merek."
+        "stance": "Refund-first. Minta foto, jangan debat suhu. Ganti/refund penuh dalam 24 jam + WA personal dari owner. Setiap klaim dicatat dan ditangani segera."
       },
       "ongkir": {
         "title": "Kenapa ongkir lebih mahal dari Shopee?",
@@ -932,11 +940,11 @@
       },
       "wrongItem": {
         "title": "Salah item / kurang",
-        "stance": "Foto → kirim susulan atau refund selisih, hari itu. No interrogation under Rp 50k value."
+        "stance": "Foto — kirim susulan atau refund selisih, hari itu. Tanpa ribet, tanpa potongan."
       },
       "negotiate": {
         "title": "Bisa nego / harga offline?",
-        "stance": "Harga offline hanya di toko. Website sudah termurah untuk pesan-antar. Sebagai gantinya ada poin loyalti. Hold the price ladder — it protects all channels."
+        "stance": "Harga offline hanya di toko. Website sudah termurah untuk pesan-antar. Sebagai gantinya ada poin loyalti."
       }
     },
     "sla": {

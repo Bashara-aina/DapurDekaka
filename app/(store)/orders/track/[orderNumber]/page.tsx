@@ -175,9 +175,9 @@ export default function OrderTrackPage() {
                     <li key={idx} className="border-l-2 border-brand-cream-dark pl-4">
                       <p className="text-sm font-medium">{entry.toStatus}</p>
                       {entry.note && (
-                        <p className="text-xs text-text-muted">{entry.note}</p>
+                        <p className="text-xs text-text-secondary">{entry.note}</p>
                       )}
-                      <p className="text-xs text-text-muted">
+                      <p className="text-xs text-text-secondary">
                         {formatWIB(new Date(entry.createdAt))}
                       </p>
                     </li>

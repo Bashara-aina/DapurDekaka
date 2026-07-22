@@ -20,7 +20,7 @@ export default function CaraMengukusDimsumPage() {
           <h1 className="font-display text-3xl md:text-4xl font-bold mt-2">
             Cara Mengukus Dimsum Ala Restoran — Tanpa Alat Khusus
           </h1>
-          <p className="text-sm text-text-muted mt-3">6 menit baca · Tim Dapur Dekaka</p>
+          <p className="text-sm text-text-secondary mt-3">6 menit baca · Tim Dapur Dekaka</p>
         </header>
 
         <section className="mt-8 space-y-4 text-text-secondary">
@@ -68,13 +68,13 @@ export default function CaraMengukusDimsumPage() {
         </section>
 
         <footer className="mt-12 border-t pt-6">
-          <p className="text-sm text-text-muted">
+          <p className="text-sm text-text-secondary">
             Ingin bukti dimsum Dapur Dekaka?{' '}
             <a className="text-brand-red underline" href="/products">
               Lihat katalog
             </a>{' '}
             atau{' '}
-            <a className="text-brand-red underline" href="https://wa.me/62812xxxxxxxx" target="_blank" rel="noreferrer">
+            <a className="text-brand-red underline" href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER}`} target="_blank" rel="noreferrer">
               chat WhatsApp
             </a>
             .

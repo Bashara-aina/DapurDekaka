@@ -88,7 +88,7 @@ export default function B2BAccountOrdersPage() {
                        order.status === 'cancelled' ? 'Dibatalkan' :
                        order.status}
                     </span>
-                    <ChevronRight className="w-4 h-4 text-text-muted" />
+                    <ChevronRight className="w-4 h-4 text-text-secondary" />
                   </div>
                 </div>
               </Link>
@@ -98,7 +98,7 @@ export default function B2BAccountOrdersPage() {
           /* Empty State */
           <div className="py-16 text-center">
             <div className="w-20 h-20 mx-auto mb-4 bg-white rounded-full flex items-center justify-center">
-              <ShoppingBag className="w-8 h-8 text-text-muted" />
+              <ShoppingBag className="w-8 h-8 text-text-secondary" />
             </div>
             <h2 className="font-display text-lg font-semibold mb-2">
               Belum Ada Pesanan

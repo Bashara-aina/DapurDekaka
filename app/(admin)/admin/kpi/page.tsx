@@ -55,28 +55,28 @@ export default async function KpiPage() {
       <div className="grid grid-cols-2 gap-3">
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs text-text-muted uppercase">{t('ordersThisWeek')}</p>
+            <p className="text-xs text-text-secondary uppercase">{t('ordersThisWeek')}</p>
             <p className="text-2xl font-bold text-text-primary mt-1">{wk.value}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs text-text-muted uppercase">{t('ordersThisMonth')}</p>
+            <p className="text-xs text-text-secondary uppercase">{t('ordersThisMonth')}</p>
             <p className="text-2xl font-bold text-text-primary mt-1">{mo.value}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs text-text-muted uppercase">{t('refundRate')}</p>
+            <p className="text-xs text-text-secondary uppercase">{t('refundRate')}</p>
             <p className={refundRate <= 2 ? 'text-2xl font-bold text-green-600 mt-1' : 'text-2xl font-bold text-amber-600 mt-1'}>
               {refundRate.toFixed(1)}%
             </p>
-            <p className="text-xs text-text-muted">≤ 2% target</p>
+            <p className="text-xs text-text-secondary">≤ 2% target</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs text-text-muted uppercase">{t('targetWeek12')}</p>
+            <p className="text-xs text-text-secondary uppercase">{t('targetWeek12')}</p>
             <p className="text-2xl font-bold text-text-primary mt-1">300 / bln</p>
           </CardContent>
         </Card>
@@ -85,7 +85,7 @@ export default async function KpiPage() {
       <Card>
         <CardContent className="p-4 space-y-2">
           <p className="text-sm font-semibold text-text-primary">{t('phase1Status')}</p>
-          <p className="text-xs text-text-muted">
+          <p className="text-xs text-text-secondary">
             {mo.value < 50 ? t('phaseCriteriaNotMet') : t('phaseCriteriaMet')} ({mo.value} paid order bulan ini)
           </p>
         </CardContent>

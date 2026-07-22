@@ -51,7 +51,7 @@ export default async function TrustPage() {
           <p className="text-xs uppercase tracking-widest text-brand-red font-semibold">{t('charter')}</p>
           <h1 className="font-display text-3xl md:text-4xl font-bold mt-2 text-text-primary">{t('title')}</h1>
           <p className="mt-4 text-text-secondary">{t('subtitle')}</p>
-          <p className="mt-3 text-xs italic text-text-muted">{t('disclaimer')}</p>
+          <p className="mt-3 text-xs italic text-text-secondary">{t('disclaimer')}</p>
         </header>
 
         <section aria-labelledby="we-promise" className="space-y-3 mb-10">
@@ -71,7 +71,7 @@ export default async function TrustPage() {
           <ul className="space-y-2">
             {nonPromises.map((line, idx) => (
               <li key={`n-${idx}`} className="flex items-start gap-3 bg-white p-3 rounded-card border border-brand-cream-dark">
-                <X className="w-5 h-5 text-text-muted shrink-0 mt-0.5" aria-hidden="true" />
+                <X className="w-5 h-5 text-text-secondary shrink-0 mt-0.5" aria-hidden="true" />
                 <span className="text-sm text-text-secondary">{line}</span>
               </li>
             ))}
@@ -100,7 +100,7 @@ export default async function TrustPage() {
               </div>
             ))}
           </div>
-          <p className="text-xs text-text-muted italic">{t('headings.contactCta')}</p>
+          <p className="text-xs text-text-secondary italic">{t('headings.contactCta')}</p>
           <a href={waHref} className="inline-block mt-2 bg-brand-red text-white px-5 py-3 rounded-button text-sm font-semibold">Chat WhatsApp</a>
         </section>
       </div>

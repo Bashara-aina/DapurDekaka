@@ -81,11 +81,11 @@ function QuoteCard({ quote, onAction }: { quote: Quote; onAction: (id: string, a
               <span className="text-text-secondary">
                 {item.productNameId} - {item.variantNameId}
               </span>
-              <span className="text-text-muted">x{item.quantity}</span>
+              <span className="text-text-secondary">x{item.quantity}</span>
             </div>
           ))}
           {quote.items.length > 3 && (
-            <p className="text-xs text-text-muted">+{quote.items.length - 3} item lainnya</p>
+            <p className="text-xs text-text-secondary">+{quote.items.length - 3} item lainnya</p>
           )}
         </div>
 
@@ -109,7 +109,7 @@ function QuoteCard({ quote, onAction }: { quote: Quote; onAction: (id: string, a
 
         {/* Valid Until */}
         {quote.validUntil && (
-          <div className="text-xs text-text-muted mb-4">
+          <div className="text-xs text-text-secondary mb-4">
             {isExpired ? (
               <span className="text-red-600">● Sudah kadaluarsa</span>
             ) : (
@@ -232,7 +232,7 @@ export default function B2BAccountQuotesPage() {
           /* Empty State */
           <div className="py-16 text-center">
             <div className="w-20 h-20 mx-auto mb-4 bg-white rounded-full flex items-center justify-center">
-              <FileText className="w-8 h-8 text-text-muted" />
+              <FileText className="w-8 h-8 text-text-secondary" />
             </div>
             <h2 className="font-display text-lg font-semibold mb-2">
               Belum Ada Quotes

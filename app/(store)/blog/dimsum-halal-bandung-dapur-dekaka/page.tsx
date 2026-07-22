@@ -20,13 +20,13 @@ export default function DimsumHalalBandungPage() {
           <h1 className="font-display text-3xl md:text-4xl font-bold mt-2">
             Dimsum Halal Bandung — Cerita Dapur Dekaka
           </h1>
-          <p className="text-sm text-text-muted mt-3">4 menit baca · Tim Dapur Dekaka</p>
+          <p className="text-sm text-text-secondary mt-3">4 menit baca · Tim Dapur Dekaka</p>
         </header>
 
         <section className="mt-8 space-y-4 text-text-secondary">
           <p>
             Dapur Dekaka 德卡 berdiri dari resep keluarga yang sudah turun lebih dari satu generasi, di sebuah dapur
-            kecil di Turangga, Bandung. Nama 德卡 sendiri berarti &ldquo;kebajikan karakter&rdquo; &mdash; nilai yang — nilai yang
+            kecil di Turangga, Bandung. Nama 德卡 sendiri berarti &ldquo;kebajikan karakter&rdquo; — nilai yang
             kami bawa ke setiap potong dimsum, siomay, bakso, dan lumpia yang kami produksi.
           </p>
           <h2 className="font-semibold text-xl mt-6 text-text-primary">Akar Bandung</h2>
@@ -55,7 +55,7 @@ export default function DimsumHalalBandungPage() {
         </section>
 
         <footer className="mt-12 border-t pt-6">
-          <p className="text-sm text-text-muted">
+          <p className="text-sm text-text-secondary">
             Pesan via WhatsApp atau langsung checkout di website — keduanya berakhir di dapur yang sama.
           </p>
         </footer>

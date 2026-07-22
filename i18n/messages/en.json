@@ -11,11 +11,11 @@
     "label": "About Us",
     "heroTagline": "About Us",
     "heroTitle": "Heritage Flavors,\nNow at Your Home",
-    "heroDesc": "Dapur Dekaka (德卡) is a premium Chinese-Indonesian frozen food producer from Bandung, bringing down family recipes with MUI halal standards to all of Indonesia.",
+    "heroDesc": "Dapur Dekaka (德卡) is a premium Chinese-Indonesian frozen food producer from Bandung, rooted in family recipes passed down for generations with MUI halal standards to all of Indonesia.",
     "storyTitle": "The Dapur Dekaka Story",
     "storyP1": "Starting from a small kitchen in Turangga, Bandung, Dapur Dekaka was born from a dream to bring authentic Chinese-Indonesian flavors to every Indonesian household.",
     "storyP2": "With decades of experience crafting quality frozen food, we present products like dimsum, siomay, bakso, and lumpia made from selected ingredients and hygienic production processes.",
-    "storyP3": "Every Dapur Dekaka product is equipped with MUI halal certification, so you don't have to worry about the halal status of our products. We believe quality and religious beliefs are not a choice — they are the standard.",
+    "storyP3": "Every Dapur Dekaka product carries MUI halal certification, so you never have to question its halal status. We believe quality and religious commitment are not optional — they are the standard.",
     "valuesTitle": "Our Values",
     "qualityTitle": "Premium Ingredients",
     "qualityDesc": "We only use high-quality ingredients, carefully selected by our experts to ensure perfect taste and texture.",
@@ -24,7 +24,7 @@
     "coldChainTitle": "Cold Chain Maintained",
     "coldChainDesc": "From our kitchen to your doorstep, our cold chain is strictly maintained to ensure the freshness and quality of our products.",
     "productionTitle": "Produced in Bandung",
-    "productionDesc": "All Dapur Dekaka products are produced at our facility at Jl. Sinom V No. 7, Turangga, Bandung. Bandung was chosen not without reason — the city is known as the best Chinese-Indonesian culinary center in Indonesia, and we are proud to be part of that culinary tradition.",
+    "productionDesc": "All Dapur Dekaka products are produced at our facility at Jl. Sinom V No. 7, Turangga, Bandung. Bandung was chosen for a reason — the city is one of Indonesia's finest Chinese-Indonesian culinary centers, and we are proud to be part of that tradition.",
     "halalCert": "Halal Certification",
     "halalCertOrg": "Indonesian Ulema Council (MUI)",
     "ctaTitle": "Ready to taste our premium frozen food?",
@@ -142,7 +142,7 @@
     "followUs": "Follow Us",
     "paymentMethods": "Payment Methods",
     "copyright": "© 2026 Dapur Dekaka. All rights reserved.",
-    "priceIncludesVat": "Prices include VAT 11%",
+    "priceIncludesVat": "Prices include 11% VAT",
     "halal": "Halal",
     "frozenFresh": "Frozen Fresh",
     "nationwideDelivery": "Nationwide Delivery"
@@ -291,7 +291,7 @@
     "cta": "Start Shopping"
   },
   "homePageCTA": {
-    "heroTitle": "Ready to Taste Dapur Dekaka's Deliciousness?",
+    "heroTitle": "Ready to Taste Dapur Dekaka's Finest?",
     "heroSubtitle": "Order now and enjoy premium dimsum, siomay, and bakso right at your home",
     "exploreProducts": "Explore Products",
     "continueShoppingTitle": "Continue Shopping?",
@@ -356,7 +356,7 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "loginPromptTitle": "Log in to earn points from this purchase",
-    "loginPromptDesc": "Every purchase can earn loyalty points that can be redeemed",
+    "loginPromptDesc": "Every purchase earns loyalty points that can be redeemed",
     "login": "Log In",
     "register": "Sign Up",
     "stockIssueTitle": "{count} item(s) not available in requested quantity",
@@ -412,6 +412,7 @@
     "pickupLocation": "Self Pickup",
     "pickupInstructions": "After successful payment, you will receive pickup instructions. Show the order number to store staff.",
     "pickupLocationTitle": "Pickup Location",
+    "pickupInstructionsText": "After successful payment, you will receive pickup instructions. Show the order number to store staff.",
     "storeName": "Dapur Dekaka",
     "storeAddressLine": "Jl. Sinom V No. 7, Turangga",
     "storeCity": "Bandung, West Java",
@@ -619,7 +620,7 @@
     "noOrderHistoryDesc": "Your first order will appear here",
     "pointsWillExpire": "points will expire",
     "loginToEarnPoints": "Log in to earn points from this purchase",
-    "pointsEarnDescription": "Every purchase can earn loyalty points that can be redeemed",
+    "pointsEarnDescription": "Every purchase earns loyalty points that can be redeemed",
     "login": "Log In",
     "register": "Sign Up",
     "itemsCount": "{count} items",
@@ -652,6 +653,7 @@
     "availableVouchers": "Available Vouchers",
     "usedVouchers": "Used Vouchers",
     "expiredVouchers": "Expired Vouchers",
+    "addressLabel": "Address label",
     "loadAddressError": "Failed to load addresses",
     "loadShippingError": "Failed to load shipping info",
     "deleteAddressConfirm": "Are you sure you want to delete this address?",
@@ -779,6 +781,8 @@
     "total": "Total"
   },
   "blog": {
+    "title": "Blog",
+    "description": "Read articles, tips, and stories from Dapur Dekaka about frozen food, cooking, and halal lifestyle.",
     "all": "All",
     "articles": "Articles",
     "recipes": "Recipes",
@@ -787,6 +791,11 @@
     "showing": "Showing:",
     "search": "Search:",
     "category": "Category:",
+    "reset": "Reset",
+    "prev": "Prev",
+    "page": "Page",
+    "of": "of",
+    "next": "Next",
     "noArticles": "No articles found",
     "tryDifferentKeywords": "Try using different keywords or remove filters.",
     "viewAllArticles": "View All Articles",
@@ -859,13 +868,11 @@
   },
   "metadata": {
     "homeTitle": "Dapur Dekaka | Premium Frozen Food from Bandung",
-    "homeDescription": "Heritage Chinese-Indonesian flavors, now at your home. Premium frozen dimsum, siomay, bakso from Bandung. Order online, ship across Indonesia.",
+    "homeDescription": "Heritage Chinese-Indonesian flavors, now at your home. Premium frozen dimsum, siomay, bakso from Bandung. Order online, shipped across Indonesia.",
     "blogTitle": "Blog - Dapur Dekaka",
     "blogDescription": "Articles and tips about frozen food, recipes, and interesting information from Dapur Dekaka. Find cooking inspiration with premium frozen food products.",
     "productsTitle": "Product Catalog - Dapur Dekaka",
     "productsDescription": "Explore our complete collection of premium frozen food: dimsum, siomay, bakso, lumpia, and pangsit. All products are 100% halal and shipped fresh across Indonesia.",
-    "aboutTitle": "About Us | Dapur Dekaka",
-    "aboutDescription": "Dapur Dekaka is a premium Chinese-Indonesian frozen food producer from Bandung. Halal-certified dimsum, siomay, and bakso.",
     "productsFound": "{count} products found",
     "productsNotFound": "No products found",
     "productsNotFoundDesc": "Try another category or remove filters",
@@ -882,7 +889,7 @@
   "promise": {
     "title": "Our Customer Promise",
     "subtitle": "What Dapur Dekaka promises — and what it doesn't. We believe over-promising hurts customers more than under-promising.",
-    "disclaimer": "This charter is the single source of truth for all customer-facing shipping, SLA, and trust copy.",
+    "disclaimer": "This Customer Promise Charter outlines our commitments, shipping SLAs, and how we handle concerns.",
     "charter": "Dapur Dekaka Customer Promise Charter",
     "headings": {
       "wePromise": "Our Promise",
@@ -912,7 +919,7 @@
       "4": "Shipping rates that match public courier lists — our rate covers frozen handling on top.",
       "5": "Shipping to destinations outside our coverage area (hard block, not \"try anyway\").",
       "6": "Same-day delivery on public holidays or outside operating hours.",
-      "7": "Cash on delivery (COD).",
+      "7": "Cash on delivery (COD) outside eligible local delivery areas.",
       "8": "Compensation for courier-only delays (we escalate; refund decisions are case-by-case).",
       "9": "Address changes after the courier has been booked.",
       "10": "Permanent stock availability — real-time stock can sell out.",
@@ -922,7 +929,7 @@
     "disputePlaybook": {
       "spoilage": {
         "title": "My dimsum arrived melted or spoiled",
-        "stance": "Refund-first. Ask for photos — don't argue about temperature. Replace or refund in full within 24 hours plus a personal WhatsApp from the owner. Log into the refund ledger. This is not a cost — it's brand insurance."
+        "stance": "Refund-first. Ask for photos — don't argue about temperature. Replace or refund in full within 24 hours plus a personal WhatsApp from the owner. Every claim is documented and handled promptly."
       },
       "ongkir": {
         "title": "Why is shipping more expensive than Shopee?",
@@ -934,11 +941,11 @@
       },
       "wrongItem": {
         "title": "Wrong item / shortage",
-        "stance": "Photos → send replacement or refund the difference, same day. No interrogation under Rp 50k value."
+        "stance": "Photos — send replacement or refund the difference, same day. No hassle, no deduction."
       },
       "negotiate": {
         "title": "Can you negotiate / match offline price?",
-        "stance": "Offline pricing is in-store only. The website is the cheapest channel for delivered orders. Loyalty points exist for repeat customers. Hold the price ladder — it protects all channels."
+        "stance": "Offline pricing is in-store only. The website is the cheapest channel for delivered orders. Loyalty points exist for repeat customers."
       }
     },
     "sla": {

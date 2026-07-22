@@ -108,7 +108,7 @@ export default function B2BOrderDetailClient({ orderNumber }: { orderNumber: str
 
   const currentStepIndex = order.status === 'cancelled'
     ? -1
-    : ['pending_payment', 'paid', 'processing', 'packed', 'shipped', 'delivered'].indexOf(order.status);
+    : ['pending_payment', 'paid', 'processing', 'packed', 'shipped', 'delivered'].indexOf(order.status) + 1;
 
   return (
     <div className="bg-brand-cream min-h-screen pb-20">

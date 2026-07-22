@@ -366,7 +366,7 @@ export function CarouselForm({ initialData, onSubmit, isSubmitting }: CarouselFo
             </div>
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <p className="text-text-muted text-sm">Upload gambar untuk melihat preview</p>
+              <p className="text-text-secondary text-sm">Upload gambar untuk melihat preview</p>
             </div>
           )}
         </div>

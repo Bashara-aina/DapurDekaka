@@ -5,7 +5,7 @@
 :root {
   /* Brand */
   --brand-red: #C8102E;
-  --brand-red-dark: #8B0000;
+  --brand-red-dark: #A00D24;
   --brand-red-light: #E8394F;
   --brand-red-muted: #F5C6CC;
   --brand-cream: #F0EAD6;
@@ -26,11 +26,11 @@
   /* Semantic */
   --success: #16A34A;
   --success-light: #DCFCE7;
-  --warning: #D97706;
+  --warning: #F59E0B;
   --warning-light: #FEF3C7;
   --error: #DC2626;
   --error-light: #FEE2E2;
-  --info: #2563EB;
+  --info: #3B82F6;
   --info-light: #DBEAFE;
 
   /* Order Status */
@@ -73,7 +73,7 @@
 
 @layer base {
   html {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: var(--font-body, 'Inter', system-ui, sans-serif);
     background-color: var(--surface-cream);
     color: var(--text-primary);
     scroll-padding-top: 80px;
@@ -81,7 +81,7 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: var(--font-display, 'Playfair Display', Georgia, serif);
   }
 
   /* Focus ring — always visible for keyboard navigation */
@@ -104,11 +104,11 @@
 
 @layer utilities {
   .font-display {
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: var(--font-display, 'Playfair Display', Georgia, serif);
   }
 
   .font-body {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: var(--font-body, 'Inter', system-ui, sans-serif);
   }
 }
 

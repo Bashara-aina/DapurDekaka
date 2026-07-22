@@ -13,10 +13,10 @@ const config: Config = {
         'display-xs':  ['1.5rem',  { lineHeight: '1.3' }],
       },
       colors: {
-        whatsapp: {
-          green: '#25D366',
-          'green-dark': '#20B954',
-        },
+         whatsapp: {
+           green: '#25D366',
+           'green-dark': '#1DA851',
+         },
         brand: {
           red: '#C8102E',
           'red-dark': '#A00D24',
@@ -61,8 +61,8 @@ const config: Config = {
         'info-light': '#DBEAFE',
       },
       fontFamily: {
-        display: ['Playfair Display', 'Georgia', 'serif'],
-        body: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)', 'Georgia', 'serif'],
+        body: ['var(--font-body)', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
         'card': '0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',

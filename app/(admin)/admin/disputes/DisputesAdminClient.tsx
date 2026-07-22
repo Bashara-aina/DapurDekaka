@@ -130,7 +130,7 @@ export function DisputesAdminClient({ initial }: { initial: DisputeRow[] }) {
       {openForm && (
         <Card className="border-amber-200">
           <CardContent className="p-4 space-y-3">
-            <p className="text-xs text-text-muted italic">{t('formHint')}</p>
+            <p className="text-xs text-text-secondary italic">{t('formHint')}</p>
             <form onSubmit={submitNew} className="space-y-3">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
@@ -155,7 +155,7 @@ export function DisputesAdminClient({ initial }: { initial: DisputeRow[] }) {
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-text-muted mt-1">{tAdmin('category_hint')}</p>
+                  <p className="text-xs text-text-secondary mt-1">{tAdmin('category_hint')}</p>
                 </div>
               </div>
               <div>
@@ -177,7 +177,7 @@ export function DisputesAdminClient({ initial }: { initial: DisputeRow[] }) {
                   value={form.refundAmount}
                   onChange={(e) => setForm((f) => ({ ...f, refundAmount: Number(e.target.value) }))}
                 />
-                <p className="text-xs text-text-muted mt-1">Isi 0 jika tidak ada refund.</p>
+                <p className="text-xs text-text-secondary mt-1">Isi 0 jika tidak ada refund.</p>
               </div>
               <div className="flex gap-2 justify-end">
                 <Button type="button" variant="outline" onClick={() => setOpenForm(false)}>{tAdmin('cancel')}</Button>
@@ -190,7 +190,7 @@ export function DisputesAdminClient({ initial }: { initial: DisputeRow[] }) {
 
       {rows.length === 0 ? (
         <Card>
-          <CardContent className="py-10 text-center text-text-muted">
+          <CardContent className="py-10 text-center text-text-secondary">
             <p>{t('empty')}</p>
           </CardContent>
         </Card>
@@ -201,22 +201,22 @@ export function DisputesAdminClient({ initial }: { initial: DisputeRow[] }) {
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="font-mono text-xs text-text-muted">{row.orderNumber ?? row.orderId}</p>
+                    <p className="font-mono text-xs text-text-secondary">{row.orderNumber ?? row.orderId}</p>
                     <p className="text-sm font-semibold text-text-primary mt-0.5 capitalize">{row.category}</p>
                     {row.createdAt && (
-                      <p className="text-xs text-text-muted mt-1">{formatWIB(new Date(row.createdAt))}</p>
+                      <p className="text-xs text-text-secondary mt-1">{formatWIB(new Date(row.createdAt))}</p>
                     )}
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     <Badge
-                      variant={row.status === 'open' ? 'destructive' : row.status === 'resolved' ? 'default' : 'secondary'}
+                      variant={row.status === 'open' ? 'error' : row.status === 'resolved' ? 'default' : 'secondary'}
                       className="text-xs"
                     >
                       {t(row.status)}
                     </Badge>
                     {row.status === 'open' && row.createdAt && (
                       <Badge
-                        variant={disputeOpenHours(row.createdAt) >= 24 ? 'destructive' : 'outline'}
+                        variant={disputeOpenHours(row.createdAt) >= 24 ? 'error' : 'outline'}
                         className="text-xs"
                       >
                         {tAdmin('slaHours', { hours: disputeOpenHours(row.createdAt) })}
@@ -225,11 +225,11 @@ export function DisputesAdminClient({ initial }: { initial: DisputeRow[] }) {
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-text-muted uppercase">{t('customerMessage')}</p>
+                  <p className="text-xs font-semibold text-text-secondary uppercase">{t('customerMessage')}</p>
                   <p className="text-sm text-text-secondary whitespace-pre-wrap">{row.customerMessage}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-text-muted uppercase">{t('ownerNotes')}</p>
+                  <p className="text-xs font-semibold text-text-secondary uppercase">{t('ownerNotes')}</p>
                   <Textarea
                     rows={2}
                     value={editing[row.id] ?? row.ownerNotes ?? ''}

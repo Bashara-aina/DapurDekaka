@@ -312,13 +312,13 @@ export default function TestimonialsClient() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-semibold text-sm text-text-primary">{t.customerName}</p>
                       {t.customerLocation && (
-                        <span className="text-xs text-text-muted">{t.customerLocation}</span>
+                        <span className="text-xs text-text-secondary">{t.customerLocation}</span>
                       )}
                       <StarRating rating={t.rating} />
                     </div>
                     <p className="text-sm text-text-secondary mt-1 leading-relaxed">{t.contentId}</p>
                     {t.contentEn && (
-                      <p className="text-xs text-text-muted mt-1 italic">{t.contentEn}</p>
+                      <p className="text-xs text-text-secondary mt-1 italic">{t.contentEn}</p>
                     )}
                   </div>
                 </div>

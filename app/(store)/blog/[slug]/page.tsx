@@ -184,7 +184,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 Beranda
               </Link>
             </li>
-            <li className="text-text-muted">/</li>
+            <li className="text-text-secondary">/</li>
             <li>
               <Link href="/blog" className="hover:text-brand-red transition-colors">
                 Blog
@@ -192,7 +192,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             </li>
             {post.category && (
               <>
-                <li className="text-text-muted">/</li>
+                <li className="text-text-secondary">/</li>
                 <li>
                   <Link
                     href={`/blog?category=${post.category.slug}`}
@@ -203,7 +203,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 </li>
               </>
             )}
-            <li className="text-text-muted">/</li>
+            <li className="text-text-secondary">/</li>
             <li className="text-text-primary font-medium truncate max-w-[200px] md:max-w-xs" aria-current="page">
               {post.titleId}
             </li>
@@ -236,7 +236,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                   {post.excerptId}
                 </p>
               )}
-              <p className="text-sm text-text-muted">{readingMinutes} menit baca</p>
+              <p className="text-sm text-text-secondary">{readingMinutes} menit baca</p>
             </header>
 
             <div
@@ -268,7 +268,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-text-muted mb-1">Ditulis oleh</p>
+                    <p className="text-xs text-text-secondary mb-1">Ditulis oleh</p>
                     <p className="font-semibold text-text-primary">{post.author.name}</p>
                   </div>
                 </div>

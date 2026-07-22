@@ -112,7 +112,7 @@ export function QuoteForm() {
             Nama Perusahaan *
           </label>
           <div className="relative">
-            <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+            <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
             <Input
               id="companyName"
               name="companyName"
@@ -151,7 +151,7 @@ export function QuoteForm() {
             Nama Penanggung Jawab *
           </label>
           <div className="relative">
-            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
             <Input
               id="picName"
               name="picName"
@@ -189,7 +189,7 @@ export function QuoteForm() {
             Email *
           </label>
           <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
             <Input
               id="picEmail"
               name="picEmail"
@@ -208,7 +208,7 @@ export function QuoteForm() {
             WhatsApp *
           </label>
           <div className="relative">
-            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
             <Input
               id="picPhone"
               name="picPhone"
@@ -228,7 +228,7 @@ export function QuoteForm() {
           Pesan / Kebutuhan *
         </label>
         <div className="relative">
-          <MessageSquare className="absolute left-3 top-3 w-4 h-4 text-text-muted" />
+          <MessageSquare className="absolute left-3 top-3 w-4 h-4 text-text-secondary" />
           <textarea
             id="message"
             name="message"

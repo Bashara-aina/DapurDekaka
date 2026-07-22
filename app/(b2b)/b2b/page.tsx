@@ -181,7 +181,7 @@ export default async function B2BLandingPage() {
                   <ChefHat className="w-6 h-6 text-brand-red" />
                 </div>
                 <p className="font-medium text-sm">{cat.name}</p>
-                <p className="text-text-muted text-xs mt-1">{cat.count} Produk</p>
+                <p className="text-text-secondary text-xs mt-1">{cat.count} Produk</p>
               </Link>
             ))}
           </div>
@@ -223,7 +223,7 @@ export default async function B2BLandingPage() {
                   </tbody>
                 </table>
               </div>
-              <p className="text-xs text-text-muted mt-3">
+              <p className="text-xs text-text-secondary mt-3">
                 * Harga di atas hanya perkiraan. Harga B2B sebenarnya akan diberikan setelah konsultasi.
               </p>
             </div>

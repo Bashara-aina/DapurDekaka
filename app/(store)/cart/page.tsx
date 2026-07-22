@@ -60,7 +60,7 @@ export default function CartPage() {
         setStockValidations(response.data.items);
       }
     } catch {
-      toast.error(t('cartEmpty') || 'Gagal memuat keranjang');
+      toast.error(t('checkout.stockUpdated') || 'Gagal memvalidasi stok');
     } finally {
       setIsValidating(false);
       setHasValidated(true);

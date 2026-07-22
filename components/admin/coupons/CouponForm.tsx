@@ -163,7 +163,7 @@ export function CouponForm({ initialData, onSubmit, isSubmitting }: CouponFormPr
           <Label htmlFor="discountValue">
             Nilai Diskon
             {form.watch('type') === 'percentage' && (
-              <span className="text-text-muted font-normal"> (maks. 100%)</span>
+              <span className="text-text-secondary font-normal"> (maks. 100%)</span>
             )}
           </Label>
           <Input

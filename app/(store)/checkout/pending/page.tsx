@@ -222,13 +222,13 @@ function PendingContent() {
                 </p>
               )}
               {orderDetails.paymentExpiresAt && (
-                <p className="text-xs text-text-muted">
+                <p className="text-xs text-text-secondary">
                   {t('expiryTime', { time: formatWIB(new Date(orderDetails.paymentExpiresAt)) })}
                 </p>
               )}
             </div>
           )}
-          <p className="text-xs text-text-muted">
+          <p className="text-xs text-text-secondary">
             {t('saveOrderReference')}
           </p>
         </div>
@@ -265,7 +265,7 @@ function PendingContent() {
           </Link>
         </div>
 
-        <p className="text-xs text-text-muted mt-8">
+        <p className="text-xs text-text-secondary mt-8">
           {t('havingTrouble')}
         </p>
       </div>

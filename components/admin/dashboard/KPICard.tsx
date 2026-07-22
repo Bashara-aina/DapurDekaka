@@ -101,7 +101,7 @@ export function KPICard({
             {change.toFixed(1)}%
           </span>
           {changePeriod && (
-            <span className="text-text-muted font-normal">{changePeriod}</span>
+            <span className="text-text-secondary font-normal">{changePeriod}</span>
           )}
         </div>
       )}

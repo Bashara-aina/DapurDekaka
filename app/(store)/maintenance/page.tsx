@@ -26,7 +26,7 @@ export default async function MaintenancePage() {
         </div>
         <h1 className="font-display font-bold text-2xl text-text-primary mb-2">{t('title')}</h1>
         <p className="text-sm text-text-secondary mb-4">{t('message')}</p>
-        <p className="text-xs text-text-muted mb-6">{t('pickupOnly')}</p>
+        <p className="text-xs text-text-secondary mb-6">{t('pickupOnly')}</p>
         <a
           href={waHref}
           className="inline-block bg-brand-red text-white px-5 py-3 rounded-button text-sm font-semibold"

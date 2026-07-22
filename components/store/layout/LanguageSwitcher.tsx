@@ -32,7 +32,7 @@ function LanguageSwitcherInner({ className }: { className?: string }) {
       >
         ID
       </button>
-      <span className="text-text-muted">/</span>
+      <span className="text-text-secondary">/</span>
       <button
         onClick={() => handleSwitch('en')}
         className={cn(
@@ -51,7 +51,7 @@ function LanguageSwitcherInner({ className }: { className?: string }) {
 
 export function LanguageSwitcher({ className }: { className?: string }) {
   return (
-    <Suspense fallback={<div className={cn('flex items-center gap-1', className)}><span className="px-2 py-1 text-xs font-medium text-text-secondary">ID</span><span className="text-text-muted">/</span><span className="px-2 py-1 text-xs font-medium text-text-secondary">EN</span></div>}>
+    <Suspense fallback={<div className={cn('flex items-center gap-1', className)}><span className="px-2 py-1 text-xs font-medium text-text-secondary">ID</span><span className="text-text-secondary">/</span><span className="px-2 py-1 text-xs font-medium text-text-secondary">EN</span></div>}>
       <LanguageSwitcherInner className={className} />
     </Suspense>
   );

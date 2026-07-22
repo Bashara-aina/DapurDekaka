@@ -20,7 +20,7 @@ function Label({ className, error, hint, children, ...props }: LabelProps) {
       >
         {children}
       </label>
-      {hint && !error && <p className="text-xs text-text-muted">{hint}</p>}
+      {hint && !error && <p className="text-xs text-text-secondary">{hint}</p>}
     </div>
   );
 }

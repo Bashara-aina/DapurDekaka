@@ -359,7 +359,7 @@ export function OrderTrackingClient({
           <div className="bg-white rounded-card p-6 shadow-card">
             <div className="text-center">
               <div className="w-16 h-16 bg-brand-cream rounded-full flex items-center justify-center mx-auto mb-4">
-                <Lock className="w-8 h-8 text-text-muted" />
+                <Lock className="w-8 h-8 text-text-secondary" />
               </div>
               <h3 className="font-semibold mb-2">{t('detailAfterVerify')}</h3>
               <p className="text-sm text-text-secondary">

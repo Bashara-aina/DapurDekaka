@@ -86,7 +86,7 @@ export function OpsChecklist({ data }: { data: OpsData }) {
     <div className="space-y-4">
       <Card>
         <CardContent className="p-4">
-          <div className="text-xs text-text-muted space-y-1">
+          <div className="text-xs text-text-secondary space-y-1">
             <p>
               Pesanan minggu ini: <strong>{data.ordersThisWeek}</strong>
               {' \u00B7 '}

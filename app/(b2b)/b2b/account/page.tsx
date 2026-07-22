@@ -176,7 +176,7 @@ export default function B2BAccountPage() {
                       Net-30 Aktif
                     </span>
                   ) : (
-                    <span className="text-text-muted">Bayar di Tempat</span>
+                    <span className="text-text-secondary">Bayar di Tempat</span>
                   )}
                 </p>
               </div>
@@ -187,7 +187,7 @@ export default function B2BAccountPage() {
                 <p className="font-bold text-brand-red">
                   {pointsBalance.toLocaleString('id-ID')} <span className="text-xs font-normal text-text-secondary">poin</span>
                 </p>
-                <p className="text-[10px] text-text-muted">2x earning rate aktif</p>
+                <p className="text-[10px] text-text-secondary">2x earning rate aktif</p>
               </div>
             </div>
           </div>
@@ -211,7 +211,7 @@ export default function B2BAccountPage() {
                 <h3 className="font-medium">{item.label}</h3>
                 <p className="text-text-secondary text-sm">{item.description}</p>
               </div>
-              <ChevronRight className="w-5 h-5 text-text-muted" />
+              <ChevronRight className="w-5 h-5 text-text-secondary" />
             </Link>
           );
         })}

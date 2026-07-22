@@ -170,10 +170,10 @@ export default async function OpsPage() {
     <div className="p-6 space-y-4 max-w-3xl mx-auto">
       <header>
         <h1 className="text-2xl font-bold text-text-primary">{t('title')}</h1>
-        <p className="text-sm text-text-muted mt-1">{t('subtitle')}</p>
+        <p className="text-sm text-text-secondary mt-1">{t('subtitle')}</p>
       </header>
       <OpsChecklist data={data} />
-      <p className="text-xs text-text-muted italic">{t('weeklyHint')}</p>
+      <p className="text-xs text-text-secondary italic">{t('weeklyHint')}</p>
     </div>
   );
 }

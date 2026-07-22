@@ -2,12 +2,12 @@
 
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 
 function ResetPasswordForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const token = searchParams.get('token');
+  const params = useParams();
+  const token = params.token as string;
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -29,7 +29,7 @@ function ResetPasswordForm() {
             </div>
             <h1 className="font-display text-2xl font-bold text-text-primary mb-2">Link Tidak Valid</h1>
             <p className="text-text-secondary mb-6">Token reset password sudah tidak berlaku atau tidak ditemukan.</p>
-            <Link href="/auth/forgot-password" className="text-brand-red font-medium hover:underline">
+            <Link href="/forgot-password" className="text-brand-red font-medium hover:underline">
               Minta link reset baru
             </Link>
           </div>

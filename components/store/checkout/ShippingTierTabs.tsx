@@ -92,7 +92,7 @@ export function ShippingTierTabs({
             ? t('cutoffToday', { hour: cutoff.cutoffHourWIB })
             : t('cutoffTomorrow', { hour: cutoff.cutoffHourWIB })}
         </p>
-        <p className="text-xs text-text-muted italic">
+        <p className="text-xs text-text-secondary italic">
           {tTierTruth(
             activeTier === 'frozen_same_day'
               ? 'frozenSameDay'
@@ -103,7 +103,7 @@ export function ShippingTierTabs({
         </p>
       </div>
 
-      <p className="text-xs text-text-muted">{t(`${activeTier}Description`)}</p>
+      <p className="text-xs text-text-secondary">{t(`${activeTier}Description`)}</p>
 
       {tierData.options.length === 0 ? (
         <p className="text-sm text-text-secondary py-4 text-center">{t('noOptions')}</p>
@@ -126,7 +126,7 @@ export function ShippingTierTabs({
                 <div className="flex justify-between items-start gap-2">
                   <div>
                     <p className="font-medium text-text-primary">{option.displayName}</p>
-                    <p className="text-xs text-text-muted mt-0.5">{option.estimatedDuration}</p>
+                    <p className="text-xs text-text-secondary mt-0.5">{option.estimatedDuration}</p>
                     {option.disabled && option.disabledReason && (
                       <p className="text-xs text-amber-600 mt-1">
                         {t(`disabled.${option.disabledReason}`)}

@@ -55,7 +55,7 @@ export function HeroCarousel({ slides, autoRotateSpeed = 5000 }: HeroCarouselPro
       <section className="relative h-[50vh] md:h-[70vh] bg-brand-red overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent z-10" />
         <div className="relative z-20 h-full flex flex-col items-center justify-center text-center px-6">
-          <h1 className="font-display text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-2 sm:mb-3 whitespace-pre-line leading-tight">
+          <h1 className="font-display text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-2 sm:mb-3 whitespace-pre-line leading-tight">
             {t('title')}
           </h1>
           <p className="text-white/90 text-base md:text-lg mb-6 max-w-xl">
@@ -93,7 +93,7 @@ export function HeroCarousel({ slides, autoRotateSpeed = 5000 }: HeroCarouselPro
         sizes="100vw"
       />
       <div className="relative z-20 h-full flex flex-col items-center justify-center text-center px-4 sm:px-6">
-        <h1 className="font-display text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-2 sm:mb-3 whitespace-pre-line leading-tight">
+        <h1 className="font-display text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold text-white mb-2 sm:mb-3 whitespace-pre-line leading-tight">
           {locale === 'id' ? activeSlide.titleId : (activeSlide.titleEn || activeSlide.titleId)}
         </h1>
         {(locale === 'id' ? activeSlide.subtitleId : (activeSlide.subtitleEn || activeSlide.subtitleId)) && (

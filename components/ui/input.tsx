@@ -23,7 +23,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           type={type}
           data-slot="input"
           className={cn(
-            'h-10 w-full min-w-0 rounded-lg border border-brand-cream-dark bg-transparent px-3 py-1.5 text-base transition-colors outline-none placeholder:text-text-muted focus-visible:border-brand-red focus-visible:ring-2 focus-visible:ring-brand-red/10 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm',
+            'h-10 w-full min-w-0 rounded-button border border-brand-cream-dark bg-transparent px-3 py-1.5 text-base transition-colors outline-none placeholder:text-text-disabled focus-visible:border-brand-red focus-visible:ring-2 focus-visible:ring-brand-red/10 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-error md:text-sm',
             error && 'border-error focus-visible:border-error focus-visible:ring-error/10',
             className
           )}
