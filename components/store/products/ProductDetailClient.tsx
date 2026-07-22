@@ -266,6 +266,41 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
             <p className="text-xs text-text-secondary leading-relaxed">{t('frozenHandling')}</p>
           </div>
 
+          {/* Desktop add-to-cart (hidden on mobile — mobile uses sticky bottom bar) */}
+          <div className="hidden md:flex items-center gap-4 mt-6 pt-4 border-t border-brand-cream-dark">
+            <div className="flex items-center border border-brand-cream-dark rounded-button">
+              <button
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                className="w-11 h-11 flex items-center justify-center text-brand-red"
+                disabled={quantity <= 1}
+                aria-label={t('decreaseQty')}
+              >
+                <Minus className="w-4 h-4" />
+              </button>
+              <span className="w-12 text-center font-bold">{quantity}</span>
+              <button
+                onClick={() => setQuantity(Math.min(selectedVariant?.stock ?? 99, Math.min(99, quantity + 1)))}
+                className="w-11 h-11 flex items-center justify-center text-brand-red"
+                disabled={quantity >= Math.min(99, selectedVariant?.stock ?? 99)}
+                aria-label={t('increaseQty')}
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+            <button
+              onClick={handleAddToCart}
+              disabled={isOutOfStock}
+              className={`flex-1 h-12 flex items-center justify-center gap-2 font-bold rounded-button transition-colors ${
+                isOutOfStock
+                  ? 'bg-text-disabled text-white cursor-not-allowed'
+                  : 'bg-brand-red text-white hover:bg-brand-red-dark'
+              }`}
+            >
+              <ShoppingCart className="w-5 h-5" />
+              {isOutOfStock ? t('variant.outOfStock') : t('addToCart')}
+            </button>
+          </div>
+
           {isOutOfStock && (
             <div className="mt-4">
               <a
