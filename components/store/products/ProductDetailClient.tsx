@@ -302,7 +302,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
               const firstImage = related.images[0];
               const firstVariant = related.variants.find(v => v.isActive) ?? related.variants[0];
               return (
-                <a
+                <Link
                   key={related.id}
                   href={`/products/${related.slug}`}
                   className="bg-white rounded-card overflow-hidden shadow-sm hover:shadow-md transition-shadow"
@@ -339,7 +339,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
                       </p>
                     )}
                   </div>
-                </a>
+                </Link>
               );
             })}
           </div>

@@ -78,7 +78,7 @@ export default async function AboutPage() {
       />
 
       {/* Hero */}
-      <section className="relative bg-slate-800 text-white py-20 md:py-28">
+      <section className="relative bg-brand-navy text-white py-20 md:py-28">
         <div className="container">
           <div className="max-w-2xl">
             <p className="text-brand-gold font-medium text-sm tracking-wider uppercase mb-3">

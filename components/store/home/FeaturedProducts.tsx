@@ -90,9 +90,9 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
           })}
         </div>
         {products.length === 0 && (
-          <div className="text-center py-8 text-text-secondary">
-            <p>{t('empty')}</p>
-            <Link href="/products" className="text-brand-red font-medium text-sm mt-2 inline-block hover:underline">
+          <div className="bg-white rounded-card p-10 text-center">
+            <p className="text-text-secondary">{t('empty')}</p>
+            <Link href="/products" className="mt-3 inline-block text-brand-red font-medium text-sm hover:underline">
               {t('viewAllProducts')}
             </Link>
           </div>

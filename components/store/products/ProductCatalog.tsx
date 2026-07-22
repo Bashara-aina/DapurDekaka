@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { ProductCard } from '@/components/store/products/ProductCard';
 import { ProductSearch } from '@/components/store/products/ProductSearch';
+import { EmptyState } from '@/components/store/common/EmptyState';
 import {
   Select,
   SelectContent,
@@ -57,7 +58,7 @@ const SORT_OPTIONS: { value: SortOption; labelKey: string }[] = [
   { value: 'newest', labelKey: 'sortNewest' },
 ];
 
-export function ProductCatalog({ products, categories, initialCategory = '', initialSearch = '', nextCursor }: ProductCatalogProps) {
+function ProductCatalogInner({ products, categories, initialCategory = '', initialSearch = '', nextCursor }: ProductCatalogProps) {
   const t = useTranslations();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -226,25 +227,12 @@ export function ProductCatalog({ products, categories, initialCategory = '', ini
             })}
           </div>
         ) : (
-          <div className="text-center py-16 col-span-full">
-            <div className="w-16 h-16 bg-brand-cream rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-text-disabled" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <h3 className="font-display text-lg font-semibold text-text-primary mb-2">
-              {t('productsNotFound')}
-            </h3>
-            <p className="text-text-secondary text-sm mb-4">
-              {t('productsNotFoundDesc')}
-            </p>
-            <button
-              onClick={() => handleCategoryChange(null)}
-              className="px-4 py-2 bg-brand-red text-white text-sm font-bold rounded-button hover:bg-brand-red-dark transition-colors"
-            >
-              {t('showAllProducts')}
-            </button>
-          </div>
+          <EmptyState
+            variant="search"
+            title={t('productsNotFound')}
+            description={t('productsNotFoundDesc')}
+            action={{ label: t('showAllProducts'), onClick: () => handleCategoryChange(null) }}
+          />
         )}
 
         {nextCursor && (
@@ -263,5 +251,13 @@ export function ProductCatalog({ products, categories, initialCategory = '', ini
         )}
       </div>
     </div>
+  );
+}
+
+export function ProductCatalog(props: ProductCatalogProps) {
+  return (
+    <Suspense fallback={<div className="bg-brand-cream min-h-screen pb-20" />}>
+      <ProductCatalogInner {...props} />
+    </Suspense>
   );
 }
