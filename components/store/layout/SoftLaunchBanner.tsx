@@ -47,7 +47,7 @@ export function SoftLaunchBanner({ className }: SoftLaunchBannerProps) {
       role="region"
       aria-label={t('bannerTitle')}
       className={
-        'fixed top-0 inset-x-0 z-[60] h-12 bg-brand-red text-white shadow-sm ' +
+        'relative h-12 bg-brand-red text-white shadow-sm ' +
         (className ?? '')
       }
     >
