@@ -19,7 +19,7 @@ export const runtime = 'nodejs';
  * Payment reconciliation cron job.
  * Finds pending orders older than 30 minutes and checks Midtrans status.
  * Handles the case where Midtrans says paid but our DB still shows pending_payment.
- * Runs every 10 minutes via Vercel Cron.
+ * Runs every 30 minutes via Vercel Cron (aligned with other crons to let Neon scale-to-zero).
  *
  * P0#3: settlement recovery uses the SAME `settleOrderTx()` as the webhook so
  * stock IS deducted and points are recomputed net-of-discount (never the stale

@@ -11,7 +11,7 @@ export const runtime = 'nodejs';
 
 /**
  * Cancel orders that have exceeded payment expiry time.
- * Runs every 5 minutes via Vercel Cron.
+ * Runs every 30 minutes via Vercel Cron (aligned with other crons to let Neon scale-to-zero).
  * Checks Midtrans as fallback to avoid cancelling orders that paid concurrently.
  */
 export async function GET(req: NextRequest) {

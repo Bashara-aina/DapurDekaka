@@ -4,7 +4,7 @@
   "crons": [
     {
       "path": "/api/cron/cancel-expired-orders",
-      "schedule": "*/15 * * * *"
+      "schedule": "*/30 * * * *"
     },
     {
       "path": "/api/cron/expire-points",
@@ -20,7 +20,7 @@
     },
     {
       "path": "/api/cron/reconcile-payments",
-      "schedule": "*/10 * * * *"
+      "schedule": "*/30 * * * *"
     },
     {
       "path": "/api/cron/retry-dispatch",
