@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import { MessageCircle } from 'lucide-react';
+import { ArrowLeft, CalendarDays, ChevronRight, Clock, MessageCircle } from 'lucide-react';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { sanitizeRichText } from '@/lib/utils/sanitize-html';
 import { db } from '@/lib/db';
 import { blogPosts } from '@/lib/db/schema';
@@ -15,6 +16,8 @@ import { BackToTop } from '@/components/store/blog/BackToTop';
 import { TableOfContents } from '@/components/store/blog/TableOfContents';
 import { BlogCTA } from '@/components/store/blog/BlogCTA';
 import { CopyLinkButton } from '@/components/store/blog/CopyLinkButton';
+import { formatBlogDate } from '@/lib/utils/format-date';
+import { getBlogCoverImage } from '@/lib/utils/blog-fallback-image';
 
 export const revalidate = 600;
 
@@ -102,6 +105,9 @@ function estimateReadingTime(html: string): number {
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const { slug } = await params;
+  const locale = await getLocale();
+  const isEn = locale === 'en';
+  const t = await getTranslations('blog');
 
   const post = await db.query.blogPosts.findFirst({
     where: eq(blogPosts.slug, slug),
@@ -110,7 +116,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       author: true,
     },
   }) as (Omit<typeof blogPosts.$inferSelect, 'deletedAt' | 'updatedAt' | 'createdAt' | 'contentEn' | 'excerptEn' | 'metaTitleEn' | 'metaDescriptionEn' | 'coverImagePublicId'> & {
-    category: { id: string; nameId: string; slug: string } | null;
+    contentEn: string;
+    excerptEn: string | null;
+    category: { id: string; nameId: string; nameEn: string; slug: string } | null;
     author: { id: string; name: string; image: string | null } | null;
   } | null);
 
@@ -118,14 +126,23 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     notFound();
   }
 
-  const readingMinutes = estimateReadingTime(post.contentId || '');
+  const title = isEn && post.titleEn ? post.titleEn : post.titleId;
+  const excerpt = isEn && post.excerptEn ? post.excerptEn : post.excerptId;
+  const content = isEn && post.contentEn ? post.contentEn : post.contentId;
+  const categoryName = post.category
+    ? isEn && post.category.nameEn
+      ? post.category.nameEn
+      : post.category.nameId
+    : null;
+  const readingMinutes = estimateReadingTime(content || '');
+  const coverImage = getBlogCoverImage(post.coverImageUrl, post.slug);
 
   // Record view asynchronously (non-blocking; failures log inside the service)
   void recordBlogView({ blogPostId: post.id });
 
   // Centralized rich-text policy (lib/utils/sanitize-html.ts) — same policy
   // applied at write-time in app/api/admin/blog/*, so defence in depth.
-  const sanitizedContent = sanitizeRichText(post.contentId);
+  const sanitizedContent = sanitizeRichText(content);
 
   const pageUrl = `https://dapurdekaka.com/blog/${slug}`;
 
@@ -148,7 +165,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       {
         '@type': 'ListItem',
         position: 3,
-        name: post.titleId,
+        name: title,
         item: pageUrl,
       },
     ],
@@ -173,147 +190,201 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     <>
       <ReadingProgress />
       <BackToTop />
-      <div className="container py-8 md:py-12 pb-20 md:pb-12">
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
-        />
+      <div className="bg-brand-cream min-h-screen">
+        <div className="container mx-auto px-4 md:px-6 py-8 md:py-12">
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+          />
 
-        {/* Breadcrumb Navigation */}
-        <nav aria-label="Breadcrumb" className="mb-6 text-sm">
-          <ol className="flex items-center gap-1.5 text-text-secondary">
-            <li>
-              <Link href="/" className="hover:text-brand-red transition-colors">
-                Beranda
-              </Link>
-            </li>
-            <li className="text-text-secondary">/</li>
-            <li>
-              <Link href="/blog" className="hover:text-brand-red transition-colors">
-                Blog
-              </Link>
-            </li>
-            {post.category && (
-              <>
-                <li className="text-text-secondary">/</li>
-                <li>
-                  <Link
-                    href={`/blog?category=${post.category.slug}`}
-                    className="hover:text-brand-red transition-colors"
-                  >
-                    {post.category.nameId}
-                  </Link>
-                </li>
-              </>
-            )}
-            <li className="text-text-secondary">/</li>
-            <li className="text-text-primary font-medium truncate max-w-[200px] md:max-w-xs" aria-current="page">
-              {post.titleId}
-            </li>
-          </ol>
-        </nav>
+          <Link
+            href="/blog"
+            className="mb-6 inline-flex h-10 items-center gap-2 rounded-button border border-brand-cream-dark bg-white px-4 text-sm font-medium text-text-primary transition-colors hover:border-brand-red hover:text-brand-red"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            {t('backToBlog')}
+          </Link>
 
-        <div className="xl:grid xl:grid-cols-[1fr_256px] xl:gap-8 items-start">
-          <article className="min-w-0">
-            <div className="relative w-full h-64 md:h-96 mb-8 rounded-xl overflow-hidden bg-brand-cream">
-              {post.coverImageUrl ? (
+          {/* Breadcrumb Navigation */}
+          <nav aria-label="Breadcrumb" className="mb-6 text-sm">
+            <ol className="flex flex-wrap items-center gap-1.5 text-text-secondary">
+              <li>
+                <Link href="/" className="hover:text-brand-red transition-colors">
+                  Beranda
+                </Link>
+              </li>
+              <li aria-hidden="true"><ChevronRight className="h-3.5 w-3.5" /></li>
+              <li>
+                <Link href="/blog" className="hover:text-brand-red transition-colors">
+                  Blog
+                </Link>
+              </li>
+              {post.category && categoryName && (
+                <>
+                  <li aria-hidden="true"><ChevronRight className="h-3.5 w-3.5" /></li>
+                  <li>
+                    <Link
+                      href={`/blog?category=${post.category.slug}`}
+                      className="hover:text-brand-red transition-colors"
+                    >
+                      {categoryName}
+                    </Link>
+                  </li>
+                </>
+              )}
+              <li aria-hidden="true"><ChevronRight className="h-3.5 w-3.5" /></li>
+              <li className="text-text-primary font-medium truncate max-w-[200px] md:max-w-md" aria-current="page">
+                {title}
+              </li>
+            </ol>
+          </nav>
+
+          <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_260px] xl:gap-10 items-start">
+            <article className="min-w-0 rounded-2xl border border-brand-cream-dark bg-white p-5 shadow-card md:p-8">
+              <header className="mb-6">
+                {categoryName && (
+                  <span className="inline-flex items-center px-3 py-1 bg-brand-red/10 text-brand-red text-sm font-semibold rounded-full mb-4">
+                    {categoryName}
+                  </span>
+                )}
+                <h1 className="font-display text-3xl md:text-4xl font-bold leading-tight text-text-primary mb-3">
+                  {title}
+                </h1>
+                {excerpt && (
+                  <p className="text-lg leading-relaxed text-text-secondary">
+                    {excerpt}
+                  </p>
+                )}
+                <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-text-secondary">
+                  <span className="inline-flex items-center gap-1.5">
+                    <CalendarDays className="h-4 w-4" aria-hidden="true" />
+                    <time dateTime={post.publishedAt?.toISOString()}>
+                      {post.publishedAt ? formatBlogDate(post.publishedAt, locale) : 'Draft'}
+                    </time>
+                  </span>
+                  <span aria-hidden="true" className="text-brand-cream-dark">•</span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Clock className="h-4 w-4" aria-hidden="true" />
+                    {t('readTime', { minutes: readingMinutes })}
+                  </span>
+                  {post.author && (
+                    <>
+                      <span aria-hidden="true" className="text-brand-cream-dark">•</span>
+                      <span className="inline-flex items-center gap-2">
+                        {post.author.image ? (
+                          <span className="relative block h-6 w-6 overflow-hidden rounded-full">
+                            <Image
+                              src={post.author.image}
+                              alt={post.author.name}
+                              fill
+                              className="object-cover"
+                            />
+                          </span>
+                        ) : (
+                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-red text-[11px] font-bold text-white" aria-hidden="true">
+                            {post.author.name.charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                        {post.author.name}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </header>
+
+              <div className="relative mb-8 aspect-[16/9] w-full overflow-hidden rounded-xl bg-brand-cream">
                 <Image
-                  src={post.coverImageUrl}
-                  alt={post.titleId}
+                  src={coverImage}
+                  alt={title}
                   fill
                   className="object-cover"
                   sizes="(max-width: 768px) 100vw, 800px"
+                  priority
                 />
-              ) : null}
-            </div>
+              </div>
 
-            <header className="mb-8">
-              {post.category && (
-                <span className="inline-block px-3 py-1 bg-brand-red/10 text-brand-red text-sm font-medium rounded-full mb-4">
-                  {post.category.nameId}
-                </span>
-              )}
-              <h1 className="font-display text-3xl md:text-4xl font-bold mb-4">
-                {post.titleId}
-              </h1>
-              {post.excerptId && (
-                <p className="text-lg text-text-secondary">
-                  {post.excerptId}
-                </p>
-              )}
-              <p className="text-sm text-text-secondary">{readingMinutes} menit baca</p>
-            </header>
+              <div
+                className="prose prose-lg max-w-none prose-headings:font-display prose-headings:font-bold prose-headings:text-text-primary prose-p:leading-relaxed prose-p:text-text-primary/80 prose-a:font-medium prose-a:text-brand-red hover:prose-a:text-brand-red-dark prose-strong:text-text-primary prose-li:text-text-primary/80 prose-img:rounded-xl prose-blockquote:border-l-4 prose-blockquote:border-brand-red prose-blockquote:bg-brand-cream/60 prose-blockquote:px-4 prose-blockquote:py-1 prose-blockquote:not-italic"
+                dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+              />
 
-            <div
-              className="prose prose-lg max-w-none prose-headings:font-display prose-headings:font-bold prose-a:text-brand-red prose-img:rounded-xl"
-              dangerouslySetInnerHTML={{ __html: sanitizedContent }}
-            />
+              {/* CTA after content */}
+              <BlogCTA />
 
-            {/* CTA after content */}
-            <BlogCTA />
-
-            {/* Author Bio */}
-            {post.author && (
-              <div className="mt-8 pt-6 border-t border-brand-cream-dark">
-                <div className="flex items-start gap-4 p-4 bg-brand-cream rounded-xl">
-                  {post.author.image ? (
-                    <div className="relative w-14 h-14 rounded-full overflow-hidden flex-shrink-0">
-                      <Image
-                        src={post.author.image}
-                        alt={post.author.name}
-                        fill
-                        className="object-cover"
-                      />
+              {/* Author Bio */}
+              {post.author && (
+                <div className="mt-8 border-t border-brand-cream-dark pt-6">
+                  <div className="flex items-start gap-4 rounded-xl bg-brand-cream p-4">
+                    {post.author.image ? (
+                      <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-full">
+                        <Image
+                          src={post.author.image}
+                          alt={post.author.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-brand-red">
+                        <span className="text-lg font-bold text-white">
+                          {post.author.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="mb-1 text-xs text-text-secondary">{t('writtenBy')}</p>
+                      <p className="font-semibold text-text-primary">{post.author.name}</p>
                     </div>
-                  ) : (
-                    <div className="w-14 h-14 rounded-full bg-brand-red flex items-center justify-center flex-shrink-0">
-                      <span className="text-lg font-bold text-white">
-                        {post.author.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-text-secondary mb-1">Ditulis oleh</p>
-                    <p className="font-semibold text-text-primary">{post.author.name}</p>
                   </div>
                 </div>
+              )}
+
+              {/* Share Buttons */}
+              <div className="mt-8 border-t border-brand-cream-dark pt-6">
+                <p className="mb-3 text-sm font-medium text-text-secondary">{t('shareArticle')}</p>
+                <div className="flex flex-wrap gap-3">
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(`${title} - ${pageUrl}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-11 items-center gap-2 rounded-button bg-whatsapp-green px-4 text-sm font-semibold text-white transition-colors hover:bg-whatsapp-green-dark"
+                  >
+                    <MessageCircle className="h-4 w-4" aria-hidden="true" /> WhatsApp
+                  </a>
+                  <CopyLinkButton url={pageUrl} />
+                </div>
               </div>
-            )}
+            </article>
 
-            {/* Share Buttons */}
-            <div className="mt-8 pt-6 border-t border-brand-cream-dark">
-              <p className="text-sm font-medium text-text-secondary mb-3">Bagikan artikel ini:</p>
-              <div className="flex flex-wrap gap-3">
-                <a
-                  href={`https://wa.me/?text=${encodeURIComponent(`${post.titleId} - ${pageUrl}`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-whatsapp-green text-white text-sm font-medium rounded-button hover:bg-whatsapp-green-dark transition-colors"
-                >
-                  <MessageCircle className="w-4 h-4" /> WhatsApp
-                </a>
-                <CopyLinkButton url={pageUrl} />
+            {/* Sticky Table of Contents */}
+            <aside className="hidden xl:block">
+              <div className="sticky top-24 rounded-2xl border border-brand-cream-dark bg-white p-5 shadow-card">
+                <TableOfContents contentHtml={content} />
               </div>
-            </div>
-          </article>
-
-          {/* Sticky Table of Contents */}
-          <aside className="hidden xl:block sticky top-24">
-            <TableOfContents contentHtml={post.contentId} />
-          </aside>
-        </div>
-
-        {/* Related Posts */}
-        {filteredRelated.length > 0 && (
-          <div className="mt-12 pt-8 border-t border-brand-cream-dark">
-            <h2 className="font-display text-xl font-bold mb-6">Artikel Terkait</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {filteredRelated.map((related) => (
-                <BlogCard key={related.id} post={related as Parameters<typeof BlogCard>[0]['post']} />
-              ))}
-            </div>
+            </aside>
           </div>
-        )}
+
+          {/* Related Posts */}
+          {filteredRelated.length > 0 && (
+            <section aria-label={t('relatedArticles')} className="mt-10 border-t border-brand-cream-dark pt-8">
+              <div className="mb-6 flex items-end justify-between gap-4">
+                <h2 className="font-display text-xl md:text-2xl font-bold text-text-primary">{t('relatedArticles')}</h2>
+                <Link href="/blog" className="shrink-0 text-sm font-semibold text-brand-red hover:text-brand-red-dark hover:underline">
+                  {t('viewAllArticles')}
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredRelated.map((related) => (
+                  <BlogCard
+                    key={related.id}
+                    locale={locale}
+                    post={related as Parameters<typeof BlogCard>[0]['post']}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
       </div>
     </>
   );

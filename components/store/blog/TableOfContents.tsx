@@ -60,11 +60,11 @@ export function TableOfContents({ contentHtml }: { contentHtml: string }) {
   if (items.length < 3) return null; // Only show ToC if there are 3+ headings
 
   return (
-    <nav className="hidden xl:block sticky top-24 w-64 flex-shrink-0 pl-8">
+    <nav aria-label="Daftar isi artikel">
       <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">
         Daftar Isi
       </p>
-      <ul className="space-y-1">
+      <ul className="space-y-1 border-l-2 border-brand-cream-dark">
         {items.map((item) => (
           <li key={item.id} className={item.level === 3 ? 'pl-4' : ''}>
             <a
@@ -73,10 +73,10 @@ export function TableOfContents({ contentHtml }: { contentHtml: string }) {
                 e.preventDefault();
                 document.getElementById(item.id)?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className={`text-sm leading-relaxed block py-0.5 transition-colors ${
+              className={`-ml-0.5 block border-l-2 py-1 pl-3 pr-2 text-sm leading-relaxed transition-colors ${
                 activeId === item.id
-                  ? 'text-brand-red font-medium'
-                  : 'text-text-secondary hover:text-text-primary'
+                  ? 'border-brand-red text-brand-red font-medium'
+                  : 'border-transparent text-text-secondary hover:border-brand-cream-darker hover:text-text-primary'
               }`}
             >
               {item.text}

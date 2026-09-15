@@ -805,6 +805,8 @@
     "viewAllArticles": "View All Articles",
     "relatedArticles": "Related Articles",
     "articlesFound": "{count} articles",
+    "featured": "Featured Article",
+    "backToBlog": "Back to Blog",
     "readTime": "{minutes} min read",
     "writtenBy": "Written by",
     "shareArticle": "Share this article:",

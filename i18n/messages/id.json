@@ -804,6 +804,8 @@
     "viewAllArticles": "Lihat Semua Artikel",
     "relatedArticles": "Artikel Terkait",
     "articlesFound": "{count} artikel",
+    "featured": "Artikel Unggulan",
+    "backToBlog": "Kembali ke Blog",
     "readTime": "{minutes} menit baca",
     "writtenBy": "Ditulis oleh",
     "shareArticle": "Bagikan artikel ini:",
