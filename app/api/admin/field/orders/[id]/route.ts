@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { sendEmail } from '@/lib/resend/send-email';
 import { OrderShippedEmail } from '@/lib/resend/templates/OrderShipped';
 import { formatWIB } from '@/lib/utils/format-date';
+import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -45,7 +46,6 @@ export async function GET(
 
     return success(order);
   } catch (error) {
-    console.error('[admin/field/orders/[id] GET]', error);
     return serverError(error);
   }
 }
@@ -183,7 +183,7 @@ export async function PATCH(
           react: emailHtml,
         });
       } catch (emailError) {
-        console.error('[Field Order] Failed to send shipped email:', emailError);
+        logger.warn('[Field Order] Failed to send shipped email:', { error: emailError instanceof Error ? emailError.message : String(emailError) });
       }
     }
 
@@ -196,7 +196,6 @@ export async function PATCH(
       deliveredAt: newStatus === 'delivered' ? new Date() : null,
     });
   } catch (error) {
-    console.error('[admin/field/orders/[id] PATCH]', error);
     return serverError(error);
   }
 }

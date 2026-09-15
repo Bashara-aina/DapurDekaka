@@ -30,7 +30,6 @@ export async function GET(req: NextRequest) {
 
     return success(allCategories);
   } catch (error) {
-    console.error('[Admin/Categories/GET]', error);
     return serverError(error);
   }
 }
@@ -97,7 +96,6 @@ export const POST = withRateLimit(async (req: NextRequest) => {
 
     return success(newCategory, 201);
   } catch (error) {
-    console.error('[Admin/Categories/POST]', error);
     return serverError(error);
   }
 }, 'admin');

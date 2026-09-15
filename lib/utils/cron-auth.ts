@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * Verify cron job authentication using Bearer token.
@@ -12,19 +13,21 @@ export function verifyCronAuth(req: NextRequest): boolean {
 
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {
-    console.error('[CronAuth] CRON_SECRET environment variable is not set');
+    logger.error('[cron-auth] CRON_SECRET environment variable is not set');
     return false;
   }
 
   const authHeader = req.headers.get('authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    console.warn('[CronAuth] Missing or invalid Authorization header');
+    // Warn without logging the header value (secret-adjacent).
+    logger.warn('[cron-auth] missing or invalid Authorization header');
     return false;
   }
 
   const token = authHeader.slice(7);
   if (token !== cronSecret) {
-    console.warn('[CronAuth] Invalid cron token');
+    // Never log the presented token.
+    logger.warn('[cron-auth] invalid cron token');
     return false;
   }
 

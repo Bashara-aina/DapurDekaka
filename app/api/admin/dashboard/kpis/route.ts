@@ -3,7 +3,9 @@ import { unstable_cache } from 'next/cache';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { orders, users, systemSettings, webhookEvents } from '@/lib/db/schema';
-import { eq, gte, sql, and, lt, isNull, desc } from 'drizzle-orm';
+import { eq, gte, sql, and, lt, isNull, desc, inArray } from 'drizzle-orm';
+import { REVENUE_ORDER_STATUSES } from '@/lib/constants/orders';
+import { logger } from '@/lib/utils/logger';
 import { success, unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -33,10 +35,16 @@ const getKpis = unstable_cache(async (fromDate?: Date, toDate?: Date) => {
         marginPercent = parsed;
       }
     }
-  } catch {
-    // Use default 18%
+  } catch (err) {
+    // Fall back to default 18% — but log so a broken settings read is visible.
+    logger.warn('[admin/kpis] margin setting read failed, using default', {
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 
+  // Single source of truth (lib/constants/orders.ts) — previously the same
+  // 5-status list was hardcoded twice as raw SQL (drift risk).
+  const revenueStatusFilter = inArray(orders.status, REVENUE_ORDER_STATUSES);
   const [todayRevenueResult, lastWeekRevenueResult, ordersTodayResult, ordersLastWeekResult, newCustomersResult, guestCheckoutsResult] = await Promise.all([
     db
       .select({ total: sql<number>`coalesce(sum(${orders.totalAmount}), 0)::int` })
@@ -45,7 +53,7 @@ const getKpis = unstable_cache(async (fromDate?: Date, toDate?: Date) => {
         and(
           gte(orders.paidAt, from),
           lt(orders.paidAt, new Date(to.getTime() + 86400000)),
-          sql`${orders.status} IN ('paid','processing','packed','shipped','delivered')`
+          revenueStatusFilter
         )
       ),
     db
@@ -55,7 +63,7 @@ const getKpis = unstable_cache(async (fromDate?: Date, toDate?: Date) => {
         and(
           gte(orders.paidAt, lastWeekStart),
           lt(orders.paidAt, lastWeekEnd),
-          sql`${orders.status} IN ('paid','processing','packed','shipped','delivered')`
+          revenueStatusFilter
         )
       ),
     db
@@ -161,7 +169,6 @@ export async function GET(req: NextRequest) {
 
     return success({ ...(kpis ?? {}), systemHealth });
   } catch (error) {
-    console.error('[admin/dashboard/kpis]', error);
     return serverError(error);
   }
 }
@@ -191,7 +198,10 @@ async function getSystemHealth() {
       (health as Record<string, string>).midtransWebhook = 'missing';
       (health as Record<string, string>).status = 'degraded';
     }
-  } catch {
+  } catch (err) {
+    logger.warn('[admin/kpis] webhook health check failed', {
+      error: err instanceof Error ? err.message : String(err),
+    });
     (health as Record<string, string>).neonDB = 'slow';
     (health as Record<string, string>).status = 'degraded';
   }
@@ -205,8 +215,11 @@ async function getSystemHealth() {
       const dt = new Date(lastCron.updatedAt);
       (health as Record<string, string>).lastCronCheck = dt.toISOString().split('T')[0] + ' ' + dt.toTimeString().split(' ')[0];
     }
-  } catch {
-    // Non-critical
+  } catch (err) {
+    // Non-critical — log at warn so silent cron death is still observable.
+    logger.warn('[admin/kpis] last-cron check failed', {
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 
   return health;

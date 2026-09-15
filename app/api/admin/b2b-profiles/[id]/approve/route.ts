@@ -7,6 +7,7 @@ import { b2bProfiles } from '@/lib/db/schema';
 import { z } from 'zod';
 import { sendEmail } from '@/lib/resend/send-email';
 import { B2BApprovalEmail } from '@/lib/resend/templates/B2BApprovalEmail';
+import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -81,13 +82,12 @@ export async function POST(
           loginUrl: `${process.env.NEXT_PUBLIC_APP_URL}/b2b/account`,
         }),
       }).catch((err) => {
-        console.error('[B2B Approval Email] Failed to send:', err);
+        logger.warn('[B2B Approval Email] Failed to send:', { error: err instanceof Error ? err.message : String(err) });
       });
     }
 
     return success(updated);
   } catch (error) {
-    console.error('[Admin B2B Profiles Approve POST]', error);
     return serverError(error);
   }
 }

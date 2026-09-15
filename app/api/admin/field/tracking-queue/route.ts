@@ -7,6 +7,7 @@ import { auth } from '@/lib/auth';
 import { z } from 'zod';
 import { sendEmail } from '@/lib/resend/send-email';
 import { OrderShippedEmail } from '@/lib/resend/templates/OrderShipped';
+import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -37,7 +38,6 @@ export async function GET(req: NextRequest) {
 
     return success(dispatchOrders);
   } catch (error) {
-    console.error('[admin/field/tracking-queue GET]', error);
     return serverError(error);
   }
 }
@@ -134,11 +134,10 @@ export async function PATCH(req: NextRequest) {
         })) ?? [],
         totalAmount: order.totalAmount,
       }),
-    }).catch(console.error);
+    }).catch((e: unknown) => logger.warn('[admin/field/tracking-queue] background task failed', { error: e instanceof Error ? e.message : String(e) }));
 
     return success({ orderId, status: 'shipped', trackingNumber });
   } catch (error) {
-    console.error('[admin/field/tracking-queue PATCH]', error);
     return serverError(error);
   }
 }

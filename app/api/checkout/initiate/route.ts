@@ -21,6 +21,7 @@ import {
 import { eq, and, inArray, sql, or, desc, gte, gt } from 'drizzle-orm';
 import { success, serverError, validationError, conflict, unauthorized, serviceUnavailable, unprocessableEntity } from '@/lib/utils/api-response';
 import { z } from 'zod';
+import { Redis } from '@upstash/redis';
 import { generateOrderNumber } from '@/lib/utils/generate-order-number';
 import { createMidtransTransaction } from '@/lib/midtrans/create-transaction';
 import { POINTS_EARN_RATE, POINTS_EXPIRY_DAYS } from '@/lib/constants/points';
@@ -42,6 +43,7 @@ import { isMaintenanceModeEnv } from '@/lib/ops/maintenance';
 import { enforceCouponCap } from '@/lib/finance/points-calculator';
 import { parseQuoteId } from '@/lib/shipping/get-rates';
 import { requireActiveUser } from '@/lib/auth/require-active';
+import { isSameOriginRequest, sameOriginRejected } from '@/lib/utils/same-origin';
 import type { InsuranceType, ShippingItemInput, ShippingTier } from '@/lib/shipping/types';
 
 const initiateSchema = z.object({
@@ -118,6 +120,9 @@ const initiateSchema = z.object({
 export const POST = withRateLimit(
   async (req: NextRequest) => {
     try {
+      // CSRF: cookie-authed mutation — reject verifiable cross-origin calls.
+      if (!isSameOriginRequest(req)) return sameOriginRejected();
+
       const session = await auth();
 
       if (session?.user?.id) {
@@ -152,6 +157,8 @@ export const POST = withRateLimit(
     const dbVariants = await db.query.productVariants.findMany({
       where: inArray(productVariants.id, variantIds),
     });
+    // O(1) lookup per cart line instead of O(n) .find per iteration.
+    const variantById = new Map(dbVariants.map((v) => [v.id, v]));
 
     let subtotal = 0;
     const orderItemsData: Array<{
@@ -173,7 +180,7 @@ export const POST = withRateLimit(
     let isB2bOrder = false;
 
   for (const item of items) {
-      const variant = dbVariants.find((v) => v.id === item.variantId);
+      const variant = variantById.get(item.variantId);
       if (!variant) {
         return conflict(`Variant tidak ditemukan`);
       }
@@ -368,22 +375,40 @@ export const POST = withRateLimit(
     }
 
     // ── Step 3: Validate + deduct points inside transaction ────────────
+    const requestedPointsUsed = parsed.data.pointsUsed ?? 0;
     const requestedPointsDiscount = parsed.data.pointsDiscount ?? 0;
-    // Enforce 50% of subtotal cap server-side (client may try to exceed)
-    const maxPointsDiscount = Math.floor(subtotal * 0.5);
+    // P0: guests can never redeem points. Reject crafted payloads outright.
+    if (!session?.user?.id && (requestedPointsUsed > 0 || requestedPointsDiscount > 0)) {
+      return unprocessableEntity('Poin hanya tersedia untuk pengguna terdaftar. Silakan masuk untuk menukar poin.', 'POINTS_GUEST_FORBIDDEN');
+    }
+    // P0: enforce min 100 pts and exact conversion 100 pts = IDR 1,000 (10 IDR/pt).
+    if (requestedPointsUsed > 0 && requestedPointsUsed < 100) {
+      return unprocessableEntity('Penukaran poin minimal 100 poin.', 'POINTS_MIN_REDEEM');
+    }
+    if (requestedPointsUsed > 0 && requestedPointsDiscount !== requestedPointsUsed * 10) {
+      return unprocessableEntity('Nilai diskon poin tidak valid.', 'POINTS_DISCOUNT_MISMATCH');
+    }
+    if (requestedPointsUsed === 0 && requestedPointsDiscount > 0) {
+      return unprocessableEntity('Nilai diskon poin tidak valid.', 'POINTS_DISCOUNT_MISMATCH');
+    }
+    // PRD §6.5: points apply to remaining subtotal AFTER coupon.
+    const maxPointsDiscount = Math.floor(Math.max(0, subtotal - discountAmount) * 0.5);
     const pointsDiscount = Math.min(requestedPointsDiscount, maxPointsDiscount);
+    // If client requested more than the 50%-after-coupon cap, reject rather than silently trim
+    // so totals stay predictable between client and server.
+    if (requestedPointsDiscount > maxPointsDiscount) {
+      return unprocessableEntity('Penukaran poin maksimal 50% dari subtotal setelah kupon.', 'POINTS_MAX_EXCEEDED');
+    }
     let pointsDeducted = false;
     const userId = session?.user?.id ?? null;
 
-    let orderResult: any;
     // Idempotency: use client-provided UUID key (or fall back to email-based dedup)
     const idempotencyKey = parsed.data.idempotencyKey;
-    let existingOrderForIdempotency: typeof orderResult | null = null;
+    let existingOrderForIdempotency: { id: string; midtransSnapToken: string | null } | null = null;
 
     if (idempotencyKey) {
       // Check Redis for this idempotency key
       try {
-        const { Redis } = await import('@upstash/redis');
         if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
           const redis = new Redis({
             url: process.env.UPSTASH_REDIS_REST_URL,
@@ -403,8 +428,11 @@ export const POST = withRateLimit(
             }
           }
         }
-      } catch {
+      } catch (redisError) {
         // Redis unavailable — fall through to DB-level dedup
+        logger.warn('[checkout/initiate] idempotency redis lookup failed', {
+          error: redisError instanceof Error ? redisError.message : String(redisError),
+        });
       }
     }
 
@@ -543,7 +571,7 @@ export const POST = withRateLimit(
       }
 
       const shippingItems: ShippingItemInput[] = orderItemsData.map((item) => {
-        const variant = dbVariants.find((v) => v.id === item.variantId);
+        const variant = variantById.get(item.variantId);
         return {
           variantId: item.variantId,
           quantity: item.quantity,
@@ -754,19 +782,25 @@ export const POST = withRateLimit(
         if (updatedUsers.length === 0) {
           throw new Error('Poin tidak mencukupi atau terjadi kesalahan');
         }
-        const pointsBalanceAfterDeduct = updatedUsers[0]!.pointsBalance;
+        const balanceRow = updatedUsers[0];
+        if (!balanceRow) {
+          throw new Error('Poin tidak mencukupi atau terjadi kesalahan');
+        }
+        const pointsBalanceAfterDeduct = balanceRow.pointsBalance;
         pointsBalanceForRedeem = pointsBalanceAfterDeduct;
 
-        // Create redeem records referencing specific earn IDs (FIFO)
-        // Collect data first — insert AFTER order is created so orderId is available
-        for (const { id, amountUsed } of toConsume) {
-          // Mark the earn record as consumed
+        // Create redeem records referencing specific earn IDs (FIFO).
+        // Batched: ONE update for all consumed earn rows + collect redeem rows
+        // for the single bulk insert after order creation (was N+1 queries).
+        if (toConsume.length > 0) {
           await tx
             .update(pointsHistory)
             .set({ consumedAt: new Date() })
-            .where(eq(pointsHistory.id, id));
+            .where(inArray(pointsHistory.id, toConsume.map((c) => c.id)));
 
-          redeemRecords.push({ earnId: id, amountUsed });
+          for (const { id, amountUsed } of toConsume) {
+            redeemRecords.push({ earnId: id, amountUsed });
+          }
         }
       }
 
@@ -834,18 +868,21 @@ export const POST = withRateLimit(
         throw new Error('Failed to create order');
       }
 
-      // Insert redeem records now that orderId is available (FIFO consume)
-      for (const { earnId, amountUsed } of redeemRecords) {
-        await tx.insert(pointsHistory).values({
-          userId: userId!,
-          type: 'redeem',
-          pointsAmount: -amountUsed,
-          pointsBalanceAfter: pointsBalanceForRedeem,
-          orderId: created.id,
-          descriptionId: `Tukar poin untuk pesanan ${created.orderNumber}`,
-          descriptionEn: `Redeem points for order ${created.orderNumber}`,
-          referencedEarnId: earnId,
-        });
+      // Insert redeem records now that orderId is available (FIFO consume).
+      // Single bulk insert — was one INSERT per redeemed earn row.
+      if (redeemRecords.length > 0) {
+        await tx.insert(pointsHistory).values(
+          redeemRecords.map(({ earnId, amountUsed }) => ({
+            userId: userId!,
+            type: 'redeem' as const,
+            pointsAmount: -amountUsed,
+            pointsBalanceAfter: pointsBalanceForRedeem,
+            orderId: created.id,
+            descriptionId: `Tukar poin untuk pesanan ${created.orderNumber}`,
+            descriptionEn: `Redeem points for order ${created.orderNumber}`,
+            referencedEarnId: earnId,
+          }))
+        );
       }
 
       // Create order items
@@ -957,7 +994,10 @@ export const POST = withRateLimit(
     });
 
     // Write initial status history
-    const order = counterResult[0]!;
+    const order = counterResult[0];
+    if (!order) {
+      throw new Error('Failed to create order');
+    }
 
     // For Net-30 orders, write 'paid' status history; otherwise 'pending_payment'
     const initialStatus: 'pending_payment' | 'paid' = isNet30Order ? 'paid' : 'pending_payment';
@@ -1063,10 +1103,12 @@ export const POST = withRateLimit(
                 eq(pointsHistory.orderId, order.id)
               )
             );
-          for (const redeem of redeemRecords) {
-            if (redeem.referencedEarnId) {
-              await tx.update(pointsHistory).set({ consumedAt: null }).where(eq(pointsHistory.id, redeem.referencedEarnId));
-            }
+          // Batch-restore consumed earn rows (was one UPDATE per redeem).
+          const earnIdsToRestore = redeemRecords
+            .map((r) => r.referencedEarnId)
+            .filter((id): id is string => Boolean(id));
+          if (earnIdsToRestore.length > 0) {
+            await tx.update(pointsHistory).set({ consumedAt: null }).where(inArray(pointsHistory.id, earnIdsToRestore));
           }
           await tx
             .update(users)
@@ -1103,7 +1145,6 @@ export const POST = withRateLimit(
     // Store idempotency key in Redis
     if (idempotencyKey) {
       try {
-        const { Redis } = await import('@upstash/redis');
         if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
           const redis = new Redis({
             url: process.env.UPSTASH_REDIS_REST_URL,
@@ -1111,8 +1152,11 @@ export const POST = withRateLimit(
           });
           await redis.set(`idemp:checkout:${idempotencyKey}`, order.id, { ex: 86400 });
         }
-      } catch {
+      } catch (redisError) {
         // Non-critical — dedup falls back to DB-level
+        logger.warn('[checkout/initiate] idempotency redis write failed', {
+          error: redisError instanceof Error ? redisError.message : String(redisError),
+        });
       }
     }
 

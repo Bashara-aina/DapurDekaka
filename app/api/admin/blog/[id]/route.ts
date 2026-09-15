@@ -5,7 +5,7 @@ import { blogPosts } from '@/lib/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { success, notFound, serverError, unauthorized, forbidden, validationError, conflict } from '@/lib/utils/api-response';
-import DOMPurify from 'isomorphic-dompurify';
+import { sanitizeRichText, sanitizeExcerpt, sanitizePlainText } from '@/lib/utils/sanitize-html';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -32,7 +32,6 @@ export async function GET(
 
     return success(post);
   } catch (error) {
-    console.error('[Admin Blog GET:id]', error);
     return serverError(error);
   }
 }
@@ -84,22 +83,16 @@ export async function PUT(
     const data = parsed.data;
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
 
-    // Sanitize HTML content to prevent XSS
+    // Sanitize HTML content to prevent XSS (centralized policies).
     if (data.contentId !== undefined) {
-      updateData.contentId = DOMPurify.sanitize(data.contentId, {
-        ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h2', 'h3', 'a', 'img', 'blockquote', 'code', 'pre'],
-        ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'target', 'rel'],
-      });
+      updateData.contentId = sanitizeRichText(data.contentId);
     }
     if (data.contentEn !== undefined) {
-      updateData.contentEn = DOMPurify.sanitize(data.contentEn, {
-        ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h2', 'h3', 'a', 'img', 'blockquote', 'code', 'pre'],
-        ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'target', 'rel'],
-      });
+      updateData.contentEn = sanitizeRichText(data.contentEn);
     }
 
-    if (data.titleId !== undefined) updateData.titleId = DOMPurify.sanitize(data.titleId, { ALLOWED_TAGS: [] });
-    if (data.titleEn !== undefined) updateData.titleEn = DOMPurify.sanitize(data.titleEn, { ALLOWED_TAGS: [] });
+    if (data.titleId !== undefined) updateData.titleId = sanitizePlainText(data.titleId);
+    if (data.titleEn !== undefined) updateData.titleEn = sanitizePlainText(data.titleEn);
     if (data.slug !== undefined) {
       updateData.slug = data.slug;
       // M-05: Check slug uniqueness excluding current post
@@ -116,16 +109,10 @@ export async function PUT(
       }
     }
     if (data.excerptId !== undefined) {
-      updateData.excerptId = DOMPurify.sanitize(data.excerptId, {
-        ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h2', 'h3', 'a', 'blockquote', 'code', 'pre'],
-        ALLOWED_ATTR: ['href', 'class', 'target', 'rel'],
-      });
+      updateData.excerptId = sanitizeExcerpt(data.excerptId);
     }
     if (data.excerptEn !== undefined) {
-      updateData.excerptEn = DOMPurify.sanitize(data.excerptEn, {
-        ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h2', 'h3', 'a', 'blockquote', 'code', 'pre'],
-        ALLOWED_ATTR: ['href', 'class', 'target', 'rel'],
-      });
+      updateData.excerptEn = sanitizeExcerpt(data.excerptEn);
     }
     if (data.coverImageUrl !== undefined) updateData.coverImageUrl = data.coverImageUrl;
     if (data.coverImagePublicId !== undefined) updateData.coverImagePublicId = data.coverImagePublicId;
@@ -137,10 +124,10 @@ export async function PUT(
       }
     }
     if (data.isAiAssisted !== undefined) updateData.isAiAssisted = data.isAiAssisted;
-    if (data.metaTitleId !== undefined) updateData.metaTitleId = DOMPurify.sanitize(data.metaTitleId ?? '', { ALLOWED_TAGS: [] });
-    if (data.metaTitleEn !== undefined) updateData.metaTitleEn = DOMPurify.sanitize(data.metaTitleEn ?? '', { ALLOWED_TAGS: [] });
-    if (data.metaDescriptionId !== undefined) updateData.metaDescriptionId = DOMPurify.sanitize(data.metaDescriptionId ?? '', { ALLOWED_TAGS: [] });
-    if (data.metaDescriptionEn !== undefined) updateData.metaDescriptionEn = DOMPurify.sanitize(data.metaDescriptionEn ?? '', { ALLOWED_TAGS: [] });
+    if (data.metaTitleId !== undefined) updateData.metaTitleId = sanitizePlainText(data.metaTitleId);
+    if (data.metaTitleEn !== undefined) updateData.metaTitleEn = sanitizePlainText(data.metaTitleEn);
+    if (data.metaDescriptionId !== undefined) updateData.metaDescriptionId = sanitizePlainText(data.metaDescriptionId);
+    if (data.metaDescriptionEn !== undefined) updateData.metaDescriptionEn = sanitizePlainText(data.metaDescriptionEn);
 
     const [updated] = await db
       .update(blogPosts)
@@ -150,7 +137,6 @@ export async function PUT(
 
     return success(updated);
   } catch (error) {
-    console.error('[Admin Blog PUT]', error);
     return serverError(error);
   }
 }
@@ -182,7 +168,6 @@ export async function DELETE(
 
     return success({ id: params.id });
   } catch (error) {
-    console.error('[Admin Blog DELETE]', error);
     return serverError(error);
   }
 }

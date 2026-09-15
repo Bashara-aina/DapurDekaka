@@ -3,7 +3,16 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { toast } from 'sonner';
+import { logger } from '@/lib/utils/logger';
 import { ProductForm } from '@/components/admin/products/ProductForm';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { ChevronLeft, Trash2 } from 'lucide-react';
 
 interface ProductDetail {
@@ -62,6 +71,8 @@ export default function ProductEditClient({ productId }: ProductEditClientProps)
   const [categories, setCategories] = useState<{ id: string; nameId: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -69,21 +80,28 @@ export default function ProductEditClient({ productId }: ProductEditClientProps)
 
     async function fetchData() {
       try {
-        const [productRes, categoriesRes] = await Promise.all([
+        // allSettled: categories are auxiliary — a failure must not mask
+        // the product result (the old inline .catch fabricated a fake
+        // Response object, which was type-unsafe).
+        const [productResult, categoriesResult] = await Promise.allSettled([
           fetch(`/api/admin/products/${productId}`),
-          fetch('/api/admin/categories').catch(() => ({ ok: false, json: async () => ({ data: [] }) })),
+          fetch('/api/admin/categories'),
         ]);
 
-        if (!productRes.ok) {
+        if (productResult.status === 'rejected' || !productResult.value.ok) {
           throw new Error('Failed to fetch product');
         }
 
-        const productData = await productRes.json();
-        const categoriesData = categoriesRes.ok ? await categoriesRes.json() : { data: [] };
+        const productData = await productResult.value.json();
+        const categoriesData =
+          categoriesResult.status === 'fulfilled' && categoriesResult.value.ok
+            ? await categoriesResult.value.json()
+            : { data: [] };
 
         setProduct(productData.data);
         setCategories(categoriesData.data ?? []);
-      } catch {
+      } catch (err) {
+        logger.warn('[admin/products] edit load failed', { productId, error: err instanceof Error ? err.message : String(err) });
         setError('Gagal memuat data produk');
       } finally {
         setLoading(false);
@@ -94,18 +112,23 @@ export default function ProductEditClient({ productId }: ProductEditClientProps)
   }, [productId]);
 
   async function handleDelete() {
-    if (!confirm('Yakin ingin menghapus produk ini? Tindakan ini tidak dapat dibatalkan.')) return;
-
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/admin/products/${productId}`, { method: 'DELETE' });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || 'Gagal menghapus produk');
       }
+      toast.success('Produk dihapus');
       router.push('/admin/products');
       router.refresh();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Gagal menghapus produk');
+      // No alert() — non-blocking toast keeps admin context visible.
+      logger.warn('[admin/products] delete failed', { productId, error: err instanceof Error ? err.message : String(err) });
+      toast.error(err instanceof Error ? err.message : 'Gagal menghapus produk');
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
     }
   }
 
@@ -139,7 +162,8 @@ export default function ProductEditClient({ productId }: ProductEditClientProps)
           <h1 className="text-2xl font-bold">Edit: {product.nameId}</h1>
         </div>
         <button
-          onClick={handleDelete}
+          type="button"
+          onClick={() => setShowDeleteConfirm(true)}
           className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
         >
           <Trash2 className="w-4 h-4" />
@@ -195,6 +219,35 @@ export default function ProductEditClient({ productId }: ProductEditClientProps)
         }}
         categories={categories.length > 0 ? categories : (product.category ? [{ id: product.category.id, nameId: product.category.nameId }] : [])}
       />
+
+      {/* Destructive-action confirm — non-blocking Dialog, no confirm(). */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Hapus produk?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-600">
+            Yakin ingin menghapus produk ini? Tindakan ini tidak dapat dibatalkan.
+          </p>
+          <DialogFooter className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(false)}
+              className="flex-1 h-10 border border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="flex-1 h-10 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors disabled:opacity-50"
+            >
+              {isDeleting ? 'Menghapus...' : 'Hapus'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -21,7 +21,6 @@ export async function GET(_req: NextRequest) {
 
     return success({ count: result[0]?.count ?? 0 });
   } catch (error) {
-    console.error('[admin/team-dashboard/out-of-stock-count]', error);
     return serverError(error);
   }
 }

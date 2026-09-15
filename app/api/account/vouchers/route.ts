@@ -94,7 +94,6 @@ export async function GET(req: NextRequest) {
     });
 
   } catch (error) {
-    console.error('[account/vouchers GET]', error);
     return serverError(error);
   }
 }

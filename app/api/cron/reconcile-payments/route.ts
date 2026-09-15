@@ -199,8 +199,15 @@ async function cancelReconciled(orderId: string): Promise<void> {
 
 function notifyOps(message: string): void {
   const storePhone = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
-  if (!storePhone) return;
-  sendWhatsApp({ phone: storePhone, message }).catch(() => undefined);
+  if (!storePhone) {
+    logger.warn('[cron/reconcile] WhatsApp number not configured, ops alert dropped', { message });
+    return;
+  }
+  sendWhatsApp({ phone: storePhone, message }).catch((err: unknown) => {
+    logger.error('[cron/reconcile] ops WhatsApp alert failed', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  });
 }
 
 async function checkMidtransStatus(midtransOrderId: string): Promise<string> {
@@ -215,7 +222,12 @@ async function checkMidtransStatus(midtransOrderId: string): Promise<string> {
     if (!res.ok) return 'unknown';
     const data = (await res.json()) as { transaction_status?: string };
     return data.transaction_status ?? 'unknown';
-  } catch {
+  } catch (err) {
+    // Money path: a failed status check must be visible, not a silent 'unknown'.
+    logger.warn('[cron/reconcile] Midtrans status check failed', {
+      midtransOrderId,
+      error: err instanceof Error ? err.message : String(err),
+    });
     return 'unknown';
   }
 }

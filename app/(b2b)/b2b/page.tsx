@@ -6,27 +6,27 @@ import { db } from '@/lib/db';
 import { categories, products, productVariants } from '@/lib/db/schema';
 import { eq, and, isNull, sql, asc } from 'drizzle-orm';
 import { formatIDR } from '@/lib/utils/format-currency';
+import { getCmsPage, sectionText } from '@/lib/cms/get-page';
+import { getSetting } from '@/lib/settings/get-settings';
 
 export const dynamic = 'force-dynamic';
 
-const BENEFITS = [
+const BENEFIT_ICONS = [Truck, Shield, Users, Clock] as const;
+
+const DEFAULT_BENEFITS = [
   {
-    icon: Truck,
     title: 'Pengiriman ke Seluruh Indonesia',
     description: 'Kami mengirim ke semua kota besar di Indonesia dengan kemasan frozen yang menjaga kualitas produk.',
   },
   {
-    icon: Shield,
     title: '100% Halal & Berkualitas',
     description: 'Semua produk bersertifikat halal dan dibuat dari bahan-bahan berkualitas tinggi.',
   },
   {
-    icon: Users,
     title: 'Dedicated Account Manager',
     description: 'Anda akan mendapat kontak WhatsApp langsung untuk koordinasi pesanan.',
   },
   {
-    icon: Clock,
     title: 'Fleksibel & Responsive',
     description: 'Kami siap menerima pesanan dalam jumlah besar dengan waktu pengiriman yang fleksibel.',
   },
@@ -73,10 +73,25 @@ async function getPriceTeaserProducts() {
 }
 
 export default async function B2BLandingPage() {
-  const [categoryCounts, priceTeaserProducts] = await Promise.all([
+  const [categoryCounts, priceTeaserProducts, cms, whatsappNumber] = await Promise.all([
     getCategoryCounts(),
     getPriceTeaserProducts(),
+    getCmsPage('b2b-landing').catch(() => null),
+    getSetting<string>('store_whatsapp_number').catch(() => null),
   ]);
+
+  const cmsBenefits = (cms?.sections ?? [])
+    .filter((s) => s.sectionKey.startsWith('benefit_'))
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((s) => ({
+      title: sectionText(s, 'id', 'title'),
+      description: sectionText(s, 'id', 'body'),
+    }));
+
+  const benefits =
+    cmsBenefits.length > 0
+      ? cmsBenefits
+      : DEFAULT_BENEFITS;
 
   return (
     <div className="bg-brand-cream">
@@ -126,8 +141,8 @@ export default async function B2BLandingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {BENEFITS.map((benefit) => {
-              const Icon = benefit.icon;
+            {benefits.map((benefit, index) => {
+              const Icon = BENEFIT_ICONS[index % BENEFIT_ICONS.length]!;
               return (
                 <div
                   key={benefit.title}
@@ -278,7 +293,7 @@ export default async function B2BLandingPage() {
             Hubungi kami sekarang untuk diskusi lebih lanjut tentang kebutuhan bisnis Anda.
           </p>
           <a
-            href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER}?text=Halo%20Dapur%20Dekaka,%20saya%20tertarik%20untuk%20kerjasama%20B2B`}
+            href={whatsappNumber ? `https://wa.me/${whatsappNumber}?text=Halo%20Dapur%20Dekaka,%20saya%20tertarik%20untuk%20kerjasama%20B2B` : '#'}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center h-12 px-6 bg-whatsapp-green text-white font-bold rounded-lg hover:bg-whatsapp-green-dark transition-colors"

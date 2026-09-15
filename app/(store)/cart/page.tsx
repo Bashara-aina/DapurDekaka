@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import { LogIn, AlertTriangle, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { logger } from '@/lib/utils/logger';
 import { useCartStore } from '@/store/cart.store';
 import { CartItemComponent } from '@/components/store/cart/CartItem';
 import { CartSummary } from '@/components/store/cart/CartSummary';
@@ -59,7 +60,10 @@ export default function CartPage() {
       if (response.success && response.data?.items) {
         setStockValidations(response.data.items);
       }
-    } catch {
+    } catch (err) {
+      logger.warn('[cart] stock validation failed', {
+        error: err instanceof Error ? err.message : String(err),
+      });
       toast.error(t('checkout.stockUpdated') || 'Gagal memvalidasi stok');
     } finally {
       setIsValidating(false);
@@ -68,21 +72,30 @@ export default function CartPage() {
   }, [items, t]);
 
   useEffect(() => {
-    if (items.length > 0) {
+    if (items.length === 0) return;
+    // Debounce: rapid +/- taps otherwise fire one validate request per click.
+    const timer = setTimeout(() => {
       validateCartStock();
-    }
+    }, 400);
+    return () => clearTimeout(timer);
   }, [items.length, validateCartStock]);
 
-  // Sync cart to DB when logged in
+  // Sync cart to DB when logged in. Everything is read via getState (stable),
+  // so the user id is the only reactive dep — no exhaustive-deps exception.
   useEffect(() => {
-    if (session?.user?.id && items.length > 0) {
+    if (session?.user?.id && useCartStore.getState().items.length > 0) {
       useCartStore.getState().syncToDb();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id]);
 
+  // O(1) lookup per cart line instead of O(n) .find per render.
+  const validationByVariantId = useMemo(
+    () => new Map(stockValidations.map((v) => [v.variantId, v])),
+    [stockValidations]
+  );
+
   const getStockValidation = (variantId: string): StockValidation | undefined => {
-    return stockValidations.find((v) => v.variantId === variantId);
+    return validationByVariantId.get(variantId);
   };
 
   const hasStockIssues = stockValidations.some((v) => !v.available);
@@ -109,6 +122,7 @@ export default function CartPage() {
           </div>
           {items.length > 0 && (
             <button
+              type="button"
               onClick={() => setShowClearConfirm(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-button transition-colors"
               aria-label={tAccount('clearCartConfirmTitle')}
@@ -209,12 +223,14 @@ export default function CartPage() {
           </p>
           <DialogFooter className="flex gap-3">
             <button
+              type="button"
               onClick={() => setShowClearConfirm(false)}
               className="flex-1 h-11 border border-brand-cream-dark rounded-button font-medium hover:bg-brand-cream transition-colors"
             >
               {tAccount('cancel')}
             </button>
             <button
+              type="button"
               onClick={() => { clearCart(); setShowClearConfirm(false); }}
               className="flex-1 h-11 bg-brand-red text-white rounded-button font-bold hover:bg-brand-red-dark transition-colors"
             >

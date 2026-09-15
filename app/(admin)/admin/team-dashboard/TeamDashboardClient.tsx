@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { logger } from '@/lib/utils/logger';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { KPICard } from '@/components/admin/dashboard/KPICard';
@@ -864,11 +866,14 @@ export default function TeamDashboardClient() {
                   const json = await res.json();
                   if (json.success) {
                     setShowEmailDialog(false);
+                    toast.success('Email pengingat terkirim');
                   } else {
-                    alert(json.error || 'Gagal mengirim email');
+                    toast.error(json.error || 'Gagal mengirim email');
                   }
-                } catch {
-                  alert('Gagal mengirim email');
+                } catch (err) {
+                  // No alert() — blocking dialogs freeze the dashboard.
+                  logger.warn('[admin/team-dashboard] expiry-reminder send failed', { error: err instanceof Error ? err.message : String(err) });
+                  toast.error('Gagal mengirim email');
                 } finally {
                   setIsSendingEmail(false);
                 }

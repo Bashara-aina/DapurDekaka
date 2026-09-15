@@ -14,6 +14,12 @@ const badgeVariants = cva(
         error: "bg-error-light text-error",
         info: "bg-info-light text-info",
         outline: "border-brand-cream-dark text-text-primary",
+        halal: "bg-success-light text-success",
+        habis: "bg-text-secondary/15 text-text-secondary",
+        promo: "bg-brand-red text-white",
+        baru: "bg-info-light text-info",
+        terlaris: "bg-warning-light text-warning",
+        frozen: "bg-info-light text-info",
       },
     },
     defaultVariants: {

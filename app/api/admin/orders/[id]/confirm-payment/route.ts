@@ -206,7 +206,6 @@ export async function POST(
       pointsAwarded: order.pointsEarned,
     });
   } catch (error) {
-    console.error('[Admin Orders Confirm Payment POST]', error);
     return serverError(error);
   }
 }

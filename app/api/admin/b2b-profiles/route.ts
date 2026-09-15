@@ -65,7 +65,6 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('[Admin B2B Profiles GET]', error);
     return serverError(error);
   }
 }

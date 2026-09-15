@@ -51,7 +51,6 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('[admin/export/inventory]', error);
     return serverError(error);
   }
 }

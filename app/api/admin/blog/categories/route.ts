@@ -34,7 +34,6 @@ export async function GET(req: NextRequest) {
 
     return success(categories);
   } catch (error) {
-    console.error('[Admin Blog Categories GET]', error);
     return serverError(error);
   }
 }
@@ -65,7 +64,6 @@ export async function POST(req: NextRequest) {
 
     return success(category, 201);
   } catch (error) {
-    console.error('[Admin Blog Categories POST]', error);
     return serverError(error);
   }
 }

@@ -4,6 +4,8 @@ import { db } from '@/lib/db';
 import { products, productVariants, productImages, categories } from '@/lib/db/schema';
 import { eq, and, isNull, desc, lt } from 'drizzle-orm';
 import { ProductCatalog } from '@/components/store/products/ProductCatalog';
+import { getSetting } from '@/lib/settings/get-settings';
+import { cloudinaryUrl } from '@/lib/seo/cloudinary-url';
 
 const PRODUCTS_PER_PAGE = 20;
 
@@ -13,6 +15,8 @@ interface ProductsPageProps {
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('metadata');
+  const ogImagePublicId = await getSetting<string>('og_image_public_id').catch(() => null);
+  const ogImageUrl = cloudinaryUrl(ogImagePublicId) ?? '';
   return {
     title: t('productsTitle'),
     description: t('productsDescription'),
@@ -22,14 +26,18 @@ export async function generateMetadata(): Promise<Metadata> {
       description: t('productsDescription'),
       url: 'https://dapurdekaka.com/products',
       type: 'website',
-      images: [
-        {
-          url: 'https://res.cloudinary.com/dapurdekaka/image/upload/v1/dapurdekaka/og-image.jpg',
-          width: 1200,
-          height: 630,
-          alt: 'Dapur Dekaka - Frozen Food Premium',
-        },
-      ],
+      ...(ogImageUrl
+        ? {
+            images: [
+              {
+                url: ogImageUrl,
+                width: 1200,
+                height: 630,
+                alt: 'Dapur Dekaka - Frozen Food Premium',
+              },
+            ],
+          }
+        : {}),
     },
     robots: {
       index: true,

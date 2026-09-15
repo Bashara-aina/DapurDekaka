@@ -16,6 +16,8 @@ import { logger } from '@/lib/utils/logger';
 import { withRateLimit } from '@/lib/utils/rate-limit';
 import { applyRefundCompletionTx } from '@/lib/finance/complete-refund';
 import { flagNeedsAttention } from '@/lib/ops/needs-attention';
+import { logAdminActivity } from '@/lib/services/audit.service';
+import { getClientIp, getUserAgent } from '@/lib/utils/request-meta';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -90,6 +92,18 @@ export const PATCH = withRateLimit(async (req: NextRequest, ctx: { params: Promi
     if (parsed.data.status === 'failed') {
       await flagNeedsAttention(order.id, 'refund_failed', `Refund gagal: ${order.orderNumber}`);
     }
+
+    // Audit log — non-blocking, captures IP/UA for financial compliance.
+    logAdminActivity({
+      userId: session.user.id,
+      action: `refund.${parsed.data.status}`,
+      targetType: 'refund',
+      targetId: pendingRefund.id,
+      beforeState: { status: pendingRefund.status, amount: pendingRefund.amount },
+      afterState: { status: parsed.data.status, midtransRefundId: parsed.data.midtransRefundId ?? null },
+      ipAddress: getClientIp(req),
+      userAgent: getUserAgent(req),
+    });
 
     return success({ refundId: pendingRefund.id, status: parsed.data.status });
   } catch (error) {

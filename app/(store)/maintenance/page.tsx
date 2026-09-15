@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { Wrench } from 'lucide-react';
+import { getSetting } from '@/lib/settings/get-settings';
 
 
 
@@ -15,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
  */
 export default async function MaintenancePage() {
   const t = await getTranslations('maintenance');
-  const waPhone = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '';
+  const waPhone = (await getSetting<string>('store_whatsapp_number').catch(() => null)) ?? '';
   const waHref = waPhone ? `https://wa.me/${waPhone}` : '#';
 
   return (

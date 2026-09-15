@@ -75,7 +75,6 @@ export async function GET(_req: NextRequest) {
       count: feed.length,
     });
   } catch (error) {
-    console.error('[admin/dashboard/live-feed]', error);
     return serverError(error);
   }
 }

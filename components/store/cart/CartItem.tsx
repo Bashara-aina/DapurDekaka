@@ -75,7 +75,7 @@ export function CartItemComponent({ item, stockValidation }: CartItemProps) {
         <div className="flex flex-col items-end justify-between">
           <button
             onClick={() => handleRemove(item.variantId)}
-            className="p-1.5 text-text-secondary hover:text-red-600 transition-colors"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-text-secondary hover:text-red-600 transition-colors"
             aria-label={t('delete')}
           >
             <Trash2 className="w-4 h-4" />

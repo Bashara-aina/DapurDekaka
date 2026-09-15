@@ -55,11 +55,11 @@ interface ProductDetailClientProps {
       id: string;
       nameId: string;
       nameEn: string;
+      sku: string;
       price: number;
       stock: number;
       isActive: boolean;
       sortOrder: number;
-      sku: string;
       weightGram: number;
     }>;
     images: Array<{
@@ -69,9 +69,10 @@ interface ProductDetailClientProps {
     }>;
   };
   relatedProducts?: RelatedProduct[];
+  whatsappNumber?: string;
 }
 
-export function ProductDetailClient({ product, relatedProducts }: ProductDetailClientProps) {
+export function ProductDetailClient({ product, relatedProducts, whatsappNumber = '' }: ProductDetailClientProps) {
   const t = useTranslations('ProductDetail');
   const defaultVariantIndex = product.variants.findIndex(v => v.stock > 0 && v.isActive);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(Math.max(0, defaultVariantIndex));
@@ -301,10 +302,10 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
             </button>
           </div>
 
-          {isOutOfStock && (
+          {isOutOfStock && whatsappNumber && (
             <div className="mt-4">
               <a
-                href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER}?text=${encodeURIComponent(t('oosWaMessage', { product: product.nameId }))}`}
+                href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(t('oosWaMessage', { product: product.nameId }))}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm font-medium text-brand-red hover:underline"

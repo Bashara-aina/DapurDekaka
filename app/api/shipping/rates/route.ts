@@ -5,6 +5,7 @@ import { productVariants } from '@/lib/db/schema';
 import { inArray } from 'drizzle-orm';
 import { success, validationError, serverError, conflict } from '@/lib/utils/api-response';
 import { withRateLimit } from '@/lib/utils/rate-limit';
+import { isSameOriginRequest, sameOriginRejected } from '@/lib/utils/same-origin';
 import { getShippingRates } from '@/lib/shipping/get-rates';
 import type { ShippingItemInput } from '@/lib/shipping/types';
 import { getSetting } from '@/lib/settings/get-settings';
@@ -32,6 +33,7 @@ const ratesSchema = z.object({
 export const POST = withRateLimit(
   async (req: NextRequest) => {
     try {
+      if (!isSameOriginRequest(req)) return sameOriginRejected();
       const body = await req.json();
       const parsed = ratesSchema.safeParse(body);
       if (!parsed.success) return validationError(parsed.error);
@@ -95,5 +97,7 @@ export const POST = withRateLimit(
       return serverError(error);
     }
   },
-  'public'
+  // 'shipping' (30/min), not 'public': each call fans out to the paid
+  // Biteship API — 120/min per IP would let scrapers burn courier quota.
+  'shipping'
 );

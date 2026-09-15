@@ -63,7 +63,6 @@ export async function GET(_req: NextRequest) {
     const data = await getMonthlyProgress();
     return success(data);
   } catch (error) {
-    console.error('[admin/team-dashboard/monthly-progress]', error);
     return serverError(error);
   }
 }

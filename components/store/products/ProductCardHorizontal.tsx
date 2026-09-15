@@ -48,15 +48,14 @@ export function ProductCardHorizontal({ product, variant, className }: ProductCa
   };
 
   return (
-    <Link
-      href={`/products/${product.slug}`}
+    <div
       className={cn(
-        'group bg-white rounded-card shadow-card hover:shadow-card-hover transition-all overflow-hidden flex',
+        'group bg-white rounded-card shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all overflow-hidden flex',
         className
       )}
     >
       {/* Image - left side */}
-      <div className="relative w-24 h-24 md:w-32 md:h-32 flex-shrink-0 bg-brand-cream">
+      <Link href={`/products/${product.slug}`} aria-label={product.nameId} className="relative w-24 h-24 md:w-32 md:h-32 flex-shrink-0 bg-brand-cream block">
         <Image
           src={product.imageUrl || '/assets/logo/logo.png'}
           alt={product.nameId}
@@ -64,17 +63,19 @@ export function ProductCardHorizontal({ product, variant, className }: ProductCa
           className="object-cover"
           sizes="120px"
         />
-        <div className="absolute top-1 right-1">
+        <div className="absolute top-1 right-1 pointer-events-none">
           <HalalBadge />
         </div>
-      </div>
+      </Link>
 
       {/* Content - right side */}
-      <div className="flex-1 p-3 md:p-4 flex flex-col justify-between">
+      <div className="flex-1 p-3 md:p-4 flex flex-col justify-between min-w-0">
         <div>
-          <h3 className="font-display font-medium text-sm md:text-base text-text-primary line-clamp-1 mb-0.5">
-            {product.nameId}
-          </h3>
+          <Link href={`/products/${product.slug}`} className="block">
+            <h3 className="font-display font-medium text-sm md:text-base text-text-primary line-clamp-1 mb-0.5 hover:text-brand-red transition-colors">
+              {product.nameId}
+            </h3>
+          </Link>
           <p className="text-text-secondary text-xs md:text-sm">{variant.nameId}</p>
         </div>
 
@@ -104,6 +105,6 @@ export function ProductCardHorizontal({ product, variant, className }: ProductCa
           </button>
         </div>
       </div>
-    </Link>
+    </div>
   );
 }

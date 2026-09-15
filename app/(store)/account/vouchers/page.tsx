@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { Tag, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { logger } from '@/lib/utils/logger';
 import { VoucherCard } from '@/components/store/account/VoucherCard';
 import type { Coupon } from '@/lib/db/schema';
 
@@ -27,7 +28,8 @@ export default function AccountVouchersPage() {
       if (response.success) {
         setData(response.data);
       }
-    } catch {
+    } catch (err) {
+      logger.warn('[account/vouchers] load failed', { error: err instanceof Error ? err.message : String(err) });
       toast.error(t('loadVouchersError') || 'Gagal memuat voucher');
     } finally {
       setIsLoading(false);

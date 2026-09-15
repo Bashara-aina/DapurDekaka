@@ -59,7 +59,6 @@ export async function POST(req: NextRequest) {
 
     return success({ variantId, stockBefore: quantityBefore, stockAfter: quantityAfter, added: quantity });
   } catch (error) {
-    console.error('[admin/field/inventory/restock POST]', error);
     return serverError(error);
   }
 }

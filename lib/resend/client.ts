@@ -1,6 +1,7 @@
 import { Resend } from 'resend';
 
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? 'noreply@dapurdekaka.com';
+const FROM_EMAIL =
+  process.env.RESEND_FROM_EMAIL_ORDERS ?? process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev';
 const FROM_NAME = 'Dapur Dekaka 德卡';
 
 let _resend: Resend | null = null;

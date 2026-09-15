@@ -3,13 +3,21 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { products, orderItems } from '@/lib/db/schema';
 import { inArray, and, isNotNull } from 'drizzle-orm';
-import { success, unauthorized, forbidden, serverError, conflict } from '@/lib/utils/api-response';
+import { success, unauthorized, forbidden, serverError, conflict, validationError } from '@/lib/utils/api-response';
 import { logger } from '@/lib/utils/logger';
+import { z } from 'zod';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const ALLOWED_ACTIONS = ['enable', 'disable', 'archive'] as const;
 type BulkAction = typeof ALLOWED_ACTIONS[number];
+
+// Bounded input: without max() a caller could send 100k ids and blow up the
+// IN query (parameter bloat + statement timeout). 200/batch is plenty for UI.
+const bulkSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(200),
+  action: z.enum(ALLOWED_ACTIONS),
+});
 
 export async function PATCH(req: NextRequest) {
   try {
@@ -19,11 +27,11 @@ export async function PATCH(req: NextRequest) {
     if (!role || !['superadmin', 'owner'].includes(role)) return forbidden('Anda tidak memiliki akses');
 
     const body = await req.json();
-    const { ids, action } = body as { ids: string[]; action: string };
-
-    if (!Array.isArray(ids) || ids.length === 0) {
-      return success({ updated: 0 });
+    const parsed = bulkSchema.safeParse(body);
+    if (!parsed.success) {
+      return validationError(parsed.error);
     }
+    const { ids, action } = parsed.data;
 
     if (!ALLOWED_ACTIONS.includes(action as BulkAction)) {
       return NextResponse.json(
@@ -82,11 +90,11 @@ export async function DELETE(req: NextRequest) {
     if (role !== 'superadmin') return forbidden('Hanya superadmin yang dapat menghapus');
 
     const body = await req.json();
-    const { ids } = body as { ids: string[] };
-
-    if (!Array.isArray(ids) || ids.length === 0) {
-      return success({ deleted: 0 });
+    const parsed = z.object({ ids: z.array(z.string().uuid()).min(1).max(200) }).safeParse(body);
+    if (!parsed.success) {
+      return validationError(parsed.error);
     }
+    const { ids } = parsed.data;
 
     // Soft delete (archived) — not hard delete
     const now = new Date();

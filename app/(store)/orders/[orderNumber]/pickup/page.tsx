@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { eq, and, ne } from 'drizzle-orm';
 import { orders } from '@/lib/db/schema';
 import { PickupInvitation } from '@/components/store/orders/PickupInvitation';
+import { getSetting } from '@/lib/settings/get-settings';
 
 interface Props {
   params: Promise<{ orderNumber: string }>;
@@ -21,12 +22,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function OrderPickupPage({ params }: Props) {
   const { orderNumber } = await params;
 
-  const order = await db.query.orders.findFirst({
-    where: and(
-      eq(orders.orderNumber, orderNumber),
-      ne(orders.status, 'cancelled')
-    ),
-  });
+  const [order, storeAddress, whatsappNumber, openingHours] = await Promise.all([
+    db.query.orders.findFirst({
+      where: and(
+        eq(orders.orderNumber, orderNumber),
+        ne(orders.status, 'cancelled')
+      ),
+    }),
+    getSetting<string>('store_address').catch(() => null),
+    getSetting<string>('store_whatsapp_number').catch(() => null),
+    getSetting<string>('store_opening_hours').catch(() => null),
+  ]);
 
   if (!order) {
     notFound();
@@ -36,9 +42,21 @@ export default async function OrderPickupPage({ params }: Props) {
     notFound();
   }
 
+  // PRD §5.6: invitation only after payment is confirmed. Never show
+  // "Siap Diambil" for pending_payment/cancelled/refunded orders.
+  if (order.status === 'pending_payment' || order.status === 'cancelled' || order.status === 'refunded') {
+    notFound();
+  }
+
+  const address = storeAddress ?? '';
+  const mapsUrl = address
+    ? `https://maps.google.com/?q=${encodeURIComponent(address)}`
+    : '';
+  const wa = whatsappNumber ?? '';
+  const hours = openingHours ?? '';
+
   return (
     <div className="min-h-screen bg-brand-cream pb-20 md:pb-0">
-      {/* Header */}
       <div className="bg-white border-b border-brand-cream-dark sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
@@ -53,14 +71,20 @@ export default async function OrderPickupPage({ params }: Props) {
       <div className="container mx-auto px-4 py-6">
         <div className="text-center mb-6">
           <h1 className="font-display text-2xl font-bold text-text-primary mb-2">
-            Pesanan Anda Siap Diambil!
+            Tunjukkan Kode Ini di Toko
           </h1>
           <p className="text-text-secondary">
-            Setelah pembayaran terkonfirmasi, pesanan Anda akan disiapkan.
+            Pembayaran terkonfirmasi — pesanan Anda sedang disiapkan. Tunjukkan kode {order.orderNumber} ke staff toko.
           </p>
         </div>
 
-        <PickupInvitation orderNumber={order.orderNumber} />
+        <PickupInvitation
+          orderNumber={order.orderNumber}
+          storeAddress={address}
+          googleMapsUrl={mapsUrl}
+          whatsappNumber={wa}
+          openingHours={hours}
+        />
 
         <div className="mt-6 text-center">
           <Link

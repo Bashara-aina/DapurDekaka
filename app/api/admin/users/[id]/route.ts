@@ -6,6 +6,8 @@ import { db } from '@/lib/db';
 import { users, sessions } from '@/lib/db/schema';
 import { z } from 'zod';
 import { logAdminActivity } from '@/lib/services/audit.service';
+import { getClientIp, getUserAgent } from '@/lib/utils/request-meta';
+import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -62,6 +64,7 @@ export async function PATCH(
     }
 
     const oldRole = existing.role;
+    const oldIsActive = existing.isActive;
 
     const [updated] = await db
       .update(users)
@@ -74,23 +77,40 @@ export async function PATCH(
       .returning();
 
     // Invalidate all sessions when role changes
-    if (parsed.data.role !== undefined && parsed.data.role !== oldRole) {
+    const roleChanged = parsed.data.role !== undefined && parsed.data.role !== oldRole;
+    if (roleChanged) {
       await db.delete(sessions).where(eq(sessions.userId, id));
     }
 
-    // Audit log — non-blocking
+    const newIsActive = parsed.data.isActive ?? oldIsActive;
+    const ip = getClientIp(req);
+    const ua = getUserAgent(req);
+
+    // Audit log — non-blocking, captures IP/UA for AUDIT-05 #9 compliance.
     logAdminActivity({
       userId: session.user.id,
-      action: 'user_role_changed',
+      action: roleChanged ? 'user.role_changed' : 'user.isactive_changed',
       targetType: 'user',
       targetId: id,
-      beforeState: { role: oldRole, isActive: existing.isActive },
-      afterState: { role: parsed.data.role, isActive: parsed.data.isActive ?? existing.isActive },
-    }).catch((e) => console.error('[Audit] Failed to log user role change:', e));
+      beforeState: { role: oldRole, isActive: oldIsActive },
+      afterState: { role: parsed.data.role ?? oldRole, isActive: newIsActive },
+      ipAddress: ip,
+      userAgent: ua,
+    });
+
+    logger.info('[admin/users/PATCH] role/active changed', {
+      actorId: session.user.id,
+      targetUserId: id,
+      before: { role: oldRole, isActive: oldIsActive },
+      after: { role: parsed.data.role ?? oldRole, isActive: newIsActive },
+      ip,
+    });
 
     return success(updated);
   } catch (error) {
-    console.error('[Admin/Users/PATCH id]', error);
+    logger.error('[admin/users/PATCH]', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return serverError(error);
   }
 }

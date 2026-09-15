@@ -88,7 +88,6 @@ export async function GET(_req: NextRequest) {
     const flash = await getInventoryFlash();
     return success(flash);
   } catch (error) {
-    console.error('[admin/dashboard/inventory-flash]', error);
     return serverError(error);
   }
 }

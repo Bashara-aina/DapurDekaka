@@ -32,3 +32,16 @@ export const ORDER_STATUS_COLORS = {
 } as const;
 
 export type OrderStatus = keyof typeof ORDER_STATUS_LABELS;
+
+/** Single source of truth for status comparisons — no magic strings. */
+export const ORDER_STATUSES = Object.keys(ORDER_STATUS_LABELS) as OrderStatus[];
+
+export function isOrderStatus(value: unknown): value is OrderStatus {
+  return typeof value === 'string' && (ORDER_STATUSES as string[]).includes(value);
+}
+
+/** Terminal states: no further transitions expected. */
+export const TERMINAL_ORDER_STATUSES: OrderStatus[] = ['delivered', 'cancelled', 'refunded'];
+
+/** Revenue-counting states (must match the KPI/webhook SUM filters). */
+export const REVENUE_ORDER_STATUSES: OrderStatus[] = ['paid', 'processing', 'packed', 'shipped', 'delivered'];

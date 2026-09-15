@@ -46,7 +46,6 @@ export async function GET(req: NextRequest) {
 
     return success(paidOrders);
   } catch (error) {
-    console.error('[admin/field/packing-queue GET]', error);
     return serverError(error);
   }
 }
@@ -131,7 +130,6 @@ export async function PATCH(req: NextRequest) {
 
     return success({ orderId, status: 'packed' });
   } catch (error) {
-    console.error('[admin/field/packing-queue PATCH]', error);
     return serverError(error);
   }
 }

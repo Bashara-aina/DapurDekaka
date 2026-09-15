@@ -23,6 +23,8 @@ interface AddressMapPickerProps {
   onConfirm: (value: MapPinValue) => void;
   onBack?: () => void;
   className?: string;
+  defaultCity?: string;
+  defaultProvince?: string;
 }
 
 interface GoogleLatLng {
@@ -56,6 +58,8 @@ export function AddressMapPicker({
   onConfirm,
   onBack,
   className,
+  defaultCity = '',
+  defaultProvince = '',
 }: AddressMapPickerProps) {
   const t = useTranslations('checkout');
   const mapRef = useRef<HTMLDivElement>(null);
@@ -63,8 +67,8 @@ export function AddressMapPicker({
   const [lng, setLng] = useState(defaultValues?.longitude ?? DEFAULT_LNG);
   const [addressLine, setAddressLine] = useState(defaultValues?.addressLine ?? '');
   const [district, setDistrict] = useState(defaultValues?.district ?? '');
-  const [city, setCity] = useState(defaultValues?.city ?? 'Bandung');
-  const [province, setProvince] = useState(defaultValues?.province ?? 'Jawa Barat');
+  const [city, setCity] = useState(defaultValues?.city ?? defaultCity);
+  const [province, setProvince] = useState(defaultValues?.province ?? defaultProvince);
   const [postalCode, setPostalCode] = useState(defaultValues?.postalCode ?? '');
   const [loadingGeo, setLoadingGeo] = useState(false);
   const [mapReady, setMapReady] = useState(false);
@@ -169,8 +173,8 @@ export function AddressMapPicker({
       longitude: lng,
       addressLine: addressLine.trim(),
       district: district.trim() || city,
-      city: city.trim() || 'Bandung',
-      province: province.trim() || 'Jawa Barat',
+      city: city.trim() || defaultCity,
+      province: province.trim() || defaultProvince,
       postalCode: postalCode.trim(),
     });
   };

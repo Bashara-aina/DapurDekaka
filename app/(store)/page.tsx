@@ -11,11 +11,23 @@ import { HomePageCTA } from '@/components/store/home/HomePageCTA';
 import { db } from '@/lib/db';
 import { products, productVariants, productImages, categories, carouselSlides, systemSettings } from '@/lib/db/schema';
 import { eq, and, desc, isNull, sql } from 'drizzle-orm';
+import { getCmsPage, getGalleryByUsage, pickSection, sectionText } from '@/lib/cms/get-page';
+import { getStoreContactSettings } from '@/lib/settings/runtime-rules';
+import { getSetting } from '@/lib/settings/get-settings';
+import { SETTING_KEYS } from '@/lib/settings/canonical-keys';
+import {
+  buildOrganizationJsonLd,
+  buildWebsiteJsonLd,
+  buildLocalBusinessJsonLd,
+} from '@/lib/seo/homepage-jsonld';
+import { cloudinaryUrl } from '@/lib/seo/cloudinary-url';
 
 export const revalidate = 1800;
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('metadata');
+  const ogImagePublicId = await getSetting<string>('og_image_public_id').catch(() => null);
+  const ogImageUrl = cloudinaryUrl(ogImagePublicId) ?? '';
   return {
     title: t('homeTitle'),
     description: t('homeDescription'),
@@ -42,14 +54,18 @@ export async function generateMetadata(): Promise<Metadata> {
       description: t('homeDescription'),
       url: 'https://dapurdekaka.com',
       siteName: 'Dapur Dekaka',
-      images: [
-        {
-          url: 'https://res.cloudinary.com/dapurdekaka/image/upload/v1/dapurdekaka/og-image.jpg',
-          width: 1200,
-          height: 630,
-          alt: 'Dapur Dekaka - Frozen Food Premium',
-        },
-      ],
+      ...(ogImageUrl
+        ? {
+            images: [
+              {
+                url: ogImageUrl,
+                width: 1200,
+                height: 630,
+                alt: 'Dapur Dekaka - Frozen Food Premium',
+              },
+            ],
+          }
+        : {}),
       locale: 'id_ID',
       alternateLocale: ['en_US'],
       type: 'website',
@@ -58,7 +74,7 @@ export async function generateMetadata(): Promise<Metadata> {
       card: 'summary_large_image',
       title: t('homeTitle'),
       description: t('homeDescription'),
-      images: ['https://res.cloudinary.com/dapurdekaka/image/upload/v1/dapurdekaka/og-image.jpg'],
+      ...(ogImageUrl ? { images: [ogImageUrl] } : {}),
     },
     robots: {
       index: true,
@@ -139,107 +155,73 @@ async function getActiveCarouselSlides() {
 
 async function getPromoSettings() {
   const settings = await db.query.systemSettings.findMany({
-    where: sql`${systemSettings.key} IN ('PROMO_CODE', 'PROMO_TITLE', 'PROMO_SUBTITLE', 'CAROUSEL_SPEED_MS')`,
+    where: sql`${systemSettings.key} IN ('promo_code', 'promo_title', 'promo_subtitle', 'promo_active', 'carousel_speed_ms')`,
   });
+  const byKey = Object.fromEntries(settings.map((s) => [s.key, s.value]));
   return {
-    promoCode: settings.find(s => s.key === 'PROMO_CODE')?.value ?? 'SELAMATDATANG',
-    promoTitle: settings.find(s => s.key === 'PROMO_TITLE')?.value ?? 'Untuk pembelian pertama kamu',
-    promoSubtitle: settings.find(s => s.key === 'PROMO_SUBTITLE')?.value ?? 'Gunakan kode:',
-    carouselSpeedMs: parseInt(settings.find(s => s.key === 'CAROUSEL_SPEED_MS')?.value ?? '5000', 10),
+    promoCode: byKey.promo_code ?? 'SELAMATDATANG',
+    promoTitle: byKey.promo_title ?? 'Untuk pembelian pertama kamu',
+    promoSubtitle: byKey.promo_subtitle ?? 'Gunakan kode:',
+    promoActive: byKey.promo_active !== 'false',
+    carouselSpeedMs: parseInt(byKey.carousel_speed_ms ?? '5000', 10),
   };
 }
 
 export default async function HomePage() {
-  const [featuredProducts, allCategories, activeSlides, promoSettings] = await Promise.all([
+  const [
+    featuredProducts,
+    allCategories,
+    activeSlides,
+    promoSettings,
+    whyPage,
+    ctaPage,
+    galleryImages,
+    contact,
+    priceMin,
+    priceMax,
+  ] = await Promise.all([
     getFeaturedProducts().catch(() => [] as Awaited<ReturnType<typeof getFeaturedProducts>>),
     getCategories().catch(() => [] as Awaited<ReturnType<typeof getCategories>>),
     getActiveCarouselSlides().catch(() => [] as Awaited<ReturnType<typeof getActiveCarouselSlides>>),
-    getPromoSettings().catch(() => ({ promoCode: 'SELAMATDATANG', promoTitle: 'Untuk pembelian pertama kamu', promoSubtitle: 'Gunakan kode:', carouselSpeedMs: 5000 })),
+    getPromoSettings().catch(() => ({
+      promoCode: 'SELAMATDATANG',
+      promoTitle: 'Untuk pembelian pertama kamu',
+      promoSubtitle: 'Gunakan kode:',
+      promoActive: true,
+      carouselSpeedMs: 5000,
+    })),
+    getCmsPage('home-why').catch(() => null),
+    getCmsPage('home-cta').catch(() => null),
+    getGalleryByUsage('instagram_feed', 6).catch(() => []),
+    getStoreContactSettings().catch(() => ({
+      whatsapp: '',
+      address: '',
+      instagramUrl: '',
+      openingHours: '',
+    })),
+    getSetting<number>(SETTING_KEYS.PRICE_RANGE_MIN, 'integer').catch(() => 30000),
+    getSetting<number>(SETTING_KEYS.PRICE_RANGE_MAX, 'integer').catch(() => 200000),
   ]);
 
-  const organizationJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Organization',
-    name: 'Dapur Dekaka',
-    alternateName: '德卡',
-    url: 'https://dapurdekaka.com',
-    logo: 'https://dapurdekaka.com/assets/logo/logo.png',
-    description: 'Premium Chinese-Indonesian frozen food from Bandung. Dimsum, siomay, bakso, lumpia. 100% halal.',
-    foundingLocation: {
-      '@type': 'Place',
-      addressLocality: 'Bandung',
-      addressRegion: 'Jawa Barat',
-      addressCountry: 'ID',
-    },
-    contactPoint: {
-      '@type': 'ContactPoint',
-      contactType: 'customer service',
-      telephone: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER,
-      availableLanguage: ['Indonesian', 'English', 'Chinese'],
-      url: `https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER}`,
-    },
-    sameAs: [
-      'https://instagram.com/dapurdekaka',
-      'https://www.tokopedia.com/dapurdekaka',
-      'https://shopee.co.id/dapurdekaka',
-    ],
-  };
+  const whyTitle = sectionText(pickSection(whyPage, 'title'), 'id', 'title');
+  const whyFeatures = (whyPage?.sections ?? [])
+    .filter((s) => s.sectionKey.startsWith('feature_'))
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((s) => ({
+      title: sectionText(s, 'id', 'title'),
+      description: sectionText(s, 'id', 'body'),
+    }));
 
-  const websiteJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    name: 'Dapur Dekaka',
-    url: 'https://dapurdekaka.com',
-    potentialAction: {
-      '@type': 'SearchAction',
-      target: {
-        '@type': 'EntryPoint',
-        urlTemplate: 'https://dapurdekaka.com/products?q={search_term_string}',
-      },
-      'query-input': 'required name=search_term_string',
-    },
-  };
+  const ctaHero = pickSection(ctaPage, 'hero');
 
-  const localBusinessJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'LocalBusiness',
-    '@id': 'https://dapurdekaka.com/#business',
-    name: 'Dapur Dekaka',
-    description: 'Produsen dan toko online frozen food premium Chinese-Indonesia dari Bandung.',
-    url: 'https://dapurdekaka.com',
-    telephone: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER,
-    priceRange: 'Rp 30.000 - Rp 200.000',
-    currenciesAccepted: 'IDR',
-    paymentAccepted: 'Credit Card, Bank Transfer, E-Wallet',
-    servesCuisine: ['Chinese', 'Indonesian', 'Chinese-Indonesian'],
-    hasMenu: 'https://dapurdekaka.com/products',
-    address: {
-      '@type': 'PostalAddress',
-      addressLocality: 'Bandung',
-      addressRegion: 'Jawa Barat',
-      postalCode: '40261',
-      addressCountry: 'ID',
-    },
-    geo: {
-      '@type': 'GeoCoordinates',
-      latitude: -6.9175,
-      longitude: 107.6191,
-    },
-    openingHoursSpecification: [
-      {
-        '@type': 'OpeningHoursSpecification',
-        dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-        opens: '09:00',
-        closes: '17:00',
-      },
-      {
-        '@type': 'OpeningHoursSpecification',
-        dayOfWeek: ['Sunday'],
-        opens: '09:00',
-        closes: '15:00',
-      },
-    ],
-  };
+  const organizationJsonLd = await buildOrganizationJsonLd(contact);
+  const websiteJsonLd = buildWebsiteJsonLd();
+  const localBusinessJsonLd = await buildLocalBusinessJsonLd({
+    whatsapp: contact.whatsapp,
+    address: contact.address,
+    priceMin: priceMin ?? 30000,
+    priceMax: priceMax ?? 200000,
+  });
 
   return (
     <div className="bg-brand-cream pb-20 md:pb-0">
@@ -261,19 +243,36 @@ export default async function HomePage() {
 
       <FeaturedProducts products={featuredProducts} />
 
-      <PromoBanner
-        promoCode={promoSettings.promoCode}
-        promoTitle={promoSettings.promoTitle}
-        promoSubtitle={promoSettings.promoSubtitle}
+      {promoSettings.promoActive !== false && (
+        <PromoBanner
+          promoCode={promoSettings.promoCode}
+          promoTitle={promoSettings.promoTitle}
+          promoSubtitle={promoSettings.promoSubtitle}
+        />
+      )}
+
+      <WhyDapurDekaka
+        title={whyTitle || undefined}
+        features={whyFeatures.length > 0 ? whyFeatures : undefined}
       />
 
-      <WhyDapurDekaka />
-
-      <InstagramFeed />
+      <InstagramFeed
+        instagramUrl={contact.instagramUrl}
+        images={galleryImages.map((g) => ({
+          id: g.id,
+          publicId: g.publicId,
+          alt: g.altId || 'Galeri Dapur Dekaka',
+        }))}
+      />
 
       <Testimonials />
 
-      <HomePageCTA />
+      <HomePageCTA
+        heroTitle={sectionText(ctaHero, 'id', 'title') || undefined}
+        heroSubtitle={sectionText(ctaHero, 'id', 'body') || undefined}
+        ctaLabel={sectionText(ctaHero, 'id', 'ctaLabel') || undefined}
+        ctaHref={ctaHero?.ctaHref || '/products'}
+      />
     </div>
   );
 }

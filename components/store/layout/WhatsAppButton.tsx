@@ -13,7 +13,7 @@ export function WhatsAppButton({ whatsappNumber }: WhatsAppButtonProps) {
   const t = useTranslations('whatsapp');
   const [showTooltip, setShowTooltip] = useState(false);
 
-  const rawNumber = whatsappNumber || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
+  const rawNumber = whatsappNumber || '';
   if (!rawNumber) return null;
 
   const number = rawNumber;
@@ -26,7 +26,7 @@ export function WhatsAppButton({ whatsappNumber }: WhatsAppButtonProps) {
         <div className="absolute bottom-16 right-0 bg-white rounded-lg shadow-lg p-3 max-w-[200px] text-sm text-text-secondary mb-2 border border-brand-cream-dark">
           <button
             onClick={() => setShowTooltip(false)}
-            className="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-md"
+            className="absolute -top-2 -right-2 min-w-[44px] min-h-[44px] bg-white rounded-full flex items-center justify-center shadow-md"
             aria-label={t('close')}
           >
             <X className="w-4 h-4" />

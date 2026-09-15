@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { b2bProfiles, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { success, unauthorized, forbidden } from '@/lib/utils/api-response';
+import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -36,7 +37,7 @@ export async function GET(req: NextRequest) {
       picEmail: profile.picEmail,
     });
   } catch (error) {
-    console.error('[b2b/profile GET]', error);
+    logger.error('[b2b/profile GET]', { error: error instanceof Error ? error.message : String(error) });
     return new Response(
       JSON.stringify({ success: false, error: 'Internal server error' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }

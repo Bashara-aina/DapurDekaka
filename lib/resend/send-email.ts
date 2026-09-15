@@ -1,5 +1,6 @@
 import { resend, FROM_EMAIL, FROM_NAME } from './client';
 import type { ReactNode } from 'react';
+import { logger } from '@/lib/utils/logger';
 
 export interface SendEmailParams {
   to: string;
@@ -21,13 +22,13 @@ export async function sendEmail(params: SendEmailParams): Promise<boolean> {
     });
 
     if (error) {
-      console.error('[Email] Resend API error:', { error, to, subject });
+      logger.error('[email] Resend API error', { to, subject, error });
       return false;
     }
 
     return true;
   } catch (err) {
-    console.error('[Email] Unexpected error:', { err, to, subject });
+    logger.error('[email] unexpected error', { to, subject, error: err instanceof Error ? err.message : String(err) });
     return false;
   }
 }

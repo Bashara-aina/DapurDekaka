@@ -2,21 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { formatIDR } from '@/lib/utils/format-currency';
-import { formatWIB } from '@/lib/utils/format-date';
 import { toast } from 'sonner';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  OrdersTable,
+  type OrdersTableOrder,
+} from '@/components/admin/orders/OrdersTable';
 
-interface OrderItem {
-  id: string;
-  orderNumber: string;
-  status: string;
-  recipientName: string;
-  recipientEmail: string;
-  totalAmount: number;
-  createdAt: string;
-  deliveryMethod: string;
-}
+interface OrderItem extends OrdersTableOrder {}
 
 interface OrdersClientProps {
   initialOrders: OrderItem[];
@@ -27,28 +20,6 @@ interface OrdersClientProps {
   pageSize: number;
   searchQuery?: string | null;
 }
-
-const STATUS_COLORS: Record<string, string> = {
-  pending_payment: 'bg-yellow-100 text-yellow-800',
-  paid: 'bg-blue-100 text-blue-800',
-  processing: 'bg-purple-100 text-purple-800',
-  packed: 'bg-cyan-100 text-cyan-800',
-  shipped: 'bg-green-100 text-green-800',
-  delivered: 'bg-emerald-100 text-emerald-800',
-  cancelled: 'bg-gray-100 text-gray-800',
-  refunded: 'bg-pink-100 text-pink-800',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  pending_payment: 'Menunggu',
-  paid: 'Dibayar',
-  processing: 'Diproses',
-  packed: 'Dikemas',
-  shipped: 'Dikirim',
-  delivered: 'Diterima',
-  cancelled: 'Dibatalkan',
-  refunded: 'Dikembalikan',
-};
 
 const TRANSITIONS: Record<string, { status: string; label: string }[]> = {
   paid: [{ status: 'processing', label: 'Proses' }],
@@ -85,7 +56,10 @@ export default function OrdersClient({
   const statusFilter = searchParams.get('status');
 
   async function handleStatusUpdate(orderId: string, newStatus: string) {
-    if (!confirm(`Yakin ubah status ke "${STATUS_LABELS[newStatus]}"?`)) return;
+    const label = TRANSITIONS[orders.find((o) => o.id === orderId)?.status ?? '']?.find(
+      (t) => t.status === newStatus
+    )?.label;
+    if (!confirm(`Yakin ubah status ke "${label ?? newStatus}"?`)) return;
 
     setUpdatingId(orderId);
     setOpenDropdown(null);
@@ -219,102 +193,50 @@ export default function OrdersClient({
 
       <div className="bg-white rounded-lg border border-admin-border overflow-x-auto">
         <div className="min-w-[640px]">
-          <table className="w-full">
-            <thead className="bg-admin-content">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pelanggan</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-admin-border">
-              {orders.map((order) => {
-                const allowedTransitions = getAllowedTransitions(order.status, userRole);
-                const isOpen = openDropdown === order.id;
-
-                return (
-                  <tr
-                    key={order.id}
-                    className="hover:bg-admin-content cursor-pointer"
-                    onClick={() => router.push(`/admin/orders/${order.id}`)}
+          <OrdersTable
+            orders={orders}
+            renderActions={(order) => {
+              const allowedTransitions = getAllowedTransitions(order.status, userRole);
+              const isOpen = openDropdown === order.id;
+              return (
+                <div className="flex items-center gap-2">
+                  <a
+                    href={`/admin/orders/${order.id}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                    className="text-brand-red hover:underline text-sm"
                   >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-col">
-                        <span className="font-medium text-sm">{order.orderNumber}</span>
-                        <span className="text-xs text-gray-400">
-                          {order.deliveryMethod === 'pickup' ? 'Pickup' : 'Delivery'}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div>{order.recipientName}</div>
-                      <div className="text-xs">{order.recipientEmail}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded ${
-                          STATUS_COLORS[order.status] || 'bg-gray-100 text-gray-800'
-                        }`}
+                    Detail
+                  </a>
+                  {canUpdateStatus && allowedTransitions.length > 0 && (
+                    <div className="relative">
+                      <button
+                        onClick={() => setOpenDropdown(isOpen ? null : order.id)}
+                        disabled={updatingId === order.id}
+                        className="px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 rounded transition-colors disabled:opacity-50"
                       >
-                        {STATUS_LABELS[order.status] ?? order.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-brand-red">
-                      {formatIDR(order.totalAmount)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatWIB(order.createdAt)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                        <a
-                          href={`/admin/orders/${order.id}`}
-                          onClick={e => { e.stopPropagation(); }}
-                          className="text-brand-red hover:underline"
-                        >
-                          Detail
-                        </a>
-                        {canUpdateStatus && allowedTransitions.length > 0 && (
-                          <div className="relative">
+                        {updatingId === order.id ? '...' : 'Update ▼'}
+                      </button>
+                      {isOpen && (
+                        <div className="absolute right-0 mt-1 w-32 bg-white border border-admin-border rounded-lg shadow-lg z-10">
+                          {allowedTransitions.map((t) => (
                             <button
-                              onClick={() => setOpenDropdown(isOpen ? null : order.id)}
-                              disabled={updatingId === order.id}
-                              className="px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 rounded transition-colors disabled:opacity-50"
+                              key={t.status}
+                              onClick={() => handleStatusUpdate(order.id, t.status)}
+                              className="w-full px-4 py-2 text-left text-sm hover:bg-admin-content rounded-lg"
                             >
-                              {updatingId === order.id ? '...' : 'Update ▼'}
+                              {t.label}
                             </button>
-                            {isOpen && (
-                              <div className="absolute right-0 mt-1 w-32 bg-white border border-admin-border rounded-lg shadow-lg z-10">
-                                {allowedTransitions.map((t) => (
-                                  <button
-                                    key={t.status}
-                                    onClick={() => handleStatusUpdate(order.id, t.status)}
-                                    className="w-full px-4 py-2 text-left text-sm hover:bg-admin-content rounded-lg"
-                                  >
-                                    {t.label}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {orders.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                    Belum ada pesanan
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            }}
+          />
         </div>
 
         {totalPages > 1 && (

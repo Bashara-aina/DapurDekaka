@@ -1,5 +1,6 @@
 import { AdminSidebar } from '@/components/admin/layout/AdminSidebar';
 import { AdminHeader } from '@/components/admin/layout/AdminHeader';
+import { AdminBottomNav } from '@/components/admin/layout/AdminBottomNav';
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 
@@ -20,7 +21,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       {/* Main content — offset by sidebar width on desktop */}
       <div className="flex-1 flex flex-col lg:pl-60">
         <AdminHeader role={role} />
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+        <main className="flex-1 p-4 md:p-6 pb-24 lg:pb-6">{children}</main>
+        <AdminBottomNav role={role} />
       </div>
     </div>
   );

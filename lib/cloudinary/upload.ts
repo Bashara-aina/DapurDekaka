@@ -16,6 +16,7 @@ export const CLOUDINARY_FOLDERS = {
   gallery: 'dapurdekaka/gallery',
   sauces: 'dapurdekaka/sauces',
   quotes: 'dapurdekaka/quotes',
+  cms: 'dapurdekaka/cms',
 } as const;
 
 export type CloudinaryFolder = keyof typeof CLOUDINARY_FOLDERS;
@@ -133,26 +134,29 @@ export async function serverSideUpload(
   await fs.access(absolutePath);
 
   const folderPath = CLOUDINARY_FOLDERS[folder];
-  const result = await cloudinary.uploader.upload(absolutePath, {
-    folder: folderPath,
-    resource_type: 'image',
-    use_filename: true,
-    unique_filename: true,
-    overwrite: Boolean(publicId),
-    ...(publicId ? { public_id: publicId } : {}),
-  });
-
-  // Clean up temp file after upload
   try {
-    await fs.unlink(absolutePath);
-  } catch {
-    // Non-critical - temp file will be cleaned up by OS eventually
-  }
+    const result = await cloudinary.uploader.upload(absolutePath, {
+      folder: folderPath,
+      resource_type: 'image',
+      use_filename: true,
+      unique_filename: true,
+      overwrite: Boolean(publicId),
+      ...(publicId ? { public_id: publicId } : {}),
+    });
 
-  return {
-    url: result.secure_url,
-    publicId: result.public_id as string,
-  };
+    return {
+      url: result.secure_url,
+      publicId: result.public_id as string,
+    };
+  } finally {
+    // Clean up temp file on BOTH success and failure — otherwise a failed
+    // upload leaks a file into /tmp on every retry until the 512MB cap.
+    try {
+      await fs.unlink(absolutePath);
+    } catch {
+      // Non-critical - temp file will be cleaned up by OS eventually
+    }
+  }
 }
 
 /**

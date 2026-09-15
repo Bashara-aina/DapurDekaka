@@ -93,7 +93,6 @@ export async function GET(_req: NextRequest) {
     const data = await getSnapshot();
     return success(data);
   } catch (error) {
-    console.error('[admin/team-dashboard/snapshot]', error);
     return serverError(error);
   }
 }

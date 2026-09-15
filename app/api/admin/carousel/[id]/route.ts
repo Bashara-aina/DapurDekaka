@@ -31,7 +31,6 @@ export async function GET(
 
     return success(slide);
   } catch (error) {
-    console.error('[Admin Carousel GET:id]', error);
     return serverError(error);
   }
 }
@@ -106,7 +105,6 @@ export async function PUT(
 
     return success(updated);
   } catch (error) {
-    console.error('[Admin Carousel PUT]', error);
     return serverError(error);
   }
 }
@@ -138,7 +136,6 @@ export async function DELETE(
 
     return success({ id: params.id });
   } catch (error) {
-    console.error('[Admin Carousel DELETE]', error);
     return serverError(error);
   }
 }

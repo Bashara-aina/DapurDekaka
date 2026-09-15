@@ -183,10 +183,10 @@ describe('POST /api/webhooks/midtrans', () => {
     const { db } = await import('@/lib/db');
     vi.mocked(db.query.orders.findFirst).mockResolvedValue({
       id: 'order-1',
-      orderNumber: 'DDK-TEST-001',
+      orderNumber: 'DDK-TEST-002',
       status: 'pending_payment',
       totalAmount: 100000,
-      midtransOrderId: 'DDK-TEST-001',
+      midtransOrderId: 'DDK-TEST-002',
       createdAt: new Date(),
       updatedAt: new Date(),
       userId: null,
@@ -221,8 +221,11 @@ describe('POST /api/webhooks/midtrans', () => {
       cancelledAt: null,
     } as any);
 
+    // NOTE: unique order_id (DDK-TEST-002) — the webhook idempotency layer
+    // keeps an in-memory set across tests, so reusing DDK-TEST-001 from the
+    // earlier settlement test would short-circuit to 200 'already_processed'.
     const body = createValidWebhook({
-      order_id: 'DDK-TEST-001',
+      order_id: 'DDK-TEST-002',
       status_code: '200',
       gross_amount: '50000',
       transaction_status: 'settlement',

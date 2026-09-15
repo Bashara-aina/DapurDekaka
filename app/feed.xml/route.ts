@@ -1,6 +1,8 @@
 import { db } from '@/lib/db';
 import { blogPosts } from '@/lib/db/schema';
 import { eq, desc, and, isNull } from 'drizzle-orm';
+import { getSetting } from '@/lib/settings/get-settings';
+import { logger } from '@/lib/utils/logger';
 
 export const revalidate = 3600;
 
@@ -15,7 +17,8 @@ function escapeXml(unsafe: string): string {
 
 export async function GET() {
   type PostWithRelations = Awaited<ReturnType<typeof db.query.blogPosts.findMany<{
-    with: { category: true; author: true };
+    columns: { slug: true; titleId: true; excerptId: true; publishedAt: true };
+    with: { category: { columns: { nameId: true } }; author: { columns: { name: true } } };
   }>>>[number];
 
   let posts: PostWithRelations[] = [];
@@ -24,13 +27,27 @@ export async function GET() {
       where: and(eq(blogPosts.isPublished, true), isNull(blogPosts.deletedAt)),
       orderBy: [desc(blogPosts.publishedAt)],
       limit: 20,
-      with: { category: true, author: true },
+      // Project only the columns the feed renders — never SELECT * relations.
+      columns: {
+        slug: true,
+        titleId: true,
+        excerptId: true,
+        publishedAt: true,
+      },
+      with: {
+        category: { columns: { nameId: true } },
+        author: { columns: { name: true } },
+      },
     });
-  } catch {
+  } catch (err) {
     // DB unavailable at build/prerender time — serve empty feed
+    logger.warn('[feed.xml] posts query failed', {
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 
   const baseUrl = 'https://dapurdekaka.com';
+  const adminEmail = (await getSetting<string>('admin_email', 'string').catch(() => null)) ?? '';
 
   const rssItems = posts
     .map((post) => {
@@ -63,8 +80,8 @@ export async function GET() {
     <link>${baseUrl}/blog</link>
     <description>Artikel dan tips seputar makanan frozen, resep, dan informasi menarik dari Dapur Dekaka.</description>
     <language>id</language>
-    <managingEditor>hello@dapurdekaka.com (Dapur Dekaka)</managingEditor>
-    <webMaster>hello@dapurdekaka.com (Dapur Dekaka)</webMaster>
+    <managingEditor>${adminEmail} (Dapur Dekaka)</managingEditor>
+    <webMaster>${adminEmail} (Dapur Dekaka)</webMaster>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
     <atom:link href="${baseUrl}/feed.xml" rel="self" type="application/rss+xml" />
     <image>

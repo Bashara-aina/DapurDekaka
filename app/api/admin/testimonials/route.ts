@@ -40,7 +40,6 @@ export async function GET(req: NextRequest) {
 
     return success(data);
   } catch (error) {
-    console.error('[admin/testimonials GET]', error);
     return serverError(error);
   }
 }
@@ -67,7 +66,6 @@ export async function POST(req: NextRequest) {
 
     return created(created_);
   } catch (error) {
-    console.error('[admin/testimonials POST]', error);
     return serverError(error);
   }
 }

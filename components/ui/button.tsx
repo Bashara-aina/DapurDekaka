@@ -9,17 +9,20 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: "bg-brand-red text-white hover:bg-brand-red-dark shadow-button",
-        outline: "border-brand-cream-dark bg-white text-text-primary hover:bg-surface-off",
-        secondary: "bg-brand-navy text-white hover:bg-brand-navy-light",
-        ghost: "text-text-primary hover:bg-surface-off",
+        primary: "bg-brand-red text-white hover:bg-brand-red-dark shadow-button",
+        outline: "border-brand-red bg-transparent text-brand-red hover:bg-brand-red/5",
+        secondary: "bg-brand-cream border border-brand-red text-brand-red hover:bg-brand-cream-dark",
+        ghost: "text-text-secondary hover:bg-surface-off hover:text-text-primary",
         destructive: "bg-error text-white hover:bg-error/90",
+        whatsapp: "bg-whatsapp-green text-white hover:bg-whatsapp-green-dark shadow-button",
         link: "text-brand-red underline-offset-4 hover:underline",
       },
       size: {
-        sm: "h-9 gap-1.5 px-3",
-        default: "h-10 gap-2 px-4",
-        lg: "h-12 gap-2 px-6",
-        icon: "h-10 w-10",
+        sm: "h-9 gap-1.5 px-3 min-h-[36px]",
+        default: "h-11 gap-2 px-4 min-h-[44px]",
+        lg: "h-12 gap-2 px-6 min-h-[48px]",
+        xl: "h-14 gap-2 px-8 text-base min-h-[56px]",
+        icon: "h-11 w-11 min-h-[44px] min-w-[44px]",
       },
     },
     defaultVariants: {

@@ -31,7 +31,6 @@ export async function GET(_req: NextRequest) {
       variantCount: variantCount[0]?.count ?? 0,
     });
   } catch (error) {
-    console.error('[admin/team-dashboard/inventory-value]', error);
     return serverError(error);
   }
 }

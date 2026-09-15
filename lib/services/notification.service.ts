@@ -4,6 +4,9 @@ import { orders, orderItems, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
 const resend = new Resend(process.env.RESEND_API_KEY!);
+const FROM_ADDRESS =
+  process.env.RESEND_FROM_EMAIL_ORDERS ?? process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev';
+const FROM_HEADER = `Dapur Dekaka <${FROM_ADDRESS}>`;
 
 export async function sendOrderConfirmationEmail(orderId: string): Promise<void> {
   const [order] = await db
@@ -28,7 +31,7 @@ export async function sendOrderConfirmationEmail(orderId: string): Promise<void>
   const firstName = user?.name?.split(' ')[0] ?? 'Pelanggan';
 
   await resend.emails.send({
-    from: 'Dapur Dekaka <pesanan@dapurdekaka.com>',
+    from: FROM_HEADER,
     to: user?.email ?? '',
     subject: `Pesanan ${order.orderNumber} Dikonfirmasi`,
     html: `
@@ -60,7 +63,7 @@ export async function sendShippingEmail(orderId: string, trackingNumber: string)
   const firstName = user?.name?.split(' ')[0] ?? 'Pelanggan';
 
   await resend.emails.send({
-    from: 'Dapur Dekaka <pesanan@dapurdekaka.com>',
+    from: FROM_HEADER,
     to: user?.email ?? '',
     subject: `Pesanan ${order.orderNumber} Sedang Dikirim`,
     html: `

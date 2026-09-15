@@ -34,11 +34,12 @@ export function CopyButton({ text, className }: CopyButtonProps) {
     <button
       onClick={handleCopy}
       className={cn(
-        'p-1.5 rounded-md transition-colors',
+        'min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md transition-colors',
         copied ? 'text-success' : 'text-text-secondary hover:text-brand-red',
         className
       )}
       title={copied ? 'Tersalin!' : 'Salin'}
+      aria-label={copied ? 'Tersalin!' : 'Salin'}
     >
       {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
     </button>

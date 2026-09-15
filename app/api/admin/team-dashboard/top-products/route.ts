@@ -46,7 +46,6 @@ export async function GET(req: NextRequest) {
 
     return success(withPercent);
   } catch (error) {
-    console.error('[admin/team-dashboard/top-products]', error);
     return serverError(error);
   }
 }

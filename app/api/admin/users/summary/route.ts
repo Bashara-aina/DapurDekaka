@@ -91,7 +91,6 @@ export async function GET(_req: NextRequest) {
       inactiveUsers: (totalResult[0]?.count ?? 0) - (activeUsersResult[0]?.count ?? 0),
     });
   } catch (error) {
-    console.error('[Admin Users Summary GET]', error);
     return serverError(error);
   }
 }

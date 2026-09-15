@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { ShoppingCart, Plus } from 'lucide-react';
+import { ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import { useSession } from 'next-auth/react';
@@ -43,7 +43,6 @@ export function ProductCard({ product, variant, className }: ProductCardProps) {
   const syncToDb = useCartStore((s) => s.syncToDb);
   const router = useRouter();
   const isOutOfStock = variant.stock === 0;
-  const canQuickAdd = !isOutOfStock;
 
   const syncIfLoggedIn = async () => {
     if (session?.user) {
@@ -77,25 +76,26 @@ export function ProductCard({ product, variant, className }: ProductCardProps) {
   };
 
   return (
-    <Link
-      href={`/products/${product.slug}`}
+    <div
       className={cn(
-        'group bg-white rounded-card shadow-card hover:shadow-card-hover transition-all overflow-hidden',
+        'group bg-white rounded-card shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all overflow-hidden',
         className
       )}
     >
       {/* Image */}
       <div className="relative aspect-square bg-brand-cream">
-        <Image
-          src={product.imageUrl || '/assets/logo/logo.png'}
-          alt={product.nameId}
-          fill
-          className="object-cover"
-          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
-        />
+        <Link href={`/products/${product.slug}`} aria-label={product.nameId} className="absolute inset-0">
+          <Image
+            src={product.imageUrl || '/assets/logo/logo.png'}
+            alt={product.nameId}
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
+          />
+        </Link>
         {/* Badges */}
         {!isOutOfStock && (
-          <div className="absolute top-2 right-2 flex flex-col gap-1">
+          <div className="absolute top-2 right-2 flex flex-col gap-1 pointer-events-none">
             <HalalBadge />
             {product.isHalal && (
               <span className="text-[8px] text-text-disabled bg-white/60 px-1 rounded text-center">
@@ -106,34 +106,26 @@ export function ProductCard({ product, variant, className }: ProductCardProps) {
         )}
         {/* Out of stock overlay */}
         {isOutOfStock && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-t-card">
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-t-card pointer-events-none">
             <span className="px-3 py-1.5 bg-white/90 text-text-primary text-xs font-bold rounded-badge tracking-wide">
               {t('outOfStock')}
             </span>
           </div>
         )}
         {!isOutOfStock && variant.stock < 5 && (
-          <div className="absolute top-2 left-2">
+          <div className="absolute top-2 left-2 pointer-events-none">
             <StockBadge stock={variant.stock} />
           </div>
-        )}
-        {/* Quick Add Button */}
-        {canQuickAdd && (
-          <button
-            onClick={handleAddToCart}
-            className="absolute bottom-2 right-2 w-11 h-11 bg-brand-red rounded-full flex items-center justify-center text-white shadow-lg hover:bg-brand-red-dark active:bg-brand-red-dark transition-colors"
-            aria-label={t('addToCart')}
-          >
-            <Plus className="w-4 h-4" />
-          </button>
         )}
       </div>
 
       {/* Content */}
       <div className="p-4">
-        <h3 className="font-display font-medium text-base text-text-primary line-clamp-2 mb-1 leading-snug">
-          {product.nameId}
-        </h3>
+        <Link href={`/products/${product.slug}`} className="block">
+          <h3 className="font-display font-medium text-base text-text-primary line-clamp-2 mb-1 leading-snug hover:text-brand-red transition-colors">
+            {product.nameId}
+          </h3>
+        </Link>
         <p className="text-text-secondary text-xs mb-2">{variant.nameId}</p>
 
         <div className="flex items-center justify-between">
@@ -157,6 +149,6 @@ export function ProductCard({ product, variant, className }: ProductCardProps) {
           </button>
         </div>
       </div>
-    </Link>
+    </div>
   );
 }

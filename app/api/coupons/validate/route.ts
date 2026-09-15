@@ -6,6 +6,7 @@ import { db } from '@/lib/db';
 import { coupons, couponUsages, products, orders } from '@/lib/db/schema';
 import { eq, and, sql, inArray } from 'drizzle-orm';
 import { withRateLimit } from '@/lib/utils/rate-limit';
+import { isSameOriginRequest, sameOriginRejected } from '@/lib/utils/same-origin';
 import { success, serverError, validationError, conflict } from '@/lib/utils/api-response';
 import { logger } from '@/lib/utils/logger';
 
@@ -20,6 +21,7 @@ const ValidateCouponSchema = z.object({
 export const POST = withRateLimit(
   async (req: NextRequest) => {
     try {
+      if (!isSameOriginRequest(req)) return sameOriginRejected();
       const body = await req.json();
       const parsed = ValidateCouponSchema.safeParse(body);
 

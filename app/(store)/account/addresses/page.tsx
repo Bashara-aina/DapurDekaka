@@ -4,8 +4,16 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { logger } from '@/lib/utils/logger';
 import { AddressCard } from '@/components/store/account/AddressCard';
 import { AddressForm } from '@/components/store/account/AddressForm';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import type { Address } from '@/lib/db/schema';
 import type { AddressFormData } from '@/components/store/account/AddressForm';
 
@@ -18,6 +26,7 @@ export default function AccountAddressesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const fetchAddresses = useCallback(async () => {
     try {
@@ -26,7 +35,8 @@ export default function AccountAddressesPage() {
       if (data.success) {
         setAddresses(data.data);
       }
-    } catch {
+    } catch (err) {
+      logger.warn('[account/addresses] load failed', { error: err instanceof Error ? err.message : String(err) });
       toast.error(t('loadAddressError') || 'Gagal memuat alamat');
     } finally {
       setIsLoading(false);
@@ -43,7 +53,15 @@ export default function AccountAddressesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm(t('deleteAddressConfirm') || 'Yakin ingin menghapus alamat ini?')) return;
+    // Open the confirm dialog; the actual DELETE runs in confirmDelete.
+    // (No native confirm() — it blocks the main thread and breaks mobile UX.)
+    setPendingDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    const id = pendingDeleteId;
+    if (!id) return;
+    setPendingDeleteId(null);
 
     try {
       const res = await fetch(`/api/account/addresses/${id}`, { method: 'DELETE' });
@@ -51,7 +69,8 @@ export default function AccountAddressesPage() {
       if (data.success) {
         setAddresses(prev => prev.filter(a => a.id !== id));
       }
-    } catch {
+    } catch (err) {
+      logger.warn('[account/addresses] delete failed', { error: err instanceof Error ? err.message : String(err) });
       toast.error(t('deleteAddressError') || 'Gagal menghapus alamat');
     }
   };
@@ -70,7 +89,8 @@ export default function AccountAddressesPage() {
           isDefault: a.id === id,
         })));
       }
-    } catch {
+    } catch (err) {
+      logger.warn('[account/addresses] set-default failed', { error: err instanceof Error ? err.message : String(err) });
       toast.error(t('setDefaultError') || 'Gagal mengatur alamat utama');
     }
   };
@@ -102,7 +122,8 @@ export default function AccountAddressesPage() {
 
       setShowForm(false);
       setEditingAddress(null);
-    } catch {
+    } catch (err) {
+      logger.warn('[account/addresses] save failed', { error: err instanceof Error ? err.message : String(err) });
       toast.error(t('saveAddressError') || 'Gagal menyimpan alamat');
     } finally {
       setIsSubmitting(false);
@@ -133,6 +154,7 @@ export default function AccountAddressesPage() {
         </div>
         {!showForm && (
           <button
+            type="button"
             onClick={() => setShowForm(true)}
             className="flex items-center gap-2 h-10 px-4 bg-brand-red text-white font-bold rounded-button hover:bg-brand-red-dark transition-colors"
           >
@@ -163,6 +185,7 @@ export default function AccountAddressesPage() {
             {t('noAddressesDesc') || 'Tambahkan alamat untuk checkout lebih cepat'}
           </p>
           <button
+            type="button"
             onClick={() => setShowForm(true)}
             className="inline-flex items-center gap-2 h-12 px-6 bg-brand-red text-white font-bold rounded-button hover:bg-brand-red-dark transition-colors"
           >
@@ -183,6 +206,34 @@ export default function AccountAddressesPage() {
           ))}
         </div>
       )}
+
+      {/* Delete confirmation — non-blocking Dialog (same pattern as cart). */}
+      <Dialog open={pendingDeleteId !== null} onOpenChange={(open) => { if (!open) setPendingDeleteId(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display">{t('deleteAddressConfirmTitle') || t('deleteAddressConfirm') || 'Hapus alamat?'}</DialogTitle>
+          </DialogHeader>
+          <p className="text-text-secondary text-sm">
+            {t('deleteAddressConfirmDesc') || t('deleteAddressConfirm') || 'Yakin ingin menghapus alamat ini?'}
+          </p>
+          <DialogFooter className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setPendingDeleteId(null)}
+              className="flex-1 h-11 border border-brand-cream-dark rounded-button font-medium hover:bg-brand-cream transition-colors"
+            >
+              {t('cancel')}
+            </button>
+            <button
+              type="button"
+              onClick={confirmDelete}
+              className="flex-1 h-11 bg-brand-red text-white rounded-button font-bold hover:bg-brand-red-dark transition-colors"
+            >
+              {t('delete')}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

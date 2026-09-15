@@ -37,7 +37,6 @@ export async function GET(
     if (!data) return notFound('Testimonial tidak ditemukan');
     return success(data);
   } catch (error) {
-    console.error('[admin/testimonials/[id] GET]', error);
     return serverError(error);
   }
 }
@@ -66,7 +65,6 @@ export async function PATCH(
     if (!updated) return notFound('Testimonial tidak ditemukan');
     return success(updated);
   } catch (error) {
-    console.error('[admin/testimonials/[id] PATCH]', error);
     return serverError(error);
   }
 }
@@ -91,7 +89,6 @@ export async function DELETE(
     if (!deleted) return notFound('Testimonial tidak ditemukan');
     return success({ deleted: true });
   } catch (error) {
-    console.error('[admin/testimonials/[id] DELETE]', error);
     return serverError(error);
   }
 }

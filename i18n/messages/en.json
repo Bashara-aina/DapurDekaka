@@ -28,7 +28,7 @@
     "halalCert": "Halal Certification",
     "halalCertOrg": "Indonesian Ulema Council (MUI)",
     "ctaTitle": "Ready to taste our premium frozen food?",
-    "ctaDesc": "Order now and enjoy free shipping on your first purchase. Shipped across Indonesia with maintained cold chain.",
+    "ctaDesc": "Order now and enjoy premium dimsum from Bandung. Shipped across Indonesia with maintained cold chain.",
     "viewProducts": "View Products",
     "chatWhatsApp": "Chat WhatsApp"
   },
@@ -138,6 +138,7 @@
     "trackOrder": "Track Order",
     "refundPolicy": "Refund Policy",
     "privacyPolicy": "Privacy Policy",
+    "terms": "Terms & Conditions",
     "whatsapp": "WhatsApp",
     "followUs": "Follow Us",
     "paymentMethods": "Payment Methods",
@@ -633,7 +634,10 @@
     "profile": "Profile",
     "orders": "Orders",
     "points": "Points",
-    "vouchers": "Vouchers & Coupons",
+    "vouchers": {
+      "title": "Vouchers & Coupons",
+      "freeShipping": "Free Shipping"
+    },
     "overview": "Overview",
     "signOut": "Log Out",
     "signingOut": "Processing...",

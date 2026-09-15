@@ -47,7 +47,6 @@ export async function GET(
 
     return success(profile);
   } catch (error) {
-    console.error('[Admin B2B Profiles GET id]', error);
     return serverError(error);
   }
 }
@@ -107,7 +106,6 @@ export async function PATCH(
 
     return success(updated);
   } catch (error) {
-    console.error('[Admin B2B Profiles PATCH id]', error);
     return serverError(error);
   }
 }

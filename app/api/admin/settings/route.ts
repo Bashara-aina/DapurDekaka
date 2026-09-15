@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { asc } from 'drizzle-orm';
-import { success, unauthorized, forbidden, serverError, validationError } from '@/lib/utils/api-response';
+import { success, unauthorized, forbidden, serverError, validationError, conflict, created } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { systemSettings, adminActivityLogs } from '@/lib/db/schema';
@@ -44,7 +44,55 @@ export async function GET(req: NextRequest) {
 
     return success(settingsWithType);
   } catch (error) {
-    console.error('[Admin/Settings/GET]', error);
+    return serverError(error);
+  }
+}
+
+const createSchema = z.object({
+  key: z.string().min(1).max(100).regex(/^[a-z][a-z0-9_]*$/, 'Key harus snake_case'),
+  value: z.union([z.string(), z.number(), z.boolean()]),
+  type: z.enum(['string', 'number', 'integer', 'boolean']).default('string'),
+  description: z.string().nullable().optional(),
+});
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return unauthorized('Silakan login terlebih dahulu');
+    }
+
+    const role = (session.user as { role?: string }).role;
+    if (!role || role !== 'superadmin') {
+      return forbidden('Hanya superadmin yang dapat membuat pengaturan');
+    }
+
+    const body = await req.json();
+    const parsed = createSchema.safeParse(body);
+    if (!parsed.success) {
+      return validationError(parsed.error);
+    }
+
+    const existing = await db.query.systemSettings.findFirst({
+      where: eq(systemSettings.key, parsed.data.key),
+    });
+    if (existing) {
+      return conflict('Key pengaturan sudah ada');
+    }
+
+    const [createdRow] = await db
+      .insert(systemSettings)
+      .values({
+        key: parsed.data.key,
+        value: String(parsed.data.value),
+        type: parsed.data.type,
+        description: parsed.data.description ?? null,
+        updatedBy: session.user.id,
+      })
+      .returning();
+
+    return created(createdRow);
+  } catch (error) {
     return serverError(error);
   }
 }
@@ -97,7 +145,6 @@ export async function PATCH(req: NextRequest) {
 
     return success({ updated: updatedSettings.length, settings: updatedSettings });
   } catch (error) {
-    console.error('[Admin/Settings/PATCH]', error);
     return serverError(error);
   }
 }

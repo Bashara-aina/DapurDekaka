@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { eq, and, sql } from 'drizzle-orm';
-import { orders, couponUsages, pointsHistory, users, orderStatusHistory } from '@/lib/db/schema';
+import { eq, and, sql, inArray } from 'drizzle-orm';
+import { orders, couponUsages, pointsHistory, users, orderStatusHistory, productVariants } from '@/lib/db/schema';
 import { success, serverError, notFound, conflict, unauthorized, forbidden, validationError, tooManyRequests } from '@/lib/utils/api-response';
 import { withRateLimit } from '@/lib/utils/rate-limit';
+import { isSameOriginRequest, sameOriginRejected } from '@/lib/utils/same-origin';
 import { z } from 'zod';
 import { createMidtransTransaction } from '@/lib/midtrans/create-transaction';
 import { formatWIB } from '@/lib/utils/format-date';
@@ -16,10 +17,12 @@ export const runtime = 'nodejs';
 
 const retrySchema = z.object({
   orderNumber: z.string().regex(/^DDK-\d{8}-\d{4}(?:-retry-\d+)?$/, 'Format orderNumber tidak valid'),
+  email: z.string().email().optional(),
 });
 
 export const POST = withRateLimit(async (req: NextRequest) => {
   try {
+    if (!isSameOriginRequest(req)) return sameOriginRejected();
     const session = await auth();
 
     if (session?.user?.id) {
@@ -34,7 +37,7 @@ export const POST = withRateLimit(async (req: NextRequest) => {
       return validationError(parsed.error);
     }
 
-    const { orderNumber } = parsed.data;
+    const { orderNumber, email } = parsed.data;
 
     const order = await db.query.orders.findFirst({
       where: eq(orders.orderNumber, orderNumber),
@@ -45,16 +48,42 @@ export const POST = withRateLimit(async (req: NextRequest) => {
       return notFound('Order tidak ditemukan');
     }
 
-    // Auth: must be owner of order OR superadmin/owner
+    // Auth: must be owner of order OR superadmin/owner.
+    // Guest orders (userId null) require the checkout email to mint a new Snap token.
     if (session?.user?.id && order.userId && session.user.id !== order.userId) {
       const role = (session.user as { role?: string }).role;
       if (role !== 'superadmin' && role !== 'owner') {
         return forbidden('Anda tidak berhak mengakses pesanan ini');
       }
+    } else if (!session?.user?.id && !order.userId) {
+      if (!email || email.toLowerCase() !== order.recipientEmail.toLowerCase()) {
+        return unauthorized('Email verifikasi diperlukan untuk melanjutkan pembayaran');
+      }
+    } else if (!session?.user?.id && order.userId) {
+      return unauthorized('Silakan masuk untuk melanjutkan pembayaran pesanan ini');
     }
 
     if (order.status !== 'pending_payment') {
       return conflict('Order tidak dapat diretry — status bukan pending_payment');
+    }
+
+    // P0: re-validate stock before minting a new Snap token (prevents oversell/price drift).
+    if (order.items.length > 0) {
+      const variantIds = order.items.map((i) => i.variantId);
+      const variants = await db
+        .select({ id: productVariants.id, stock: productVariants.stock, isActive: productVariants.isActive })
+        .from(productVariants)
+        .where(inArray(productVariants.id, variantIds));
+      const stockMap = new Map(variants.map((v) => [v.id, v]));
+      for (const item of order.items) {
+        const v = stockMap.get(item.variantId);
+        if (!v || v.isActive === false) {
+          return conflict(`Produk "${item.productNameId}" sudah tidak tersedia`);
+        }
+        if ((v.stock ?? 0) < item.quantity) {
+          return conflict(`Stok "${item.productNameId}" tidak mencukupi (tersisa ${v.stock})`);
+        }
+      }
     }
 
     // H-04: Server-side cap on retry attempts — max 3 retries before auto-cancellation

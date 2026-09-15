@@ -2,8 +2,9 @@ import type { MetadataRoute } from 'next';
 import { db } from '@/lib/db';
 import { products, blogPosts } from '@/lib/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
+import { logger } from '@/lib/utils/logger';
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://dapurdekaka.com';
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? '';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const routes: MetadataRoute.Sitemap = [
@@ -38,10 +39,40 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     },
     {
-      url: `${BASE_URL}/cart`,
+      url: `${BASE_URL}/b2b/quote`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
-      priority: 0.5,
+      priority: 0.6,
+    },
+    {
+      url: `${BASE_URL}/about`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+    {
+      url: `${BASE_URL}/trust`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    },
+    {
+      url: `${BASE_URL}/privacy-policy`,
+      lastModified: new Date(),
+      changeFrequency: 'yearly',
+      priority: 0.3,
+    },
+    {
+      url: `${BASE_URL}/terms`,
+      lastModified: new Date(),
+      changeFrequency: 'yearly',
+      priority: 0.3,
+    },
+    {
+      url: `${BASE_URL}/refund-policy`,
+      lastModified: new Date(),
+      changeFrequency: 'yearly',
+      priority: 0.3,
     },
   ];
 
@@ -63,8 +94,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }));
 
     routes.push(...productUrls);
-  } catch {
-    // DB not available, skip products
+  } catch (err) {
+    // DB not available (e.g. build without env) — serve static routes only.
+    logger.warn('[sitemap] products query failed', {
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 
   // Get published blog posts
@@ -81,12 +115,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${BASE_URL}/blog/${post.slug}`,
       lastModified: post.updatedAt ? new Date(post.updatedAt) : new Date(),
       changeFrequency: 'monthly' as const,
-      priority: 0.6,
+      priority: 0.75,
     }));
 
     routes.push(...blogUrls);
-  } catch {
-    // DB not available, skip blog posts
+  } catch (err) {
+    // DB not available (e.g. build without env) — serve static routes only.
+    logger.warn('[sitemap] blog posts query failed', {
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 
   return routes;

@@ -74,7 +74,6 @@ export async function GET(_req: NextRequest) {
       completedTotal: funnel.delivered + funnel.cancelled + funnel.refunded,
     });
   } catch (error) {
-    console.error('[admin/dashboard/order-funnel]', error);
     return serverError(error);
   }
 }

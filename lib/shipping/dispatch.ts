@@ -61,8 +61,9 @@ export async function dispatchOrder(
   const originLat = (await getSetting<number>('biteship_origin_lat', 'number')) ?? WAREHOUSE_ORIGIN_LAT;
   const originLng = (await getSetting<number>('biteship_origin_lng', 'number')) ?? WAREHOUSE_ORIGIN_LNG;
   const originAddress =
-    (await getSetting<string>('biteship_origin_address', 'string')) ?? 'Jl. Sinom V No. 7, Turangga, Bandung';
-  const storePhone = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '6281234567890';
+    (await getSetting<string>('biteship_origin_address', 'string')) ?? '';
+  const dbStorePhone = await getSetting<string>('store_whatsapp_number').catch(() => null);
+  const storePhone = dbStorePhone ?? '';
 
   const rateItems = buildRateItems(
     order.items.map((item) => ({
@@ -102,7 +103,11 @@ export async function dispatchOrder(
     const customerTrackUrl = `${appUrl}/orders/track/${order.orderNumber}`;
     const trackUrl = result.trackingUrl ?? customerTrackUrl;
 
-    // neon-http has no transactions — sequential writes with status guards
+    // NOTE (audit #47): db now runs on neon-serverless Pool, so transactions
+    // ARE available. These two writes stay sequential (not wrapped) on purpose:
+    // the Biteship booking above is an irreversible external side effect, so a
+    // DB transaction could not roll it back anyway. Status guards on the caller
+    // side keep retries idempotent.
     await db
       .update(orders)
       .set({
@@ -191,10 +196,12 @@ export async function dispatchOrder(
       })
       .where(eq(orders.id, order.id));
 
-    sendWhatsApp({
-      phone: storePhone,
-      message: opsDispatchFailedMessage({ orderNumber: order.orderNumber, error: errMsg }),
-    }).catch(() => undefined);
+    if (storePhone) {
+      sendWhatsApp({
+        phone: storePhone,
+        message: opsDispatchFailedMessage({ orderNumber: order.orderNumber, error: errMsg }),
+      }).catch(() => undefined);
+    }
 
     return { ok: false, status: 'failed', message: `Dispatch gagal: ${errMsg}` };
   }

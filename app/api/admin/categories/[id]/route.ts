@@ -36,7 +36,6 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     if (!category) return notFound('Kategori tidak ditemukan');
     return success(category);
   } catch (error) {
-    console.error('[Admin/Categories/[id]/GET]', error);
     return serverError(error);
   }
 }
@@ -79,7 +78,6 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     if (!updated) return notFound('Kategori tidak ditemukan');
     return success(updated);
   } catch (error) {
-    console.error('[Admin/Categories/[id]/PATCH]', error);
     return serverError(error);
   }
 }
@@ -103,7 +101,6 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     if (!deleted) return notFound('Kategori tidak ditemukan');
     return success({ message: 'Kategori dinonaktifkan' });
   } catch (error) {
-    console.error('[Admin/Categories/[id]/DELETE]', error);
     return serverError(error);
   }
 }

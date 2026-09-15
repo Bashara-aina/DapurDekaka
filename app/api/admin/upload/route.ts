@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/utils/logger';
+import { validateImageFile, writeTempUploadFile } from '@/lib/utils/upload-validation';
 import { serverSideUpload } from '@/lib/cloudinary/upload';
 import { success, unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
 import { withRateLimit } from '@/lib/utils/rate-limit';
@@ -9,7 +11,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const folderSchema = z.object({
-  folder: z.enum(['products', 'blog', 'carousel', 'avatars', 'gallery', 'sauces']),
+  folder: z.enum(['products', 'blog', 'carousel', 'avatars', 'gallery', 'sauces', 'cms']),
 });
 
 /**
@@ -32,7 +34,10 @@ export const POST = withRateLimit(async (req: NextRequest) => {
     let formData: FormData;
     try {
       formData = await req.formData();
-    } catch {
+    } catch (err) {
+      logger.warn('[admin/upload] invalid form data', {
+        error: err instanceof Error ? err.message : String(err),
+      });
       return NextResponse.json(
         { success: false, error: 'Invalid form data', code: 'VALIDATION_ERROR' },
         { status: 422 }
@@ -40,29 +45,29 @@ export const POST = withRateLimit(async (req: NextRequest) => {
     }
 
     const file = formData.get('file') as File | null;
-    if (!file || !(file instanceof File) || file.size === 0) {
+    // Size + claimed MIME + magic-byte verification (shared guard).
+    // (Cloudinary resource_type:'image' re-validates server-side as depth.)
+    const validated = await validateImageFile(file);
+    if ('error' in validated) {
+      if (validated.error === 'No file provided') {
+        return NextResponse.json(
+          { success: false, error: 'No file provided', code: 'VALIDATION_ERROR' },
+          { status: 422 }
+        );
+      }
+      if (validated.error.startsWith('Ukuran file')) {
+        return NextResponse.json(
+          { success: false, error: validated.error, code: 'VALIDATION_ERROR' },
+          { status: 422 }
+        );
+      }
+      logger.warn('[admin/upload] rejected upload', { claimedType: (file as File | null)?.type, error: validated.error });
       return NextResponse.json(
-        { success: false, error: 'No file provided', code: 'VALIDATION_ERROR' },
+        { success: false, error: validated.error, code: 'VALIDATION_ERROR' },
         { status: 422 }
       );
     }
-
-    // Max 10MB
-    const MAX_SIZE = 10 * 1024 * 1024;
-    if (file.size > MAX_SIZE) {
-      return NextResponse.json(
-        { success: false, error: 'Ukuran file maksimal 10MB', code: 'VALIDATION_ERROR' },
-        { status: 422 }
-      );
-    }
-
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json(
-        { success: false, error: 'Format file tidak didukung. Gunakan JPG, PNG, WebP, atau GIF', code: 'VALIDATION_ERROR' },
-        { status: 422 }
-      );
-    }
+    const { buffer, ext } = validated;
 
     const folderValue = formData.get('folder') as string | null;
     if (!folderValue) {
@@ -80,15 +85,11 @@ export const POST = withRateLimit(async (req: NextRequest) => {
       );
     }
 
-    // Write file to temp location
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const tmpPath = `/tmp/upload-${Date.now()}-${file.name}`;
+    // Write file to temp location under a random, traversal-safe name.
+    // (Never interpolate the client-supplied filename into a path.)
+    const tmpPath = await writeTempUploadFile(buffer, ext);
 
-    const { writeFile } = await import('fs/promises');
-    await writeFile(tmpPath, buffer);
-
-    // Upload to Cloudinary
+    // Upload to Cloudinary (serverSideUpload unlinks the temp file in finally)
     const result = await serverSideUpload(tmpPath, folderValue as CloudinaryFolder);
 
     return success({
@@ -96,7 +97,7 @@ export const POST = withRateLimit(async (req: NextRequest) => {
       publicId: result.publicId,
     });
   } catch (error) {
-    console.error('[AdminUpload] Error:', error);
+    // serverError() already logs — no duplicate console.error.
     return serverError(error);
   }
 }, 'admin');

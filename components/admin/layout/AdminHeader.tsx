@@ -11,20 +11,31 @@ const BREADCRUMB_MAP: Record<string, string> = {
   'admin': 'Admin',
   'dashboard': 'Dashboard',
   'team-dashboard': 'Tim Dashboard',
+  'ops': 'Operasional',
+  'kpi': 'KPI',
   'field': 'Gudang',
   'orders': 'Pesanan',
   'products': 'Produk',
+  'categories': 'Kategori',
   'inventory': 'Inventori',
   'shipments': 'Pengiriman',
   'customers': 'Pelanggan',
   'coupons': 'Kupon',
   'blog': 'Blog',
+  'cms': 'CMS Halaman',
+  'gallery': 'Galeri',
+  'testimonials': 'Testimoni',
   'carousel': 'Carousel',
   'b2b-inquiries': 'B2B Inquiries',
+  'b2b-profiles': 'Profil B2B',
   'b2b-quotes': 'B2B Quotes',
   'ai-content': 'AI Content',
   'settings': 'Pengaturan',
   'users': 'Pengguna',
+  'refunds': 'Refunds',
+  'disputes': 'Disputes',
+  'audit-logs': 'Audit Logs',
+  'feature-flags': 'Feature Flags',
   'new': 'Baru',
 };
 
@@ -92,7 +103,11 @@ export function AdminHeader({ role }: AdminHeaderProps) {
 
         {/* Right: search placeholder + user avatar */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400 hidden md:inline">Admin</span>
+          {role && (
+            <span className="text-[11px] font-semibold uppercase tracking-wide px-2 py-1 rounded bg-admin-content text-gray-600">
+              {role}
+            </span>
+          )}
 
           <div className="w-8 h-8 rounded-full bg-admin-sidebar text-white flex items-center justify-center text-xs font-bold select-none">
             {session?.user?.name?.[0] ?? 'U'}

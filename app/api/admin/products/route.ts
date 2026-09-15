@@ -7,6 +7,8 @@ import { eq, desc, and, isNull, sql, like, or } from 'drizzle-orm';
 import { unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
 import { withRateLimit } from '@/lib/utils/rate-limit';
 import { logger } from '@/lib/utils/logger';
+import { logAdminActivity } from '@/lib/services/audit.service';
+import { getClientIp, getUserAgent } from '@/lib/utils/request-meta';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -194,9 +196,20 @@ export const POST = withRateLimit(async (req: NextRequest) => {
       })
       .returning();
 
+    // Audit log — non-blocking, captures IP/UA for compliance.
+    logAdminActivity({
+      userId: session.user.id,
+      action: 'product.created',
+      targetType: 'product',
+      targetId: created?.id,
+      afterState: { slug: parsed.data.slug, nameId: parsed.data.nameId },
+      ipAddress: getClientIp(req),
+      userAgent: getUserAgent(req),
+    });
+
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch (error) {
-    console.error('[Admin Products POST]', error);
+    logger.error('[Admin Products POST]', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
       { status: 500 }

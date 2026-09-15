@@ -60,7 +60,6 @@ export async function GET(_req: NextRequest) {
       delta: revenueDelta,
     });
   } catch (error) {
-    console.error('[admin/team-dashboard/today-revenue]', error);
     return serverError(error);
   }
 }

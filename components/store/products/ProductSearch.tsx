@@ -51,8 +51,8 @@ export function ProductSearch({
       {inputValue && (
         <button
           onClick={clearSearch}
-          className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary hover:text-text-primary transition-colors"
-          aria-label="Clear search"
+          className="absolute right-1 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+          aria-label="Hapus pencarian"
         >
           ✕
         </button>

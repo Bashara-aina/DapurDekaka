@@ -58,7 +58,6 @@ export async function GET(_req: NextRequest) {
 
     return success(healthIndicators);
   } catch (error) {
-    console.error('[admin/team-dashboard/health-indicators]', error);
     return serverError(error);
   }
 }

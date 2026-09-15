@@ -25,15 +25,15 @@ export async function GET(req: NextRequest) {
     let cancelled = 0;
     let errors: string[] = [];
 
-    // Find all pending_payment orders past their expiry time (bounded)
+    // Find all pending_payment orders past their expiry time (bounded).
+    // NOTE: no `with: { items }` — cancellation only touches order-level
+    // fields + points/coupon rows; loading up to 200 × full item lists was
+    // pure waste (previously fetched and never read).
     const expiredOrders = await db.query.orders.findMany({
       where: and(
         eq(orders.status, 'pending_payment'),
         lt(orders.paymentExpiresAt, now)
       ),
-      with: {
-        items: true,
-      },
       limit: BATCH_LIMIT,
     });
 

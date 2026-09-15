@@ -73,7 +73,6 @@ export async function GET(req: NextRequest) {
 
     return success(Object.values(grouped));
   } catch (error) {
-    console.error('[admin/field/worker-activity GET]', error);
     return serverError(error);
   }
 }

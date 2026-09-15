@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useCartStore } from '@/store/cart.store';
-import { Home, Package, ShoppingCart, User, FileText, Building2 } from 'lucide-react';
+import { Home, Package, ShoppingCart, User, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 export function BottomNav() {
@@ -29,7 +29,6 @@ export function BottomNav() {
   const navItems = [
     { href: '/', Icon: Home, label: t('home') },
     { href: '/products', Icon: Package, label: t('products') },
-    { href: '/blog', Icon: FileText, label: t('blog') },
     { href: '/cart', Icon: ShoppingCart, label: t('cart'), badge: totalItems },
     ...(isB2bUser ? [{ href: '/b2b/account', Icon: Building2, label: t('b2b') }] : []),
     { href: '/account', Icon: User, label: t('account') },
@@ -64,8 +63,9 @@ export function BottomNav() {
               key={index}
               href={item.href}
               aria-label={item.label}
+              aria-current={isActive ? 'page' : undefined}
               className={cn(
-                'relative flex flex-col items-center gap-0.5 py-2 px-3',
+                'relative flex flex-col items-center justify-center gap-0.5 py-2 px-3 min-h-[56px] min-w-[64px]',
                 isActive ? 'text-brand-red' : 'text-text-secondary'
               )}
             >

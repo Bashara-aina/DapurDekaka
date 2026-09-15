@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Playfair_Display, Inter } from 'next/font/google';
 import { Providers } from '@/components/Providers';
 import { Analytics } from '@vercel/analytics/next';
+import { getSetting } from '@/lib/settings/get-settings';
 import './globals.css';
 
 const playfair = Playfair_Display({
@@ -34,25 +35,37 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? '';
+
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const [storeName, instagramUrl, logoUrl] = await Promise.all([
+    getSetting<string>('store_name').catch(() => null),
+    getSetting<string>('instagram_url').catch(() => null),
+    getSetting<string>('seo_logo_url').catch(() => null),
+  ]);
+
+  const finalLogo = logoUrl ?? (SITE_URL ? `${SITE_URL}/assets/logo/logo.png` : '');
+  const url = SITE_URL || 'https://dapurdekaka.com';
+
+  const sameAs: string[] = [];
+  if (instagramUrl) sameAs.push(instagramUrl);
+
   const organizationJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: 'Dapur Dekaka',
-    url: 'https://dapurdekaka.com',
-    logo: 'https://dapurdekaka.com/assets/logo/logo.png',
+    name: storeName ?? '',
+    url,
+    logo: finalLogo,
     contactPoint: {
       '@type': 'ContactPoint',
       contactType: 'customer service',
       availableLanguage: 'Indonesian',
     },
-    sameAs: [
-      'https://instagram.com/dapurdekaka',
-    ],
+    ...(sameAs.length > 0 ? { sameAs } : {}),
   };
 
   return (

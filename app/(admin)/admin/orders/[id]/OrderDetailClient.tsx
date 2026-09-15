@@ -7,6 +7,7 @@ import { formatIDR } from '@/lib/utils/format-currency';
 import { formatWIB } from '@/lib/utils/format-date';
 import { ChevronLeft } from 'lucide-react';
 import { buildTrackingUrl } from '@/lib/constants/couriers';
+import { logger } from '@/lib/utils/logger';
 import type { OrderItem, User } from '@/lib/db/schema';
 
 interface OrderHistoryEntry {
@@ -151,7 +152,8 @@ export default function OrderDetailClient({ orderId, userRole }: OrderDetailClie
         const orderData = await orderRes.json();
         setOrder(orderData.data);
         if (orderData.data?.trackingNumber) setTrackingNumber(orderData.data.trackingNumber);
-      } catch {
+      } catch (err) {
+        logger.warn('[admin/orders] detail load failed', { orderId, error: err instanceof Error ? err.message : String(err) });
         setError('Gagal memuat detail pesanan');
       } finally {
         setLoading(false);

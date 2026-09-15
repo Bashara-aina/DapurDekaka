@@ -116,7 +116,6 @@ export async function POST(req: NextRequest) {
 
     return success(createdQuote, 201);
   } catch (error) {
-    console.error('[B2B Quote POST]', error);
     return serverError(error);
   }
 }
@@ -172,7 +171,6 @@ export async function GET(req: NextRequest) {
 
     return success({ quotes });
   } catch (error) {
-    console.error('[B2B Quotes GET]', error);
     return serverError(error);
   }
 }

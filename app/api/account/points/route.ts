@@ -73,7 +73,6 @@ export async function GET(req: NextRequest) {
     });
 
   } catch (error) {
-    console.error('[account/points GET]', error);
     return serverError(error);
   }
 }

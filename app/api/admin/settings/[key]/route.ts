@@ -6,6 +6,8 @@ import { db } from '@/lib/db';
 import { systemSettings } from '@/lib/db/schema';
 import { z } from 'zod';
 import { logAdminActivity } from '@/lib/services/audit.service';
+import { invalidateSetting } from '@/lib/settings/get-settings';
+import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -61,6 +63,8 @@ export async function PATCH(
       .where(eq(systemSettings.key, key))
       .returning();
 
+    invalidateSetting(key);
+
     // Audit log — non-blocking
     logAdminActivity({
       userId: session.user.id,
@@ -69,11 +73,55 @@ export async function PATCH(
       targetId: key,
       beforeState: { value: existing.value },
       afterState: { value: String(parsed.data.value) },
-    }).catch((e) => console.error('[Audit] Failed to log setting change:', e));
+    }).catch((e: unknown) => logger.warn('[Audit] Failed to log setting change:', { error: e instanceof Error ? e.message : String(e) }));
 
     return success(updated);
   } catch (error) {
-    console.error('[Admin/Settings/PATCH key]', error);
+    return serverError(error);
+  }
+}
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ key: string }> }
+) {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return unauthorized('Silakan login terlebih dahulu');
+    }
+
+    const role = (session.user as { role?: string }).role;
+    if (!role || !['superadmin'].includes(role)) {
+      return forbidden('Hanya superadmin yang dapat menghapus pengaturan sistem');
+    }
+
+    const { key } = await params;
+
+    const existing = await db.query.systemSettings.findFirst({
+      where: eq(systemSettings.key, key),
+    });
+
+    if (!existing) {
+      return notFound('Pengaturan tidak ditemukan');
+    }
+
+    await db
+      .delete(systemSettings)
+      .where(eq(systemSettings.key, key));
+
+    invalidateSetting(key);
+
+    logAdminActivity({
+      userId: session.user.id,
+      action: 'setting_deleted',
+      targetType: 'system_setting',
+      targetId: key,
+      beforeState: { value: existing.value, type: existing.type },
+    }).catch((e: unknown) => logger.warn('[Audit] Failed to log setting delete:', { error: e instanceof Error ? e.message : String(e) }));
+
+    return success({ key });
+  } catch (error) {
     return serverError(error);
   }
 }

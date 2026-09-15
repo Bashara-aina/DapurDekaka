@@ -103,7 +103,6 @@ export async function POST(req: NextRequest) {
       message: 'Pengguna berhasil diundang. Email undangan telah dikirim.',
     });
   } catch (error) {
-    console.error('[admin/users/invite]', error);
     return serverError(error);
   }
 }

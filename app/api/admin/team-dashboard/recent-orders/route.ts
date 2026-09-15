@@ -37,7 +37,6 @@ export async function GET(req: NextRequest) {
 
     return success(formatted);
   } catch (error) {
-    console.error('[admin/team-dashboard/recent-orders]', error);
     return serverError(error);
   }
 }

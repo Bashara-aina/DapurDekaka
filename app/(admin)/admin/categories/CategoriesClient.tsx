@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { logger } from '@/lib/utils/logger';
 import { Plus, Edit2, X, RefreshCw } from 'lucide-react';
 
 interface CategoryItem {
@@ -33,7 +34,8 @@ export default function CategoriesClient() {
       if (!res.ok) throw new Error('Failed to fetch');
       const result = await res.json();
       setCategories(result.data ?? []);
-    } catch {
+    } catch (err) {
+      logger.warn('[admin/categories] load failed', { error: err instanceof Error ? err.message : String(err) });
       toast.error('Gagal memuat kategori');
     } finally {
       setLoading(false);
@@ -94,6 +96,7 @@ export default function CategoriesClient() {
       setShowModal(false);
       fetchCategories();
     } catch (err) {
+      logger.warn('[admin/categories] save failed', { error: err instanceof Error ? err.message : String(err) });
       toast.error(err instanceof Error ? err.message : 'Gagal menyimpan');
     } finally {
       setIsSubmitting(false);
@@ -110,7 +113,8 @@ export default function CategoriesClient() {
 
       if (!res.ok) throw new Error('Failed');
       fetchCategories();
-    } catch {
+    } catch (err) {
+      logger.warn('[admin/categories] toggle-active failed', { id: cat.id, error: err instanceof Error ? err.message : String(err) });
       toast.error('Gagal update status');
     }
   }

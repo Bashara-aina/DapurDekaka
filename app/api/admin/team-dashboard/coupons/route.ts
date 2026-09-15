@@ -41,7 +41,6 @@ export async function GET(req: NextRequest) {
       expiresAt: c.expiresAt ? c.expiresAt.toISOString() : null,
     })));
   } catch (error) {
-    console.error('[admin/team-dashboard/coupons]', error);
     return serverError(error);
   }
 }

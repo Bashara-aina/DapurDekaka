@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { carouselSlides } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
 
+import { logger } from '@/lib/utils/logger';
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ success: true, data: allSlides });
   } catch (error) {
-    console.error('[Admin Carousel GET]', error);
+    logger.error('[Admin Carousel GET]', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
       { status: 500 }
@@ -101,7 +102,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch (error) {
-    console.error('[Admin Carousel POST]', error);
+    logger.error('[Admin Carousel POST]', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
       { status: 500 }

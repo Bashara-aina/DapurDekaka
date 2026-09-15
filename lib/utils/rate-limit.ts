@@ -2,12 +2,15 @@ import type { NextRequest } from 'next/server';
 import { logger } from '@/lib/utils/logger';
 
 export type RateLimitTier =
-  | 'auth'       // login, register, forgot/reset-password → 5/15min
-  | 'money'      // checkout, coupon, points → 10/min
-  | 'public'     // catalog, product, blog → 120/min (or CDN handles)
-  | 'webhook'    // midtrans, biteship → no user limit, verified by signature
-  | 'admin'      // admin endpoints → 60/min
-  | 'cron';      // /api/cron/* → CRON_SECRET gate, not rate-limited
+  | 'auth'            // register, reset-password (IP-keyed) → 5/15min
+  | 'auth-strict'     // credentials sign-in (brute-force) → 5/10min
+  | 'password-reset'  // forgot-password per-email bucket → 3/hour
+  | 'money'           // checkout, coupon, points → 10/min
+  | 'shipping'        // shipping quotes (fans out to paid courier API) → 30/min
+  | 'public'          // catalog, product, blog → 120/min (or CDN handles)
+  | 'webhook'         // midtrans, biteship → no user limit, verified by signature
+  | 'admin'           // admin endpoints → 60/min
+  | 'cron';           // /api/cron/* → CRON_SECRET gate, not rate-limited
 
 interface TierConfig {
   maxRequests: number;
@@ -15,15 +18,21 @@ interface TierConfig {
 }
 
 const TIER_CONFIGS: Record<RateLimitTier, TierConfig> = {
-  auth:   { maxRequests: 5,  windowMs: 15 * 60 * 1000 },
-  money:  { maxRequests: 10, windowMs: 60 * 1000 },
-  public: { maxRequests: 120, windowMs: 60 * 1000 },
-  webhook: { maxRequests: 60, windowMs: 60 * 1000 },
-  admin:   { maxRequests: 60, windowMs: 60 * 1000 },
-  cron:    { maxRequests: 9999, windowMs: 60 * 1000 },
+  'auth':           { maxRequests: 5,   windowMs: 15 * 60 * 1000 },
+  'auth-strict':    { maxRequests: 5,   windowMs: 10 * 60 * 1000 },
+  'password-reset': { maxRequests: 3,   windowMs: 60 * 60 * 1000 },
+  'money':          { maxRequests: 10,  windowMs: 60 * 1000 },
+  'shipping':       { maxRequests: 30,  windowMs: 60 * 1000 },
+  'public':         { maxRequests: 120, windowMs: 60 * 1000 },
+  'webhook':        { maxRequests: 60,  windowMs: 60 * 1000 },
+  'admin':          { maxRequests: 60,  windowMs: 60 * 1000 },
+  'cron':           { maxRequests: 9999, windowMs: 60 * 1000 },
 };
 
 let redisInstance: unknown = null;
+// Warn-once: validateRedisConfig runs on EVERY rate-limit check, so an
+// unguarded console.warn would spam once per request in dev.
+let redisWarned = false;
 
 function validateRedisConfig(): void {
   const hasUrl = Boolean(process.env.UPSTASH_REDIS_REST_URL);
@@ -35,7 +44,8 @@ function validateRedisConfig(): void {
         'Rate limiting requires UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN in production'
       );
     }
-  } else if (!hasUrl || !hasToken) {
+  } else if ((!hasUrl || !hasToken) && !redisWarned) {
+    redisWarned = true;
     console.warn(
       '[RateLimit] Upstash Redis not configured. Falls back to in-memory (dev only).'
     );

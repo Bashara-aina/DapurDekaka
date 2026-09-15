@@ -38,7 +38,6 @@ export async function GET(req: NextRequest) {
 
     return success(inventory);
   } catch (error) {
-    console.error('[admin/field/inventory GET]', error);
     return serverError(error);
   }
 }
@@ -100,7 +99,6 @@ export async function PATCH(req: NextRequest) {
 
     return success({ variantId, stockBefore: quantityBefore, stockAfter: quantityAfter, delta: actualDelta });
   } catch (error) {
-    console.error('[admin/field/inventory PATCH]', error);
     return serverError(error);
   }
 }

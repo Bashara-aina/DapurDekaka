@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Gift, AlertTriangle, TrendingUp, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
+import { logger } from '@/lib/utils/logger';
 import { PointsHistoryCard } from '@/components/store/account/PointsHistoryCard';
 import type { PointsHistory } from '@/lib/db/schema';
 import { formatIDR } from '@/lib/utils/format-currency';
@@ -41,7 +42,8 @@ export default function AccountPointsPage() {
         );
         setHasMore(response.data.history.length === 20);
       }
-    } catch {
+    } catch (err) {
+      logger.warn('[account/points] load failed', { error: err instanceof Error ? err.message : String(err) });
       toast.error(t('loadPointsError') || 'Gagal memuat poin');
     } finally {
       if (pageNum === 1) {

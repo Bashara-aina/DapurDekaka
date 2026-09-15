@@ -61,7 +61,6 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('[admin/export/orders]', error);
     return serverError(error);
   }
 }

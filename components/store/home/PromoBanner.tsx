@@ -33,10 +33,8 @@ export function PromoBanner({
 
   return (
     <section className="py-6 px-4 container mx-auto">
-      <div className="bg-brand-red rounded-card p-6 md:p-8 text-center relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="w-full h-full bg-[radial-gradient(circle,_var(--tw-gradient-stops))]from-white/20_at_50%_50%,_transparent]" />
-        </div>
+      <div className="bg-brand-red bg-chinese-pattern bg-cover bg-center rounded-card p-6 md:p-8 text-center relative overflow-hidden">
+        <div className="absolute inset-0 bg-brand-red/85" aria-hidden="true" />
         <div className="relative z-10">
           <span className="inline-block px-4 py-1 bg-white/20 text-white rounded-pill text-sm font-semibold mb-4">
             {promoLabel ?? t('badge')}

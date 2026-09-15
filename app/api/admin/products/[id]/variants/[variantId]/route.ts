@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { productVariants, products } from '@/lib/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
+import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -115,7 +116,7 @@ export async function PATCH(
 
     return NextResponse.json({ success: true, data: updated });
   } catch (error) {
-    console.error('[Admin Product Variant PATCH]', error);
+    logger.error('[Admin Product Variant PATCH]', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
       { status: 500 }
@@ -176,7 +177,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, data: { id: params.variantId } });
   } catch (error) {
-    console.error('[Admin Product Variant DELETE]', error);
+    logger.error('[Admin Product Variant DELETE]', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
       { status: 500 }

@@ -41,7 +41,6 @@ export async function GET(_req: NextRequest) {
       })),
     });
   } catch (error) {
-    console.error('[admin/team-dashboard/b2b-active-quotes]', error);
     return serverError(error);
   }
 }

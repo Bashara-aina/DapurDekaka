@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { XCircle, RefreshCw, Home } from 'lucide-react';
+import { logger } from '@/lib/utils/logger';
 import { useCartStore } from '@/store/cart.store';
 
 export const dynamic = 'force-dynamic';
@@ -35,7 +36,7 @@ export default function CheckoutFailedPage() {
   const orderNumber = searchParams.get('order');
   const [orderItems, setOrderItems] = useState<FailedOrderItem[] | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
-  const addItem = useCartStore((s) => s.addItem);
+  const restoreItems = useCartStore((s) => s.restoreItems);
 
   useEffect(() => {
     if (!orderNumber) return;
@@ -49,8 +50,12 @@ export default function CheckoutFailedPage() {
             setOrderItems(data.data.items);
           }
         }
-      } catch {
-        // Silent fail — order items couldn't be fetched
+      } catch (err) {
+        // Non-fatal: page still renders, retry just goes to bare checkout.
+        logger.warn('[checkout/failed] cart restore failed', {
+          orderNumber,
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
     };
     restoreCart();
@@ -64,9 +69,8 @@ export default function CheckoutFailedPage() {
 
     setIsRestoring(true);
     try {
-      for (const item of orderItems) {
-        // Use actual stock (may be 0 if out of stock) — server re-validates at checkout initiation
-        addItem({
+      restoreItems(
+        orderItems.map((item) => ({
           variantId: item.variantId,
           productId: item.productId,
           productNameId: item.productNameId,
@@ -78,10 +82,15 @@ export default function CheckoutFailedPage() {
           unitPrice: item.unitPrice,
           weightGram: item.weightGram,
           stock: item.stock ?? 999, // will be re-validated at checkout
-        });
-      }
+          quantity: Math.min(Math.max(item.quantity ?? 1, 1), 99),
+        }))
+      );
       router.push('/checkout');
-    } catch {
+    } catch (err) {
+      // Best-effort restore: even a partial cart is better than none.
+      logger.warn('[checkout/failed] cart re-add failed, continuing anyway', {
+        error: err instanceof Error ? err.message : String(err),
+      });
       router.push('/checkout');
     }
   };

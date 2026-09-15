@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils/cn';
 interface TimelineStep {
   label: string;
   description?: string;
+  timestamp?: string | null;
 }
 
 interface OrderTimelineProps {
@@ -77,23 +78,22 @@ export function OrderTimeline({ steps, currentStepIndex, isCancelled, className 
   }
 
   return (
-    <div className={cn('flex flex-col gap-0', className)}>
+    <div className={cn('flex flex-col gap-0', className)} role="list" aria-label="Status pesanan">
       {steps.map((step, idx) => {
         const isCompleted = idx < currentStepIndex;
         const isActive = idx === currentStepIndex;
-        const isPending = idx > currentStepIndex;
 
         return (
-          <div key={idx} className="flex gap-4">
+          <div key={idx} className="flex gap-4" role="listitem">
             {/* Icon column */}
             <div className="flex flex-col items-center">
               <div
                 className={cn(
                   'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
                   isCompleted
-                    ? 'bg-success text-white'
+                    ? 'bg-brand-red text-white'
                     : isActive
-                      ? 'bg-brand-red text-white'
+                      ? 'bg-brand-red text-white animate-pulse'
                       : 'bg-brand-cream-dark text-text-secondary'
                 )}
               >
@@ -109,7 +109,9 @@ export function OrderTimeline({ steps, currentStepIndex, isCancelled, className 
                 <div
                   className={cn(
                     'w-0.5 flex-1 min-h-[40px]',
-                    idx < currentStepIndex ? 'bg-success' : 'bg-brand-cream-dark'
+                    idx < currentStepIndex
+                      ? 'bg-brand-red'
+                      : 'border-l-2 border-dashed border-brand-cream-dark bg-transparent'
                   )}
                 />
               )}
@@ -129,6 +131,9 @@ export function OrderTimeline({ steps, currentStepIndex, isCancelled, className 
               >
                 {step.label}
               </p>
+              {step.timestamp && (
+                <p className="text-xs text-text-secondary mt-0.5">{step.timestamp}</p>
+              )}
               {step.description && (
                 <p className="text-xs text-text-secondary mt-0.5">
                   {step.description}

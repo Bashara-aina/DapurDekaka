@@ -119,6 +119,13 @@ export const users = pgTable('users', {
   pointsBalance: integer('points_balance').notNull().default(0),
   languagePreference: varchar('language_preference', { length: 5 }).notNull().default('id'),
   tokenVersion: integer('token_version').notNull().default(0),
+  // TOTP 2FA (otplib v13, RFC 6238). The secret is stored AES-256-GCM
+  // encrypted (see lib/auth/two-factor.ts) — never plaintext. Backup codes
+  // are bcrypt hashes (one-time use, consumed on verify).
+  twoFactorSecret: text('two_factor_secret'),
+  twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
+  twoFactorBackupCodes: jsonb('two_factor_backup_codes').notNull().default([]),
+  twoFactorEnabledAt: timestamp('two_factor_enabled_at', { withTimezone: true }),
   ...timestamps,
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
 }, (table) => ({
@@ -505,7 +512,7 @@ export const pointsHistory = pgTable('points_history', {
   typeExpiresIdx: index('idx_points_type_expires').on(table.type, table.expiresAt),
   createdAtIdx: index('idx_points_created_at').on(table.createdAt),
   referencedEarnIdx: index('idx_points_history_referenced_earn').on(table.referencedEarnId),
-  expireCandidatesIdx: index('idx_points_expire_candidates').on(table.userId, table.expiresAt).where(sql`${table.type} = 'earn' AND ${table.isExpired} = false AND ${table.consumedAt} IS NULL`),
+  expireCandidatesIdx: index('idx_points_expire_candidates').on(table.userId, table.expiresAt, table.createdAt).where(sql`${table.type} = 'earn' AND ${table.isExpired} = false AND ${table.consumedAt} IS NULL AND ${table.pointsAmount} > 0`),
 }));
 
 // ─────────────────────────────────────────
@@ -585,6 +592,53 @@ export const testimonials = pgTable('testimonials', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
+
+export const cmsGalleryUsageEnum = pgEnum('cms_gallery_usage_enum', [
+  'instagram_feed', 'about_hero', 'og', 'general',
+]);
+
+export const cmsPages = pgTable('cms_pages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  slug: varchar('slug', { length: 100 }).notNull().unique(),
+  title: varchar('title', { length: 255 }).notNull(),
+  isPublished: boolean('is_published').notNull().default(true),
+  ...timestamps,
+}, (table) => ({
+  slugIdx: index('idx_cms_pages_slug').on(table.slug),
+}));
+
+export const cmsPageSections = pgTable('cms_page_sections', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  pageId: uuid('page_id').notNull().references(() => cmsPages.id, { onDelete: 'cascade' }),
+  sectionKey: varchar('section_key', { length: 100 }).notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  titleId: varchar('title_id', { length: 500 }),
+  titleEn: varchar('title_en', { length: 500 }),
+  bodyId: text('body_id'),
+  bodyEn: text('body_en'),
+  ctaLabelId: varchar('cta_label_id', { length: 255 }),
+  ctaLabelEn: varchar('cta_label_en', { length: 255 }),
+  ctaHref: varchar('cta_href', { length: 500 }),
+  imagePublicId: varchar('image_public_id', { length: 255 }),
+  meta: jsonb('meta').$type<Record<string, unknown>>(),
+  ...timestamps,
+}, (table) => ({
+  pageKeyIdx: unique('uq_cms_page_section').on(table.pageId, table.sectionKey),
+  pageSortIdx: index('idx_cms_page_sections_sort').on(table.pageId, table.sortOrder),
+}));
+
+export const cmsGalleryImages = pgTable('cms_gallery_images', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  publicId: varchar('public_id', { length: 255 }).notNull(),
+  altId: varchar('alt_id', { length: 255 }),
+  altEn: varchar('alt_en', { length: 255 }),
+  sortOrder: integer('sort_order').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+  usage: cmsGalleryUsageEnum('usage').notNull().default('general'),
+  ...timestamps,
+}, (table) => ({
+  usageSortIdx: index('idx_cms_gallery_usage_sort').on(table.usage, table.sortOrder),
+}));
 
 // ─────────────────────────────────────────
 // BLOG ANALYTICS
@@ -706,8 +760,8 @@ export const adminActivityLogs = pgTable('admin_activity_logs', {
   action: varchar('action', { length: 100 }).notNull(),
   entityType: varchar('entity_type', { length: 100 }).notNull(),
   entityId: uuid('entity_id'),
-  beforeState: jsonb('before_state'),
-  afterState: jsonb('after_state'),
+  beforeState: jsonb('before_state').$type<Record<string, unknown> | null>(),
+  afterState: jsonb('after_state').$type<Record<string, unknown> | null>(),
   ipAddress: varchar('ip_address', { length: 45 }),
   userAgent: text('user_agent'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -756,14 +810,13 @@ export const webhookEvents = pgTable('webhook_events', {
   source: varchar('source', { length: 50 }).notNull(),
   eventType: varchar('event_type', { length: 100 }).notNull(),
   externalId: varchar('external_id', { length: 255 }),
-  payload: jsonb('payload'),
+  payload: jsonb('payload').$type<Record<string, unknown> | null>(),
   processedAt: timestamp('processed_at', { withTimezone: true }),
   errorMessage: text('error_message'),
   ...timestamps,
 }, (table) => ({
   sourceIdx: index('idx_webhook_events_source').on(table.source),
   createdAtIdx: index('idx_webhook_events_created_at').on(table.createdAt),
-  errorIdx: index('idx_webhook_events_error').on(table.errorMessage),
 }));
 
 // ─────────────────────────────────────────
@@ -865,6 +918,14 @@ export const b2bQuoteItemsRelations = relations(b2bQuoteItems, ({ one }) => ({
   variant: one(productVariants, { fields: [b2bQuoteItems.variantId], references: [productVariants.id] }),
 }));
 
+export const cmsPagesRelations = relations(cmsPages, ({ many }) => ({
+  sections: many(cmsPageSections),
+}));
+
+export const cmsPageSectionsRelations = relations(cmsPageSections, ({ one }) => ({
+  page: one(cmsPages, { fields: [cmsPageSections.pageId], references: [cmsPages.id] }),
+}));
+
 // ─────────────────────────────────────────
 // TYPE EXPORTS
 // ─────────────────────────────────────────
@@ -887,6 +948,9 @@ export type BlogPost = typeof blogPosts.$inferSelect;
 export type CarouselSlide = typeof carouselSlides.$inferSelect;
 export type B2bProfile = typeof b2bProfiles.$inferSelect;
 export type SystemSetting = typeof systemSettings.$inferSelect;
+export type CmsPage = typeof cmsPages.$inferSelect;
+export type CmsPageSection = typeof cmsPageSections.$inferSelect;
+export type CmsGalleryImage = typeof cmsGalleryImages.$inferSelect;
 export type OrderDailyCounter = typeof orderDailyCounters.$inferSelect;
 export type Refund = typeof refunds.$inferSelect;
 export type NewRefund = typeof refunds.$inferInsert;

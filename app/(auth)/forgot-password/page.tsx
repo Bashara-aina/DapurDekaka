@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { logger } from '@/lib/utils/logger';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -31,7 +32,9 @@ export default function ForgotPasswordPage() {
       }
 
       setSuccess(true);
-    } catch {
+    } catch (err) {
+      // Email only — safe for triage, no secrets involved.
+      logger.warn('[auth/forgot-password] request failed', { email, error: err instanceof Error ? err.message : String(err) });
       setError('Terjadi kesalahan. Silakan coba lagi.');
     }
     setIsLoading(false);

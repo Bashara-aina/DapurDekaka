@@ -41,7 +41,6 @@ export async function GET(req: NextRequest) {
       createdAt: order.createdAt.toISOString(),
     })));
   } catch (error) {
-    console.error('[admin/team-dashboard/action-orders]', error);
     return serverError(error);
   }
 }

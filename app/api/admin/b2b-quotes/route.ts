@@ -222,7 +222,6 @@ export async function POST(req: NextRequest) {
 
     return success({ id: quote.id, quoteNumber }, 201);
   } catch (error) {
-    console.error('[B2B Quote API Error]', error);
     return serverError(error);
   }
 }

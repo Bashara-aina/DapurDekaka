@@ -6,6 +6,7 @@ import { auth } from '@/lib/auth';
 import { requireActiveUser } from '@/lib/auth/require-active';
 import { success, unauthorized, serverError, validationError } from '@/lib/utils/api-response';
 import { withRateLimit } from '@/lib/utils/rate-limit';
+import { isSameOriginRequest, sameOriginRejected } from '@/lib/utils/same-origin';
 import { z } from 'zod';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -44,7 +45,6 @@ export async function GET(req: NextRequest) {
       linkedProviders: userWithAccounts.accounts?.map(a => a.provider) ?? [],
     });
   } catch (error) {
-    console.error('[account/profile GET]', error);
     return serverError(error);
   }
 }
@@ -92,7 +92,6 @@ export async function PATCH(req: NextRequest) {
 
     return success(updated);
   } catch (error) {
-    console.error('[account/profile PATCH]', error);
     return serverError(error);
   }
 }
@@ -112,6 +111,7 @@ const SetPasswordSchema = z.object({
 
 export const PUT = withRateLimit(async (req: NextRequest) => {
   try {
+    if (!isSameOriginRequest(req)) return sameOriginRejected();
     const session = await auth();
 
     if (!session?.user?.id) {
@@ -168,13 +168,13 @@ export const PUT = withRateLimit(async (req: NextRequest) => {
 
     return success({ message: 'Password berhasil diperbarui' });
   } catch (error) {
-    console.error('[account/profile PUT]', error);
     return serverError(error);
   }
 }, 'auth');
 
 export const POST = withRateLimit(async (req: NextRequest) => {
   try {
+    if (!isSameOriginRequest(req)) return sameOriginRejected();
     const session = await auth();
 
     if (!session?.user?.id) {
@@ -224,7 +224,6 @@ export const POST = withRateLimit(async (req: NextRequest) => {
 
     return success({ message: 'Password berhasil dibuat' });
   } catch (error) {
-    console.error('[account/profile POST]', error);
     return serverError(error);
   }
 }, 'auth');

@@ -5,30 +5,38 @@ import type { BlogPost } from '@/lib/db/schema';
 import { formatWIB } from '@/lib/utils/format-date';
 import { getReadingTime } from '@/lib/utils/reading-time';
 
-const BLOG_FALLBACK_IMAGE = 'dapurdekaka/gallery/gallery-01';
-
 interface BlogCardProps {
   post: BlogPost & { category?: { nameId: string; id: string } | null };
   fallbackImage?: string;
 }
 
-export function BlogCard({ post, fallbackImage = BLOG_FALLBACK_IMAGE }: BlogCardProps) {
-  const imageUrl = post.coverImageUrl || `https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/f_webp,q_auto,w_800/${fallbackImage}`;
+export function BlogCard({ post, fallbackImage = '' }: BlogCardProps) {
+  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ?? '';
+  const fallbackUrl =
+    fallbackImage && cloudName
+      ? `https://res.cloudinary.com/${cloudName}/image/upload/f_webp,q_auto,w_800/${fallbackImage}`
+      : '';
+  const imageUrl = post.coverImageUrl || fallbackUrl;
 
   return (
     <Link href={`/blog/${post.slug}`}>
       <Card className="group overflow-hidden hover:shadow-card-hover transition-all duration-200 h-full flex flex-col">
         <div className="aspect-[16/9] relative overflow-hidden bg-brand-cream flex-shrink-0">
-          <Image
-            src={imageUrl}
-            alt={post.titleId}
-            fill
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
-            sizes="(max-width: 480px) 100vw, (max-width: 768px) 50vw, (max-width: 1200px) 33vw, 400px"
-          />
+          {imageUrl ? (
+            <Image
+              src={imageUrl}
+              alt={post.titleId}
+              fill
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
+              sizes="(max-width: 480px) 100vw, (max-width: 768px) 50vw, (max-width: 1200px) 33vw, 400px"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center bg-brand-cream text-text-secondary text-xs">
+              {post.titleId}
+            </div>
+          )}
         </div>
         <div className="p-4 space-y-2 flex-1 flex flex-col">
-          {/* Category badge */}
           {post.category && (
             <span className="inline-block self-start px-2 py-0.5 bg-brand-red/10 text-brand-red text-xs font-medium rounded-full">
               {post.category.nameId}

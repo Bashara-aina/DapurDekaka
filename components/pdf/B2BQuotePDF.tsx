@@ -5,6 +5,7 @@ import {
   Page,
   View,
   Text,
+  Image,
   StyleSheet,
 } from '@react-pdf/renderer';
 import { formatIDR } from '@/lib/utils/format-currency';
@@ -41,6 +42,7 @@ interface B2BQuotePDFProps {
     } | null;
   };
   logoUrl?: string;
+  whatsappNumber?: string;
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -48,6 +50,7 @@ interface B2BQuotePDFProps {
 const s = StyleSheet.create({
   page: { backgroundColor: '#FFFFFF', padding: 32, fontFamily: 'Helvetica' },
   header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
+  logo: { width: 120, marginBottom: 6 },
   brandName: { fontSize: 16, fontWeight: 700, color: '#C8102E' },
   tagline: { fontSize: 9, color: '#8A8A8A', marginTop: 2 },
   quoteLabel: { fontSize: 9, color: '#8A8A8A', marginBottom: 4 },
@@ -107,7 +110,7 @@ function QuoteStatusBadge({ status }: { status: string }) {
 
 // ── Main document ─────────────────────────────────────────────────────────────
 
-export function B2BQuotePDF({ quote, logoUrl }: B2BQuotePDFProps) {
+export function B2BQuotePDF({ quote, logoUrl, whatsappNumber = '' }: B2BQuotePDFProps) {
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString('id-ID', {
       day: 'numeric',
@@ -126,6 +129,8 @@ export function B2BQuotePDF({ quote, logoUrl }: B2BQuotePDFProps) {
         {/* Header */}
         <View style={s.header}>
           <View>
+            {/* eslint-disable-next-line jsx-a11y/alt-text -- @react-pdf Image has no alt prop; PDFs expose no DOM to screen readers */}
+            {logoUrl ? <Image src={logoUrl} style={s.logo} /> : null}
             <Text style={s.brandName}>Dapur Dekaka 德卡</Text>
             <Text style={s.tagline}>Cita Rasa Warisan, Kini di Rumahmu</Text>
           </View>
@@ -235,7 +240,9 @@ export function B2BQuotePDF({ quote, logoUrl }: B2BQuotePDFProps) {
           <Text style={s.footerText}>
             Quote ini adalah dokumen resmi dari Dapur Dekaka.
             {'\n'}
-            Hubungi kami di +62 812-xxxx-xxxx untuk konfirmasi pesanan B2B.
+            {whatsappNumber
+              ? `Hubungi kami di +${whatsappNumber} untuk konfirmasi pesanan B2B.`
+              : 'Hubungi kami untuk konfirmasi pesanan B2B.'}
           </Text>
         </View>
       </Page>

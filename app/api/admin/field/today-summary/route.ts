@@ -56,7 +56,6 @@ export async function GET(req: NextRequest) {
       generatedAt: now.toISOString(),
     });
   } catch (error) {
-    console.error('[admin/field/today-summary GET]', error);
     return serverError(error);
   }
 }

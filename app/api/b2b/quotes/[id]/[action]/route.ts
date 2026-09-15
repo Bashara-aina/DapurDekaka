@@ -228,7 +228,7 @@ export async function POST(
           validUntil: quote.validUntil ? formatWIB(quote.validUntil) : '',
         }),
       }).catch((err) => {
-        console.error('[B2B Quote Approved Email]', err);
+        logger.warn('[B2B Quote Approved Email]', { error: err instanceof Error ? err.message : String(err) });
       });
     } else {
       // ── Reject: just update status ───────────────────────────────────────
@@ -245,13 +245,12 @@ export async function POST(
           companyName: quote.b2bProfile.companyName,
         }),
       }).catch((err) => {
-        console.error('[B2B Quote Rejected Email]', err);
+        logger.warn('[B2B Quote Rejected Email]', { error: err instanceof Error ? err.message : String(err) });
       });
     }
 
     return success({ id, status: action === 'accept' ? 'accepted' : 'rejected' });
   } catch (error) {
-    console.error('[B2B Quote Action POST]', error);
     return serverError(error);
   }
 }

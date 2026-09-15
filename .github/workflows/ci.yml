@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx next lint --max-warnings 0
+
+      - name: Unit tests
+        run: npx vitest run
+        env:
+          AUTH_SECRET: ci-only-insecure-secret-min-32-chars-long!
+
+      - name: Duplication gate (jscpd, informational)
+        run: npx -y jscpd app lib components --threshold 5 --reporters console || true
+
+      - name: Migration drift check
+        # Fails if lib/db/schema.ts drifted from generated migrations.
+        # Standalone perf migrations (drizzle/00*.sql outside the journal)
+        # are applied manually — see drizzle/0051-0053 + AUDIT-AI-SLOP-100.md.
+        run: npx drizzle-kit check

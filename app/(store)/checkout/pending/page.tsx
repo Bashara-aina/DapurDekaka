@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Script from 'next/script';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
+import { logger } from '@/lib/utils/logger';
 import { Clock, RefreshCw, ArrowRight, Copy, CheckCircle } from 'lucide-react';
 import { getSnapUrl } from '@/lib/midtrans/snap-url';
 import { cn } from '@/lib/utils/cn';
@@ -31,11 +32,15 @@ function PendingContent() {
     status?: string;
   } | null>(null);
 
-  // FIX 6: Poll order status every 5 seconds — stop immediately on paid
+  // FIX 6: Poll order status with backoff — stop immediately on paid.
+  // Circuit-breaker: after 10 consecutive poll failures, stop hammering the
+  // API and surface the error once (previously failed silently forever).
   useEffect(() => {
     if (!orderNumber) return;
 
     let stopped = false;
+    let consecutiveFailures = 0;
+    const MAX_CONSECUTIVE_FAILURES = 10;
 
     const fetchOrderDetails = async () => {
       if (stopped) return;
@@ -43,6 +48,7 @@ function PendingContent() {
         const res = await fetch(`/api/orders/${orderNumber}`);
         const json = await res.json();
         if (stopped) return;
+        consecutiveFailures = 0;
         if (json.success && json.data?.order) {
           const order = json.data.order;
           setOrderDetails({
@@ -59,8 +65,17 @@ function PendingContent() {
             router.push(`/checkout/success?order=${orderNumber}`);
           }
         }
-      } catch {
-        // Silent fail on polling
+      } catch (err) {
+        consecutiveFailures++;
+        if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+          stopped = true;
+          logger.error('[checkout/pending] order polling gave up', {
+            orderNumber,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          toast.error(t('retryTokenError'));
+        }
+        // else: transient blip — backoff retry stays silent
       }
     };
 
@@ -74,7 +89,7 @@ function PendingContent() {
     };
     pollWithBackoff();
     return () => { stopped = true; };
-  }, [orderNumber, router]);
+  }, [orderNumber, router, t]);
 
   // Countdown timer — wrapped in useCallback to prevent recreation on each render
   const updateCountdown = useCallback(() => {
@@ -105,15 +120,29 @@ function PendingContent() {
     return () => clearInterval(countdownInterval);
   }, [updateCountdown]);
 
-  const handleRetry = async () => {
+  const handleRetry = async (retryEmail?: string) => {
     if (!orderNumber) return;
     setRetrying(true);
 
     try {
+      // Guest orders require checkout email for retry auth (P0). Reuse the
+      // session draft email when available so guests don't have to retype it.
+      let email: string | undefined = retryEmail;
+      if (!email && typeof window !== 'undefined') {
+        try {
+          const raw = sessionStorage.getItem('checkout-draft');
+          if (raw) {
+            const draft = JSON.parse(raw) as { recipientEmail?: string };
+            if (draft.recipientEmail) email = draft.recipientEmail;
+          }
+        } catch {
+          // ignore — server will request email explicitly
+        }
+      }
       const res = await fetch('/api/checkout/retry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderNumber }),
+        body: JSON.stringify(email ? { orderNumber, email } : { orderNumber }),
       });
       const data = await res.json();
 
@@ -123,10 +152,23 @@ function PendingContent() {
         } else {
           toast.error(t('midtransNotLoaded'));
         }
+      } else if (res.status === 401 && !retryEmail) {
+        // Guest email required — ask once, then retry with email.
+        const input = window.prompt('Masukkan email yang digunakan saat checkout untuk verifikasi:');
+        if (input) {
+          setRetrying(false);
+          await handleRetry(input.trim());
+          return;
+        }
+        toast.error(data.error || t('retryTokenError'));
       } else {
         toast.error(data.error || t('retryTokenError'));
       }
-    } catch {
+    } catch (err) {
+      logger.warn('[checkout/pending] retry failed', {
+        orderNumber,
+        error: err instanceof Error ? err.message : String(err),
+      });
       toast.error(t('retryTokenError'));
     }
 
@@ -135,7 +177,22 @@ function PendingContent() {
 
   const handleCopyOrderNumber = () => {
     if (!orderNumber) return;
-    navigator.clipboard.writeText(orderNumber);
+    // Clipboard API can throw (permissions / insecure context) — never crash.
+    try {
+      const done = navigator.clipboard?.writeText(orderNumber);
+      // writeText returns a promise in modern browsers; swallow async denial.
+      if (done && typeof (done as Promise<void>).catch === 'function') {
+        (done as Promise<void>).catch(() => {
+          toast.error(t('copyFailed') || 'Gagal menyalin');
+        });
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        return;
+      }
+    } catch {
+      toast.error(t('copyFailed') || 'Gagal menyalin');
+      return;
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -186,7 +243,9 @@ function PendingContent() {
           <div className="flex items-center justify-center gap-2 mb-4">
             <p className="font-bold text-xl text-brand-red">{orderNumber}</p>
             <button
+              type="button"
               onClick={handleCopyOrderNumber}
+              aria-label={t('copy')}
               className="p-1 hover:bg-brand-cream rounded transition-colors"
               title={t('copy')}
             >
@@ -235,7 +294,8 @@ function PendingContent() {
 
         <div className="space-y-3 max-w-sm mx-auto">
           <button
-            onClick={handleRetry}
+            type="button"
+            onClick={() => handleRetry()}
             disabled={retrying || !snapLoaded}
             className="flex items-center justify-center gap-2 w-full h-12 bg-brand-red text-white font-bold rounded-button hover:bg-brand-red-dark transition-colors disabled:opacity-50"
           >

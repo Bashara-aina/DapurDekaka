@@ -87,6 +87,21 @@ async function seed() {
     { key: 'b2b_points_multiplier', value: '2', type: 'integer' },
     { key: 'maintenance_mode', value: 'false', type: 'boolean' },
     { key: 'instagram_handle', value: '@dapurdekaka', type: 'string' },
+    { key: 'instagram_url', value: process.env.NEXT_PUBLIC_INSTAGRAM_URL ?? 'https://instagram.com/dapurdekaka', type: 'string' },
+    { key: 'store_name', value: 'Dapur Dekaka', type: 'string' },
+    { key: 'promo_code', value: 'SELAMATDATANG', type: 'string' },
+    { key: 'promo_title', value: 'Untuk pembelian pertama kamu', type: 'string' },
+    { key: 'promo_subtitle', value: 'Gunakan kode:', type: 'string' },
+    { key: 'promo_active', value: 'true', type: 'boolean' },
+    { key: 'carousel_speed_ms', value: '5000', type: 'integer' },
+    { key: 'og_image_public_id', value: 'dapurdekaka/og-image', type: 'string' },
+    { key: 'admin_email', value: process.env.SEED_ADMIN_EMAIL || 'bashara@dapurdekaka.com', type: 'string' },
+    { key: 'soft_launch_banner_enabled', value: 'true', type: 'boolean' },
+    { key: 'soft_launch_wa_message', value: 'Halo Dapur Dekaka, saya ingin tahu promo soft launch.', type: 'string' },
+    { key: 'wa_default_message', value: 'Halo Dapur Dekaka! Saya ingin bertanya tentang produk.', type: 'string' },
+    { key: 'founding_year', value: '2020', type: 'integer' },
+    { key: 'price_range_min', value: '30000', type: 'integer' },
+    { key: 'price_range_max', value: '200000', type: 'integer' },
   ];
 
   await db.insert(schema.systemSettings).values(
@@ -140,7 +155,10 @@ async function seed() {
 
   // Cloudinary URLs per ASSETS.md Section 3 mapping
   // Folder: dapurdekaka/products/
-  const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'demo';
+  const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+  if (!CLOUD_NAME) {
+    throw new Error('NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME is required to seed products.');
+  }
   const CLOUDINARY_PRODUCTS_BASE = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/f_webp,q_auto,w_800/dapurdekaka/products`;
 
   const products = [

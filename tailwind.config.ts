@@ -19,7 +19,7 @@ const config: Config = {
          },
         brand: {
           red: '#C8102E',
-          'red-dark': '#A00D24',
+          'red-dark': '#8B0000',
           'red-light': '#E8394F',
           'red-muted': '#F5C6CC',
           cream: '#F0EAD6',
@@ -55,9 +55,9 @@ const config: Config = {
         'success-light': '#DCFCE7',
         error: '#DC2626',
         'error-light': '#FEE2E2',
-        warning: '#F59E0B',
+        warning: '#D97706',
         'warning-light': '#FEF3C7',
-        info: '#3B82F6',
+        info: '#2563EB',
         'info-light': '#DBEAFE',
       },
       fontFamily: {
@@ -111,7 +111,6 @@ const config: Config = {
         },
       },
       backgroundImage: {
-        'noise': "url('/textures/noise.png')",
         'chinese-pattern': "url('/textures/chinese-pattern.svg')",
         'hero-gradient': 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 100%)',
       },

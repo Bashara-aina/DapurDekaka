@@ -34,7 +34,6 @@ export async function GET(req: NextRequest) {
 
     return success(pickupOrders);
   } catch (error) {
-    console.error('[admin/field/pickup-queue GET]', error);
     return serverError(error);
   }
 }
@@ -93,7 +92,6 @@ export async function PATCH(req: NextRequest) {
 
     return success({ orderId, status: 'delivered' });
   } catch (error) {
-    console.error('[admin/field/pickup-queue PATCH]', error);
     return serverError(error);
   }
 }

@@ -44,6 +44,10 @@ function StockCell({
       return;
     }
 
+    if (!window.confirm(`Ubah stok "${variant.product.nameId} ${variant.nameId}" dari ${variant.stock} → ${newStock}?`)) {
+      return;
+    }
+
     setSaving(true);
     try {
       const res = await fetch('/api/admin/field/inventory/adjust', {
@@ -81,28 +85,30 @@ function StockCell({
 
   if (editing) {
     return (
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
         <input
           type="number"
           min="0"
+          inputMode="numeric"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={saving}
-          className="w-20 h-7 px-2 text-sm rounded border border-admin-border bg-white font-mono disabled:opacity-50"
+          className="w-24 min-h-[48px] px-3 text-base rounded-lg border border-admin-border bg-white font-mono disabled:opacity-50"
           autoFocus
         />
         <button
           onClick={handleSave}
           disabled={saving}
-          className="h-7 px-2 text-xs font-medium bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+          className="min-h-[48px] min-w-[48px] px-3 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
         >
-          {saving ? '...' : '✓'}
+          {saving ? '...' : '✓ Simpan'}
         </button>
         <button
           onClick={() => { setValue(String(variant.stock)); setEditing(false); }}
           disabled={saving}
-          className="h-7 px-2 text-xs font-medium bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50"
+          className="min-h-[48px] min-w-[48px] px-3 text-sm font-medium bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50"
+          aria-label="Batal"
         >
           ✕
         </button>
@@ -113,14 +119,14 @@ function StockCell({
   return (
     <button
       onClick={() => setEditing(true)}
-      className={`inline-flex px-2 py-1 text-xs font-bold rounded hover:opacity-80 transition-opacity ${
+      className={`inline-flex min-h-[48px] items-center px-3 py-2 text-sm font-bold rounded-lg hover:opacity-80 transition-opacity ${
         variant.stock === 0
           ? 'bg-red-100 text-red-800'
           : variant.stock < 10
           ? 'bg-amber-100 text-amber-800'
           : 'bg-green-100 text-green-800'
       }`}
-      title="Klik untuk edit"
+      title="Ketuk untuk edit"
     >
       {variant.stock}
     </button>

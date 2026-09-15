@@ -4,8 +4,10 @@ import { addresses } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
 import { requireActiveUser } from '@/lib/auth/require-active';
-import { success, unauthorized, notFound, serverError } from '@/lib/utils/api-response';
+import { success, unauthorized, notFound, serverError, validationError } from '@/lib/utils/api-response';
 import { logger } from '@/lib/utils/logger';
+import { isSameOriginRequest, sameOriginRejected } from '@/lib/utils/same-origin';
+import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -16,6 +18,7 @@ interface DeleteAddressParams {
 
 export async function DELETE(req: NextRequest, { params }: DeleteAddressParams) {
   try {
+    if (!isSameOriginRequest(req)) return sameOriginRejected();
     const session = await auth();
     const { id } = await params;
 
@@ -53,6 +56,7 @@ export async function DELETE(req: NextRequest, { params }: DeleteAddressParams) 
 
 export async function PUT(req: NextRequest, { params }: DeleteAddressParams) {
   try {
+    if (!isSameOriginRequest(req)) return sameOriginRejected();
     const session = await auth();
     const { id } = await params;
     const body = await req.json();
@@ -63,6 +67,13 @@ export async function PUT(req: NextRequest, { params }: DeleteAddressParams) {
 
     const activeUser = await requireActiveUser();
     if (!activeUser) return unauthorized('Akun Anda dinonaktifkan');
+
+    // Validate before touching the DB — previously `body.isDefault` flowed
+    // straight into the UPDATE (garbage in → DB error out).
+    const parsed = z.object({ isDefault: z.boolean() }).safeParse(body);
+    if (!parsed.success) {
+      return validationError(parsed.error);
+    }
 
     // Explicit ownership check before any modification (BOLA fix)
     const existing = await db.query.addresses.findFirst({
@@ -75,14 +86,14 @@ export async function PUT(req: NextRequest, { params }: DeleteAddressParams) {
       return notFound('Alamat tidak ditemukan');
     }
 
-    if (body.isDefault) {
+    if (parsed.data.isDefault) {
       await db.update(addresses)
         .set({ isDefault: false })
         .where(eq(addresses.userId, session.user.id));
     }
 
     const updated = await db.update(addresses)
-      .set({ isDefault: body.isDefault })
+      .set({ isDefault: parsed.data.isDefault })
       .where(and(
         eq(addresses.id, id),
         eq(addresses.userId, session.user.id)

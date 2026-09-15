@@ -115,7 +115,6 @@ export async function GET(_req: NextRequest) {
       criticalCount: queue.filter(i => i.priority === 1).length,
     });
   } catch (error) {
-    console.error('[admin/dashboard/action-queue]', error);
     return serverError(error);
   }
 }

@@ -5,6 +5,9 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { products, productVariants, productImages, categories } from '@/lib/db/schema';
 import { z } from 'zod';
+import { logAdminActivity } from '@/lib/services/audit.service';
+import { getClientIp, getUserAgent } from '@/lib/utils/request-meta';
+import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -68,7 +71,6 @@ export async function GET(
 
     return success(product);
   } catch (error) {
-    console.error('[Admin/Products/GET id]', error);
     return serverError(error);
   }
 }
@@ -141,9 +143,21 @@ export async function PATCH(
       .where(and(eq(products.id, id), isNull(products.deletedAt)))
       .returning();
 
+    // Audit log — non-blocking, captures IP/UA for compliance.
+    logAdminActivity({
+      userId: session.user.id,
+      action: 'product.updated',
+      targetType: 'product',
+      targetId: id,
+      beforeState: { slug: existing.slug, nameId: existing.nameId, isActive: existing.isActive },
+      afterState: { slug: updated?.slug ?? parsed.data.slug, nameId: updated?.nameId ?? parsed.data.nameId },
+      ipAddress: getClientIp(req),
+      userAgent: getUserAgent(req),
+    });
+
     return success(updated);
   } catch (error) {
-    console.error('[Admin/Products/PATCH id]', error);
+    logger.error('[Admin/Products/PATCH id]', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
 }
@@ -179,9 +193,20 @@ export async function DELETE(
       .set({ deletedAt: new Date(), isActive: false })
       .where(eq(products.id, id));
 
+    // Audit log — non-blocking, captures IP/UA for compliance.
+    logAdminActivity({
+      userId: session.user.id,
+      action: 'product.deleted',
+      targetType: 'product',
+      targetId: id,
+      beforeState: { slug: existing.slug, nameId: existing.nameId },
+      ipAddress: getClientIp(req),
+      userAgent: getUserAgent(req),
+    });
+
     return success({ message: 'Produk berhasil dihapus' });
   } catch (error) {
-    console.error('[Admin/Products/DELETE id]', error);
+    logger.error('[Admin/Products/DELETE id]', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
 }

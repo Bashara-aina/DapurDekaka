@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
+import { logger } from '@/lib/utils/logger';
+import { readLocalCartItems, clearLocalCart } from '@/lib/utils/local-cart';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -61,22 +63,22 @@ export default function RegisterPage() {
       });
 
       if (loginResult && !loginResult.error) {
-        const cartItems = JSON.parse(localStorage.getItem('dapur-cart') || '{}');
-        if (cartItems?.state?.items?.length > 0) {
+        const localItems = readLocalCartItems();
+        if (localItems.length > 0) {
           try {
             const mergeRes = await fetch('/api/auth/merge-cart', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ items: cartItems.state.items }),
+              body: JSON.stringify({ items: localItems }),
             });
             const mergeData = await mergeRes.json();
             if (!mergeRes.ok || !mergeData.success) {
               throw new Error(mergeData.error || 'Gagal menggabungkan keranjang');
             }
-            localStorage.removeItem('dapur-cart');
+            clearLocalCart();
           } catch (err) {
-            localStorage.removeItem('dapur-cart');
-            console.error('[Cart merge failed]', err);
+            clearLocalCart();
+            logger.warn('[auth/register] cart merge failed', { error: err instanceof Error ? err.message : String(err) });
           }
         }
         router.push('/account');
@@ -84,7 +86,9 @@ export default function RegisterPage() {
         // Fallback to login page if auto-login failed
         router.push('/login?registered=true');
       }
-    } catch {
+    } catch (err) {
+      // Never log formData — contains a password.
+      logger.warn('[auth/register] registration failed', { error: err instanceof Error ? err.message : String(err) });
       setError('Terjadi kesalahan. Silakan coba lagi.');
     }
     setIsLoading(false);
@@ -105,6 +109,7 @@ export default function RegisterPage() {
           </div>
 
           <button
+            type="button"
             onClick={handleGoogleRegister}
             disabled={googleLoading || isLoading}
             className="w-full h-12 border border-brand-cream-dark rounded-button flex items-center justify-center gap-3 font-medium hover:bg-brand-cream transition-colors mb-6 disabled:opacity-50 disabled:cursor-not-allowed"

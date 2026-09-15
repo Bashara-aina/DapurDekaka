@@ -64,7 +64,6 @@ export async function GET(_req: NextRequest) {
     const data = await getRevenueChart();
     return success(data);
   } catch (error) {
-    console.error('[admin/dashboard/revenue-chart]', error);
     return serverError(error);
   }
 }

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { formatWIB } from '@/lib/utils/format-date';
 import { ChevronLeft, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { logger } from '@/lib/utils/logger';
 import CustomerInfoCard from './CustomerInfoCard';
 import CustomerAddressList from './CustomerAddressList';
 import CustomerOrderHistory from './CustomerOrderHistory';
@@ -67,7 +68,8 @@ export default function CustomerDetailClient({ customerId }: CustomerDetailClien
         if (!res.ok) throw new Error('Failed to fetch customer');
         const result = await res.json();
         setCustomer(result.data);
-      } catch {
+      } catch (err) {
+        logger.warn('[admin/customers] detail load failed', { customerId, error: err instanceof Error ? err.message : String(err) });
         setError('Gagal memuat data pelanggan');
       } finally {
         setLoading(false);

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { logger } from '@/lib/utils/logger';
 import { ArrowLeft, Plus, Trash2, Search, Loader2 } from 'lucide-react';
 
 interface VariantOption {
@@ -76,7 +77,8 @@ export default function NewB2BQuoteClient() {
           const data = await res.json();
           setProfiles(data.data?.profiles ?? []);
         }
-      } catch {
+      } catch (err) {
+        logger.warn('[admin/b2b-quotes] profiles load failed', { error: err instanceof Error ? err.message : String(err) });
         toast.error('Gagal memuat data pelanggan');
       } finally {
         setLoadingProfiles(false);
@@ -110,7 +112,8 @@ export default function NewB2BQuoteClient() {
           }
           setVariants(allVariants);
         }
-      } catch {
+      } catch (err) {
+        logger.warn('[admin/b2b-quotes] variants load failed', { error: err instanceof Error ? err.message : String(err) });
         toast.error('Gagal memuat data produk');
       } finally {
         setLoadingVariants(false);
@@ -119,6 +122,9 @@ export default function NewB2BQuoteClient() {
     fetchVariants();
   }, []);
 
+  // PERF: flatten once per fetch; the search box filters this memo.
+  // If the catalog grows past a few hundred variants, move search server-side
+  // (e.g. /api/admin/products?search=) instead of fetching the full list.
   const filteredVariants = variants.filter(v =>
     v.productNameId.toLowerCase().includes(searchVariant.toLowerCase()) ||
     v.nameId.toLowerCase().includes(searchVariant.toLowerCase()) ||

@@ -65,7 +65,6 @@ export async function GET(
       pointsHistory: userPointsHistory,
     });
   } catch (error) {
-    console.error('[Admin/Customers/GET id]', error);
     return serverError(error);
   }
 }
@@ -129,7 +128,6 @@ export async function PATCH(
 
     return success(updated);
   } catch (error) {
-    console.error('[Admin/Customers/PATCH id]', error);
     return serverError(error);
   }
 }

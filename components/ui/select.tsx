@@ -41,7 +41,7 @@ function SelectTrigger({
       data-slot="select-trigger"
       data-size={size}
       className={cn(
-        "flex w-fit items-center justify-between gap-1.5 rounded-button border border-brand-cream-dark bg-white py-2 pr-2 pl-2.5 text-sm whitespace-nowrap transition-colors outline-none select-none focus-visible:border-brand-red focus-visible:ring-2 focus-visible:ring-brand-red/10 disabled:cursor-not-allowed disabled:opacity-50 data-placeholder:text-text-disabled [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "flex min-h-[44px] w-fit items-center justify-between gap-1.5 rounded-button border-[1.5px] border-brand-cream-dark bg-white py-2 pr-2 pl-2.5 text-sm whitespace-nowrap transition-colors outline-none select-none focus-visible:border-brand-red focus-visible:ring-2 focus-visible:ring-brand-red/15 disabled:cursor-not-allowed disabled:opacity-50 data-placeholder:text-text-disabled [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}
       {...props}
@@ -49,7 +49,7 @@ function SelectTrigger({
       {children}
       <SelectPrimitive.Icon
         render={
-          <ChevronDownIcon className="pointer-events-none size-4 text-text-disabled" />
+          <ChevronDownIcon className="pointer-events-none size-4 text-brand-red" />
         }
       />
     </SelectPrimitive.Trigger>

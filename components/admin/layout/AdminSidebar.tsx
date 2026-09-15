@@ -5,7 +5,8 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Package, ShoppingCart, Users, Tag,
   MessageSquare, Image, Settings, Box, Truck, FileText, Bot, ClipboardList,
-  BarChart3, X, Layers, Star, AlertTriangle
+  BarChart3, X, Layers, Star, AlertTriangle, LayoutTemplate, Images, FolderOpen, Building2,
+  Flag, ScrollText, RotateCcw
 } from 'lucide-react';
 import { isFlagEnabled } from '@/lib/config/feature-flags';
 import { cn } from '@/lib/utils/cn';
@@ -37,11 +38,19 @@ const NAV_ITEMS: NavItem[] = [
   { separator: true },
   { href: '/admin/coupons', label: 'Kupon', icon: Tag, roles: ['superadmin'] },
   { href: '/admin/blog', label: 'Blog', icon: FileText, roles: ['superadmin', 'owner'] },
+  { href: '/admin/blog/categories', label: 'Kategori Blog', icon: FolderOpen, roles: ['superadmin', 'owner'] },
+  { href: '/admin/cms', label: 'CMS Halaman', icon: LayoutTemplate, roles: ['superadmin', 'owner'] },
+  { href: '/admin/gallery', label: 'Galeri', icon: Images, roles: ['superadmin', 'owner'] },
   { href: '/admin/testimonials', label: 'Testimoni', icon: Star, roles: ['superadmin', 'owner'] },
   { href: '/admin/carousel', label: 'Carousel', icon: Image, roles: ['superadmin', 'owner'] },
   { href: '/admin/b2b-inquiries', label: 'B2B Inquiry', icon: MessageSquare, roles: ['superadmin', 'owner'] },
+  { href: '/admin/b2b-profiles', label: 'Profil B2B', icon: Building2, roles: ['superadmin', 'owner'] },
   { href: '/admin/b2b-quotes', label: 'B2B Quotes', icon: FileText, roles: ['superadmin', 'owner'] },
   { href: '/admin/ai-content', label: 'AI Content', icon: Bot, roles: ['superadmin'] },
+  { separator: true },
+  { href: '/admin/refunds', label: 'Refunds', icon: RotateCcw, roles: ['superadmin', 'owner'] },
+  { href: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText, roles: ['superadmin'] },
+  { href: '/admin/feature-flags', label: 'Feature Flags', icon: Flag, roles: ['superadmin'] },
   { separator: true },
   { href: '/admin/settings', label: 'Pengaturan', icon: Settings, roles: ['superadmin'] },
 ];

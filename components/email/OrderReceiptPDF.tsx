@@ -5,6 +5,7 @@ import {
   Page,
   View,
   Text,
+  Image,
   StyleSheet,
 } from '@react-pdf/renderer';
 import { formatIDR } from '@/lib/utils/format-currency';
@@ -15,7 +16,7 @@ import { formatWIB } from '@/lib/utils/format-date';
 const s = StyleSheet.create({
   page: { backgroundColor: '#FFFFFF', padding: 32, fontFamily: 'Helvetica' },
   header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
-  logo: { width: 120 },
+  logo: { width: 120, marginBottom: 6 },
   brandName: { fontSize: 16, fontWeight: 700, color: '#C8102E' },
   tagline: { fontSize: 9, color: '#8A8A8A', marginTop: 2 },
   divider: { borderBottom: '1px solid #E8DFC8', marginVertical: 16 },
@@ -118,6 +119,8 @@ export function OrderReceiptPDF({ order, logoUrl }: OrderReceiptProps) {
         {/* Header */}
         <View style={s.header}>
           <View>
+            {/* eslint-disable-next-line jsx-a11y/alt-text -- @react-pdf Image has no alt prop; PDFs expose no DOM to screen readers */}
+            {logoUrl ? <Image src={logoUrl} style={s.logo} /> : null}
             <Text style={s.brandName}>Dapur Dekaka 德卡</Text>
             <Text style={s.tagline}>Cita Rasa Warisan, Kini di Rumahmu</Text>
           </View>

@@ -3,6 +3,18 @@ import { describe, it, expect, vi } from 'vitest';
 // settle-order imports @/lib/db only for the transaction type; stub it out.
 vi.mock('@/lib/db', () => ({ db: {} }));
 
+// settleOrderTx reads points rules via getSetting → real DB. Stub the rules
+// layer with the constant fallbacks so the unit test stays DB-free.
+vi.mock('@/lib/settings/runtime-rules', () => ({
+  getPointsRuntimeRules: vi.fn().mockResolvedValue({
+    earnRate: 1,
+    expiryDays: 365,
+    minRedeem: 100,
+    maxRedeemPct: 50,
+    b2bMultiplier: 2,
+  }),
+}));
+
 import { settleOrderTx, InsufficientStockError, type SettleOrderInput } from '@/lib/finance/settle-order';
 import {
   orders,

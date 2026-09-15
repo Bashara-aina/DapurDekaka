@@ -3,6 +3,8 @@
  * Provides retry logic, timeout handling, and typed error classes.
  */
 
+import { logger } from '@/lib/utils/logger';
+
 export class IntegrationError extends Error {
   constructor(
     public readonly service: string,
@@ -58,15 +60,20 @@ export async function withRetry<T>(
       if (attempt < maxRetries) {
         const delay = Math.min(baseDelayMs * Math.pow(2, attempt), maxDelayMs);
         const jitter = delay * (0.5 + Math.random() * 0.5);
-        console.warn(
-          `[${context}] Attempt ${attempt + 1} failed, retrying in ${Math.round(jitter)}ms...`
-        );
+        logger.warn(`[${context}] attempt failed, retrying`, {
+          attempt: attempt + 1,
+          retryInMs: Math.round(jitter),
+          error: lastError?.message,
+        });
         await new Promise((resolve) => setTimeout(resolve, jitter));
       }
     }
   }
 
-  console.error(`[${context}] All ${maxRetries + 1} attempts failed`);
+  logger.error(`[${context}] all attempts failed`, {
+    attempts: maxRetries + 1,
+    error: lastError?.message,
+  });
   throw lastError;
 }
 

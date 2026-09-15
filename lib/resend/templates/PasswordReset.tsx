@@ -13,11 +13,13 @@ import {
 interface PasswordResetEmailProps {
   resetUrl: string;
   userName: string;
+  expiresAt?: string;
 }
 
 export function PasswordResetEmail({
   resetUrl,
   userName,
+  expiresAt = '1 jam',
 }: PasswordResetEmailProps) {
   return (
     <Html>
@@ -52,7 +54,7 @@ export function PasswordResetEmail({
           {/* Expiry Notice */}
           <Section style={styles.expirySection}>
             <Text style={styles.expiryText}>
-              Link ini berlaku selama 1 jam. Jika kamu tidak meminta reset password,
+              Link ini berlaku selama {expiresAt}. Jika kamu tidak meminta reset password,
               abaikan email ini.
             </Text>
           </Section>

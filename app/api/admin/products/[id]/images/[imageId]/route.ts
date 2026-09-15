@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { productImages, products } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { deleteImage } from '@/lib/cloudinary/upload';
+import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -62,7 +63,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, data: { id: params.imageId } });
   } catch (error) {
-    console.error('[Admin Product Image DELETE]', error);
+    logger.error('[Admin Product Image DELETE]', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
       { status: 500 }

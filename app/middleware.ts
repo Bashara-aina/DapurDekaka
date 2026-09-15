@@ -1,21 +1,60 @@
 import createMiddleware from 'next-intl/middleware';
 import { routing } from '@/i18n/routing';
 import { auth } from '@/lib/auth';
-import { isFlagEnabled } from '@/lib/config/feature-flags';
+import { isFlagEnabled, type FlagName } from '@/lib/config/feature-flags';
 import { isMaintenanceMode } from '@/lib/ops/maintenance';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 const intlMiddleware = createMiddleware(routing);
 
+// NOTE: SAMEORIGIN (not DENY) to match next.config.mjs — Midtrans Snap
+// renders inside an iframe/overlay on checkout and DENY would break it.
+function withSecurityHeaders(res: NextResponse): NextResponse {
+  res.headers.set('X-Content-Type-Options', 'nosniff');
+  res.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  res.headers.set('X-XSS-Protection', '1; mode=block');
+  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  return res;
+}
+
+function redirectWithHeaders(req: NextRequest, to: string): NextResponse {
+  return withSecurityHeaders(NextResponse.redirect(new URL(to, req.url)));
+}
+
+// Feature kill-list guards (L4) — table-driven so adding a gate is one row.
+const FLAG_GUARDS: ReadonlyArray<{ prefix: string; flag: FlagName }> = [
+  { prefix: '/admin/blog', flag: 'blogCMS' },
+  { prefix: '/admin/ai-content', flag: 'aiContent' },
+  { prefix: '/admin/b2b-inquiries', flag: 'b2bPortal' },
+  { prefix: '/admin/b2b-quotes', flag: 'b2bPortal' },
+];
+
+const WAREHOUSE_PATHS = ['/admin/inventory', '/admin/shipments', '/admin/field', '/admin/orders'];
+
+// Storefront paths subject to the maintenance circuit breaker. NOTE: the
+// matcher below excludes /api/*, so middleware never runs for API routes —
+// no api-path carve-outs needed here.
+function isStorefrontPath(pathname: string): boolean {
+  return (
+    pathname.startsWith('/checkout') ||
+    pathname.startsWith('/cart') ||
+    pathname.startsWith('/products') ||
+    pathname === '/' ||
+    pathname.startsWith('/blog')
+  );
+}
+
 export default async function middleware(req: NextRequest) {
   // Step 1: Run next-intl locale detection (handles redirect if locale prefix needed)
-  let response = intlMiddleware(req);
+  const intlResponse = intlMiddleware(req);
 
   // If intl middleware issued a redirect (e.g. to add locale prefix), return it
-  if (response.status === 307 || response.status === 308) {
-    return response;
+  // WITH security headers (previously returned bare).
+  if (intlResponse.status === 307 || intlResponse.status === 308) {
+    return withSecurityHeaders(intlResponse);
   }
+  const response = intlResponse;
 
   // Step 2: Run auth on the same request (intl already processed locale)
   const { pathname } = req.nextUrl;
@@ -26,86 +65,69 @@ export default async function middleware(req: NextRequest) {
     const redirectUrl = pathname.startsWith('/admin')
       ? '/login?inactive=1'
       : `/login?inactive=1&callbackUrl=${encodeURIComponent(pathname)}`;
-    return NextResponse.redirect(new URL(redirectUrl, req.url));
+    return redirectWithHeaders(req, redirectUrl);
   }
 
   // Admin role guard
   if (pathname.startsWith('/admin')) {
     if (!session?.user) {
-      return NextResponse.redirect(new URL('/login', req.url));
+      return redirectWithHeaders(req, '/login');
     }
     const role = session.user.role;
     if (!role || !['superadmin', 'owner', 'warehouse'].includes(role)) {
-      return NextResponse.redirect(new URL('/', req.url));
+      return redirectWithHeaders(req, '/');
     }
-    if (role === 'warehouse') {
-      const allowed = ['/admin/inventory', '/admin/shipments', '/admin/field'];
-      if (!allowed.some((p) => pathname.startsWith(p))) {
-        return NextResponse.redirect(new URL('/admin/inventory', req.url));
-      }
+    if (role === 'warehouse' && !WAREHOUSE_PATHS.some((p) => pathname.startsWith(p))) {
+      return redirectWithHeaders(req, '/admin/inventory');
     }
   }
 
   // Feature kill-list guards (L4) — check if the route should be hidden
-  if (pathname.startsWith('/admin/blog') && !isFlagEnabled('blogCMS')) {
-    return NextResponse.redirect(new URL('/admin', req.url));
-  }
-  if (pathname.startsWith('/admin/ai-content') && !isFlagEnabled('aiContent')) {
-    return NextResponse.redirect(new URL('/admin', req.url));
-  }
-  if (pathname.startsWith('/admin/b2b-inquiries') && !isFlagEnabled('b2bPortal')) {
-    return NextResponse.redirect(new URL('/admin', req.url));
-  }
-  if (pathname.startsWith('/admin/b2b-quotes') && !isFlagEnabled('b2bPortal')) {
-    return NextResponse.redirect(new URL('/admin', req.url));
+  for (const { prefix, flag } of FLAG_GUARDS) {
+    if (pathname.startsWith(prefix) && !isFlagEnabled(flag)) {
+      return redirectWithHeaders(req, '/admin');
+    }
   }
 
-  // Maintenance mode guard (L4 circuit breaker) — block storefront when MAINTENANCE_MODE=true
-  // Allows admin and webhooks to keep working during an incident.
+  // Maintenance mode guard (L4 circuit breaker) — block storefront when active.
   // Checks BOTH the env var (fast path, set at deploy time) AND the DB setting
   // (5-min cache, togglable from admin panel).
-  const maintenance = await isMaintenanceMode();
-  if (maintenance && !pathname.startsWith('/maintenance')) {
-    const isAdminPath = pathname.startsWith('/admin') || pathname.startsWith('/api/admin');
-    const isWebhookPath = pathname.startsWith('/api/webhooks') || pathname.startsWith('/api/cron');
-    const isAuthPath = pathname.startsWith('/api/auth');
-    if (!isAdminPath && !isWebhookPath && !isAuthPath) {
-      if (
-        pathname.startsWith('/checkout') ||
-        pathname.startsWith('/cart') ||
-        pathname.startsWith('/products') ||
-        pathname === '/' ||
-        pathname.startsWith('/blog')
-      ) {
-        return NextResponse.redirect(new URL('/maintenance', req.url));
-      }
+  // PERF: prefilter storefront paths BEFORE the (cached) DB read so admin and
+  // account traffic never pays for the lookup.
+  // EDGE-SAFETY: middleware runs on the Edge runtime where the WS-backed Pool
+  // can fail; on DB error fall back to the env fast-path (fail-open = keep
+  // serving) rather than 500ing every storefront request.
+  if (isStorefrontPath(pathname) && !pathname.startsWith('/maintenance')) {
+    let maintenance = process.env.MAINTENANCE_MODE === 'true';
+    try {
+      if (!maintenance) maintenance = await isMaintenanceMode();
+    } catch {
+      maintenance = process.env.MAINTENANCE_MODE === 'true';
+    }
+    if (maintenance) {
+      return redirectWithHeaders(req, '/maintenance');
     }
   }
 
   // Account guard
   if (pathname.startsWith('/account')) {
     if (!session?.user) {
-      return NextResponse.redirect(new URL(`/login?callbackUrl=${encodeURIComponent(pathname)}`, req.url));
+      return redirectWithHeaders(req, `/login?callbackUrl=${encodeURIComponent(pathname)}`);
     }
   }
 
   // B2B account guard
   if (pathname.startsWith('/b2b/account')) {
     if (!session?.user) {
-      return NextResponse.redirect(new URL(`/login?callbackUrl=${encodeURIComponent(pathname)}`, req.url));
+      return redirectWithHeaders(req, `/login?callbackUrl=${encodeURIComponent(pathname)}`);
     }
     if (session.user.role !== 'b2b' && session.user.role !== 'superadmin') {
-      return NextResponse.redirect(new URL('/b2b', req.url));
+      return redirectWithHeaders(req, '/b2b');
     }
   }
 
   // Add security headers (preserve any headers set by intlMiddleware)
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('X-Frame-Options', 'DENY');
-  response.headers.set('X-XSS-Protection', '1; mode=block');
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-
-  return response;
+  return withSecurityHeaders(response);
 }
 
 export const config = {

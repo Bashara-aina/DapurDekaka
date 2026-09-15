@@ -5,8 +5,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 
-const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dsnhwfuxh';
-const CLOUDINARY_BASE = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/f_webp,q_auto,w_1600`;
+const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ?? '';
+const CLOUDINARY_BASE = CLOUD_NAME
+  ? `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/f_webp,q_auto,w_1600`
+  : '';
 
 interface Slide {
   id: string;
@@ -73,13 +75,12 @@ export function HeroCarousel({ slides, autoRotateSpeed = 5000 }: HeroCarouselPro
   }
 
   const activeSlide = activeSlides[currentSlide]!;
-  // image_url holds the local/public asset path (e.g. /assets/gallery/1.jpg)
-  // image_public_id is the Cloudinary public ID (e.g. dapurdekaka/gallery/gallery-01)
-  // Prefer Cloudinary URL if image_public_id looks like a valid upload, otherwise use image_url
-  const isCloudinaryId = activeSlide.imagePublicId.includes('/') && !activeSlide.imagePublicId.startsWith('slides/');
-  const imageUrl = isCloudinaryId
-    ? `${CLOUDINARY_BASE}/${activeSlide.imagePublicId}`
-    : activeSlide.imageUrl;
+  const isCloudinaryId =
+    activeSlide.imagePublicId.includes('/') && !activeSlide.imagePublicId.startsWith('slides/');
+  const imageUrl =
+    isCloudinaryId && CLOUDINARY_BASE
+      ? `${CLOUDINARY_BASE}/${activeSlide.imagePublicId}`
+      : activeSlide.imageUrl;
 
   const slideContent = (
     <>
@@ -131,18 +132,22 @@ export function HeroCarousel({ slides, autoRotateSpeed = 5000 }: HeroCarouselPro
       )}
 
       {activeSlides.length > 1 && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-1">
           {activeSlides.map((_, index) => (
             <button
               key={index}
               onClick={() => goToSlide(index)}
-              className={`w-2.5 h-2.5 rounded-full transition-all ${
-                index === currentSlide
-                  ? 'bg-white w-8'
-                  : 'bg-white/50 hover:bg-white/70'
-              }`}
-              aria-label={`Go to slide ${index + 1}`}
-            />
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center"
+              aria-label={`Ke slide ${index + 1}`}
+            >
+              <span
+                className={`h-2.5 rounded-full transition-all ${
+                  index === currentSlide
+                    ? 'bg-white w-8'
+                    : 'bg-white/50 hover:bg-white/70 w-2.5'
+                }`}
+              />
+            </button>
           ))}
         </div>
       )}

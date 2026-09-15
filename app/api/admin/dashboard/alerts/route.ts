@@ -131,7 +131,6 @@ export async function GET(_req: NextRequest) {
       criticalCount: alerts.filter(a => a.priority === 1).length,
     });
   } catch (error) {
-    console.error('[admin/dashboard/alerts]', error);
     return serverError(error);
   }
 }

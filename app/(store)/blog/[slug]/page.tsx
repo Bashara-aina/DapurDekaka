@@ -2,11 +2,12 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { MessageCircle } from 'lucide-react';
-import DOMPurify from 'isomorphic-dompurify';
+import { sanitizeRichText } from '@/lib/utils/sanitize-html';
 import { db } from '@/lib/db';
 import { blogPosts } from '@/lib/db/schema';
 import { eq, desc, and, ne, isNull } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
+import { logger } from '@/lib/utils/logger';
 import { recordBlogView } from '@/lib/services/blog-view.service';
 import { BlogCard } from '@/components/store/blog/BlogCard';
 import { ReadingProgress } from '@/components/store/blog/ReadingProgress';
@@ -84,8 +85,11 @@ export async function generateStaticParams() {
       columns: { slug: true },
     });
     return posts.map((post) => ({ slug: post.slug }));
-  } catch {
+  } catch (err) {
     // DB unavailable at build time (no DATABASE_URL); pages render on-demand via ISR
+    logger.warn('[blog/slug] generateStaticParams failed', {
+      error: err instanceof Error ? err.message : String(err),
+    });
     return [];
   }
 }
@@ -116,13 +120,12 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   const readingMinutes = estimateReadingTime(post.contentId || '');
 
-  // Record view asynchronously (non-blocking)
-  recordBlogView({ blogPostId: post.id }).catch(() => {});
+  // Record view asynchronously (non-blocking; failures log inside the service)
+  void recordBlogView({ blogPostId: post.id });
 
-  const sanitizedContent = DOMPurify.sanitize(post.contentId || '', {
-    ALLOWED_TAGS: ['p', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'em', 'u', 'ul', 'ol', 'li', 'a', 'img', 'blockquote', 'code', 'pre'],
-    ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'target', 'rel'],
-  });
+  // Centralized rich-text policy (lib/utils/sanitize-html.ts) — same policy
+  // applied at write-time in app/api/admin/blog/*, so defence in depth.
+  const sanitizedContent = sanitizeRichText(post.contentId);
 
   const pageUrl = `https://dapurdekaka.com/blog/${slug}`;
 
@@ -213,13 +216,15 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         <div className="xl:grid xl:grid-cols-[1fr_256px] xl:gap-8 items-start">
           <article className="min-w-0">
             <div className="relative w-full h-64 md:h-96 mb-8 rounded-xl overflow-hidden bg-brand-cream">
-              <Image
-                src={post.coverImageUrl || `https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/f_webp,q_auto,w_1600/dapurdekaka/gallery/gallery-01`}
-                alt={post.titleId}
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, 800px"
-              />
+              {post.coverImageUrl ? (
+                <Image
+                  src={post.coverImageUrl}
+                  alt={post.titleId}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 800px"
+                />
+              ) : null}
             </div>
 
             <header className="mb-8">

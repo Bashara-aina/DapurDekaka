@@ -1,4 +1,5 @@
 import { Tag, Clock, Percent } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { Coupon } from '@/lib/db/schema';
 import { formatIDR } from '@/lib/utils/format-currency';
 
@@ -10,6 +11,7 @@ interface VoucherCardProps {
 }
 
 export function VoucherCard({ voucher, type = 'available', discountApplied, usedAt }: VoucherCardProps) {
+  const t = useTranslations('account.vouchers');
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString('id-ID', {
       day: 'numeric',
@@ -67,7 +69,10 @@ export function VoucherCard({ voucher, type = 'available', discountApplied, used
               </p>
             )}
             {voucher.type === 'free_shipping' && (
-              <p className="text-sm text-brand-red font-bold">Gratis Ongkir</p>
+              <p className="text-sm text-brand-red font-bold">{t('freeShipping')}</p>
+            )}
+            {voucher.type !== 'free_shipping' && voucher.descriptionId && (
+              <p className="text-xs text-text-secondary">{voucher.descriptionId}</p>
             )}
 
             {voucher.minOrderAmount > 0 && (

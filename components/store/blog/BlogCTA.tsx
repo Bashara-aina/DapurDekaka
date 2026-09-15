@@ -5,7 +5,7 @@ export function BlogCTA() {
         Mau coba dimsum premium dari Bandung?
       </h3>
       <p className="text-sm text-text-secondary mb-4">
-        Pesan sekarang dan nikmati gratis ongkir untuk pembelian pertama. Dikirim ke seluruh Indonesia.
+        Pesan sekarang — dikirim ke seluruh Indonesia dengan cold chain terjaga.
       </p>
       <div className="flex flex-wrap gap-3">
         <a

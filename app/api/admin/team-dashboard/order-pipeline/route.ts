@@ -32,7 +32,6 @@ export async function GET(_req: NextRequest) {
       shipped: shipped[0]?.count ?? 0,
     });
   } catch (error) {
-    console.error('[admin/team-dashboard/order-pipeline]', error);
     return serverError(error);
   }
 }

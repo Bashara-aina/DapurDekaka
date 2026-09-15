@@ -89,16 +89,12 @@ export function EmptyState({
     import('framer-motion').then((m) => setMotionComp(m));
   }, []);
 
-  const shouldShowSadDimsum = ['cart', 'orders', 'search', 'blog'].includes(variant);
+  const shouldShowSadDimsum = ['cart', 'orders', 'search', 'blog', 'error', 'surprised'].includes(variant);
 
   if (!MotionComp) {
     return (
       <div className={cn('flex flex-col items-center justify-center py-12 px-4 text-center', className)}>
-        {shouldShowSadDimsum ? (
-          <SadDimsumBowl />
-        ) : (
-          <div className="text-6xl mb-4">😢</div>
-        )}
+        <SadDimsumBowl />
         <h3 className="font-display text-xl font-semibold text-text-primary mb-2">{title}</h3>
         {description && (
           <p className="text-text-secondary mb-6 max-w-sm">{description}</p>
@@ -132,22 +128,18 @@ export function EmptyState({
       variants={animationVariants}
       className={cn('flex flex-col items-center justify-center py-12 px-4 text-center', className)}
     >
-      {shouldShowSadDimsum ? (
-        <MotionFn.div
-          initial={{ rotate: -5 }}
-          animate={{ rotate: 5 }}
-          transition={{
-            repeat: Infinity,
-            repeatType: 'reverse' as const,
-            duration: 1.5,
-            ease: 'easeInOut',
-          }}
-        >
-          <SadDimsumBowl />
-        </MotionFn.div>
-      ) : (
-        <div className="text-6xl mb-4">😢</div>
-      )}
+      <MotionFn.div
+        initial={{ rotate: -5 }}
+        animate={{ rotate: 5 }}
+        transition={{
+          repeat: Infinity,
+          repeatType: 'reverse' as const,
+          duration: 1.5,
+          ease: 'easeInOut',
+        }}
+      >
+        <SadDimsumBowl />
+      </MotionFn.div>
       <h3 className="font-display text-xl font-semibold text-text-primary mb-2">{title}</h3>
       {description && (
         <p className="text-text-secondary mb-6 max-w-sm">{description}</p>

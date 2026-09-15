@@ -48,7 +48,6 @@ export async function GET(_req: NextRequest) {
       })),
     });
   } catch (error) {
-    console.error('[admin/team-dashboard/blog-status]', error);
     return serverError(error);
   }
 }

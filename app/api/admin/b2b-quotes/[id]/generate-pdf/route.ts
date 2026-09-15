@@ -7,6 +7,8 @@ import { success, serverError, notFound, forbidden } from '@/lib/utils/api-respo
 import { auth } from '@/lib/auth';
 import { B2BQuotePDF } from '@/components/pdf/B2BQuotePDF';
 import { uploadBuffer } from '@/lib/cloudinary/upload';
+import { getSetting } from '@/lib/settings/get-settings';
+import { cloudinaryUrl } from '@/lib/seo/cloudinary-url';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -81,10 +83,21 @@ export async function POST(
       return notFound('Quote tidak ditemukan');
     }
 
+    const [logoPublicId, whatsappNumber] = await Promise.all([
+      getSetting<string>('seo_logo_url').catch(() => null),
+      getSetting<string>('store_whatsapp_number').catch(() => null),
+    ]);
+    const logoUrl =
+      cloudinaryUrl(logoPublicId) ??
+      (process.env.NEXT_PUBLIC_APP_URL
+        ? `${process.env.NEXT_PUBLIC_APP_URL}/assets/logo/logo.png`
+        : '');
+
     const pdfBuffer = await renderToBuffer(
       B2BQuotePDF({
         quote,
-        logoUrl: `${process.env.NEXT_PUBLIC_APP_URL}/assets/logo/logo.png`,
+        logoUrl,
+        whatsappNumber: whatsappNumber ?? '',
       })
     );
 
@@ -102,7 +115,6 @@ export async function POST(
     return success({ pdfUrl: uploadResult.url });
 
   } catch (error) {
-    console.error('[b2b-quotes/generate-pdf]', error);
     return serverError(error);
   }
 }

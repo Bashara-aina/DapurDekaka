@@ -24,7 +24,6 @@ export async function POST() {
       errors: result.errors.slice(0, 10),
     });
   } catch (error) {
-    console.error('[admin/points/expiry-reminders]', error);
     return serverError(error);
   }
 }

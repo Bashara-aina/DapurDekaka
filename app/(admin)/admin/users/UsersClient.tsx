@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { formatWIB } from '@/lib/utils/format-date';
 import { UserX, RefreshCw, UserPlus, X, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { logger } from '@/lib/utils/logger';
 import {
   Dialog,
   DialogContent,
@@ -79,7 +80,8 @@ export default function UsersClient() {
         if (!res.ok) throw new Error('Failed to fetch users');
         const result = await res.json();
         setUsers(result.data ?? []);
-      } catch {
+      } catch (err) {
+        logger.warn('[admin/users] load failed', { error: err instanceof Error ? err.message : String(err) });
         toast.error('Gagal memuat data pengguna');
       } finally {
         setLoading(false);

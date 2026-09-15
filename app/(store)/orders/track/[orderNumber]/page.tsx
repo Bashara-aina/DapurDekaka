@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Package, Truck, MapPin } from 'lucide-react';
+import { logger } from '@/lib/utils/logger';
 import { formatWIB } from '@/lib/utils/format-date';
 import Link from 'next/link';
 
@@ -59,7 +60,9 @@ export default function OrderTrackPage() {
         return;
       }
       setData(json.data);
-    } catch {
+    } catch (err) {
+      // Never log the email — op name + order number suffice for triage.
+      logger.warn('[orders/track] lookup failed', { orderNumber, error: err instanceof Error ? err.message : String(err) });
       setError(t('error'));
     } finally {
       setLoading(false);

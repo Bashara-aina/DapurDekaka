@@ -5,12 +5,16 @@
 :root {
   /* Brand */
   --brand-red: #C8102E;
-  --brand-red-dark: #A00D24;
+  --brand-red-dark: #8B0000;
   --brand-red-light: #E8394F;
   --brand-red-muted: #F5C6CC;
   --brand-cream: #F0EAD6;
   --brand-cream-dark: #E0D4BC;
   --brand-cream-darker: #C8B89A;
+  --brand-gold: #C9A84C;
+  --brand-navy: #1B2A4A;
+  --whatsapp-green: #25D366;
+  --whatsapp-green-dark: #1DA851;
 
   /* Text */
   --text-primary: #1A1A1A;
@@ -26,11 +30,11 @@
   /* Semantic */
   --success: #16A34A;
   --success-light: #DCFCE7;
-  --warning: #F59E0B;
+  --warning: #D97706;
   --warning-light: #FEF3C7;
   --error: #DC2626;
   --error-light: #FEE2E2;
-  --info: #3B82F6;
+  --info: #2563EB;
   --info-light: #DBEAFE;
 
   /* Order Status */

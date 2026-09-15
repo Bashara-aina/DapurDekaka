@@ -48,7 +48,6 @@ export async function GET(_req: NextRequest) {
 
     return success({ outOfStock, lowStock });
   } catch (error) {
-    console.error('[admin/team-dashboard/inventory-alerts]', error);
     return serverError(error);
   }
 }

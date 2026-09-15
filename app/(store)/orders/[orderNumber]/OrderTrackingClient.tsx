@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { Mail, Lock, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { logger } from '@/lib/utils/logger';
 import { cn } from '@/lib/utils/cn';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { formatWIB } from '@/lib/utils/format-date';
@@ -100,7 +101,8 @@ export function OrderTrackingClient({
           setOrder(payload.order as Order);
           setVerified(true);
         }
-      } catch {
+      } catch (err) {
+        logger.warn('[orders/tracking] auto-verify failed', { orderNumber, error: err instanceof Error ? err.message : String(err) });
         toast.error(tApiErrors('networkError') || 'Gagal memuat data pesanan');
       }
     }
@@ -128,7 +130,9 @@ export function OrderTrackingClient({
       } else {
         setError(data.error || tApiErrors('emailNotMatch') || 'Email tidak cocok dengan pesanan');
       }
-    } catch {
+    } catch (err) {
+      // Never log the email — order number suffices.
+      logger.warn('[orders/tracking] email verify failed', { orderNumber, error: err instanceof Error ? err.message : String(err) });
       toast.error(tApiErrors('networkError') || 'Terjadi kesalahan saat verifikasi');
     }
 
@@ -293,9 +297,20 @@ export function OrderTrackingClient({
                       </div>
                     )}
                     {order.trackingNumber && (
-                      <div className="flex justify-between">
+                      <div className="flex justify-between items-center gap-2">
                         <span className="text-text-secondary">{t('trackingNumberLabel')}</span>
-                        <span className="font-medium">{order.trackingNumber}</span>
+                        {order.trackingUrl ? (
+                          <a
+                            href={order.trackingUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-brand-red hover:underline text-right break-all"
+                          >
+                            {order.trackingNumber} ↗
+                          </a>
+                        ) : (
+                          <span className="font-medium text-right break-all">{order.trackingNumber}</span>
+                        )}
                       </div>
                     )}
                   </>

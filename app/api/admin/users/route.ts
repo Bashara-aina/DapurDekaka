@@ -46,7 +46,6 @@ export async function GET(req: NextRequest) {
 
     return success(allUsers);
   } catch (error) {
-    console.error('[Admin/Users/GET]', error);
     return serverError(error);
   }
 }
@@ -88,7 +87,6 @@ export const POST = withRateLimit(async (req: NextRequest) => {
 
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch (error) {
-    console.error('[Admin/Users/POST]', error);
     return serverError(error);
   }
 }, 'admin');

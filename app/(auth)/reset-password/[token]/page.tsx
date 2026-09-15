@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
+import { logger } from '@/lib/utils/logger';
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -73,7 +74,9 @@ function ResetPasswordForm() {
       }
 
       setSuccess(true);
-    } catch {
+    } catch (err) {
+      // Never log passwords or tokens — op name only.
+      logger.warn('[auth/reset-password] reset failed', { error: err instanceof Error ? err.message : String(err) });
       setError('Terjadi kesalahan. Silakan coba lagi.');
     }
     setIsLoading(false);
@@ -92,6 +95,7 @@ function ResetPasswordForm() {
             <h1 className="font-display text-2xl font-bold text-text-primary mb-2">Password Berhasil Diubah</h1>
             <p className="text-text-secondary mb-6">Silakan masuk dengan password baru kamu.</p>
             <button
+              type="button"
               onClick={() => router.push('/login')}
               className="w-full h-12 bg-brand-red text-white font-bold rounded-button"
             >

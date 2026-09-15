@@ -21,7 +21,7 @@ import { PickupReadyEmail } from '@/lib/resend/templates/PickupReady';
 import { formatWIB } from '@/lib/utils/format-date';
 import { logger } from '@/lib/utils/logger';
 import { withRateLimit } from '@/lib/utils/rate-limit';
-import { verifyMidtransSignature } from '@/lib/midtrans/verify-signature';
+import { verifyMidtransSignature, parseMidtransGrossAmount } from '@/lib/midtrans/verify-signature';
 import { settleOrderTx, InsufficientStockError } from '@/lib/finance/settle-order';
 import { recordWebhookEvent } from '@/lib/utils/webhook-events';
 import { sendWhatsApp, pickupReadyMessage } from '@/lib/services/fonnte';
@@ -37,7 +37,12 @@ export const POST = withRateLimit(async (req: NextRequest) => {
     let body: Record<string, unknown>;
     try {
       body = JSON.parse(rawBody) as Record<string, unknown>;
-    } catch {
+    } catch (err) {
+      // Never log rawBody — may contain PII. Length suffices for triage.
+      logger.warn('[Midtrans Webhook] invalid JSON payload', {
+        bodyLength: rawBody.length,
+        error: err instanceof Error ? err.message : String(err),
+      });
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
     }
 
@@ -133,8 +138,9 @@ export const POST = withRateLimit(async (req: NextRequest) => {
     // ── Step 4: Settlement ───────────────────────────────────────────────
     if (transaction_status === 'settlement' || transaction_status === 'capture') {
       const expectedAmount = order.totalAmount;
-      const webhookAmount = Math.round(parseFloat(gross_amount ?? '0'));
-      if (webhookAmount !== expectedAmount) {
+      // AUDIT-05 #2 hardening: normalise "236000.00" / "236000" to integer.
+      const webhookAmount = parseMidtransGrossAmount(gross_amount);
+      if (webhookAmount === null || webhookAmount !== expectedAmount) {
         logger.error('[Midtrans Webhook] Amount mismatch', { orderId: order_id, expectedAmount, webhookAmount });
         await recordWebhookEvent({
           source: 'midtrans',
@@ -425,9 +431,9 @@ async function handleCancellation(order: WebhookOrder, transactionStatus: string
 async function sendSettlementNotifications(order: WebhookOrder): Promise<void> {
   if (order.deliveryMethod === 'pickup') {
     const pickupAddress =
-      (await getSetting<string>('store_address', 'string')) ?? 'Jl. Sinom V No. 7, Turangga, Bandung';
+      (await getSetting<string>('store_address', 'string')) ?? '';
     const openingHours =
-      (await getSetting<string>('store_opening_hours', 'string')) ?? 'Senin-Sabtu: 08.00 - 17.00 WIB';
+      (await getSetting<string>('store_opening_hours', 'string')) ?? '';
 
     sendEmail({
       to: order.recipientEmail,

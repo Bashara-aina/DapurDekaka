@@ -12,6 +12,7 @@ import {
 } from '@/lib/db/schema';
 import { POINTS_EXPIRY_DAYS } from '@/lib/constants/points';
 import { calculatePointsEarned } from '@/lib/finance/points-calculator';
+import { getPointsRuntimeRules } from '@/lib/settings/runtime-rules';
 
 /**
  * Shared order-settlement routine (P3 Decision 1 + backlog #3/#4).
@@ -92,16 +93,20 @@ export async function settleOrderTx(
 
   await deductStock(tx, order);
   await recordCouponUsage(tx, order);
-  await awardPoints(tx, order);
 
-  // Persist computed pointsEarned so emails show the correct value (not stale 0)
+  const pointsRules = await getPointsRuntimeRules();
   const earnedPoints = calculatePointsEarned({
     subtotal: order.subtotal,
     couponDiscount: order.discountAmount ?? 0,
     pointsDiscount: order.pointsDiscount ?? 0,
     shippingCost: order.shippingCost,
     isB2b: order.isB2b ?? false,
+    earnRate: pointsRules.earnRate,
+    b2bMultiplier: pointsRules.b2bMultiplier,
   });
+
+  await awardPoints(tx, order, earnedPoints, pointsRules.expiryDays);
+
   if (earnedPoints > 0) {
     await tx.update(orders)
       .set({ pointsEarned: earnedPoints })
@@ -171,20 +176,13 @@ async function recordCouponUsage(tx: Tx, order: SettleOrderInput): Promise<void>
     .onConflictDoNothing();
 }
 
-async function awardPoints(tx: Tx, order: SettleOrderInput): Promise<void> {
-  if (!order.userId) return;
-
-  // L2 Rule 3: recompute net-of-discount base — never trust the stale
-  // `pointsEarned` column (0 for non-Net-30 orders at initiate).
-  const earnedPoints = calculatePointsEarned({
-    subtotal: order.subtotal,
-    couponDiscount: order.discountAmount,
-    pointsDiscount: order.pointsDiscount,
-    shippingCost: order.shippingCost,
-    isB2b: order.isB2b,
-  });
-
-  if (earnedPoints <= 0) return;
+async function awardPoints(
+  tx: Tx,
+  order: SettleOrderInput,
+  earnedPoints: number,
+  expiryDays: number = POINTS_EXPIRY_DAYS
+): Promise<void> {
+  if (!order.userId || earnedPoints <= 0) return;
 
   const [updatedUser] = await tx
     .update(users)
@@ -200,6 +198,6 @@ async function awardPoints(tx: Tx, order: SettleOrderInput): Promise<void> {
     descriptionId: `Pembelian ${order.orderNumber}`,
     descriptionEn: `Purchase ${order.orderNumber}`,
     orderId: order.id,
-    expiresAt: new Date(Date.now() + POINTS_EXPIRY_DAYS * 24 * 60 * 60 * 1000),
+    expiresAt: new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000),
   });
 }

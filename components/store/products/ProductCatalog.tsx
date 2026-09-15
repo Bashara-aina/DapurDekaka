@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, Suspense } from 'react';
+import { useState, useMemo, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
@@ -68,16 +68,48 @@ function ProductCatalogInner({ products, categories, initialCategory = '', initi
   const category = searchParams.get('category') || initialCategory;
   const q = searchParams.get('q') || initialSearch;
 
+  // Catalog-wide typo-tolerant search (fuse.js via /api/search/products).
+  // Falls back to filtering the loaded page if the API is unreachable.
+  const [apiResults, setApiResults] = useState<ProductWithVariantsAndImages[] | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchSeq = useRef(0);
+
+  useEffect(() => {
+    if (!q) {
+      setApiResults(null);
+      setIsSearching(false);
+      return;
+    }
+    const seq = ++searchSeq.current;
+    setIsSearching(true);
+    fetch(`/api/search/products?q=${encodeURIComponent(q)}&limit=50`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (searchSeq.current !== seq) return; // stale response
+        const list = json?.data?.products;
+        setApiResults(Array.isArray(list) ? list : null);
+      })
+      .catch(() => {
+        if (searchSeq.current === seq) setApiResults(null);
+      })
+      .finally(() => {
+        if (searchSeq.current === seq) setIsSearching(false);
+      });
+  }, [q]);
+
   const filteredProducts = useMemo(() => {
-    let result = [...products];
+    // When searching, rank the catalog-wide API results; otherwise the page.
+    // API miss → fall back to typo-tolerant rank of the loaded page is handled
+    // by the server too, but an API failure falls back to plain includes here.
+    let result = [...(q && apiResults ? apiResults : products)];
 
     // Category filter
     if (category) {
       result = result.filter(p => p.category?.slug === category);
     }
 
-    // Search filter
-    if (q) {
+    // Search filter (fallback path only — API results are already ranked).
+    if (q && !apiResults) {
       const searchLower = q.toLowerCase();
       result = result.filter(p =>
         p.nameId.toLowerCase().includes(searchLower) ||
@@ -116,7 +148,7 @@ function ProductCatalogInner({ products, categories, initialCategory = '', initi
     outOfStock.sort(sortFn);
 
     return [...inStock, ...outOfStock];
-  }, [products, category, q, sort]);
+  }, [products, apiResults, category, q, sort]);
 
   const handleCategoryChange = (slug: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -235,7 +267,11 @@ function ProductCatalogInner({ products, categories, initialCategory = '', initi
           />
         )}
 
-        {nextCursor && (
+        {isSearching && (
+          <p className="text-center text-sm text-text-secondary py-4">Mencari…</p>
+        )}
+
+        {!q && nextCursor && (
           <div className="flex justify-center py-8">
             <button
               onClick={() => {

@@ -125,7 +125,7 @@
     "halalCert": "Sertifikasi Halal",
     "halalCertOrg": "Majelis Ulama Indonesia (MUI)",
     "ctaTitle": "Siap mencicipi frozen food premium kami?",
-    "ctaDesc": "Pesan sekarang dan nikmati gratis ongkir untuk pembelian pertama. Dikirim ke seluruh Indonesia dengan cold chain terjaga.",
+    "ctaDesc": "Pesan sekarang dan nikmati dimsum premium dari Bandung. Dikirim ke seluruh Indonesia dengan cold chain terjaga.",
     "viewProducts": "Lihat Produk",
     "chatWhatsApp": "Chat WhatsApp"
   },
@@ -235,6 +235,7 @@
     "trackOrder": "Lacak Pesanan",
     "refundPolicy": "Kebijakan Pengembalian",
     "privacyPolicy": "Kebijakan Privasi",
+    "terms": "Syarat & Ketentuan",
     "whatsapp": "WhatsApp",
     "followUs": "Ikuti Kami",
     "paymentMethods": "Metode Pembayaran",
@@ -632,7 +633,10 @@
     "profile": "Profil",
     "orders": "Pesanan",
     "points": "Poin",
-    "vouchers": "Voucher & Kupon",
+    "vouchers": {
+      "title": "Voucher & Kupon",
+      "freeShipping": "Gratis Ongkir"
+    },
     "overview": "Ringkasan",
     "signOut": "Keluar",
     "signingOut": "Memproses...",

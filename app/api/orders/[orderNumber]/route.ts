@@ -63,7 +63,6 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error('[orders/[orderNumber]/route]', error);
     return serverError(error);
   }
 }
@@ -125,7 +124,6 @@ export async function POST(
     });
 
   } catch (error) {
-    console.error('[orders/[orderNumber]/route POST]', error);
     return serverError(error);
   }
 }

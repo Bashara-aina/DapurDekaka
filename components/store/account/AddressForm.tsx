@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -54,6 +54,29 @@ export function AddressForm({
         }
       : null
   );
+  const [defaultCity, setDefaultCity] = useState('');
+  const [defaultProvince, setDefaultProvince] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchStoreLocation() {
+      try {
+        const res = await fetch('/api/settings/public');
+        const json = await res.json();
+        if (cancelled) return;
+        if (json.success && json.data) {
+          setDefaultCity(json.data.store_city ?? '');
+          setDefaultProvince(json.data.store_province ?? '');
+        }
+      } catch {
+        // ignore
+      }
+    }
+    fetchStoreLocation();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const {
     register,
@@ -126,6 +149,8 @@ export function AddressForm({
         <AddressMapPicker
           defaultValues={mapPin ?? undefined}
           onConfirm={(pin) => setMapPin(pin)}
+          defaultCity={defaultCity}
+          defaultProvince={defaultProvince}
         />
 
         <div className="flex items-center gap-2">

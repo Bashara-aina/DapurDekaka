@@ -15,6 +15,7 @@ import { logAdminActivity } from '@/lib/services/audit.service';
 import { refundTransaction } from '@/lib/midtrans/status';
 import { TRACKING_FORMATS, ALLOWED_COURIER_CODES } from '@/lib/constants/couriers';
 import { logger } from '@/lib/utils/logger';
+import { getClientIp, getUserAgent } from '@/lib/utils/request-meta';
 
 type OrderStatus = 'pending_payment' | 'paid' | 'processing' | 'packed' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
 export const dynamic = 'force-dynamic';
@@ -72,7 +73,7 @@ export async function PATCH(
       return validationError(parsed.error);
     }
 
-    const { status: newStatus, trackingNumber, trackingUrl, estimatedDays, cancellationReason } = parsed.data;
+    const { status: newStatus, trackingNumber, trackingUrl, estimatedDays, cancellationReason, courierCode } = parsed.data;
 
     const order = await db.query.orders.findFirst({
       where: eq(orders.id, orderId),
@@ -372,15 +373,17 @@ export async function PATCH(
       });
     }
 
-    // Audit log — non-blocking
+    // Audit log — non-blocking, captures IP/UA for compliance.
     logAdminActivity({
       userId: session.user.id,
       action: `order_status_${newStatus}`,
       targetType: 'order',
       targetId: order.id,
       beforeState: { status: currentStatus },
-      afterState: { status: newStatus },
-    }).catch((e) => logger.error('[Audit] Failed to log order status change', { error: e instanceof Error ? e.message : String(e) }));
+      afterState: { status: newStatus, courierCode: courierCode ?? null, trackingNumber: trackingNumber ?? null },
+      ipAddress: getClientIp(req),
+      userAgent: getUserAgent(req),
+    });
 
     return success({
       orderId: order.id,

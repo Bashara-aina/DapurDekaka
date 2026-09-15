@@ -7,7 +7,9 @@ import { z } from 'zod';
 import { User, CheckCircle, AlertCircle } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
+import { logger } from '@/lib/utils/logger';
 import { cn } from '@/lib/utils/cn';
+import { TwoFactorCard } from '@/components/store/account/TwoFactorCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -117,7 +119,8 @@ export default function AccountProfilePage() {
         setValue('phone', response.data.phone || '');
         setValue('languagePreference', response.data.languagePreference || 'id');
       }
-    } catch {
+    } catch (err) {
+      logger.warn('[account/profile] load failed', { error: err instanceof Error ? err.message : String(err) });
       setServerError(t('loadProfileError') || 'Gagal memuat profil');
     } finally {
       setIsFetching(false);
@@ -166,7 +169,9 @@ export default function AccountProfilePage() {
       }
 
       setTimeout(() => setServerSuccess(null), 4000);
-    } catch {
+    } catch (err) {
+      // Never log form payloads — may contain PII.
+      logger.warn('[account/profile] update failed', { error: err instanceof Error ? err.message : String(err) });
       setServerError(t('updateProfileError') || 'Terjadi kesalahan. Silakan coba lagi.');
     } finally {
       setIsLoading(false);
@@ -198,7 +203,9 @@ export default function AccountProfilePage() {
       setPasswordSuccess(t('updatePasswordSuccess') || 'Password berhasil diperbarui');
       resetChangePassword();
       setTimeout(() => setPasswordSuccess(null), 4000);
-    } catch {
+    } catch (err) {
+      // Never log passwords — op name only.
+      logger.warn('[account/profile] change-password failed', { error: err instanceof Error ? err.message : String(err) });
       setPasswordError(t('updatePasswordError') || 'Terjadi kesalahan. Silakan coba lagi.');
     } finally {
       setIsPasswordLoading(false);
@@ -230,7 +237,9 @@ export default function AccountProfilePage() {
       resetSetPassword();
       await fetchProfile();
       setTimeout(() => setPasswordSuccess(null), 4000);
-    } catch {
+    } catch (err) {
+      // Never log passwords — op name only.
+      logger.warn('[account/profile] set-password failed', { error: err instanceof Error ? err.message : String(err) });
       setPasswordError(t('createPasswordError') || 'Terjadi kesalahan. Silakan coba lagi.');
     } finally {
       setIsPasswordLoading(false);
@@ -580,6 +589,9 @@ export default function AccountProfilePage() {
           </form>
         </div>
       )}
+
+      {/* Two-factor authentication (otplib TOTP) */}
+      <TwoFactorCard />
     </div>
   );
 }

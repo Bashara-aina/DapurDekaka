@@ -6,11 +6,22 @@ import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import { useCartStore } from '@/store/cart.store';
 
-export function HomePageCTA() {
+interface HomePageCTAProps {
+  heroTitle?: string;
+  heroSubtitle?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
+}
+
+export function HomePageCTA({
+  heroTitle,
+  heroSubtitle,
+  ctaLabel,
+  ctaHref = '/products',
+}: HomePageCTAProps) {
   const t = useTranslations('homePageCTA');
   const { data: session } = useSession();
   const getTotalItems = useCartStore((s) => s.getTotalItems);
-
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -23,24 +34,22 @@ export function HomePageCTA() {
     <section className="py-12 px-4 bg-brand-red">
       <div className="container mx-auto text-center">
         <h2 className="font-display text-2xl font-bold text-white mb-4">
-          {t('heroTitle')}
+          {heroTitle || t('heroTitle')}
         </h2>
         <p className="text-white/80 mb-6 max-w-md mx-auto">
-          {t('heroSubtitle')}
+          {heroSubtitle || t('heroSubtitle')}
         </p>
         <Link
-          href="/products"
+          href={ctaHref}
           className="inline-flex items-center h-12 px-8 bg-white text-brand-red font-bold rounded-button shadow-lg hover:bg-brand-cream transition-colors"
         >
-          {t('exploreProducts')}
+          {ctaLabel || t('exploreProducts')}
         </Link>
       </div>
     </section>
   );
 
-  if (!mounted) {
-    return guestContent;
-  }
+  if (!mounted) return guestContent;
 
   if (session?.user) {
     return (
@@ -55,7 +64,7 @@ export function HomePageCTA() {
               : t('retryShoppingSubtitle')}
           </p>
           <Link
-            href="/products"
+            href={totalItems > 0 ? '/cart' : '/products'}
             className="inline-flex items-center h-12 px-8 bg-white text-brand-red font-bold rounded-button shadow-lg hover:bg-brand-cream transition-colors"
           >
             {totalItems > 0 ? t('viewCart') : t('startShopping')}

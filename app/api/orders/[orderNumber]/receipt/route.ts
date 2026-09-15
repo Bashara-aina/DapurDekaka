@@ -6,6 +6,9 @@ import { orders } from '@/lib/db/schema';
 import { success, serverError, notFound, unauthorized } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
 import { OrderReceiptPDF } from '@/components/email/OrderReceiptPDF';
+import { getSetting } from '@/lib/settings/get-settings';
+import { cloudinaryUrl } from '@/lib/seo/cloudinary-url';
+import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -84,7 +87,7 @@ export async function GET(
       renderToBuffer(
         OrderReceiptPDF({
           order,
-          logoUrl: `${process.env.NEXT_PUBLIC_APP_URL}/assets/logo/logo.png`,
+          logoUrl: await buildLogoUrl(),
         })
       ),
       new Promise<never>((_, reject) =>
@@ -103,7 +106,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('[orders/[orderNumber]/receipt]', error);
+    logger.error('[orders/[orderNumber]/receipt]', { error: error instanceof Error ? error.message : String(error) });
     const isTimeout = error instanceof Error && error.message === 'PDF_TIMEOUT';
     if (isTimeout) {
       return new Response(
@@ -113,4 +116,12 @@ export async function GET(
     }
     return serverError(error);
   }
+}
+
+async function buildLogoUrl(): Promise<string> {
+  const logoPublicId = await getSetting<string>('seo_logo_url').catch(() => null);
+  const viaCloudinary = cloudinaryUrl(logoPublicId);
+  if (viaCloudinary) return viaCloudinary;
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
+  return siteUrl ? `${siteUrl}/assets/logo/logo.png` : '';
 }

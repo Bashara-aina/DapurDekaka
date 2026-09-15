@@ -92,7 +92,6 @@ export async function GET(_req: NextRequest) {
       })),
     });
   } catch (error) {
-    console.error('[admin/team-dashboard/points-summary]', error);
     return serverError(error);
   }
 }

@@ -2,22 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { testimonials } from '@/lib/db/schema';
 import { eq, sql, asc, and } from 'drizzle-orm';
-import { success, serverError, badRequest } from '@/lib/utils/api-response';
-import { checkRateLimitAsync } from '@/lib/utils/rate-limit';
+import { success, serverError } from '@/lib/utils/api-response';
+import { logger } from '@/lib/utils/logger';
+import { withRateLimit } from '@/lib/utils/rate-limit';
 export const revalidate = 300;
 export const runtime = 'nodejs';
 
-export async function GET(req: NextRequest) {
-  const ip = req.ip || req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
-  const rateLimit = await checkRateLimitAsync(ip, 'public');
-  if (!rateLimit.success) {
-    return badRequest('Terlalu banyak permintaan. Silakan coba lagi nanti.');
-  }
-
+export const GET = withRateLimit(async (req: NextRequest) => {
   try {
     const data = await db.query.testimonials.findMany({
       where: and(eq(testimonials.isActive, true), sql`${testimonials.deletedAt} IS NULL`),
       orderBy: [asc(testimonials.sortOrder), asc(testimonials.createdAt)],
+      // Defensive cap: testimonials are curated (dozens), but an unbounded
+      // public query is a footgun if the table ever grows.
+      limit: 100,
     });
 
     return NextResponse.json(
@@ -29,7 +27,8 @@ export async function GET(req: NextRequest) {
       }
     );
   } catch (error) {
-    console.error('[api/testimonials/public]', error);
+    // serverError() logs centrally — single structured line.
+    logger.error('[api/testimonials/public]', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
-}
+}, 'public');

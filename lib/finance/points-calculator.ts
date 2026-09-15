@@ -14,7 +14,7 @@ import {
   MAX_COUPON_PERCENT,
   MIN_ORDER_FOR_COUPON_IDR,
 } from '@/lib/constants/financial-rules';
-import { POINTS_EARN_RATE } from '@/lib/constants/points';
+import { POINTS_EARN_RATE, B2B_POINTS_MULTIPLIER } from '@/lib/constants/points';
 
 export interface PointsInputs {
   readonly subtotal: number;
@@ -22,6 +22,10 @@ export interface PointsInputs {
   readonly pointsDiscount: number;
   readonly shippingCost: number;
   readonly isB2b: boolean;
+  /** Override from system_settings.points_earn_rate */
+  readonly earnRate?: number;
+  /** Override from system_settings.b2b_points_multiplier */
+  readonly b2bMultiplier?: number;
 }
 
 /**
@@ -30,7 +34,11 @@ export interface PointsInputs {
  */
 export function calculatePointsEarned(input: PointsInputs): number {
   const net = Math.max(0, input.subtotal - input.couponDiscount - input.pointsDiscount);
-  const basePoints = Math.floor(net / 1000) * POINTS_EARN_RATE;
+  const rate = input.earnRate ?? POINTS_EARN_RATE;
+  const multiplier = input.isB2b
+    ? (input.b2bMultiplier ?? B2B_POINTS_MULTIPLIER)
+    : 1;
+  const basePoints = Math.floor(net / 1000) * rate * multiplier;
   return Math.max(0, basePoints);
 }
 

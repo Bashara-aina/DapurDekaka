@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { blogPostViews } from '@/lib/db/schema';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * Record a view for a blog post.
@@ -19,7 +20,11 @@ export async function recordBlogView(params: {
       viewedAt: new Date(),
     });
   } catch (error) {
-    // Non-blocking - view tracking failures should not affect page render
-    console.error('[BlogView] Failed to record view:', error instanceof Error ? error.message : String(error));
+    // Non-blocking - view tracking failures should not affect page render.
+    // Warn (not error): analytics loss is operational, not a user failure.
+    logger.warn('[blog-view] failed to record view', {
+      blogPostId: params.blogPostId,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }

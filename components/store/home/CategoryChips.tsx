@@ -18,7 +18,7 @@ export function CategoryChips({ categories, activeSlug }: CategoryChipsProps) {
       >
         <Link
           href="/products"
-          className={`flex-shrink-0 px-4 py-2 rounded-pill text-sm font-medium transition-colors whitespace-nowrap ${
+          className={`flex-shrink-0 px-4 min-h-[44px] inline-flex items-center rounded-pill text-sm font-medium transition-colors whitespace-nowrap ${
             !activeSlug
               ? 'bg-brand-red text-white'
               : 'bg-white border border-brand-cream-dark text-text-primary hover:border-brand-red hover:text-brand-red'
@@ -30,7 +30,7 @@ export function CategoryChips({ categories, activeSlug }: CategoryChipsProps) {
           <Link
             key={cat.id}
             href={`/products?category=${cat.slug}`}
-            className={`flex-shrink-0 px-4 py-2 rounded-pill text-sm font-medium transition-colors whitespace-nowrap ${
+            className={`flex-shrink-0 px-4 min-h-[44px] inline-flex items-center rounded-pill text-sm font-medium transition-colors whitespace-nowrap ${
               activeSlug === cat.slug
                 ? 'bg-brand-red text-white'
                 : 'bg-white border border-brand-cream-dark text-text-primary hover:border-brand-red hover:text-brand-red'

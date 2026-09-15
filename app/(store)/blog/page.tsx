@@ -190,14 +190,16 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
             {featuredPost && (
               <div className="mb-10">
                 <Link href={`/blog/${featuredPost.slug}`} className="group block">
-                  <div className="relative h-72 md:h-96 rounded-2xl overflow-hidden">
-                    <Image
-                      src={featuredPost.coverImageUrl || `https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/f_webp,q_auto,w_1600/dapurdekaka/gallery/gallery-01`}
-                      alt={featuredPost.titleId}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                      priority
-                    />
+                  <div className="relative h-72 md:h-96 rounded-2xl overflow-hidden bg-brand-cream">
+                    {featuredPost.coverImageUrl ? (
+                      <Image
+                        src={featuredPost.coverImageUrl}
+                        alt={featuredPost.titleId}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                        priority
+                      />
+                    ) : null}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
                       {featuredPost.category && (

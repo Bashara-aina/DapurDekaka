@@ -6,16 +6,15 @@ import { signIn, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { logger } from '@/lib/utils/logger';
+import { readLocalCartItems, clearLocalCart } from '@/lib/utils/local-cart';
 
 function getSafeCallbackUrl(raw: string | null): string {
   const fallback = '/account';
+  // Open-redirect guard: only same-origin absolute paths. startsWith on a
+  // string cannot throw, so no try/catch needed.
   if (!raw) return fallback;
-  try {
-    if (!raw.startsWith('/') || raw.startsWith('//')) return fallback;
-    return raw;
-  } catch {
-    return fallback;
-  }
+  if (!raw.startsWith('/') || raw.startsWith('//')) return fallback;
+  return raw;
 }
 
 function LoginForm() {
@@ -30,6 +29,7 @@ function LoginForm() {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
+    totp: '',
   });
 
   useEffect(() => {
@@ -67,48 +67,58 @@ function LoginForm() {
 
     try {
       const callbackUrl = getSafeCallbackUrl(searchParams.get('callbackUrl'));
+      const totp = formData.totp.replace(/[\s-]/g, '');
       const result = await signIn('credentials', {
         email: formData.email,
         password: formData.password,
+        // Optional TOTP / backup code — only enforced server-side when 2FA
+        // is enabled for the account (see authorize() in lib/auth/config.ts).
+        ...(totp ? { totp } : {}),
         redirect: false,
         callbackUrl,
       });
 
       if (result?.error) {
-        setError('Email atau password salah');
+        setError(
+          totp
+            ? 'Kode authenticator salah atau kedaluwarsa. Coba lagi.'
+            : 'Email atau password salah. Jika 2FA aktif di akunmu, isi juga kode authenticator di bawah.'
+        );
       } else if (result?.url) {
         // Refresh session to mitigate session fixation (L-02)
         await update();
-        const cartItems = JSON.parse(localStorage.getItem('dapur-cart') || '{}');
-        if (cartItems?.state?.items?.length > 0) {
+        const localItems = readLocalCartItems();
+        if (localItems.length > 0) {
           try {
             const mergeRes = await fetch('/api/auth/merge-cart', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ items: cartItems.state.items }),
+              body: JSON.stringify({ items: localItems }),
             });
             if (!mergeRes.ok) {
-              localStorage.removeItem('dapur-cart');
+              clearLocalCart();
               toast.error('Gagal menggabungkan keranjang. Item lokal akan dihapus.');
             } else {
               const mergeData = await mergeRes.json();
               if (!mergeData.success) {
-                localStorage.removeItem('dapur-cart');
+                clearLocalCart();
                 toast.error('Gagal menggabungkan keranjang. Item lokal akan dihapus.');
               } else {
-                localStorage.removeItem('dapur-cart');
+                clearLocalCart();
                 toast.success('Keranjang berhasil digabungkan');
               }
             }
           } catch (err) {
-            localStorage.removeItem('dapur-cart');
+            clearLocalCart();
             toast.error('Gagal menggabungkan keranjang. Item lokal akan dihapus.');
             logger.error('[auth/login] Cart merge failed', { error: err });
           }
         }
         router.push(callbackUrl);
       }
-    } catch {
+    } catch (err) {
+      // Never log the password — email only, for abuse triage.
+      logger.warn('[auth/login] sign-in failed', { email: formData.email, error: err instanceof Error ? err.message : String(err) });
       setError('Terjadi kesalahan. Silakan coba lagi.');
     }
     setIsLoading(false);
@@ -138,6 +148,7 @@ function LoginForm() {
           )}
 
           <button
+            type="button"
             onClick={handleGoogleLogin}
             disabled={googleLoading || isLoading}
             className="w-full h-12 border border-brand-cream-dark rounded-button flex items-center justify-center gap-3 font-medium hover:bg-brand-cream transition-colors mb-6 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -201,6 +212,25 @@ function LoginForm() {
                 className="w-full h-11 px-3 border border-brand-cream-dark rounded-lg focus:border-brand-red focus:ring-2 focus:ring-brand-red/10 outline-none"
                 placeholder="••••••••"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Kode Authenticator <span className="text-text-secondary font-normal">(opsional)</span>
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={formData.totp}
+                onChange={e => setFormData(prev => ({ ...prev, totp: e.target.value }))}
+                className="w-full h-11 px-3 border border-brand-cream-dark rounded-lg focus:border-brand-red focus:ring-2 focus:ring-brand-red/10 outline-none tracking-widest"
+                placeholder="123456"
+                maxLength={12}
+              />
+              <p className="text-xs text-text-secondary mt-1">
+                Wajib diisi hanya jika 2FA aktif di akunmu (atau gunakan kode cadangan).
+              </p>
             </div>
 
             <div className="text-right">

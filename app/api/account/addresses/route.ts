@@ -5,6 +5,8 @@ import { eq, and, desc } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
 import { requireActiveUser } from '@/lib/auth/require-active';
 import { success, created, unauthorized, badRequest, serverError, notFound, validationError } from '@/lib/utils/api-response';
+import { logger } from '@/lib/utils/logger';
+import { isSameOriginRequest, sameOriginRejected } from '@/lib/utils/same-origin';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -43,13 +45,14 @@ export async function GET(req: NextRequest) {
 
     return success(userAddresses);
   } catch (error) {
-    console.error('[account/addresses GET]', error);
+    logger.error('[account/addresses GET]', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
+    if (!isSameOriginRequest(req)) return sameOriginRejected();
     const session = await auth();
 
     if (!session?.user?.id) {
@@ -95,13 +98,14 @@ export async function POST(req: NextRequest) {
     return created(newAddress);
 
   } catch (error) {
-    console.error('[account/addresses POST]', error);
+    logger.error('[account/addresses POST]', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
 }
 
 export async function PUT(req: NextRequest) {
   try {
+    if (!isSameOriginRequest(req)) return sameOriginRejected();
     const session = await auth();
 
     if (!session?.user?.id) {
@@ -159,7 +163,7 @@ export async function PUT(req: NextRequest) {
     return success(updated[0]);
 
   } catch (error) {
-    console.error('[account/addresses PUT]', error);
+    logger.error('[account/addresses PUT]', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
 }

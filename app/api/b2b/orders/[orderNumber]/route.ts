@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { eq, and } from 'drizzle-orm';
 import { orders } from '@/lib/db/schema';
 import { success, unauthorized, forbidden, notFound } from '@/lib/utils/api-response';
+import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -41,7 +42,7 @@ export async function GET(req: NextRequest, { params }: Props) {
 
     return success(order);
   } catch (error) {
-    console.error('[b2b/orders/[orderNumber] GET]', error);
+    logger.error('[b2b/orders/[orderNumber] GET]', { error: error instanceof Error ? error.message : String(error) });
     return new Response(
       JSON.stringify({ success: false, error: 'Internal server error' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }

@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
+import { logger } from '@/lib/utils/logger';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -105,6 +106,7 @@ export default function BlogForm({ postId }: BlogFormProps) {
           metaDescriptionEn: result.data.metaDescriptionEn ?? '',
         });
       } catch (error) {
+        logger.warn('[admin/blog] post load failed', { postId, error: error instanceof Error ? error.message : String(error) });
         toast.error(error instanceof Error ? error.message : 'Gagal memuat post');
         router.push('/admin/blog');
       } finally {
@@ -125,12 +127,13 @@ export default function BlogForm({ postId }: BlogFormProps) {
             setCategories(data.data);
           }
         }
-      } catch {
-        // Silent fail — categories are optional
+      } catch (err) {
+        // Categories are optional — log once for triage, don't toast-spam.
+        logger.warn('[admin/blog] categories load failed', { postId, error: err instanceof Error ? err.message : String(err) });
       }
     }
     fetchCategories();
-  }, []);
+  }, [postId]);
 
   async function onSubmit(data: BlogFormData) {
     setIsSubmitting(true);

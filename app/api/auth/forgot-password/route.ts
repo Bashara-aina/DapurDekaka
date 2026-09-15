@@ -8,7 +8,7 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { success, validationError, serverError } from '@/lib/utils/api-response';
-import { withRateLimit } from '@/lib/utils/rate-limit';
+import { withRateLimit, checkRateLimitAsync } from '@/lib/utils/rate-limit';
 import { sendEmail } from '@/lib/resend/send-email';
 import { PasswordResetEmail } from '@/lib/resend/templates/PasswordReset';
 import { logger } from '@/lib/utils/logger';
@@ -17,8 +17,17 @@ const forgotPasswordSchema = z.object({
   email: z.string().email('Format email tidak valid'),
 });
 
+function getClientIp(req: NextRequest): string {
+  return (
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    req.headers.get('x-real-ip') ??
+    'unknown'
+  );
+}
+
 export const POST = withRateLimit(
   async (req: NextRequest) => {
+    const ip = getClientIp(req);
     try {
       const body = await req.json();
       const parsed = forgotPasswordSchema.safeParse(body);
@@ -28,9 +37,25 @@ export const POST = withRateLimit(
       }
 
       const { email } = parsed.data;
+      const normalizedEmail = email.toLowerCase();
+
+      // FRESH-AUDIT-05 BUG-05 hardening: per-email rate limit on forgot-password
+      // (the global tier only throttles by IP, which can be rotated).
+      const perEmailLimit = await checkRateLimitAsync(`forgot:${normalizedEmail}`, 'password-reset');
+      if (!perEmailLimit.success) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Terlalu banyak permintaan reset password untuk email ini. Coba lagi nanti.',
+            code: 'RATE_LIMITED',
+            retryAfter: Math.ceil((perEmailLimit.resetAt - Date.now()) / 1000),
+          }),
+          { status: 429, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
 
       const user = await db.query.users.findFirst({
-        where: eq(users.email, email.toLowerCase()),
+        where: eq(users.email, normalizedEmail),
       });
 
       if (user) {
@@ -57,21 +82,28 @@ export const POST = withRateLimit(
           react: PasswordResetEmail({
             resetUrl,
             userName: user.name,
+            expiresAt: '1 jam',
           }),
         }).catch((err: unknown) => {
           logger.error('[auth/forgot-password] Email send failed', { error: err });
         });
+
+        logger.info('[auth/forgot-password] Reset email dispatched', { email: normalizedEmail, ip });
       } else {
-        // Timing normalization — simulate the time an email send would take
-        await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 100));
+        // FRESH-AUDIT-05 BUG-05 fix: normalize timing across the "user-not-found" path.
+        // Happy path: bcrypt (~100ms) + sendEmail HTTP (~200-500ms) ≈ 300-600ms.
+        // We pad the not-found path with a deterministic delay + bcrypt-sized
+        // dummy work so an attacker cannot enumerate emails via timing.
+        await bcrypt.hash(crypto.randomBytes(16).toString('hex'), 10);
+        await new Promise(resolve => setTimeout(resolve, 350));
       }
 
       return success({ message: 'Link reset password telah dikirim ke email kamu' });
 
     } catch (error) {
-      logger.error('[auth/forgot-password]', { error });
+      logger.error('[auth/forgot-password]', { error, ip });
       return serverError(error);
     }
   },
-  'auth'
+  'password-reset'
 );

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { toast } from 'sonner';
+import { logger } from '@/lib/utils/logger';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CouponForm, type CouponFormData } from '@/components/admin/coupons/CouponForm';
 import type { Coupon } from '@/lib/db/schema';
@@ -28,7 +29,8 @@ export default function CouponEditClient({ couponId }: CouponEditClientProps) {
         }
         const result = await response.json();
         setCoupon(result.data);
-      } catch {
+      } catch (err) {
+        logger.warn('[admin/coupons] edit load failed', { couponId, error: err instanceof Error ? err.message : String(err) });
         toast.error('Gagal memuat data kupon');
         router.push('/admin/coupons');
       } finally {

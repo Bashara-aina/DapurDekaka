@@ -21,6 +21,7 @@ interface CartStore {
   version: number;
   lastModified: number;
   addItem: (item: Omit<CartItem, 'quantity'>) => void;
+  restoreItems: (items: CartItem[]) => void;
   removeItem: (variantId: string) => void;
   updateQuantity: (variantId: string, quantity: number) => void;
   clearCart: () => void;
@@ -73,6 +74,27 @@ export const useCartStore = create<CartStore>()(
           ...bumpVersion(state),
           items: state.items.filter((i) => i.variantId !== variantId),
         }));
+      },
+
+      restoreItems: (restoreItems) => {
+        set((state) => {
+          const mergedMap = new Map<string, CartItem>();
+          for (const current of state.items) mergedMap.set(current.variantId, current);
+          for (const incoming of restoreItems) {
+            const qty = Math.min(Math.max(incoming.quantity ?? 1, 1), 99);
+            const existing = mergedMap.get(incoming.variantId);
+            if (existing) {
+              const cap = Math.min(99, Math.max(existing.stock ?? incoming.stock ?? 99, 1));
+              mergedMap.set(incoming.variantId, {
+                ...existing,
+                quantity: Math.min(existing.quantity + qty, cap),
+              });
+            } else {
+              mergedMap.set(incoming.variantId, { ...incoming, quantity: qty });
+            }
+          }
+          return { ...bumpVersion(state), items: Array.from(mergedMap.values()) };
+        });
       },
 
       updateQuantity: (variantId, quantity) => {
@@ -196,10 +218,15 @@ export const useCartStore = create<CartStore>()(
           for (const localItem of localItems) {
             const existing = mergedMap.get(localItem.variantId);
             if (existing) {
+              // PRD §5.1: guest + DB quantities are added together, capped at 99/stock.
+              // Always trust server price/stock over client values.
+              const summed = (existing.quantity ?? 0) + (localItem.quantity ?? 0);
+              const cap = Math.min(99, existing.stock ?? 99);
               mergedMap.set(localItem.variantId, {
                 ...existing,
-                quantity: Math.min(Math.max(localItem.quantity, 1), existing.stock),
-                unitPrice: localItem.unitPrice,
+                quantity: Math.min(Math.max(summed, 1), Math.max(cap, 1)),
+                unitPrice: existing.unitPrice,
+                stock: existing.stock,
               });
             } else {
               mergedMap.set(localItem.variantId, localItem);

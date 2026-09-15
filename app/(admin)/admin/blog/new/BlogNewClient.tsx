@@ -9,6 +9,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
+import { logger } from '@/lib/utils/logger';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -99,8 +100,9 @@ export function BlogNewClient() {
             setCategories(data.data);
           }
         }
-      } catch {
-        // Silent fail — categories are optional
+      } catch (err) {
+        // Categories are optional — log once for triage, don't toast-spam.
+        logger.warn('[admin/blog] categories load failed', { error: err instanceof Error ? err.message : String(err) });
       }
     }
     fetchCategories();

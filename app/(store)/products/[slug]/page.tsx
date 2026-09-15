@@ -5,6 +5,8 @@ import { eq, and, ne, isNull } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import { ProductDetailClient } from '@/components/store/products/ProductDetailClient';
+import { getSetting } from '@/lib/settings/get-settings';
+import { logger } from '@/lib/utils/logger';
 
 export const revalidate = 60;
 
@@ -103,9 +105,11 @@ export async function generateStaticParams() {
       columns: { slug: true },
     });
     return activeProducts.map((p) => ({ slug: p.slug }));
-  } catch {
+  } catch (err) {
     // Log but don't fail — page will be rendered dynamically at runtime
-    console.error('[ProductDetail] generateStaticParams failed, falling back to dynamic rendering');
+    logger.warn('[products/slug] generateStaticParams failed, falling back to dynamic rendering', {
+      error: err instanceof Error ? err.message : String(err),
+    });
     return [];
   }
 }
@@ -174,6 +178,40 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   const cheapestVariant = product.variants.reduce((min, v) =>
     v.price < min.price ? v : min, product.variants[0]!);
 
+  const freeShippingThreshold = await getSetting<number>('free_shipping_threshold', 'integer').catch(() => null);
+  const whatsappNumber = (await getSetting<string>('store_whatsapp_number').catch(() => null)) ?? '';
+  const meetsFreeShipping = freeShippingThreshold != null && cheapestVariant && cheapestVariant.price >= freeShippingThreshold;
+
+  const shippingDetails: Record<string, unknown> = {
+    '@type': 'OfferShippingDetails',
+    shippingDestination: {
+      '@type': 'DefinedRegion',
+      addressCountry: 'ID',
+    },
+    deliveryTime: {
+      '@type': 'ShippingDeliveryTime',
+      handlingTime: {
+        '@type': 'QuantitativeValue',
+        minValue: 1,
+        maxValue: 2,
+        unitCode: 'DAY',
+      },
+      transitTime: {
+        '@type': 'QuantitativeValue',
+        minValue: 1,
+        maxValue: 5,
+        unitCode: 'DAY',
+      },
+    },
+  };
+  if (meetsFreeShipping) {
+    shippingDetails.shippingRate = {
+      '@type': 'MonetaryAmount',
+      currency: 'IDR',
+      value: '0',
+    };
+  }
+
   const productJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Product',
@@ -202,33 +240,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         name: 'Dapur Dekaka',
       },
       url: `https://dapurdekaka.com/products/${slug}`,
-      shippingDetails: {
-        '@type': 'OfferShippingDetails',
-        shippingRate: {
-          '@type': 'MonetaryAmount',
-          currency: 'IDR',
-          value: '0',
-        },
-        shippingDestination: {
-          '@type': 'DefinedRegion',
-          addressCountry: 'ID',
-        },
-        deliveryTime: {
-          '@type': 'ShippingDeliveryTime',
-          handlingTime: {
-            '@type': 'QuantitativeValue',
-            minValue: 1,
-            maxValue: 2,
-            unitCode: 'DAY',
-          },
-          transitTime: {
-            '@type': 'QuantitativeValue',
-            minValue: 1,
-            maxValue: 5,
-            unitCode: 'DAY',
-          },
-        },
-      },
+      shippingDetails,
     },
     additionalProperty: [
       {
@@ -250,7 +262,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
       />
-      <ProductDetailClient product={product} relatedProducts={relatedProducts} />
+      <ProductDetailClient product={product} relatedProducts={relatedProducts} whatsappNumber={whatsappNumber} />
     </>
   );
 }

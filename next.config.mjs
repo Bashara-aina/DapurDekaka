@@ -4,9 +4,11 @@ const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 
 const cspDirectives = [
   "default-src 'self'",
-  // 'unsafe-inline' required for Next.js inline script hashing (/_next/static chunks)
-  // 'unsafe-eval' required by framer-motion for dynamic animation evaluation
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://app.midtrans.com https://app.sandbox.midtrans.com https://maps.googleapis.com",
+  // 'unsafe-inline' required for Next.js inline script hashing (/_next/static chunks).
+  // NOTE: no 'unsafe-eval' — framer-motion works under strict script CSP; the
+  // old comment claiming otherwise was wrong (audit #87). If a future lib
+  // needs eval, add it back with a link to the failing stack trace.
+  "script-src 'self' 'unsafe-inline' https://app.midtrans.com https://app.sandbox.midtrans.com https://maps.googleapis.com",
   "frame-src 'self' https://app.midtrans.com https://app.sandbox.midtrans.com",
   "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
@@ -55,13 +57,13 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'res.cloudinary.com',
         // Match any cloud name (the env var and the fallback dsnhwfuxh may differ)
-        pathname: '/*/**',
+        pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'lh3.googleusercontent.com',
-        // Restrict to avatar-sized paths only to prevent over-permissioning
-        pathname: '/s64/**',
+        // Google avatar URLs vary (/a/..., /=s64-c, /s64/...); allow all paths.
+        pathname: '/**',
       },
     ],
   },

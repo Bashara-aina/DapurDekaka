@@ -24,7 +24,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function StoreLayout({ children }: { children: React.ReactNode }) {
-  const dbWhatsapp = await getSetting<string>('store_whatsapp_number').catch(() => null);
+  const [dbWhatsapp, softLaunchEnabled, softLaunchMsg] = await Promise.all([
+    getSetting<string>('store_whatsapp_number').catch(() => null),
+    getSetting<boolean>('soft_launch_banner_enabled', 'boolean').catch(() => true),
+    getSetting<string>('soft_launch_wa_message').catch(() => null),
+  ]);
   const whatsappNumber = resolveWhatsAppNumber(dbWhatsapp);
 
   return (
@@ -35,7 +39,11 @@ export default async function StoreLayout({ children }: { children: React.ReactN
       >
         Langsung ke konten utama
       </a>
-      <SoftLaunchBanner />
+      <SoftLaunchBanner
+        enabledFromSettings={softLaunchEnabled !== false}
+        whatsappNumber={whatsappNumber}
+        waMessage={softLaunchMsg ?? undefined}
+      />
       <Navbar />
       <main id="main-content" className="min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">{children}</main>
       <Footer />
