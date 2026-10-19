@@ -116,7 +116,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     where: eq(blogPosts.slug, slug),
     with: {
       category: true,
-      author: true,
+      author: {
+        columns: { id: true, name: true, image: true },
+      },
     },
   }) as (Omit<typeof blogPosts.$inferSelect, 'deletedAt' | 'updatedAt' | 'createdAt' | 'contentEn' | 'excerptEn' | 'metaTitleEn' | 'metaDescriptionEn' | 'coverImagePublicId'> & {
     contentEn: string;
