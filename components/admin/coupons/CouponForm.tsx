@@ -43,10 +43,11 @@ interface CouponFormProps {
   isSubmitting?: boolean;
 }
 
+// K8: `free_shipping` is blocked at checkout (L2 rule) — keep it out of the
+// picker until the rule is lifted, so admins cannot create unusable coupons.
 const COUPON_TYPES = [
   { value: 'percentage', label: 'Persentase' },
   { value: 'fixed', label: 'Fixed Amount' },
-  { value: 'free_shipping', label: 'Gratis Ongkir' },
   { value: 'buy_x_get_y', label: 'Buy X Get Y' },
 ] as const;
 

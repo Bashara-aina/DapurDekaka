@@ -156,13 +156,35 @@ async function deductStock(tx: Tx, order: SettleOrderInput): Promise<void> {
 async function recordCouponUsage(tx: Tx, order: SettleOrderInput): Promise<void> {
   if (!order.couponId) return;
 
-  // Always increment used_count at settlement (the provisional row from initiate
-  // only prevents double-insert of couponUsages, but used_count must be bumped
-  // here since initiate only bumps it for Net-30 orders).
-  await tx
+  // Atomic conditional increment (K3): a stale `usedCount < maxUses` read at
+  // initiate must not let concurrent checkouts exceed the coupon limit. If the
+  // coupon is exhausted by the time money lands we still settle the order, but
+  // do not count another usage.
+  const [counted] = await tx
     .update(coupons)
     .set({ usedCount: sql`${coupons.usedCount} + 1` })
-    .where(and(eq(coupons.id, order.couponId), eq(coupons.isActive, true)));
+    .where(
+      and(
+        eq(coupons.id, order.couponId),
+        eq(coupons.isActive, true),
+        sql`(${coupons.maxUses} IS NULL OR ${coupons.usedCount} < ${coupons.maxUses})`
+      )
+    )
+    .returning({ id: coupons.id });
+
+  if (!counted) {
+    // Money is already captured — never fail settlement for a spent coupon.
+    // Flag for manual review instead of silently granting a discount.
+    await tx
+      .update(orders)
+      .set({
+        needsAttention: true,
+        needsAttentionReason: 'coupon_limit_reached',
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, order.id));
+    return;
+  }
 
   // Insert couponUsages row (idempotent — skip if already exists from initiate)
   await tx
@@ -194,6 +216,7 @@ async function awardPoints(
     userId: order.userId,
     type: 'earn',
     pointsAmount: earnedPoints,
+    pointsRemaining: earnedPoints,
     pointsBalanceAfter: updatedUser?.pointsBalance ?? earnedPoints,
     descriptionId: `Pembelian ${order.orderNumber}`,
     descriptionEn: `Purchase ${order.orderNumber}`,

@@ -8,6 +8,7 @@ export type RateLimitTier =
   | 'money'           // checkout, coupon, points → 10/min
   | 'shipping'        // shipping quotes (fans out to paid courier API) → 30/min
   | 'public'          // catalog, product, blog → 120/min (or CDN handles)
+  | 'public-strict'   // B2B inquiry (sends email) → 3/hour
   | 'webhook'         // midtrans, biteship → no user limit, verified by signature
   | 'admin'           // admin endpoints → 60/min
   | 'cron';           // /api/cron/* → CRON_SECRET gate, not rate-limited
@@ -24,6 +25,7 @@ const TIER_CONFIGS: Record<RateLimitTier, TierConfig> = {
   'money':          { maxRequests: 10,  windowMs: 60 * 1000 },
   'shipping':       { maxRequests: 30,  windowMs: 60 * 1000 },
   'public':         { maxRequests: 120, windowMs: 60 * 1000 },
+  'public-strict':  { maxRequests: 3,   windowMs: 60 * 60 * 1000 },
   'webhook':        { maxRequests: 60,  windowMs: 60 * 1000 },
   'admin':          { maxRequests: 60,  windowMs: 60 * 1000 },
   'cron':           { maxRequests: 9999, windowMs: 60 * 1000 },

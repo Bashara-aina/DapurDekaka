@@ -27,7 +27,7 @@ export async function buildOrganizationJsonLd(contact: {
     '@type': 'Organization',
     name: storeName || 'Dapur Dekaka',
     alternateName: '德卡',
-    url: SITE_URL || 'https://dapurdekaka.com',
+    url: SITE_URL || 'https://www.dapurdekaka.com',
     logo: finalLogo,
     description:
       'Premium Chinese-Indonesian frozen food. Dimsum, siomay, bakso, lumpia. 100% halal.',
@@ -57,7 +57,7 @@ export async function buildOrganizationJsonLd(contact: {
 }
 
 export function buildWebsiteJsonLd(): Record<string, unknown> {
-  const url = SITE_URL || 'https://dapurdekaka.com';
+  const url = SITE_URL || 'https://www.dapurdekaka.com';
   return {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
@@ -102,7 +102,7 @@ export async function buildLocalBusinessJsonLd(input: {
     getSetting<string>('store_province').catch(() => null),
   ]);
 
-  const url = SITE_URL || 'https://dapurdekaka.com';
+  const url = SITE_URL || 'https://www.dapurdekaka.com';
   const finalLogo = logoUrl ?? (SITE_URL ? `${SITE_URL}/assets/logo/logo.png` : '');
 
   const openingHoursSpecification: Array<Record<string, unknown>> = [];

@@ -51,7 +51,7 @@
     "app/api/webhooks/biteship/route.ts": {
       "maxDuration": 30
     },
-    "app/api/cron/*.ts": {
+    "app/api/cron/**/route.ts": {
       "maxDuration": 60
     }
   }

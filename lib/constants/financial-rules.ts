@@ -29,8 +29,13 @@ export const REFUND_DUE_DAYS = 7;
 /** Intercity minimum order for frozen_express lane (Phase 2 policy). */
 export const INTERCITY_MIN_SUBTOTAL_IDR = 250_000;
 
-/** Pickup auto-release window — claim before this and we keep the stock reserved. */
-export const PICKUP_AUTO_RELEASE_HOURS = 48;
+/**
+ * Pickup no-show window (W13 decision): after this many hours the order is
+ * flagged for attention (ops reviews/refunds manually). We deliberately do NOT
+ * auto-cancel/restock — the previous name `PICKUP_AUTO_RELEASE_HOURS` implied
+ * a release that never happened.
+ */
+export const PICKUP_NO_SHOW_FLAG_HOURS = 48;
 
 /** B2B prepaid only — no Net-30 for first 90 days. */
 export const B2B_CREDIT_ENABLED_DEFAULT = false;

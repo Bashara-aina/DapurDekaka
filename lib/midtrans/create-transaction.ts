@@ -26,7 +26,7 @@ export async function createMidtransTransaction(
   if (!appUrl) {
     throw new Error(
       'NEXT_PUBLIC_APP_URL environment variable is not set. ' +
-        'Expected value: https://dapurdekaka.com'
+        'Expected value: https://www.dapurdekaka.com'
     );
   }
   const midtransOrderId = getMidtransOrderId(params.orderNumber, params.retryCount);

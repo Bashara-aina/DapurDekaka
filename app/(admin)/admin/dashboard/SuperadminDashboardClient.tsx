@@ -20,6 +20,7 @@ import { InventoryFlashCard } from '@/components/admin/dashboard/InventoryFlashC
 import { PlatformUsersCard } from '@/components/admin/dashboard/PlatformUsersCard';
 import { AuditLogPanel } from '@/components/admin/dashboard/AuditLogPanel';
 import { PlatformHealthCard } from '@/components/admin/dashboard/PlatformHealthCard';
+import { ConfigHealthCard, type ConfigHealthData } from '@/components/admin/dashboard/ConfigHealthCard';
 import { QuickActionsToolbar } from '@/components/admin/dashboard/QuickActionsToolbar';
 
 import {
@@ -105,6 +106,12 @@ export default function SuperadminDashboardClient() {
     staleTime: 300000,
   });
 
+  const configHealthQuery = useQuery<ConfigHealthData | null>({
+    queryKey: ['config-health'],
+    queryFn: () => safeFetchJson<ConfigHealthData>('/api/admin/health/config'),
+    staleTime: 300000,
+  });
+
   const today = new Date().toLocaleDateString('id-ID', {
     weekday: 'long',
     day: 'numeric',
@@ -168,6 +175,9 @@ export default function SuperadminDashboardClient() {
 
       {/* ── Platform Health ─────────────────────────────────────────── */}
       <PlatformHealthCard systemHealth={kpisQuery.data?.systemHealth} />
+
+      {/* ── Production Config Health (BLOCKER 4) ────────────────────── */}
+      <ConfigHealthCard data={configHealthQuery.data ?? null} />
     </div>
   );
 }

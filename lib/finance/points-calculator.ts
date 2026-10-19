@@ -14,7 +14,7 @@ import {
   MAX_COUPON_PERCENT,
   MIN_ORDER_FOR_COUPON_IDR,
 } from '@/lib/constants/financial-rules';
-import { POINTS_EARN_RATE, B2B_POINTS_MULTIPLIER } from '@/lib/constants/points';
+import { POINTS_EARN_RATE } from '@/lib/constants/points';
 
 export interface PointsInputs {
   readonly subtotal: number;
@@ -35,10 +35,10 @@ export interface PointsInputs {
 export function calculatePointsEarned(input: PointsInputs): number {
   const net = Math.max(0, input.subtotal - input.couponDiscount - input.pointsDiscount);
   const rate = input.earnRate ?? POINTS_EARN_RATE;
-  const multiplier = input.isB2b
-    ? (input.b2bMultiplier ?? B2B_POINTS_MULTIPLIER)
-    : 1;
-  const basePoints = Math.floor(net / 1000) * rate * multiplier;
+  // L2 Rule 10: B2B customers earn the same rate as retail. The legacy 2x
+  // multiplier is intentionally gone; `b2bMultiplier` remains in the input
+  // type for settings compatibility but is not applied.
+  const basePoints = Math.floor(net / 1000) * rate;
   return Math.max(0, basePoints);
 }
 

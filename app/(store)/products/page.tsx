@@ -26,7 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title: t('productsTitle'),
       description: t('productsDescription'),
-      url: 'https://dapurdekaka.com/products',
+      url: 'https://www.dapurdekaka.com/products',
       type: 'website',
       ...(ogImageUrl
         ? {

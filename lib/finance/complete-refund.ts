@@ -1,6 +1,7 @@
-import { eq, and, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
-import { orders, pointsHistory, users, orderStatusHistory } from '@/lib/db/schema';
+import { orders, orderStatusHistory } from '@/lib/db/schema';
+import { clawbackEarnedPointsTx } from '@/lib/finance/points-ledger';
 
 type OrderStatus = typeof orders.$inferSelect.status;
 
@@ -41,35 +42,27 @@ export async function applyRefundCompletionTx(
 
   if (!input.userId) return;
 
-  const earned = await tx.query.pointsHistory.findMany({
-    where: and(eq(pointsHistory.orderId, input.orderId), eq(pointsHistory.type, 'earn')),
-    columns: { id: true, pointsAmount: true },
-  });
-
-  const totalEarned = earned.reduce((s, r) => s + r.pointsAmount, 0);
-  if (totalEarned <= 0) return;
-
+  // Shared helper is idempotent: if the admin-cancel path already clawed back
+  // (P5 double-clawback), this is a no-op.
   const clawRatio = input.isFullRefund
     ? 1
     : Math.min(1, input.refundAmount / Math.max(input.totalAmount, 1));
-  const clawPoints = Math.floor(totalEarned * clawRatio);
-  if (clawPoints <= 0) return;
 
-  const [updatedUser] = await tx
-    .update(users)
-    .set({ pointsBalance: sql`GREATEST(points_balance - ${clawPoints}, 0)` })
-    .where(eq(users.id, input.userId))
-    .returning({ pointsBalance: users.pointsBalance });
-
-  await tx.insert(pointsHistory).values({
-    userId: input.userId,
-    type: 'adjust',
-    pointsAmount: -clawPoints,
-    pointsBalanceAfter: updatedUser?.pointsBalance ?? 0,
-    orderId: input.orderId,
-    descriptionId: `Clawback poin refund ${input.orderNumber}`,
-    descriptionEn: `Refund points clawback ${input.orderNumber}`,
-  });
+  await clawbackEarnedPointsTx(
+    tx,
+    {
+      id: input.orderId,
+      orderNumber: input.orderNumber,
+      userId: input.userId,
+      pointsUsed: 0,
+      pointsEarned: 0,
+    },
+    {
+      ratio: clawRatio,
+      reasonId: `Clawback poin refund ${input.orderNumber}`,
+      reasonEn: `Refund points clawback ${input.orderNumber}`,
+    }
+  );
 
   // Stock is NOT restored by default — P5 Decision 1: frozen returns are almost
   // never resellable. The optional stock-restore checkbox can be added to the

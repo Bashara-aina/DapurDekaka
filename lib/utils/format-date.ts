@@ -38,5 +38,5 @@ export function formatBlogDate(
  * @example formatDateForOrder(new Date()) → "20260512"
  */
 export function formatDateForOrder(date: Date): string {
-  return format(date, 'yyyyMMdd');
+  return format(toZonedTime(date, 'Asia/Jakarta'), 'yyyyMMdd');
 }

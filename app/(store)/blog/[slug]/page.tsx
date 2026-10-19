@@ -54,7 +54,7 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
     openGraph: {
       title,
       description,
-      url: `https://dapurdekaka.com/blog/${slug}`,
+      url: `https://www.dapurdekaka.com/blog/${slug}`,
       type: 'article',
       publishedTime: post.publishedAt?.toISOString(),
       authors: ['Dapur Dekaka'],
@@ -74,7 +74,7 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
       images: post.coverImageUrl ? [post.coverImageUrl] : [],
     },
     alternates: {
-      canonical: `https://dapurdekaka.com/blog/${slug}`,
+      canonical: `https://www.dapurdekaka.com/blog/${slug}`,
     },
     robots: {
       index: true,
@@ -149,7 +149,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   // applied at write-time in app/api/admin/blog/*, so defence in depth.
   const sanitizedContent = sanitizeRichText(content);
 
-  const pageUrl = `https://dapurdekaka.com/blog/${slug}`;
+  const pageUrl = `https://www.dapurdekaka.com/blog/${slug}`;
 
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',
@@ -159,13 +159,13 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         '@type': 'ListItem',
         position: 1,
         name: 'Home',
-        item: 'https://dapurdekaka.com',
+        item: 'https://www.dapurdekaka.com',
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: 'Blog',
-        item: 'https://dapurdekaka.com/blog',
+        item: 'https://www.dapurdekaka.com/blog',
       },
       {
         '@type': 'ListItem',

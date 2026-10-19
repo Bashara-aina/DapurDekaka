@@ -40,7 +40,8 @@ export async function GET(req: NextRequest) {
 
 const deliverSchema = z.object({
   orderId: z.string().uuid(),
-  pickupCode: z.string().optional(),
+  // W9: the handover code is mandatory server-side, not just a UI hint.
+  pickupCode: z.string().min(4).max(20),
 });
 
 export async function PATCH(req: NextRequest) {
@@ -61,7 +62,7 @@ export async function PATCH(req: NextRequest) {
       return validationError(parsed.error);
     }
 
-    const { orderId } = parsed.data;
+    const { orderId, pickupCode } = parsed.data;
 
     const order = await db.query.orders.findFirst({
       where: eq(orders.id, orderId),
@@ -79,7 +80,20 @@ export async function PATCH(req: NextRequest) {
       return conflict('Order ini bukan metode pickup');
     }
 
-    await db.update(orders).set({ status: 'delivered', deliveredAt: new Date(), updatedAt: new Date() }).where(eq(orders.id, orderId));
+    // W9: verify the customer's handover code before releasing the goods.
+    if (!order.pickupCode || order.pickupCode.toUpperCase() !== pickupCode.trim().toUpperCase()) {
+      return conflict('Kode ambil tidak cocok. Minta pelanggan menunjukkan kode yang benar.');
+    }
+
+    const [updated] = await db
+      .update(orders)
+      .set({ status: 'delivered', deliveredAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(orders.id, orderId), eq(orders.status, 'packed')))
+      .returning({ id: orders.id });
+
+    if (!updated) {
+      return conflict('Status order berubah — refresh dan coba lagi');
+    }
 
     await db.insert(orderStatusHistory).values({
       orderId,
@@ -87,7 +101,7 @@ export async function PATCH(req: NextRequest) {
       toStatus: 'delivered',
       changedByUserId: session.user.id,
       changedByType: 'user',
-      note: `Order diambil oleh customer, diproses oleh ${session.user.name}`,
+      note: `Order diambil oleh customer (kode terverifikasi), diproses oleh ${session.user.name}`,
     });
 
     return success({ orderId, status: 'delivered' });

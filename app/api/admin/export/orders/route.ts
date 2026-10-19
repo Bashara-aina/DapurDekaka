@@ -15,8 +15,10 @@ export async function GET(req: NextRequest) {
       return forbidden('Anda harus login');
     }
 
+    // S8: full order export contains customer PII (names, phones, addresses)
+    // — owner/superadmin only, not warehouse.
     const role = session.user.role;
-    if (!role || !['superadmin', 'owner', 'warehouse'].includes(role)) {
+    if (!role || !['superadmin', 'owner'].includes(role)) {
       return forbidden('Anda tidak memiliki akses');
     }
 

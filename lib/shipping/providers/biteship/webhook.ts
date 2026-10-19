@@ -19,7 +19,13 @@ export interface BiteshipWebhookPayload {
 }
 
 /**
- * Verify Biteship webhook HMAC signature.
+ * Verify a Biteship webhook.
+ *
+ * Biteship's dashboard supports two modes:
+ *  1. HMAC-SHA256 of the raw body in a chosen header (this is what we generate).
+ *  2. A static "signature key": the header value IS the configured secret.
+ *
+ * W4: support both so deliveries never silently 401 out of the tracking flow.
  */
 export function verifyBiteshipSignature(
   rawBody: string,
@@ -34,14 +40,16 @@ export function verifyBiteshipSignature(
     .update(rawBody)
     .digest('hex');
 
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(expected)
-    );
-  } catch {
-    return signature === expected;
-  }
+  const safeEqual = (a: string, b: string): boolean => {
+    const bufA = Buffer.from(a);
+    const bufB = Buffer.from(b);
+    if (bufA.length !== bufB.length) return false;
+    return crypto.timingSafeEqual(bufA, bufB);
+  };
+
+  // HMAC mode (hex digest), then static-key mode.
+  if (safeEqual(signature, expected)) return true;
+  return safeEqual(signature, secret);
 }
 
 /** @deprecated Use verifyBiteshipSignature */
@@ -56,7 +64,8 @@ export function parseBiteshipWebhook(
   try {
     const payload =
       typeof input === 'string' ? (JSON.parse(input) as BiteshipWebhookPayload) : (input as BiteshipWebhookPayload);
-    if (!payload.status) return null;
+    // W6: `order.price` events carry no `status` — accept any identifying field.
+    if (!payload || (!payload.status && !payload.event && !payload.order_id)) return null;
     return payload;
   } catch {
     return null;

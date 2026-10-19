@@ -31,11 +31,11 @@ export async function generateMetadata({ params }: BlogPageProps): Promise<Metad
     openGraph: {
       title: t('blogTitle'),
       description: t('blogDescription'),
-      url: 'https://dapurdekaka.com/blog',
+      url: 'https://www.dapurdekaka.com/blog',
       type: 'website',
     },
     alternates: {
-      canonical: 'https://dapurdekaka.com/blog',
+      canonical: 'https://www.dapurdekaka.com/blog',
     },
     robots: {
       index: true,

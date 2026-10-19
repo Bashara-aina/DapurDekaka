@@ -113,6 +113,7 @@ export async function POST(
         userId: userId,
         type: 'earn',
         pointsAmount: earnedPoints,
+        pointsRemaining: earnedPoints,
         pointsBalanceAfter: newBalance,
         descriptionId: `Pembelian B2B ${order.orderNumber} (Net-30 — konfirmasi manual)`,
         descriptionEn: `B2B purchase ${order.orderNumber} (Net-30 — manual confirm)`,

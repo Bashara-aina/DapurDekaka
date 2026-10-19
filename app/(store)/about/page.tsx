@@ -17,11 +17,11 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: t('aboutTitle'),
     description: t('aboutDescription'),
-    alternates: { canonical: 'https://dapurdekaka.com/about' },
+    alternates: { canonical: 'https://www.dapurdekaka.com/about' },
     openGraph: {
       title: t('aboutTitle'),
       description: t('aboutDescription'),
-      url: 'https://dapurdekaka.com/about',
+      url: 'https://www.dapurdekaka.com/about',
       type: 'website',
     },
   };
@@ -57,7 +57,7 @@ export default async function AboutPage() {
     '@context': 'https://schema.org',
     '@type': 'AboutPage',
     name: 'Tentang Dapur Dekaka',
-    url: 'https://dapurdekaka.com/about',
+    url: 'https://www.dapurdekaka.com/about',
     mainEntity: {
       '@type': 'FoodEstablishment',
       name: 'Dapur Dekaka',

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 import { auth } from '@/lib/auth';
@@ -18,14 +19,15 @@ import {
   b2bProfiles,
   inventoryLogs,
 } from '@/lib/db/schema';
-import { eq, and, inArray, sql, or, desc, gte, gt } from 'drizzle-orm';
+import { eq, and, inArray, sql, gte, gt } from 'drizzle-orm';
 import { success, serverError, validationError, conflict, unauthorized, serviceUnavailable, unprocessableEntity } from '@/lib/utils/api-response';
 import { z } from 'zod';
-import { Redis } from '@upstash/redis';
-import { generateOrderNumber } from '@/lib/utils/generate-order-number';
+import { generateOrderNumber, generatePickupCode } from '@/lib/utils/generate-order-number';
+import { formatDateForOrder } from '@/lib/utils/format-date';
 import { createMidtransTransaction } from '@/lib/midtrans/create-transaction';
-import { POINTS_EARN_RATE, POINTS_EXPIRY_DAYS } from '@/lib/constants/points';
+import { POINTS_EXPIRY_DAYS, POINTS_VALUE_IDR } from '@/lib/constants/points';
 import { calculatePointsEarned } from '@/lib/finance/points-calculator';
+import { getPointsRuntimeRules } from '@/lib/settings/runtime-rules';
 import { getSetting } from '@/lib/settings/get-settings';
 import { withRateLimit } from '@/lib/utils/rate-limit';
 import { logger } from '@/lib/utils/logger';
@@ -51,16 +53,18 @@ const initiateSchema = z.object({
     .array(
       z.object({
         variantId: z.string().uuid(),
-        productId: z.string().uuid(),
-        productNameId: z.string(),
-        productNameEn: z.string(),
-        variantNameId: z.string(),
-        variantNameEn: z.string(),
-        sku: z.string(),
-        imageUrl: z.string().optional(),
-        unitPrice: z.number().int().positive(),
         quantity: z.number().int().min(1).max(99),
-        weightGram: z.number().int().positive(),
+        // Legacy client fields are accepted for backwards compatibility but
+        // ignored — names, SKU, price, weight and image always come from the DB.
+        productId: z.string().uuid().optional(),
+        productNameId: z.string().optional(),
+        productNameEn: z.string().optional(),
+        variantNameId: z.string().optional(),
+        variantNameEn: z.string().optional(),
+        sku: z.string().optional(),
+        imageUrl: z.string().optional(),
+        unitPrice: z.number().int().positive().optional(),
+        weightGram: z.number().int().positive().optional(),
       })
     )
     .min(1, 'Minimal 1 item di keranjang'),
@@ -160,6 +164,14 @@ export const POST = withRateLimit(
     // O(1) lookup per cart line instead of O(n) .find per iteration.
     const variantById = new Map(dbVariants.map((v) => [v.id, v]));
 
+    // Products supply names, image and active/deleted state. Nothing the client
+    // sends for these fields is trusted (H1/H2).
+    const dbProducts = await db.query.products.findMany({
+      where: inArray(products.id, dbVariants.map((v) => v.productId)),
+      with: { images: { limit: 1 } },
+    });
+    const productById = new Map(dbProducts.map((p) => [p.id, p]));
+
     let subtotal = 0;
     const orderItemsData: Array<{
       orderId: string;
@@ -179,14 +191,21 @@ export const POST = withRateLimit(
 
     let isB2bOrder = false;
 
-  for (const item of items) {
+    for (const item of items) {
       const variant = variantById.get(item.variantId);
       if (!variant) {
         return conflict(`Variant tidak ditemukan`);
       }
+      if (!variant.isActive) {
+        return conflict('Produk sudah tidak tersedia');
+      }
+      const product = productById.get(variant.productId);
+      if (!product || !product.isActive || product.deletedAt) {
+        return conflict('Produk sudah tidak tersedia');
+      }
       if (variant.stock < item.quantity) {
         return conflict(
-          `Stok tidak mencukupi untuk ${item.variantNameId} (tersisa ${variant.stock})`
+          `Stok tidak mencukupi untuk ${variant.nameId} (tersisa ${variant.stock})`
         );
       }
 
@@ -206,21 +225,23 @@ export const POST = withRateLimit(
         orderId: '', // set after order creation
         variantId: variant.id,
         productId: variant.productId,
-        productNameId: item.productNameId,
-        productNameEn: item.productNameEn,
-        variantNameId: item.variantNameId,
-        variantNameEn: item.variantNameEn,
-        sku: item.sku,
-        productImageUrl: item.imageUrl,
+        productNameId: product.nameId,
+        productNameEn: product.nameEn,
+        variantNameId: variant.nameId,
+        variantNameEn: variant.nameEn,
+        sku: variant.sku,
+        productImageUrl: product.images[0]?.cloudinaryUrl ?? null,
         unitPrice,
         quantity: item.quantity,
         subtotal: itemSubtotal,
-        weightGram: item.weightGram,
+        weightGram: variant.weightGram,
       });
     }
 
     // ── Step 2: Validate coupon ───────────────────────────────────────────
-    let discountAmount = parsed.data.discountAmount ?? 0;
+    // Never trust a client-supplied discount: it is always derived from the
+    // coupon row below (C1).
+    let discountAmount = 0;
     let couponId: string | null = null;
     let coupon: Awaited<ReturnType<typeof db.query.coupons.findFirst>> = undefined;
     let freeItems: Array<{
@@ -266,6 +287,10 @@ export const POST = withRateLimit(
         );
       }
 
+      if (coupon.startsAt && new Date(coupon.startsAt) > new Date()) {
+        return conflict('Kupon belum berlaku');
+      }
+
       if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) {
         return conflict('Kupon sudah expired');
       }
@@ -285,28 +310,41 @@ export const POST = withRateLimit(
         discountAmount = coupon.discountValue!;
       } else if (coupon.type === 'buy_x_get_y') {
         // buy_x_get_y: no monetary discount, add free items to order
-        const buyQty = coupon.buyQuantity ?? 1;
-        const getQty = coupon.getQuantity ?? 1;
+        const activeCoupon = coupon;
+        const buyQty = activeCoupon.buyQuantity ?? 1;
+        const getQty = activeCoupon.getQuantity ?? 1;
 
-        // Check if cart has qualifying quantity
-        const cartByProduct: Record<string, number> = {};
-        for (const item of items) {
-          cartByProduct[item.productId] = (cartByProduct[item.productId] ?? 0) + item.quantity;
-        }
-
-        let qualifies = false;
-        for (const [pid, qty] of Object.entries(cartByProduct)) {
-          if (qty >= buyQty) {
-            qualifies = true;
-            break;
+        // K6: only products the coupon targets may qualify (falling back to the
+        // whole catalog when no product/category targeting is configured).
+        const isApplicableProduct = (productId: string): boolean => {
+          const p = productById.get(productId);
+          if (!p || !p.isActive || p.deletedAt) return false;
+          if (
+            activeCoupon.applicableProductIds &&
+            activeCoupon.applicableProductIds.length > 0 &&
+            !activeCoupon.applicableProductIds.includes(productId)
+          ) {
+            return false;
           }
+          if (
+            activeCoupon.applicableCategoryIds &&
+            activeCoupon.applicableCategoryIds.length > 0 &&
+            (!p.categoryId || !activeCoupon.applicableCategoryIds.includes(p.categoryId))
+          ) {
+            return false;
+          }
+          return true;
+        };
+
+        const cartByProduct: Record<string, number> = {};
+        const cartQtyByVariant: Record<string, number> = {};
+        for (const item of orderItemsData) {
+          if (!isApplicableProduct(item.productId)) continue;
+          cartByProduct[item.productId] = (cartByProduct[item.productId] ?? 0) + item.quantity;
+          cartQtyByVariant[item.variantId] = (cartQtyByVariant[item.variantId] ?? 0) + item.quantity;
         }
 
-        if (!qualifies) {
-          return conflict(`Beli minimal ${buyQty} item untuk menggunakan kupon ini`);
-        }
-
-        // Find the product with most quantity in cart to attach free items to
+        // Find the targeted product with the most qualifying quantity.
         let qualifyingProductId = '';
         let maxQty = 0;
         for (const [pid, qty] of Object.entries(cartByProduct)) {
@@ -316,7 +354,11 @@ export const POST = withRateLimit(
           }
         }
 
-        // Get lowest-priced active variants of qualifying product
+        if (!qualifyingProductId) {
+          return conflict(`Beli minimal ${buyQty} item untuk menggunakan kupon ini`);
+        }
+
+        // Get lowest-priced active variants of qualifying product.
         const qualifyingVariants = await db.query.productVariants.findMany({
           where: and(
             eq(productVariants.productId, qualifyingProductId),
@@ -325,30 +367,17 @@ export const POST = withRateLimit(
           orderBy: (variants, { asc }) => [asc(variants.price)],
         });
 
-        // FIX 2B: Filter to only in-stock variants before selecting free items
-        const inStockVariants = qualifyingVariants.filter((v) => v.stock > 0);
-        if (inStockVariants.length === 0) {
-          return conflict('Tidak ada stok untuk item gratis dengan kupon ini');
-        }
-
+        // K5: a free unit needs stock beyond what the cart already consumes.
+        const inStockVariants = qualifyingVariants.filter(
+          (v) => v.stock > (cartQtyByVariant[v.id] ?? 0)
+        );
         const selectedVariants = inStockVariants.slice(0, getQty);
 
-        // Warn if requested free quantity exceeds available in-stock variants
         if (selectedVariants.length < getQty) {
-          logger.warn('[checkout/initiate] buy_x_get_y', {
-            productId: qualifyingProductId,
-            requested: getQty,
-            available: selectedVariants.length,
-          });
+          return conflict('Stok item gratis tidak mencukupi untuk kupon ini');
         }
 
-        // Find product info for free items
-        const productInfo = await db.query.products.findFirst({
-          where: eq(products.id, qualifyingProductId),
-        });
-
-        // Find a cart item to copy image/sku/weight info from
-        const refItem = items.find((i) => i.productId === qualifyingProductId);
+        const productInfo = productById.get(qualifyingProductId);
 
         for (const variant of selectedVariants) {
           freeItems.push({
@@ -359,7 +388,7 @@ export const POST = withRateLimit(
             variantNameId: variant.nameId,
             variantNameEn: variant.nameEn,
             sku: variant.sku,
-            productImageUrl: refItem?.imageUrl ?? null,
+            productImageUrl: productInfo?.images[0]?.cloudinaryUrl ?? null,
             unitPrice: 0,
             quantity: 1,
             subtotal: 0,
@@ -375,105 +404,55 @@ export const POST = withRateLimit(
     }
 
     // ── Step 3: Validate + deduct points inside transaction ────────────
+    const pointsRules = await getPointsRuntimeRules();
     const requestedPointsUsed = parsed.data.pointsUsed ?? 0;
     const requestedPointsDiscount = parsed.data.pointsDiscount ?? 0;
     // P0: guests can never redeem points. Reject crafted payloads outright.
     if (!session?.user?.id && (requestedPointsUsed > 0 || requestedPointsDiscount > 0)) {
       return unprocessableEntity('Poin hanya tersedia untuk pengguna terdaftar. Silakan masuk untuk menukar poin.', 'POINTS_GUEST_FORBIDDEN');
     }
-    // P0: enforce min 100 pts and exact conversion 100 pts = IDR 1,000 (10 IDR/pt).
-    if (requestedPointsUsed > 0 && requestedPointsUsed < 100) {
-      return unprocessableEntity('Penukaran poin minimal 100 poin.', 'POINTS_MIN_REDEEM');
+    // Runtime rules (P6): minimum redeem and 50% cap are admin-configurable.
+    if (requestedPointsUsed > 0 && requestedPointsUsed < pointsRules.minRedeem) {
+      return unprocessableEntity(
+        `Penukaran poin minimal ${pointsRules.minRedeem} poin.`,
+        'POINTS_MIN_REDEEM'
+      );
     }
-    if (requestedPointsUsed > 0 && requestedPointsDiscount !== requestedPointsUsed * 10) {
+    if (requestedPointsUsed > 0 && requestedPointsDiscount !== requestedPointsUsed * POINTS_VALUE_IDR) {
       return unprocessableEntity('Nilai diskon poin tidak valid.', 'POINTS_DISCOUNT_MISMATCH');
     }
     if (requestedPointsUsed === 0 && requestedPointsDiscount > 0) {
       return unprocessableEntity('Nilai diskon poin tidak valid.', 'POINTS_DISCOUNT_MISMATCH');
     }
     // PRD §6.5: points apply to remaining subtotal AFTER coupon.
-    const maxPointsDiscount = Math.floor(Math.max(0, subtotal - discountAmount) * 0.5);
+    const maxPointsDiscount = Math.floor(
+      Math.max(0, subtotal - discountAmount) * (pointsRules.maxRedeemPct / 100)
+    );
     const pointsDiscount = Math.min(requestedPointsDiscount, maxPointsDiscount);
-    // If client requested more than the 50%-after-coupon cap, reject rather than silently trim
+    // If client requested more than the cap, reject rather than silently trim
     // so totals stay predictable between client and server.
     if (requestedPointsDiscount > maxPointsDiscount) {
-      return unprocessableEntity('Penukaran poin maksimal 50% dari subtotal setelah kupon.', 'POINTS_MAX_EXCEEDED');
+      return unprocessableEntity(
+        `Penukaran poin maksimal ${pointsRules.maxRedeemPct}% dari subtotal setelah kupon.`,
+        'POINTS_MAX_EXCEEDED'
+      );
     }
     let pointsDeducted = false;
     const userId = session?.user?.id ?? null;
 
-    // Idempotency: use client-provided UUID key (or fall back to email-based dedup)
+    // Idempotency (M10): a client-generated UUID is the ONLY dedup key. The
+    // old email+subtotal window could return an unrelated order. The unique
+    // index on orders.idempotency_key makes concurrent retries safe.
     const idempotencyKey = parsed.data.idempotencyKey;
-    let existingOrderForIdempotency: { id: string; midtransSnapToken: string | null } | null = null;
-
     if (idempotencyKey) {
-      // Check Redis for this idempotency key
-      try {
-        if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-          const redis = new Redis({
-            url: process.env.UPSTASH_REDIS_REST_URL,
-            token: process.env.UPSTASH_REDIS_REST_TOKEN,
-          });
-          const existingOrderId = await redis.get(`idemp:checkout:${idempotencyKey}`);
-          if (existingOrderId) {
-            const existingOrder = await db.query.orders.findFirst({
-              where: eq(orders.id, existingOrderId as string),
-            });
-            if (existingOrder?.midtransSnapToken) {
-              return success({
-                orderId: existingOrder.id,
-                orderNumber: existingOrder.orderNumber,
-                snapToken: existingOrder.midtransSnapToken,
-              });
-            }
-          }
-        }
-      } catch (redisError) {
-        // Redis unavailable — fall through to DB-level dedup
-        logger.warn('[checkout/initiate] idempotency redis lookup failed', {
-          error: redisError instanceof Error ? redisError.message : String(redisError),
-        });
-      }
-    }
-
-    // Fallback dedup: 60-second window for guests (by email + subtotal)
-    if (!userId && recipientEmail && !existingOrderForIdempotency) {
-      const sixtySecsAgo = new Date(Date.now() - 60 * 1000);
-      const recentGuestOrder = await db.query.orders.findFirst({
-        where: and(
-          eq(orders.recipientEmail, recipientEmail.toLowerCase()),
-          eq(orders.status, 'pending_payment'),
-          gte(orders.createdAt, sixtySecsAgo),
-          eq(orders.subtotal, subtotal)
-        ),
-        orderBy: [desc(orders.createdAt)],
+      const existingOrder = await db.query.orders.findFirst({
+        where: eq(orders.idempotencyKey, idempotencyKey),
       });
-      if (recentGuestOrder?.midtransSnapToken) {
-        existingOrderForIdempotency = recentGuestOrder;
+      if (existingOrder?.midtransSnapToken) {
         return success({
-          orderId: recentGuestOrder.id,
-          orderNumber: recentGuestOrder.orderNumber,
-          snapToken: recentGuestOrder.midtransSnapToken,
-        });
-      }
-    }
-
-    // Fallback dedup: 30-second window for logged-in users (by userId + subtotal)
-    if (userId && !existingOrderForIdempotency) {
-      const existingPending = await db.query.orders.findFirst({
-        where: and(
-          eq(orders.userId, userId),
-          eq(orders.status, 'pending_payment'),
-          gte(orders.createdAt, new Date(Date.now() - 30 * 1000)),
-          eq(orders.subtotal, subtotal)
-        ),
-        orderBy: [desc(orders.createdAt)],
-      });
-      if (existingPending?.midtransSnapToken) {
-        return success({
-          orderId: existingPending.id,
-          orderNumber: existingPending.orderNumber,
-          snapToken: existingPending.midtransSnapToken,
+          orderId: existingOrder.id,
+          orderNumber: existingOrder.orderNumber,
+          snapToken: existingOrder.midtransSnapToken,
         });
       }
     }
@@ -555,7 +534,6 @@ export const POST = withRateLimit(
         longitude,
         insuranceType = 'none',
         courierInstantAck,
-        cashOnDelivery,
         customerShippingCost,
         biteshipActualCost: clientActualCost,
       } = parsed.data;
@@ -570,7 +548,9 @@ export const POST = withRateLimit(
         return conflict('Anda harus menyetujui ketentuan pengiriman express');
       }
 
-      const shippingItems: ShippingItemInput[] = orderItemsData.map((item) => {
+      // K5: free buy_x_get_y units weigh the same as paid units and must be
+      // included in the courier quote, otherwise Biteship re-prices the booking.
+      const shippingItems: ShippingItemInput[] = [...orderItemsData, ...freeItems].map((item) => {
         const variant = variantById.get(item.variantId);
         return {
           variantId: item.variantId,
@@ -605,9 +585,8 @@ export const POST = withRateLimit(
         return conflict('Tarif ongkir tidak valid. Silakan refresh halaman checkout.');
       }
 
-      if (cashOnDelivery && !validatedQuote.cashOnDeliveryAvailable) {
-        return conflict('Kurir yang dipilih tidak mendukung pembayaran COD');
-      }
+      // COD is disabled at launch (C2): the Midtrans payment already charges
+      // the full amount, and Biteship would collect it again at the door.
 
       // FD#3: insurance is hidden at launch — force 'none' server-side while the
       // insuranceUI flag is off so a crafted payload cannot add an insurance fee.
@@ -684,6 +663,13 @@ export const POST = withRateLimit(
     }
 
     const totalAmount = subtotal - discountAmount - pointsDiscount + shippingCost + insuranceFee;
+    // M7: never send a zero/negative gross_amount to Midtrans.
+    if (totalAmount < 1) {
+      return conflict('Total pembayaran tidak valid. Periksa kembali keranjang Anda.');
+    }
+    if (discountAmount > subtotal) {
+      return conflict('Diskon melebihi subtotal pesanan.');
+    }
     // L2 Rule 3: points earn on net product payment (subtotal - coupon - points redeemed).
     // L2 Rule 10: B2B customers earn the same rate as retail (no 2x multiplier).
     const pointsEarned = isNet30Order
@@ -693,11 +679,14 @@ export const POST = withRateLimit(
           pointsDiscount,
           shippingCost,
           isB2b: isB2bOrder,
+          earnRate: pointsRules.earnRate,
         })
       : 0; // non-Net-30 orders: points are awarded at webhook settlement, computed from net-of-discount base.
 
     // ── Step 5: Generate order number using atomic DB counter ───────────
-    const today = new Date().toISOString().slice(0, 10); // "2026-05-14"
+    // M13: the counter key and order number must use the same WIB calendar day
+    // (server runs in UTC; 00:00–07:00 WIB would otherwise get yesterday).
+    const today = formatDateForOrder(new Date()); // "2026-05-14"
 
     const expiryMinutes = await getSetting<number>('payment_expiry_minutes', 'integer') ?? 15;
     const paymentExpiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000);
@@ -750,17 +739,20 @@ export const POST = withRateLimit(
               eq(pointsHistory.type, 'earn'),
               sql`${pointsHistory.consumedAt} IS NULL`,
               sql`${pointsHistory.isExpired} = false`,
-              gt(pointsHistory.pointsAmount, 0),
+              gt(pointsHistory.pointsRemaining, 0),
             )
           )
           .orderBy(pointsHistory.expiresAt, pointsHistory.createdAt); // FIFO: earliest-expiring first
 
-        // Accumulating loop: walk through records until we cover all of pointsUsed
+        // Accumulating loop: walk through records until we cover all of pointsUsed.
+        // P2: consume only what is needed from each row (pointsRemaining), so a
+        // partially-used earn row keeps its remainder redeemable.
         let remaining = pointsUsed;
         const toConsume: { id: string; amountUsed: number }[] = [];
         for (const record of earnRecords) {
           if (remaining <= 0) break;
-          const amountUsed = Math.min(record.pointsAmount, remaining);
+          const amountUsed = Math.min(record.pointsRemaining, remaining);
+          if (amountUsed <= 0) continue;
           toConsume.push({ id: record.id, amountUsed });
           remaining -= amountUsed;
         }
@@ -790,15 +782,18 @@ export const POST = withRateLimit(
         pointsBalanceForRedeem = pointsBalanceAfterDeduct;
 
         // Create redeem records referencing specific earn IDs (FIFO).
-        // Batched: ONE update for all consumed earn rows + collect redeem rows
-        // for the single bulk insert after order creation (was N+1 queries).
+        // Decrement each earn row's remaining balance; only mark it consumed
+        // when the remainder reaches zero.
         if (toConsume.length > 0) {
-          await tx
-            .update(pointsHistory)
-            .set({ consumedAt: new Date() })
-            .where(inArray(pointsHistory.id, toConsume.map((c) => c.id)));
-
           for (const { id, amountUsed } of toConsume) {
+            await tx
+              .update(pointsHistory)
+              .set({
+                pointsRemaining: sql`GREATEST(${pointsHistory.pointsRemaining} - ${amountUsed}, 0)`,
+                consumedAt: sql`CASE WHEN ${pointsHistory.pointsRemaining} - ${amountUsed} <= 0 THEN NOW() ELSE NULL END`,
+              })
+              .where(eq(pointsHistory.id, id));
+
             redeemRecords.push({ earnId: id, amountUsed });
           }
         }
@@ -813,8 +808,9 @@ export const POST = withRateLimit(
         .insert(orders)
         .values({
           orderNumber,
-          pickupCode: deliveryMethod === 'pickup' ? orderNumber : null,
+          pickupCode: deliveryMethod === 'pickup' ? generatePickupCode() : null,
           userId: session?.user?.id ?? null,
+          idempotencyKey: idempotencyKey ?? null,
           status: orderStatus,
           isB2b: isB2bOrder,
           deliveryMethod,
@@ -845,7 +841,8 @@ export const POST = withRateLimit(
           insuranceFee,
           dispatchStatus: deliveryMethod === 'pickup' ? 'not_required' : 'pending',
           courierInstantAck: parsed.data.courierInstantAck ?? false,
-          cashOnDelivery: parsed.data.cashOnDelivery ?? false,
+          // C2: COD is disabled — Midtrans already collects the full amount.
+          cashOnDelivery: false,
           subtotal,
           discountAmount,
           pointsDiscount,
@@ -869,19 +866,23 @@ export const POST = withRateLimit(
       }
 
       // Insert redeem records now that orderId is available (FIFO consume).
-      // Single bulk insert — was one INSERT per redeemed earn row.
+      // P8: each row records the running balance after that redemption.
       if (redeemRecords.length > 0) {
+        let runningBalance = pointsBalanceForRedeem + pointsUsed!;
         await tx.insert(pointsHistory).values(
-          redeemRecords.map(({ earnId, amountUsed }) => ({
-            userId: userId!,
-            type: 'redeem' as const,
-            pointsAmount: -amountUsed,
-            pointsBalanceAfter: pointsBalanceForRedeem,
-            orderId: created.id,
-            descriptionId: `Tukar poin untuk pesanan ${created.orderNumber}`,
-            descriptionEn: `Redeem points for order ${created.orderNumber}`,
-            referencedEarnId: earnId,
-          }))
+          redeemRecords.map(({ earnId, amountUsed }) => {
+            runningBalance -= amountUsed;
+            return {
+              userId: userId!,
+              type: 'redeem' as const,
+              pointsAmount: -amountUsed,
+              pointsBalanceAfter: runningBalance,
+              orderId: created.id,
+              descriptionId: `Tukar poin untuk pesanan ${created.orderNumber}`,
+              descriptionEn: `Redeem points for order ${created.orderNumber}`,
+              referencedEarnId: earnId,
+            };
+          })
         );
       }
 
@@ -948,6 +949,7 @@ export const POST = withRateLimit(
             userId,
             type: 'earn',
             pointsAmount: pointsEarned,
+            pointsRemaining: pointsEarned,
             pointsBalanceAfter: newBalance,
             descriptionId: `Pembelian B2B Net-30 ${created.orderNumber}`,
             descriptionEn: `B2B Net-30 purchase ${created.orderNumber}`,
@@ -969,12 +971,17 @@ export const POST = withRateLimit(
             .onConflictDoNothing();
         }
 
-        // Increment coupon used_count for Net-30
+        // Increment coupon used_count for Net-30 (atomic, respects max_uses).
         if (coupon) {
           await tx
             .update(coupons)
             .set({ usedCount: sql`used_count + 1` })
-            .where(eq(coupons.id, coupon.id));
+            .where(
+              and(
+                eq(coupons.id, coupon.id),
+                sql`(${coupons.maxUses} IS NULL OR ${coupons.usedCount} < ${coupons.maxUses})`
+              )
+            );
         }
       }
 
@@ -990,31 +997,25 @@ export const POST = withRateLimit(
         });
       }
 
+      // M11: initial status history belongs in the same transaction as the order.
+      await tx.insert(orderStatusHistory).values({
+        orderId: created.id,
+        fromStatus: null,
+        toStatus: isNet30Order ? 'paid' : 'pending_payment',
+        changedByUserId: userId,
+        changedByType: 'system',
+        note: isNet30Order
+          ? 'Pesanan B2B Net-30, langsung lunas'
+          : 'Pesanan dibuat, menunggu pembayaran',
+      });
+
       return [created];
     });
 
-    // Write initial status history
     const order = counterResult[0];
     if (!order) {
       throw new Error('Failed to create order');
     }
-
-    // For Net-30 orders, write 'paid' status history; otherwise 'pending_payment'
-    const initialStatus: 'pending_payment' | 'paid' = isNet30Order ? 'paid' : 'pending_payment';
-    const initialNote = isNet30Order
-      ? 'Pesanan B2B Net-30, langsung lunas'
-      : 'Pesanan dibuat, menunggu pembayaran';
-
-    await db.transaction(async (tx) => {
-      await tx.insert(orderStatusHistory).values({
-        orderId: order.id,
-        fromStatus: null,
-        toStatus: initialStatus,
-        changedByUserId: userId,
-        changedByType: 'system',
-        note: initialNote,
-      });
-    });
 
     // ── Step 8: For Net-30 B2B orders, skip Midtrans and return immediately ─
     if (isNet30Order) {
@@ -1103,12 +1104,17 @@ export const POST = withRateLimit(
                 eq(pointsHistory.orderId, order.id)
               )
             );
-          // Batch-restore consumed earn rows (was one UPDATE per redeem).
-          const earnIdsToRestore = redeemRecords
-            .map((r) => r.referencedEarnId)
-            .filter((id): id is string => Boolean(id));
-          if (earnIdsToRestore.length > 0) {
-            await tx.update(pointsHistory).set({ consumedAt: null }).where(inArray(pointsHistory.id, earnIdsToRestore));
+          // Restore each referenced earn row's remaining balance.
+          for (const redeem of redeemRecords) {
+            if (!redeem.referencedEarnId) continue;
+            const restored = Math.abs(redeem.pointsAmount);
+            await tx
+              .update(pointsHistory)
+              .set({
+                pointsRemaining: sql`${pointsHistory.pointsRemaining} + ${restored}`,
+                consumedAt: null,
+              })
+              .where(eq(pointsHistory.id, redeem.referencedEarnId));
           }
           await tx
             .update(users)
@@ -1142,24 +1148,6 @@ export const POST = withRateLimit(
       })
       .where(eq(orders.id, order.id));
 
-    // Store idempotency key in Redis
-    if (idempotencyKey) {
-      try {
-        if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-          const redis = new Redis({
-            url: process.env.UPSTASH_REDIS_REST_URL,
-            token: process.env.UPSTASH_REDIS_REST_TOKEN,
-          });
-          await redis.set(`idemp:checkout:${idempotencyKey}`, order.id, { ex: 86400 });
-        }
-      } catch (redisError) {
-        // Non-critical — dedup falls back to DB-level
-        logger.warn('[checkout/initiate] idempotency redis write failed', {
-          error: redisError instanceof Error ? redisError.message : String(redisError),
-        });
-      }
-    }
-
     return success({
       orderId: order.id,
       orderNumber: order.orderNumber,
@@ -1167,6 +1155,7 @@ export const POST = withRateLimit(
       snapToken,
     });
     } catch (error) {
+      Sentry.captureException(error);
       logger.error('[checkout/initiate]', { error: error instanceof Error ? error.message : String(error) });
       return serverError(error);
     }

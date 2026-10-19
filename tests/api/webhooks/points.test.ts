@@ -46,4 +46,10 @@ describe('points earning — net product payment only', () => {
   it('returns zero when net is zero or negative', () => {
     expect(calculatePointsEarned({ subtotal: 100_000, couponDiscount: 100_000, pointsDiscount: 0, shippingCost: 0, isB2b: false })).toBe(0);
   });
+
+  it('L2 Rule 10: B2B earns the same rate as retail (no 2x multiplier)', () => {
+    const retail = calculatePointsEarned({ subtotal: 250_000, couponDiscount: 0, pointsDiscount: 0, shippingCost: 0, isB2b: false });
+    const b2b = calculatePointsEarned({ subtotal: 250_000, couponDiscount: 0, pointsDiscount: 0, shippingCost: 0, isB2b: true, b2bMultiplier: 2 });
+    expect(b2b).toBe(retail);
+  });
 });

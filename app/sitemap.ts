@@ -4,7 +4,10 @@ import { products, blogPosts } from '@/lib/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import { logger } from '@/lib/utils/logger';
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? '';
+const BASE_URL = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.dapurdekaka.com').replace(
+  /\/$/,
+  ''
+);
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const routes: MetadataRoute.Sitemap = [

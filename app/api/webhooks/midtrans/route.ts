@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { db } from '@/lib/db';
 import {
   orders,
@@ -6,8 +7,6 @@ import {
   inventoryLogs,
   coupons,
   couponUsages,
-  pointsHistory,
-  users,
   orderStatusHistory,
   refunds,
   webhookEvents,
@@ -17,16 +16,19 @@ import { success, serverError } from '@/lib/utils/api-response';
 import { sendEmail } from '@/lib/resend/send-email';
 import { OrderConfirmationEmail } from '@/lib/resend/templates/OrderConfirmation';
 import { OrderCancellationEmail } from '@/lib/resend/templates/OrderCancellation';
-import { PickupReadyEmail } from '@/lib/resend/templates/PickupReady';
 import { formatWIB } from '@/lib/utils/format-date';
 import { logger } from '@/lib/utils/logger';
 import { withRateLimit } from '@/lib/utils/rate-limit';
 import { verifyMidtransSignature, parseMidtransGrossAmount } from '@/lib/midtrans/verify-signature';
 import { settleOrderTx, InsufficientStockError } from '@/lib/finance/settle-order';
+import { reverseRedeemedPointsTx } from '@/lib/finance/points-ledger';
+import { handleOversellAtSettlement } from '@/lib/finance/oversell';
 import { recordWebhookEvent } from '@/lib/utils/webhook-events';
-import { sendWhatsApp, pickupReadyMessage } from '@/lib/services/fonnte';
+import { sendWhatsApp } from '@/lib/services/fonnte';
 import { getSetting } from '@/lib/settings/get-settings';
 import { flagNeedsAttention } from '@/lib/ops/needs-attention';
+import { stripRetrySuffix } from '@/lib/utils/generate-order-number';
+import { scheduleBackground } from '@/lib/utils/background';
 import { isAlreadyProcessed, markProcessed, buildWebhookIdempotencyKey } from '@/lib/utils/webhook-idempotency';
 
 export const runtime = 'nodejs';
@@ -52,20 +54,19 @@ export const POST = withRateLimit(async (req: NextRequest) => {
       gross_amount,
       signature_key,
       transaction_status,
+      fraud_status,
     } = body as {
       order_id?: string;
       status_code?: string;
       gross_amount?: string;
       signature_key?: string;
       transaction_status?: string;
+      fraud_status?: string;
     };
 
     // ── P0#1: verify Midtrans body signature (NOT a header) ──────────────
-    const eventId = buildWebhookIdempotencyKey('midtrans', order_id ?? '', transaction_status ?? '');
-    if (await isAlreadyProcessed(eventId)) {
-      return success({ received: true, note: 'already_processed_idempotent' });
-    }
-
+    // S10: verify before the Redis idempotency lookup so unauthenticated
+    // requests cannot probe which events have been processed.
     const valid = verifyMidtransSignature(
       { orderId: order_id, statusCode: status_code, grossAmount: gross_amount, signatureKey: signature_key },
       process.env.MIDTRANS_SERVER_KEY
@@ -73,6 +74,11 @@ export const POST = withRateLimit(async (req: NextRequest) => {
     if (!valid) {
       logger.warn('[Midtrans Webhook] Invalid or missing signature', { orderId: order_id });
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+    }
+
+    const eventId = buildWebhookIdempotencyKey('midtrans', order_id ?? '', transaction_status ?? '');
+    if (await isAlreadyProcessed(eventId)) {
+      return success({ received: true, note: 'already_processed_idempotent' });
     }
 
     const transactionId = typeof body.transaction_id === 'string' ? body.transaction_id : null;
@@ -96,10 +102,8 @@ export const POST = withRateLimit(async (req: NextRequest) => {
     }
 
     // ── Step 3: Idempotency (DB-level dedup) ────────────────────────────
-    if (transactionId && order.midtransTransactionId === transactionId) {
-      await markProcessed(eventId);
-      return success({ received: true, note: 'already_processed' });
-    }
+    // H6: dedup per (transaction_id, transaction_status), NOT transaction_id
+    // alone — refund/chargeback notifications share the original transaction.
     if (order.status === 'paid' && transaction_status === 'settlement') {
       await markProcessed(eventId);
       return success({ received: true, note: 'already_processed' });
@@ -120,7 +124,7 @@ export const POST = withRateLimit(async (req: NextRequest) => {
         orderNumber: order.orderNumber,
         status: order.status,
       });
-      await createRefundObligation(order.id, order.totalAmount, order.orderNumber, transaction_status);
+      await createRefundObligation(order.id, order.totalAmount, order.orderNumber, 'late_settlement', transaction_status);
       await flagNeedsAttention(order.id, 'late_settlement', `late settlement on ${order.status}`);
       await recordWebhookEvent({
         source: 'midtrans',
@@ -172,6 +176,27 @@ export const POST = withRateLimit(async (req: NextRequest) => {
         return NextResponse.json({ received: false }, { status: 400 });
       }
 
+      // H5: card capture with fraud_status=challenge must be held for review,
+      // not treated as paid.
+      if (transaction_status === 'capture' && fraud_status === 'challenge') {
+        await flagNeedsAttention(
+          order.id,
+          'gross_mismatch_spam',
+          'Midtrans capture held for fraud review (challenge)'
+        );
+        await recordWebhookEvent({
+          source: 'midtrans',
+          eventType: 'capture_challenge',
+          externalId: order_id ?? null,
+          payload: body,
+          errorMessage: 'fraud_challenge_manual_review',
+        });
+        return NextResponse.json(
+          { received: true, note: 'capture_challenge_manual_review' },
+          { status: 200 }
+        );
+      }
+
       let settled = false;
       try {
         await db.transaction(async (tx) => {
@@ -185,12 +210,14 @@ export const POST = withRateLimit(async (req: NextRequest) => {
         });
       } catch (settleError) {
         if (settleError instanceof InsufficientStockError) {
-          // Oversell at settlement — money received but stock gone. Return 200 so
-          // Midtrans stops retrying; flag for manual attention (P3 red-team #2).
+          // H3(b): money was received but stock is gone. Flip the order to paid
+          // with needsAttention and create a refund obligation so it surfaces in
+          // the Refunds queue instead of retrying forever as pending_payment.
           logger.error('[Midtrans Webhook] Oversell at settlement', {
             orderNumber: order.orderNumber,
             variantId: settleError.variantId,
           });
+          await handleOversellAtSettlement(order, settleError.message, transactionId);
           await recordWebhookEvent({
             source: 'midtrans',
             eventType: 'settlement_insufficient_stock',
@@ -198,9 +225,8 @@ export const POST = withRateLimit(async (req: NextRequest) => {
             payload: body,
             errorMessage: settleError.message,
           });
-          notifyOps(`Oversell saat settlement: ${order.orderNumber} (stok habis). Perlu tindakan manual.`);
-          await flagNeedsAttention(order.id, 'oversell_at_settlement', settleError.message);
-          return NextResponse.json({ received: true, note: 'insufficient_stock_manual_review' }, { status: 200 });
+          notifyOps(`Oversell saat settlement: ${order.orderNumber} (stok habis). Refund wajib dibuat.`);
+          return NextResponse.json({ received: true, note: 'insufficient_stock_refund_queued' }, { status: 200 });
         }
         throw settleError;
       }
@@ -226,6 +252,21 @@ export const POST = withRateLimit(async (req: NextRequest) => {
         externalId: order_id ?? null,
         payload: body,
       });
+    } else if (['refund', 'partial_refund', 'chargeback'].includes(transaction_status ?? '')) {
+      // H6: refunds initiated from the Midtrans dashboard must be reflected in
+      // the refunds queue/order state, not silently ignored.
+      await handleRefundNotification(
+        order,
+        transaction_status ?? 'refund',
+        transactionId,
+        body as Record<string, unknown>
+      );
+      await recordWebhookEvent({
+        source: 'midtrans',
+        eventType: transaction_status ?? 'refund',
+        externalId: order_id ?? null,
+        payload: body,
+      });
     } else {
       await recordWebhookEvent({
         source: 'midtrans',
@@ -238,25 +279,50 @@ export const POST = withRateLimit(async (req: NextRequest) => {
     await markProcessed(eventId);
     return success({ received: true });
   } catch (error) {
+    // Money path — always report, not just log.
+    Sentry.captureException(error);
     logger.error('[Midtrans Webhook] Error', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
 }, 'webhook');
 
-function findWebhookOrder(midtransOrderId: string) {
-  return db.query.orders.findFirst({
+async function findWebhookOrder(midtransOrderId: string) {
+  // Fast path: the current Midtrans id.
+  const direct = await db.query.orders.findFirst({
     where: eq(orders.midtransOrderId, midtransOrderId),
+    with: { items: true, user: true },
+  });
+  if (direct) return direct;
+
+  // C3: an old VA/QRIS transaction can notify after a retry replaced the id.
+  // Resolve the canonical order number (`DDK-…-retry-N` → `DDK-…`); the old
+  // transaction id has no suffix but its orderNumber does match.
+  const canonicalOrderNumber = stripRetrySuffix(midtransOrderId);
+
+  return db.query.orders.findFirst({
+    where: eq(orders.orderNumber, canonicalOrderNumber),
     with: { items: true, user: true },
   });
 }
 
 type WebhookOrder = NonNullable<Awaited<ReturnType<typeof findWebhookOrder>>>;
 
+type RefundReason =
+  | 'customer_request'
+  | 'late_settlement'
+  | 'payment_cancelled'
+  | 'oversell'
+  | 'cold_chain_failure'
+  | 'stock_out'
+  | 'fraud'
+  | 'other';
+
 async function createRefundObligation(
   orderId: string,
   amount: number,
   orderNumber: string,
-  reason: string
+  reason: RefundReason,
+  context: string
 ): Promise<void> {
   if (amount <= 0) return;
   await db.transaction(async (tx) => {
@@ -269,11 +335,81 @@ async function createRefundObligation(
     await tx.insert(refunds).values({
       orderId,
       amount,
-      reason: 'customer_request',
+      reason,
       method: 'midtrans',
       status: 'pending',
-      notes: `Auto-created on late Midtrans ${reason} for ${orderNumber}`,
+      notes: `Auto-created on Midtrans ${context} for ${orderNumber}`,
     });
+  });
+}
+
+/**
+ * H6: reflect Midtrans dashboard refunds/chargebacks in our refund queue.
+ */
+async function handleRefundNotification(
+  order: WebhookOrder,
+  transactionStatus: string,
+  transactionId: string | null,
+  body: Record<string, unknown>
+): Promise<void> {
+  const rawAmount = body.refund_amount ?? body.gross_amount;
+  const parsedAmount =
+    typeof rawAmount === 'string' || typeof rawAmount === 'number'
+      ? parseMidtransGrossAmount(String(rawAmount))
+      : null;
+  const refundAmount = Math.max(
+    0,
+    Math.min(order.totalAmount, parsedAmount ?? order.totalAmount)
+  );
+  const isFull = transactionStatus === 'chargeback' || refundAmount >= order.totalAmount;
+  const refundId =
+    (typeof body.refund_id === 'string' && body.refund_id) ||
+    (typeof body.refund_key === 'string' && body.refund_key) ||
+    null;
+
+  await db.transaction(async (tx) => {
+    const existing = await tx.query.refunds.findFirst({
+      where: eq(refunds.orderId, order.id),
+      orderBy: (r, { desc }) => [desc(r.createdAt)],
+    });
+
+    if (existing) {
+      await tx
+        .update(refunds)
+        .set({
+          status: 'completed',
+          processedAt: new Date(),
+          midtransRefundId: refundId ?? existing.midtransRefundId,
+          notes: `${existing.notes ?? ''}\nMidtrans ${transactionStatus} notification received`.trim(),
+          updatedAt: new Date(),
+        })
+        .where(eq(refunds.id, existing.id));
+    } else if (refundAmount > 0) {
+      await tx.insert(refunds).values({
+        orderId: order.id,
+        amount: refundAmount,
+        reason: transactionStatus === 'chargeback' ? 'fraud' : 'other',
+        method: 'midtrans',
+        status: 'completed',
+        processedAt: new Date(),
+        midtransRefundId: refundId ?? transactionId ?? undefined,
+        notes: `Midtrans ${transactionStatus} notification for ${order.orderNumber}`,
+      });
+    }
+
+    if (isFull && order.status !== 'refunded') {
+      await tx
+        .update(orders)
+        .set({ status: 'refunded', updatedAt: new Date() })
+        .where(eq(orders.id, order.id));
+      await tx.insert(orderStatusHistory).values({
+        orderId: order.id,
+        fromStatus: order.status,
+        toStatus: 'refunded',
+        changedByType: 'system',
+        note: `Midtrans ${transactionStatus} — refund penuh`,
+      });
+    }
   });
 }
 
@@ -293,17 +429,48 @@ function notifyOps(message: string): void {
  */
 async function handleCancellation(order: WebhookOrder, transactionStatus: string): Promise<void> {
   const sevenDaysOut = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  const wasPaidBefore = order.status === 'paid';
+  const wasPaidBefore = order.paidAt !== null;
+
+  // H4: never auto-cancel an order the courier already has.
+  if (order.status === 'shipped' || order.status === 'delivered') {
+    await flagNeedsAttention(
+      order.id,
+      'refund_failed',
+      `Midtrans ${transactionStatus} on ${order.status} order — manual review`
+    );
+    logger.warn('[Midtrans Webhook] Refusing to auto-cancel shipped order', {
+      orderNumber: order.orderNumber,
+      status: order.status,
+    });
+    return;
+  }
 
   await db.transaction(async (tx) => {
-    await tx
+    const [updated] = await tx
       .update(orders)
       .set({
         status: 'cancelled',
         cancelledAt: new Date(),
         refundDueDate: wasPaidBefore ? sevenDaysOut : null,
+        updatedAt: new Date(),
       })
-      .where(eq(orders.id, order.id));
+      .where(
+        and(
+          eq(orders.id, order.id),
+          sql`${orders.status} NOT IN ('cancelled', 'refunded')`
+        )
+      )
+      .returning({ id: orders.id });
+
+    if (!updated) return;
+
+    await tx.insert(orderStatusHistory).values({
+      orderId: order.id,
+      fromStatus: order.status,
+      toStatus: 'cancelled',
+      changedByType: 'system',
+      note: `Midtrans ${transactionStatus}`,
+    });
 
     // L2 Rule 7: paid-order cancellation creates a refund obligation.
     if (wasPaidBefore && order.totalAmount > 0) {
@@ -316,7 +483,7 @@ async function handleCancellation(order: WebhookOrder, transactionStatus: string
         await tx.insert(refunds).values({
           orderId: order.id,
           amount: order.totalAmount,
-          reason: 'customer_request',
+          reason: 'payment_cancelled',
           method: 'midtrans',
           status: 'pending',
           notes: `Auto-created on Midtrans ${transactionStatus} for ${order.orderNumber}`,
@@ -327,18 +494,18 @@ async function handleCancellation(order: WebhookOrder, transactionStatus: string
     // Restore stock ONLY if it was deducted (i.e. the order was paid).
     if (wasPaidBefore) {
       for (const item of order.items) {
-        const [updated] = await tx
+        const [row] = await tx
           .update(productVariants)
           .set({ stock: sql`GREATEST(stock + ${item.quantity}, 0)`, updatedAt: new Date() })
           .where(eq(productVariants.id, item.variantId))
           .returning({ newStock: productVariants.stock });
 
-        if (updated && updated.newStock !== undefined) {
+        if (row && row.newStock !== undefined) {
           await tx.insert(inventoryLogs).values({
             variantId: item.variantId,
             changeType: 'reversal',
-            quantityBefore: updated.newStock - item.quantity,
-            quantityAfter: updated.newStock,
+            quantityBefore: row.newStock - item.quantity,
+            quantityAfter: row.newStock,
             quantityDelta: item.quantity,
             orderId: order.id,
             note: `Pembatalan pesanan ${order.orderNumber} — stok dikembalikan`,
@@ -347,35 +514,8 @@ async function handleCancellation(order: WebhookOrder, transactionStatus: string
       }
     }
 
-    // Reverse redeemed points (deducted at initiate regardless of paid state).
-    if (order.userId && order.pointsUsed > 0) {
-      const redeemRecords = await tx
-        .select()
-        .from(pointsHistory)
-        .where(
-          and(
-            eq(pointsHistory.userId, order.userId),
-            eq(pointsHistory.type, 'redeem'),
-            eq(pointsHistory.orderId, order.id),
-            sql`${pointsHistory.referencedEarnId} IS NOT NULL`
-          )
-        )
-        .orderBy(pointsHistory.createdAt);
-
-      for (const redeem of redeemRecords) {
-        if (redeem.referencedEarnId) {
-          await tx
-            .update(pointsHistory)
-            .set({ consumedAt: null })
-            .where(eq(pointsHistory.id, redeem.referencedEarnId));
-        }
-      }
-
-      await tx
-        .update(users)
-        .set({ pointsBalance: sql`points_balance + ${order.pointsUsed}` })
-        .where(eq(users.id, order.userId));
-    }
+    // P1: refund redeemed points through the ledger helper (idempotent).
+    await reverseRedeemedPointsTx(tx, order);
 
     // Coupon: decrement used_count ONLY if it was incremented (paid). The
     // provisional couponUsages row (inserted at initiate) is deleted regardless.
@@ -399,99 +539,104 @@ async function handleCancellation(order: WebhookOrder, transactionStatus: string
         ? 'Pembayaran dibatalkan oleh sistem Midtrans'
         : 'Pembayaran ditolak oleh bank atau provider';
 
-  sendEmail({
-    to: order.recipientEmail,
-    subject: `Pesanan ${order.orderNumber} dibatalkan`,
-    react: OrderCancellationEmail({
-      orderNumber: order.orderNumber,
-      customerName: order.recipientName,
-      items: order.items.map((item) => ({
-        name: item.productNameId,
-        variant: item.variantNameId,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        subtotal: item.subtotal,
-      })),
-      subtotal: order.subtotal,
-      shippingCost: order.shippingCost,
-      discountAmount: order.discountAmount,
-      totalAmount: order.totalAmount,
-      reason: cancelReason,
-      cancelledAt: formatWIB(new Date()),
-      refundAmount: wasPaidBefore ? order.totalAmount : 0,
-      refundInfo: wasPaidBefore ? 'Pengembalian dana akan diproses 1-7 hari kerja' : '',
+  scheduleBackground(
+    sendEmail({
+      to: order.recipientEmail,
+      subject: `Pesanan ${order.orderNumber} dibatalkan`,
+      react: OrderCancellationEmail({
+        orderNumber: order.orderNumber,
+        customerName: order.recipientName,
+        items: order.items.map((item) => ({
+          name: item.productNameId,
+          variant: item.variantNameId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          subtotal: item.subtotal,
+        })),
+        subtotal: order.subtotal,
+        shippingCost: order.shippingCost,
+        discountAmount: order.discountAmount,
+        totalAmount: order.totalAmount,
+        reason: cancelReason,
+        cancelledAt: formatWIB(new Date()),
+        refundAmount: wasPaidBefore ? order.totalAmount : 0,
+        refundInfo: wasPaidBefore ? 'Pengembalian dana akan diproses 1-7 hari kerja' : '',
+      }),
     }),
-  }).catch((emailError) => {
-    logger.error('[Email] Failed to send cancellation email', {
-      error: emailError instanceof Error ? emailError.message : String(emailError),
-    });
+    'midtrans cancellation email'
+  );
+}
+
+function buildConfirmationEmail(order: WebhookOrder) {
+  return OrderConfirmationEmail({
+    orderNumber: order.orderNumber,
+    customerName: order.recipientName,
+    items: order.items.map((item) => ({
+      name: item.productNameId,
+      variant: item.variantNameId,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      subtotal: item.subtotal,
+    })),
+    subtotal: order.subtotal,
+    shippingCost: order.shippingCost,
+    discountAmount: order.discountAmount,
+    totalAmount: order.totalAmount,
+    deliveryMethod: order.deliveryMethod as 'delivery' | 'pickup',
+    courierName: order.courierName ?? undefined,
+    recipientName: order.recipientName,
+    recipientPhone: order.recipientPhone,
+    addressLine: order.addressLine ?? undefined,
+    city: order.city ?? undefined,
+    province: order.province ?? undefined,
+    paidAt: formatWIB(new Date()),
+    pointsEarned: order.pointsEarned ?? 0,
   });
 }
 
 async function sendSettlementNotifications(order: WebhookOrder): Promise<void> {
-  if (order.deliveryMethod === 'pickup') {
-    const pickupAddress =
-      (await getSetting<string>('store_address', 'string')) ?? '';
-    const openingHours =
-      (await getSetting<string>('store_opening_hours', 'string')) ?? '';
-
+  // M12: "siap diambil" is sent when the warehouse marks the order packed, not
+  // at payment time. Here the customer only gets a payment confirmation.
+  scheduleBackground(
     sendEmail({
       to: order.recipientEmail,
-      subject: `Pesanan ${order.orderNumber} siap diambil!`,
-      react: PickupReadyEmail({
-        orderNumber: order.orderNumber,
-        customerName: order.recipientName,
-        pickupCode: order.orderNumber,
-        pickupAddress,
-        openingHours,
-      }),
-    }).catch((emailError) => {
-      logger.error('[Email] Failed to send pickup ready', {
-        error: emailError instanceof Error ? emailError.message : String(emailError),
-      });
-    });
-
-    sendWhatsApp({
-      phone: order.recipientPhone,
-      message: pickupReadyMessage({
-        orderNumber: order.orderNumber,
-        address: pickupAddress,
-        pickupCode: order.orderNumber,
-      }),
-    }).catch(() => undefined);
-    return;
-  }
-
-  sendEmail({
-    to: order.recipientEmail,
-    subject: `Pesanan ${order.orderNumber} telah dikonfirmasi!`,
-    react: OrderConfirmationEmail({
-      orderNumber: order.orderNumber,
-      customerName: order.recipientName,
-      items: order.items.map((item) => ({
-        name: item.productNameId,
-        variant: item.variantNameId,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        subtotal: item.subtotal,
-      })),
-      subtotal: order.subtotal,
-      shippingCost: order.shippingCost,
-      discountAmount: order.discountAmount,
-      totalAmount: order.totalAmount,
-      deliveryMethod: 'delivery',
-      courierName: order.courierName ?? undefined,
-      recipientName: order.recipientName,
-      recipientPhone: order.recipientPhone,
-      addressLine: order.addressLine ?? undefined,
-      city: order.city ?? undefined,
-      province: order.province ?? undefined,
-      paidAt: formatWIB(new Date()),
-      pointsEarned: order.pointsEarned ?? 0,
+      subject: `Pesanan ${order.orderNumber} telah dikonfirmasi!`,
+      react: buildConfirmationEmail(order),
     }),
-  }).catch((emailError) => {
-    logger.error('[Email] Failed to send confirmation', {
-      error: emailError instanceof Error ? emailError.message : String(emailError),
+    'midtrans confirmation email'
+  );
+
+  // New-order alert for the owner (Fonnte is optional; email is the backstop).
+  try {
+    const adminEmail = await getSetting<string>('admin_email', 'string');
+    if (adminEmail) {
+      scheduleBackground(
+        sendEmail({
+          to: adminEmail,
+          subject: `[Pesanan Baru] ${order.orderNumber} — ${order.deliveryMethod === 'pickup' ? 'Pickup' : order.courierName ?? 'Kirim'}`,
+          react: buildConfirmationEmail(order),
+        }),
+        'owner new-order email'
+      );
+    }
+
+    const storePhone = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
+    if (storePhone) {
+      scheduleBackground(
+        sendWhatsApp({
+          phone: storePhone,
+          message:
+            `PESANAN BARU ${order.orderNumber} — ${order.recipientName} — ` +
+            `Rp ${order.totalAmount.toLocaleString('id-ID')} — ` +
+            `${order.deliveryMethod === 'pickup' ? 'PICKUP' : `${order.courierName ?? 'kurir'}`}. Cek dashboard.`,
+        }),
+        'owner new-order WhatsApp'
+      );
+    }
+  } catch (alertError) {
+    logger.warn('[Midtrans Webhook] owner alert failed', {
+      orderNumber: order.orderNumber,
+      error: alertError instanceof Error ? alertError.message : String(alertError),
     });
-  });
+  }
 }

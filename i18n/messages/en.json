@@ -341,6 +341,7 @@
     },
     "frozenHandling": "Shipped frozen with ice packs. Store in freezer within 1 hour of delivery.",
     "oosNotifyWa": "Notify me on WhatsApp when back in stock",
+    "deliveryNote": "Instant delivery in Bandung & self pickup. Outside the area? Message us on WhatsApp for courier options.",
     "oosWaMessage": "Hi Dapur Dekaka, please notify me when {product} is available again."
   },
   "cart": {
@@ -411,6 +412,7 @@
     "courierLabel": "Courier",
     "method": "Method",
     "pickupLocation": "Self Pickup",
+    "pickupMapLink": "Open location in Google Maps",
     "pickupInstructions": "After successful payment, you will receive pickup instructions. Show the order number to store staff.",
     "pickupLocationTitle": "Pickup Location",
     "pickupInstructionsText": "After successful payment, you will receive pickup instructions. Show the order number to store staff.",

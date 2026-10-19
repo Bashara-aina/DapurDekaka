@@ -7,7 +7,7 @@ import { auth } from '@/lib/auth';
 import { z } from 'zod';
 import { sendEmail } from '@/lib/resend/send-email';
 import { OrderShippedEmail } from '@/lib/resend/templates/OrderShipped';
-import { formatWIB } from '@/lib/utils/format-date';
+import { sendPickupReadyNotification } from '@/lib/services/pickup-ready';
 import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -50,17 +50,23 @@ export async function GET(
   }
 }
 
-const VALID_TRANSITIONS: Record<string, string[]> = {
-  paid: ['processing'],
-  processing: ['packed'],
-  packed: ['shipped'],
-  shipped: ['delivered'],
-};
+import { ORDER_TRANSITIONS } from '@/lib/constants/orders';
 
+// W5/W10: both field and admin routes share the same transition map; pickup
+// orders go packed → delivered, delivery goes packed → shipped.
+function allowedTransitionsFor(
+  deliveryMethod: string,
+  currentStatus: string
+): readonly string[] {
+  const machine = deliveryMethod === 'pickup' ? ORDER_TRANSITIONS.pickup : ORDER_TRANSITIONS.delivery;
+  return machine[currentStatus] ?? [];
+}
+
+// Warehouse can progress an order but never cancel/refund/refund-deliver.
 const WAREHOUSE_RESTRICTED_TRANSITIONS: Record<string, string[]> = {
   paid: ['processing'],
   processing: ['packed'],
-  packed: ['shipped'],
+  packed: ['shipped', 'delivered'],
 };
 
 const statusUpdateSchema = z.object({
@@ -69,6 +75,8 @@ const statusUpdateSchema = z.object({
   trackingUrl: z.string().optional(),
   estimatedDays: z.string().optional(),
   note: z.string().optional(),
+  // W9: required (and verified) when delivering a pickup order.
+  pickupCode: z.string().optional(),
 });
 
 export async function PATCH(
@@ -93,7 +101,7 @@ export async function PATCH(
       return validationError(parsed.error);
     }
 
-    const { status: newStatus, trackingNumber, trackingUrl, estimatedDays, note } = parsed.data;
+    const { status: newStatus, trackingNumber, trackingUrl, estimatedDays, note, pickupCode } = parsed.data;
 
     const order = await db.query.orders.findFirst({
       where: eq(orders.id, orderId),
@@ -105,10 +113,32 @@ export async function PATCH(
     }
 
     const currentStatus = order.status;
-    const allowedTransitions = VALID_TRANSITIONS[currentStatus];
+    const allowedTransitions = allowedTransitionsFor(order.deliveryMethod, currentStatus);
 
-    if (!allowedTransitions?.includes(newStatus)) {
+    if (!allowedTransitions.includes(newStatus)) {
       return conflict(`Tidak dapat mengubah status dari ${currentStatus} ke ${newStatus}`);
+    }
+
+    // Manual packed→shipped bypasses Biteship — only allow it as an explicit
+    // fallback when the order never went through the dispatch flow.
+    if (
+      newStatus === 'shipped' &&
+      order.deliveryMethod === 'delivery' &&
+      !order.biteshipOrderId &&
+      !trackingNumber
+    ) {
+      return conflict('Gunakan "Book courier" atau isi nomor resi untuk pengiriman manual');
+    }
+
+    // W9: never release a pickup order without the customer's handover code.
+    if (newStatus === 'delivered' && order.deliveryMethod === 'pickup') {
+      if (
+        !order.pickupCode ||
+        !pickupCode ||
+        order.pickupCode.toUpperCase() !== pickupCode.trim().toUpperCase()
+      ) {
+        return conflict('Kode ambil tidak cocok. Minta pelanggan menunjukkan kode yang benar.');
+      }
     }
 
     if (role === 'warehouse') {
@@ -159,8 +189,13 @@ export async function PATCH(
       });
     });
 
-    // Send shipped email notification
-    if (newStatus === 'shipped' && trackingNumber) {
+    // W11: pickup ready notification when the order is packed.
+    if (newStatus === 'packed' && order.deliveryMethod === 'pickup') {
+      await sendPickupReadyNotification(order);
+    }
+
+    // Send shipped email notification (skip when Biteship already sent one).
+    if (newStatus === 'shipped' && trackingNumber && !order.biteshipOrderId) {
       try {
         const emailHtml = OrderShippedEmail({
           orderNumber: order.orderNumber,

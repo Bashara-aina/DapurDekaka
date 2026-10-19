@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { eq, and, sql, inArray } from 'drizzle-orm';
-import { orders, couponUsages, pointsHistory, users, orderStatusHistory, productVariants } from '@/lib/db/schema';
+import { orders, couponUsages, orderStatusHistory, productVariants } from '@/lib/db/schema';
 import { success, serverError, notFound, conflict, unauthorized, forbidden, validationError, tooManyRequests } from '@/lib/utils/api-response';
 import { withRateLimit } from '@/lib/utils/rate-limit';
 import { isSameOriginRequest, sameOriginRejected } from '@/lib/utils/same-origin';
 import { z } from 'zod';
 import { createMidtransTransaction } from '@/lib/midtrans/create-transaction';
+import { cancelTransaction } from '@/lib/midtrans/status';
+import { reverseRedeemedPointsTx } from '@/lib/finance/points-ledger';
 import { formatWIB } from '@/lib/utils/format-date';
 import { getSetting } from '@/lib/settings/get-settings';
 import { auth } from '@/lib/auth';
@@ -67,6 +69,23 @@ export const POST = withRateLimit(async (req: NextRequest) => {
       return conflict('Order tidak dapat diretry — status bukan pending_payment');
     }
 
+    // Part B #4: if the existing Snap token/VA is still valid, reuse it. Only
+    // mint a new transaction once it has expired (avoids orphaning the VA the
+    // customer may already be looking at).
+    if (
+      order.midtransSnapToken &&
+      order.paymentExpiresAt &&
+      order.paymentExpiresAt > new Date()
+    ) {
+      return success({
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        snapToken: order.midtransSnapToken,
+        expiresAt: formatWIB(order.paymentExpiresAt),
+        reused: true,
+      });
+    }
+
     // P0: re-validate stock before minting a new Snap token (prevents oversell/price drift).
     if (order.items.length > 0) {
       const variantIds = order.items.map((i) => i.variantId);
@@ -86,8 +105,10 @@ export const POST = withRateLimit(async (req: NextRequest) => {
       }
     }
 
-    // H-04: Server-side cap on retry attempts — max 3 retries before auto-cancellation
-    if (order.paymentRetryCount >= 3) {
+    // H-04: Server-side cap on retry attempts — configurable (default 3).
+    const maxRetries =
+      (await getSetting<number>('payment_max_retries', 'integer').catch(() => null)) ?? 3;
+    if (order.paymentRetryCount >= maxRetries) {
       // Wrap cancellation in full transaction with stock restore, points reversal, coupon reversion
       await db.transaction(async (tx) => {
         // 1. Update order status
@@ -114,30 +135,9 @@ export const POST = withRateLimit(async (req: NextRequest) => {
             .where(eq(couponUsages.orderId, order.id));
         }
 
-        // 5. Reverse points redeemed at initiate (FIFO unconsume). Points ARE
-        // deducted at initiate regardless of payment, so this reversal is correct.
-        if (order.userId && order.pointsUsed && order.pointsUsed > 0) {
-          const redeemRecords = await tx
-            .select()
-            .from(pointsHistory)
-            .where(and(
-              eq(pointsHistory.userId, order.userId),
-              eq(pointsHistory.type, 'redeem'),
-              eq(pointsHistory.orderId, order.id)
-            ));
-
-          for (const redeem of redeemRecords) {
-            if (redeem.referencedEarnId) {
-              await tx.update(pointsHistory)
-                .set({ consumedAt: null })
-                .where(eq(pointsHistory.id, redeem.referencedEarnId));
-            }
-          }
-
-          await tx.update(users)
-            .set({ pointsBalance: sql`points_balance + ${order.pointsUsed}` })
-            .where(eq(users.id, order.userId));
-        }
+        // 5. Reverse points redeemed at initiate with a matching ledger row so
+        // the nightly reconcile cannot claw them back (P1).
+        await reverseRedeemedPointsTx(tx, order);
       });
 
       return tooManyRequests('Pembayaran sudah mencapai batas retry. Pesanan dibatalkan.');
@@ -160,6 +160,17 @@ export const POST = withRateLimit(async (req: NextRequest) => {
       });
     }
 
+    // M8: insurance was omitted on retry, so item_details did not sum to
+    // gross_amount whenever insurance was enabled.
+    if (order.insuranceFee > 0) {
+      itemDetails.push({
+        id: 'insurance',
+        price: order.insuranceFee,
+        quantity: 1,
+        name: 'Asuransi Pengiriman',
+      });
+    }
+
     if (order.discountAmount + order.pointsDiscount > 0) {
       itemDetails.push({
         id: 'discount',
@@ -171,9 +182,10 @@ export const POST = withRateLimit(async (req: NextRequest) => {
 
     const expiryMinutes = await getSetting<number>('payment_expiry_minutes', 'integer') ?? 15;
     const retryCount = order.paymentRetryCount + 1;
+    const previousMidtransOrderId = order.midtransOrderId;
 
     // Wrap Midtrans call + order update in transaction for atomicity
-    const [updatedOrder] = await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       // Create new Midtrans transaction
       const { snapToken, midtransOrderId } = await createMidtransTransaction({
         orderNumber,
@@ -200,17 +212,30 @@ export const POST = withRateLimit(async (req: NextRequest) => {
         ))
         .returning({ id: orders.id, midtransSnapToken: orders.midtransSnapToken });
 
-      return [updated];
+      return { updated, midtransOrderId };
     });
 
-    if (!updatedOrder) {
+    if (!result.updated) {
       return conflict('Order sudah tidak dapat diretry');
+    }
+
+    // C3: cancel the previous unpaid transaction so a customer who pays the
+    // old VA after clicking "Bayar lagi" cannot create a second capture.
+    if (previousMidtransOrderId && previousMidtransOrderId !== result.midtransOrderId) {
+      const cancelled = await cancelTransaction(previousMidtransOrderId);
+      if (!cancelled.success) {
+        logger.warn('[checkout/retry] previous Midtrans transaction cancel failed', {
+          orderNumber: order.orderNumber,
+          previousMidtransOrderId,
+          error: cancelled.error,
+        });
+      }
     }
 
     return success({
       orderId: order.id,
       orderNumber: order.orderNumber,
-      snapToken: updatedOrder.midtransSnapToken,
+      snapToken: result.updated.midtransSnapToken,
       expiresAt: formatWIB(new Date(Date.now() + expiryMinutes * 60 * 1000)),
     });
   } catch (error) {

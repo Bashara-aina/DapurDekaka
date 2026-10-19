@@ -4,7 +4,7 @@ import { db } from '@/lib/db';
 import { orders } from '@/lib/db/schema';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { success, serverError } from '@/lib/utils/api-response';
-import { PICKUP_AUTO_RELEASE_HOURS } from '@/lib/constants/financial-rules';
+import { PICKUP_NO_SHOW_FLAG_HOURS } from '@/lib/constants/financial-rules';
 import { flagNeedsAttention } from '@/lib/ops/needs-attention';
 import { sendWhatsApp, pickupReminderMessage } from '@/lib/services/fonnte';
 import { logger } from '@/lib/utils/logger';
@@ -14,7 +14,7 @@ export const runtime = 'nodejs';
 
 const TWENTY_FOUR_HOURS_AGO = () => new Date(Date.now() - 24 * 60 * 60 * 1000);
 const RELEASE_CUTOFF = () =>
-  new Date(Date.now() - PICKUP_AUTO_RELEASE_HOURS * 60 * 60 * 1000);
+  new Date(Date.now() - PICKUP_NO_SHOW_FLAG_HOURS * 60 * 60 * 1000);
 
 /**
  * Pickup SLA cron (P4 backlog #7): 24h reminder WA + 48h needs_attention flag.
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         await flagNeedsAttention(
           order.id,
           'pickup_no_show',
-          `Pickup belum diambil >${PICKUP_AUTO_RELEASE_HOURS}j — ${order.orderNumber}`
+          `Pickup belum diambil >${PICKUP_NO_SHOW_FLAG_HOURS}j — ${order.orderNumber}`
         );
         flagged++;
         continue;

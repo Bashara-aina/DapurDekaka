@@ -2,6 +2,19 @@ import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 
+// BLOCKER 2: NEXT_PUBLIC_* is inlined at build time — fail the production build
+// before shipping a bundle that points every callback at localhost.
+// VERCEL_DEPLOYMENT_ID only exists on an actual Vercel build (pulled env
+// dumps spoof VERCEL_ENV locally, which would break local lint/build).
+if (process.env.VERCEL_ENV === 'production' && process.env.VERCEL_DEPLOYMENT_ID) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
+  if (!appUrl || appUrl.includes('localhost') || appUrl.startsWith('http://')) {
+    throw new Error(
+      `NEXT_PUBLIC_APP_URL must be the public https origin in production (got "${appUrl || '(unset)'}").`
+    );
+  }
+}
+
 const cspDirectives = [
   "default-src 'self'",
   // 'unsafe-inline' required for Next.js inline script hashing (/_next/static chunks).
@@ -14,7 +27,8 @@ const cspDirectives = [
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data: https://res.cloudinary.com https://lh3.googleusercontent.com https://cdn.jsdelivr.net https://maps.googleapis.com https://maps.gstatic.com",
   "connect-src 'self' https://app.midtrans.com https://app.sandbox.midtrans.com https://api.biteship.com https://maps.googleapis.com https://res.cloudinary.com",
-  "frame-ancestors 'none'",
+  // S9: matches X-Frame-Options SAMEORIGIN (previously 'none' contradicted it).
+  "frame-ancestors 'self'",
   // Upgrade-insecure-requests: automatically upgrade HTTP resources to HTTPS
   "upgrade-insecure-requests",
 ].join('; ');
@@ -73,6 +87,18 @@ const nextConfig = {
   },
   experimental: {
     optimizePackageImports: ['lucide-react', 'recharts'],
+  },
+  async redirects() {
+    // HIGH-3: `www` is canonical. Send the apex to `www` permanently (308)
+    // so canonical/OG/sitemap URLs never sit behind a 307.
+    return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'dapurdekaka.com' }],
+        destination: 'https://www.dapurdekaka.com/:path*',
+        permanent: true,
+      },
+    ];
   },
   async headers() {
     return [

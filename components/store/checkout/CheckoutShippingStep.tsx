@@ -7,7 +7,6 @@ import { Loader2 } from 'lucide-react';
 import { ShippingTierTabs } from './ShippingTierTabs';
 import { InsuranceSelector } from './InsuranceSelector';
 import { InstantDeliveryAck } from './InstantDeliveryAck';
-import { CodToggle } from './CodToggle';
 import type { QuoteOption, ShippingRatesResult, ShippingTier, InsuranceType } from '@/lib/shipping/types';
 import { calculateInsuranceFee } from '@/lib/shipping/insurance';
 import { isFlagEnabled } from '@/lib/config/feature-flags';
@@ -65,7 +64,6 @@ export function CheckoutShippingStep({
   const [selectedQuote, setSelectedQuote] = useState<QuoteOption | null>(null);
   const [insuranceType, setInsuranceType] = useState<InsuranceType>('none');
   const [instantAck, setInstantAck] = useState(false);
-  const [cashOnDelivery, setCashOnDelivery] = useState(false);
 
   const basicFee = calculateInsuranceFee('basic', subtotal);
   const premiumFee = calculateInsuranceFee('premium', subtotal);
@@ -90,7 +88,7 @@ export function CheckoutShippingStep({
       insuranceType,
       insuranceFee,
       courierInstantAck: activeTier === 'express' ? instantAck : false,
-      cashOnDelivery,
+      cashOnDelivery: false,
     });
   };
 
@@ -121,9 +119,8 @@ export function CheckoutShippingStep({
         <InstantDeliveryAck checked={instantAck} onChange={setInstantAck} />
       )}
 
-      {selectedQuote?.cashOnDeliveryAvailable && (
-        <CodToggle checked={cashOnDelivery} onChange={setCashOnDelivery} />
-      )}
+      {/* C2: COD toggle removed — Midtrans already charges the full amount and
+          Biteship would collect it again at the door. */}
 
       {isFlagEnabled('insuranceUI') ? (
         <InsuranceSelector

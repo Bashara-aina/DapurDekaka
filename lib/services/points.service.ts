@@ -34,6 +34,7 @@ export async function earnPoints(
       orderId,
       type: 'earn',
       pointsAmount: pointsEarned,
+      pointsRemaining: pointsEarned,
       pointsBalanceAfter: newBalance,
       expiresAt,
       descriptionId: `Poin dari pesanan #${orderId.slice(0, 8)}`,
@@ -111,7 +112,7 @@ export async function expireOverduePoints(): Promise<number> {
           and(
             eq(pointsHistory.type, 'earn'),
             lt(pointsHistory.expiresAt, now),
-            gt(pointsHistory.pointsAmount, 0),
+            gt(pointsHistory.pointsRemaining, 0),
             eq(pointsHistory.isExpired, false)
           )
         )
@@ -130,7 +131,7 @@ export async function expireOverduePoints(): Promise<number> {
       }
 
       for (const [userId, userRows] of byUser) {
-        const totalExpired = userRows.reduce((sum, r) => sum + r.pointsAmount, 0);
+        const totalExpired = userRows.reduce((sum, r) => sum + r.pointsRemaining, 0);
 
         // Lock the user row for update to prevent concurrent balance modifications
         const [user] = await tx
@@ -145,7 +146,7 @@ export async function expireOverduePoints(): Promise<number> {
           for (const row of userRows) {
             await tx
               .update(pointsHistory)
-              .set({ isExpired: true })
+              .set({ isExpired: true, pointsRemaining: 0 })
               .where(eq(pointsHistory.id, row.id));
           }
           continue;
@@ -167,11 +168,11 @@ export async function expireOverduePoints(): Promise<number> {
           .set({ pointsBalance: newBalance })
           .where(eq(users.id, userId));
 
-        // Mark earned records as expired
+        // Mark earned records as expired and clear their remainder.
         for (const row of userRows) {
           await tx
             .update(pointsHistory)
-            .set({ isExpired: true })
+            .set({ isExpired: true, pointsRemaining: 0 })
             .where(eq(pointsHistory.id, row.id));
         }
       }

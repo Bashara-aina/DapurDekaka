@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth';
 import { isFlagEnabled, type FlagName } from '@/lib/config/feature-flags';
 import { isMaintenanceMode } from '@/lib/ops/maintenance';
+import { isSameOriginRequest } from '@/lib/utils/same-origin';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -24,13 +25,12 @@ const FLAG_GUARDS: ReadonlyArray<{ prefix: string; flag: FlagName }> = [
   { prefix: '/admin/ai-content', flag: 'aiContent' },
   { prefix: '/admin/b2b-inquiries', flag: 'b2bPortal' },
   { prefix: '/admin/b2b-quotes', flag: 'b2bPortal' },
+  { prefix: '/admin/b2b-profiles', flag: 'b2bPortal' },
 ];
 
 const WAREHOUSE_PATHS = ['/admin/inventory', '/admin/shipments', '/admin/field', '/admin/orders'];
 
-// Storefront paths subject to the maintenance circuit breaker. NOTE: the
-// matcher below excludes /api/*, so middleware never runs for API routes —
-// no api-path carve-outs needed here.
+// Storefront paths subject to the maintenance circuit breaker.
 function isStorefrontPath(pathname: string): boolean {
   return (
     pathname.startsWith('/checkout') ||
@@ -42,13 +42,32 @@ function isStorefrontPath(pathname: string): boolean {
 }
 
 export default async function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+
+  // API routes: no locale rewrite / page auth here. Handlers enforce their own
+  // auth and signatures. S6 origin check applies to mutating admin APIs only —
+  // never webhooks/cron (originless Midtrans, Biteship, Vercel Cron).
+  if (pathname.startsWith('/api/')) {
+    if (pathname.startsWith('/api/admin/')) {
+      const isMutation = !['GET', 'HEAD', 'OPTIONS'].includes(req.method.toUpperCase());
+      if (isMutation && !isSameOriginRequest(req)) {
+        return withSecurityHeaders(
+          NextResponse.json(
+            { success: false, error: 'Cross-origin request rejected', code: 'FORBIDDEN' },
+            { status: 403 }
+          )
+        );
+      }
+    }
+    return withSecurityHeaders(NextResponse.next());
+  }
+
   // Locale is cookie-based (NEXT_LOCALE, read in i18n/request.ts) and the app
   // has no [locale] route segment. next-intl's routing middleware would
   // rewrite `/` → `/id`, which matches no route and 404s every page — so it
   // must NOT run here.
   const response = NextResponse.next();
 
-  const { pathname } = req.nextUrl;
   const session = await auth() as { user?: { isActive?: boolean; role?: string; id?: string } } | null;
 
   // Inactive user check
@@ -122,10 +141,8 @@ export default async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Match all pathnames except for paths that start with:
-  // - api (API routes)
-  // - _next/static (static files)
-  // - _next/image (image optimization)
-  // - favicon.ico, robots.txt, sitemap etc (files with dots)
-  matcher: ['/((?!api|_next/static|_next/image|_vercel|favicon|robots|sitemap|.*\\..*).*)'],
+  matcher: [
+    '/((?!_next/static|_next/image|_vercel|favicon|robots|sitemap|.*\\..*).*)',
+    '/api/:path*',
+  ],
 };

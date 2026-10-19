@@ -49,12 +49,12 @@ export async function generateMetadata(): Promise<Metadata> {
       'dapur dekaka',
     ],
     alternates: {
-      canonical: 'https://dapurdekaka.com',
+      canonical: 'https://www.dapurdekaka.com',
     },
     openGraph: {
       title: t('homeTitle'),
       description: t('homeDescription'),
-      url: 'https://dapurdekaka.com',
+      url: 'https://www.dapurdekaka.com',
       siteName: 'Dapur Dekaka',
       ...(ogImageUrl
         ? {

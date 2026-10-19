@@ -84,7 +84,7 @@ async function seed() {
     { key: 'free_shipping_threshold', value: '300000', type: 'integer' },
     { key: 'low_stock_threshold', value: '5', type: 'integer' },
     { key: 'estimated_margin_pct', value: '18', type: 'integer' },
-    { key: 'b2b_points_multiplier', value: '2', type: 'integer' },
+    { key: 'b2b_points_multiplier', value: '1', type: 'integer' },
     { key: 'maintenance_mode', value: 'false', type: 'boolean' },
     { key: 'instagram_handle', value: '@dapurdekaka', type: 'string' },
     { key: 'instagram_url', value: process.env.NEXT_PUBLIC_INSTAGRAM_URL ?? 'https://instagram.com/dapurdekaka', type: 'string' },

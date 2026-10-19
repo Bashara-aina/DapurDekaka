@@ -84,6 +84,10 @@ export async function PUT(
       return notFound('Kupon tidak ditemukan');
     }
 
+    if (parsed.data.type === 'free_shipping') {
+      return conflict('Kupon gratis ongkir belum tersedia (aturan L2)');
+    }
+
     if (parsed.data.code && parsed.data.code.toUpperCase() !== existing.code) {
       const duplicate = await db.query.coupons.findFirst({
         where: eq(coupons.code, parsed.data.code.toUpperCase()),

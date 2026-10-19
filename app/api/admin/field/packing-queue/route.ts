@@ -4,6 +4,7 @@ import { orders, orderStatusHistory } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { success, serverError, notFound, forbidden, conflict, validationError } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
+import { sendPickupReadyNotification } from '@/lib/services/pickup-ready';
 import { z } from 'zod';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -127,6 +128,11 @@ export async function PATCH(req: NextRequest) {
         : `Order dikemas oleh ${session.user.name}`,
       metadata: coldChainCondition ? { coldChainCondition } : undefined,
     });
+
+    // W11: pickup customers are told when the order is actually ready.
+    if (order.deliveryMethod === 'pickup') {
+      await sendPickupReadyNotification(order);
+    }
 
     return success({ orderId, status: 'packed' });
   } catch (error) {

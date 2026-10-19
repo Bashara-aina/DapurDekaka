@@ -27,9 +27,10 @@ interface RouteParams {
 /**
  * Public order tracking with email verification.
  */
-export async function GET(req: NextRequest, { params }: RouteParams) {
+export const GET = withRateLimit(async (req: NextRequest, context?: RouteParams) => {
   try {
-    const { orderNumber } = await params;
+    if (!context) return notFound('Pesanan tidak ditemukan');
+    const { orderNumber } = await context.params;
     const email = req.nextUrl.searchParams.get('email');
     const parsed = querySchema.safeParse({ email });
     if (!parsed.success) return validationError(parsed.error);
@@ -61,6 +62,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       courierCode: order.courierCode,
       trackingNumber: order.trackingNumber,
       liveTrackUrl: order.liveTrackUrl ?? order.trackingUrl,
+      pickupCode: order.deliveryMethod === 'pickup' ? order.pickupCode : null,
       driverName: order.driverName,
       driverPhone: order.driverPhone,
       driverPlate: order.driverPlate,
@@ -83,4 +85,4 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   } catch (error) {
     return serverError(error);
   }
-}
+}, 'shipping');
