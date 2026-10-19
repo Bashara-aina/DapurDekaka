@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { routing } from '@/i18n/routing';
 import { MessageCircle, ChefHat, ShieldCheck, Snowflake } from 'lucide-react';
 import { getCmsPage, getGalleryByUsage, pickSection, sectionText } from '@/lib/cms/get-page';
 import { getStoreContactSettings } from '@/lib/settings/runtime-rules';
@@ -11,6 +12,7 @@ import { SETTING_KEYS } from '@/lib/settings/canonical-keys';
 export const revalidate = 3600;
 
 export async function generateMetadata(): Promise<Metadata> {
+  setRequestLocale(routing.defaultLocale);
   const t = await getTranslations('metadata');
   return {
     title: t('aboutTitle'),
@@ -26,6 +28,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AboutPage() {
+  setRequestLocale(routing.defaultLocale);
   const t = await getTranslations('about');
   const [cms, heroImages, contact, foundingYear, priceMin, priceMax] = await Promise.all([
     getCmsPage('about').catch(() => null),

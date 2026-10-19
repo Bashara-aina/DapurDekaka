@@ -34,7 +34,11 @@ function getPool(): Pool {
     throw new Error('DATABASE_URL environment variable is not set');
   }
   if (!_pool) {
-    _pool = new Pool({ connectionString: url });
+    // Capped well below the default (10): serverless instances are short-lived
+    // and each Neon connection costs compute. Not 1-2: a handler that holds a
+    // transaction client and then queries outside it needs a second slot, or
+    // two such requests on one instance deadlock waiting on each other.
+    _pool = new Pool({ connectionString: url, max: 5 });
   }
   return _pool;
 }

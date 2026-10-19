@@ -3,6 +3,8 @@ import { Playfair_Display, Inter } from 'next/font/google';
 import { Providers } from '@/components/Providers';
 import { Analytics } from '@vercel/analytics/next';
 import { getSetting } from '@/lib/settings/get-settings';
+import { setRequestLocale } from 'next-intl/server';
+import { routing } from '@/i18n/routing';
 import './globals.css';
 
 const playfair = Playfair_Display({
@@ -42,6 +44,13 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Fixed locale: without this, next-intl reads request headers to find the
+  // locale, which makes every page below dynamic (no ISR, a function run per
+  // visit). The site has no [locale] route segment, and the live site already
+  // rendered Indonesian (the locale middleware never ran, so no header was set).
+  // Adding a real English switcher means moving pages under [locale].
+  setRequestLocale(routing.defaultLocale);
+
   const [storeName, instagramUrl, logoUrl] = await Promise.all([
     getSetting<string>('store_name').catch(() => null),
     getSetting<string>('instagram_url').catch(() => null),

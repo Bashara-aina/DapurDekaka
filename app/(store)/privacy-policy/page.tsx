@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { routing } from '@/i18n/routing';
 import { loadCmsOrNull, CmsProseSections } from '@/components/store/cms/CmsProseSections';
 
 export const revalidate = 86400;
@@ -12,6 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function PrivacyPolicyPage() {
+  setRequestLocale(routing.defaultLocale);
   const t = await getTranslations('policy');
   const cms = await loadCmsOrNull('privacy');
 
