@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { routing } from '@/i18n/routing';
 import { HeroCarousel } from '@/components/store/home/HeroCarousel';
 import { FeaturedProducts } from '@/components/store/home/FeaturedProducts';
 import { CategoryChips } from '@/components/store/home/CategoryChips';
@@ -25,6 +26,7 @@ import { cloudinaryUrl } from '@/lib/seo/cloudinary-url';
 export const revalidate = 1800;
 
 export async function generateMetadata(): Promise<Metadata> {
+  setRequestLocale(routing.defaultLocale);
   const t = await getTranslations('metadata');
   const ogImagePublicId = await getSetting<string>('og_image_public_id').catch(() => null);
   const ogImageUrl = cloudinaryUrl(ogImagePublicId) ?? '';
@@ -168,6 +170,7 @@ async function getPromoSettings() {
 }
 
 export default async function HomePage() {
+  setRequestLocale(routing.defaultLocale);
   const [
     featuredProducts,
     allCategories,

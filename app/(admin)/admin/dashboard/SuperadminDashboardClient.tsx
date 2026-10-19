@@ -3,11 +3,16 @@
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQuery } from '@tanstack/react-query';
+import dynamic from 'next/dynamic';
 
 import { AlertBanner } from '@/components/admin/dashboard/AlertBanner';
 import { DateRangeFilter } from '@/components/admin/dashboard/DateRangeFilter';
 import { KpiRow } from '@/components/admin/dashboard/KpiRow';
-import { RevenueChart } from '@/components/admin/dashboard/RevenueChart';
+// recharts is large: load the chart on demand, client-only.
+const RevenueChart = dynamic(
+  () => import('@/components/admin/dashboard/RevenueChart').then((m) => m.RevenueChart),
+  { ssr: false }
+);
 import { OrderFunnelCard } from '@/components/admin/dashboard/OrderFunnelCard';
 import { ActionQueueCard } from '@/components/admin/dashboard/ActionQueueCard';
 import { LiveOrderFeed } from '@/components/admin/dashboard/LiveOrderFeed';

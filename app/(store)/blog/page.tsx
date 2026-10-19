@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft, ArrowRight, CalendarDays, ChevronRight, Clock, Sparkles, X } from 'lucide-react';
-import { getLocale, getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations, setRequestLocale } from 'next-intl/server';
+import { routing } from '@/i18n/routing';
 import { db } from '@/lib/db';
 import { blogPosts, blogCategories } from '@/lib/db/schema';
 import { eq, desc, and, or, like, sql } from 'drizzle-orm';
@@ -21,6 +22,7 @@ interface BlogPageProps {
 }
 
 export async function generateMetadata({ params }: BlogPageProps): Promise<Metadata> {
+  setRequestLocale(routing.defaultLocale);
   const t = await getTranslations('metadata');
   return {
     title: t('blogTitle'),
@@ -116,6 +118,7 @@ function buildBlogHref(opts: { q?: string; category?: string; page?: number }) {
 }
 
 export default async function BlogPage({ searchParams }: BlogPageProps) {
+  setRequestLocale(routing.defaultLocale);
   const t = await getTranslations('blog');
   const locale = await getLocale();
   const isEn = locale === 'en';

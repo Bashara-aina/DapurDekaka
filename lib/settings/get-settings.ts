@@ -1,6 +1,11 @@
 /**
- * Centralized system settings reader with in-memory LRU cache.
- * Reads from the system_settings table and caches for 5 minutes.
+ * Centralized system settings reader.
+ *
+ * The `system_settings` table is small and read on almost every page, so the
+ * whole table is loaded in ONE query and kept as a snapshot for 5 minutes per
+ * instance. Misses (keys that do not exist) are part of the snapshot too, so a
+ * missing key never triggers another query. Concurrent cold reads share a
+ * single in-flight query.
  *
  * Usage:
  *   const whatsapp = await getSetting('store_whatsapp_number');
@@ -9,31 +14,48 @@
 
 import { db } from '@/lib/db';
 import { systemSettings } from '@/lib/db/schema';
-import { eq, sql } from 'drizzle-orm';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type SettingType = 'string' | 'integer' | 'boolean' | 'number';
 
-export interface SettingCache {
-  value: unknown;
-  expiresAt: number;
+// ── Snapshot cache ───────────────────────────────────────────────────────────
+
+const SNAPSHOT_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+/** Raw string values keyed by setting key (type coercion happens on read). */
+let snapshot: Map<string, string> = new Map();
+let snapshotExpiresAt = 0;
+let inflight: Promise<Map<string, string>> | null = null;
+
+function isSnapshotValid(): boolean {
+  return snapshotExpiresAt > Date.now();
 }
 
-// ── Cache ─────────────────────────────────────────────────────────────────────
-
-const cache = new Map<string, SettingCache>();
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-
-function isCacheValid(key: string): boolean {
-  const entry = cache.get(key);
-  return entry !== undefined && entry.expiresAt > Date.now();
+async function loadSnapshot(): Promise<Map<string, string>> {
+  if (isSnapshotValid()) return snapshot;
+  if (!inflight) {
+    inflight = db
+      .select({ key: systemSettings.key, value: systemSettings.value })
+      .from(systemSettings)
+      .then((rows) => {
+        const next = new Map<string, string>();
+        for (const row of rows) next.set(row.key, row.value);
+        snapshot = next;
+        snapshotExpiresAt = Date.now() + SNAPSHOT_TTL_MS;
+        return next;
+      })
+      .finally(() => {
+        inflight = null;
+      });
+  }
+  return inflight;
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
- * Get a single setting value from the database (with 5-min cache).
+ * Get a single setting value (served from the whole-table snapshot).
  *
  * @param key          The setting key (e.g. 'store_whatsapp_number')
  * @param typeHint     Optional type hint for coercion: 'string' | 'integer' | 'boolean' | 'number'
@@ -43,27 +65,14 @@ export async function getSetting<T = string>(
   key: string,
   typeHint?: SettingType
 ): Promise<T | null> {
-  if (isCacheValid(key)) {
-    return cache.get(key)!.value as T;
-  }
-
-  const row = await db
-    .select({ value: systemSettings.value })
-    .from(systemSettings)
-    .where(eq(systemSettings.key, key))
-    .limit(1)
-    .then((rows) => rows[0] ?? null);
-
-  if (!row) return null;
-
-  const coerced = coerceValue(row.value, typeHint ?? 'string');
-  cache.set(key, { value: coerced, expiresAt: Date.now() + CACHE_TTL_MS });
-
-  return coerced as T;
+  const map = await loadSnapshot();
+  const raw = map.get(key);
+  if (raw === undefined) return null;
+  return coerceValue(raw, typeHint ?? 'string') as T;
 }
 
 /**
- * Get multiple settings in a single DB query (still cached per-key).
+ * Get multiple settings (one shared snapshot read).
  *
  * @param keys  Array of setting keys to fetch
  * @returns    Record of key → value (only keys that exist in DB)
@@ -71,40 +80,28 @@ export async function getSetting<T = string>(
 export async function getSettings(
   keys: string[]
 ): Promise<Record<string, string>> {
-  const uncached = keys.filter((k) => !isCacheValid(k));
-
-  if (uncached.length > 0) {
-    const rows = await db
-      .select({ key: systemSettings.key, value: systemSettings.value })
-      .from(systemSettings)
-      .where(sql`${systemSettings.key} IN (${sql.join(uncached.map((k) => sql`${k}`), sql`, `)})`);
-
-    for (const row of rows) {
-      cache.set(row.key, { value: row.value, expiresAt: Date.now() + CACHE_TTL_MS });
-    }
-  }
-
+  const map = await loadSnapshot();
   const result: Record<string, string> = {};
   for (const key of keys) {
-    const entry = cache.get(key);
-    if (entry) result[key] = entry.value as string;
+    const value = map.get(key);
+    if (value !== undefined) result[key] = value;
   }
   return result;
 }
 
 /**
- * Invalidate the cache for a specific key.
- * Call this after admin updates a setting so the next read hits DB.
+ * Invalidate the snapshot after an admin update, so the next read hits the DB.
+ * The snapshot is small, so a single key change expires the whole snapshot.
  */
-export function invalidateSetting(key: string): void {
-  cache.delete(key);
+export function invalidateSetting(_key: string): void {
+  snapshotExpiresAt = 0;
 }
 
 /**
  * Invalidate ALL cached settings.
  */
 export function invalidateAllSettings(): void {
-  cache.clear();
+  snapshotExpiresAt = 0;
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────

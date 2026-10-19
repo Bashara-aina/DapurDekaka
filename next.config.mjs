@@ -52,6 +52,10 @@ const securityHeaders = [
 
 const nextConfig = {
   images: {
+    // Product, blog and CMS photos are already transformed by Cloudinary
+    // (f_auto,q_auto in the URL). Running them through Vercel's optimizer too
+    // would double-process them and burn image-transformation quota.
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',

@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, CalendarDays, ChevronRight, Clock, MessageCircle } from 'lucide-react';
-import { getLocale, getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations, setRequestLocale } from 'next-intl/server';
+import { routing } from '@/i18n/routing';
 import { sanitizeRichText } from '@/lib/utils/sanitize-html';
 import { db } from '@/lib/db';
 import { blogPosts } from '@/lib/db/schema';
@@ -26,6 +27,7 @@ interface BlogPostPageProps {
 }
 
 export async function generateMetadata({ params }: BlogPostPageProps): Promise<Metadata> {
+  setRequestLocale(routing.defaultLocale);
   const { slug } = await params;
 
   const post = await db.query.blogPosts.findFirst({
@@ -104,6 +106,7 @@ function estimateReadingTime(html: string): number {
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
+  setRequestLocale(routing.defaultLocale);
   const { slug } = await params;
   const locale = await getLocale();
   const isEn = locale === 'en';

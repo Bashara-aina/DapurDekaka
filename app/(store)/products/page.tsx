@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { routing } from '@/i18n/routing';
 import { db } from '@/lib/db';
 import { products, productVariants, productImages, categories } from '@/lib/db/schema';
 import { eq, and, isNull, desc, lt } from 'drizzle-orm';
@@ -14,6 +15,7 @@ interface ProductsPageProps {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
+  setRequestLocale(routing.defaultLocale);
   const t = await getTranslations('metadata');
   const ogImagePublicId = await getSetting<string>('og_image_public_id').catch(() => null);
   const ogImageUrl = cloudinaryUrl(ogImagePublicId) ?? '';
@@ -49,6 +51,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export const revalidate = 300;
 
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
+  setRequestLocale(routing.defaultLocale);
   const params = await searchParams;
   const { category: categorySlug, q, cursor } = params;
 

@@ -1,11 +1,13 @@
 import type { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { routing } from '@/i18n/routing';
 import { CheckCircle2, X } from 'lucide-react';
 import { loadCmsOrNull, CmsProseSections } from '@/components/store/cms/CmsProseSections';
 
 export const revalidate = 3600;
 
 export async function generateMetadata(): Promise<Metadata> {
+  setRequestLocale(routing.defaultLocale);
   const t = await getTranslations('promise');
   return {
     title: t('title'),
@@ -14,6 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function TrustPage() {
+  setRequestLocale(routing.defaultLocale);
   const cms = await loadCmsOrNull('trust');
   if (cms && cms.sections.length > 0) {
     return (
