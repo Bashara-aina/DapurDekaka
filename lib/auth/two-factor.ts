@@ -23,9 +23,13 @@ export const TWO_FACTOR_EPOCH_TOLERANCE_SEC = 30;
 export const BACKUP_CODE_COUNT = 10;
 
 function getEncryptionKey(): Buffer {
-  const secret = process.env.AUTH_SECRET;
+  // S7: prefer a dedicated key so rotating AUTH_SECRET does not lock every
+  // 2FA user out. Falls back to AUTH_SECRET for existing deployments.
+  const secret = process.env.TOTP_ENCRYPTION_KEY || process.env.AUTH_SECRET;
   if (!secret || secret.length < 32) {
-    throw new Error('AUTH_SECRET must be set (32+ chars) for 2FA secret encryption');
+    throw new Error(
+      'TOTP_ENCRYPTION_KEY (or AUTH_SECRET) must be set (32+ chars) for 2FA secret encryption'
+    );
   }
   return crypto.createHash('sha256').update(`2fa-envelope:${secret}`).digest();
 }

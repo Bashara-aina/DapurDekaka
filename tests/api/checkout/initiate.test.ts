@@ -24,10 +24,22 @@ const mockVariant = {
   b2bPrice: null,
 };
 
+const mockProduct = {
+  id: PRODUCT_ID,
+  nameId: 'Dimsum',
+  nameEn: 'Dimsum',
+  slug: 'dimsum',
+  categoryId: '550e8400-e29b-41d4-a716-446655440012',
+  isActive: true,
+  deletedAt: null,
+  images: [{ cloudinaryUrl: 'https://res.cloudinary.com/demo/dimsum.jpg' }],
+};
+
 vi.mock('@/lib/db', () => ({
   db: {
     query: {
       productVariants: { findMany: vi.fn() },
+      products: { findMany: vi.fn() },
       users: { findFirst: vi.fn() },
       coupons: { findFirst: vi.fn() },
       orders: { findFirst: vi.fn() },
@@ -52,11 +64,18 @@ vi.mock('@/lib/midtrans/create-transaction', () => ({
 }));
 
 vi.mock('@/lib/settings/get-settings', () => ({
-  getSetting: vi.fn().mockImplementation((_key: string, type?: string) => {
-    if (type === 'integer') return Promise.resolve(15);
-    if (_key === 'biteship_origin_lat') return Promise.resolve('-6.958');
-    if (_key === 'biteship_origin_lng') return Promise.resolve('107.636');
-    return Promise.resolve(null);
+  getSetting: vi.fn().mockImplementation((key: string) => {
+    const values: Record<string, string | number> = {
+      payment_expiry_minutes: 15,
+      points_earn_rate: 1,
+      points_expiry_days: 365,
+      points_min_redeem: 100,
+      points_max_redeem_pct: 50,
+      b2b_points_multiplier: 1,
+      biteship_origin_lat: '-6.958',
+      biteship_origin_lng: '107.636',
+    };
+    return Promise.resolve(values[key] ?? null);
   }),
 }));
 
@@ -104,8 +123,11 @@ function basePickupBody(overrides: Record<string, unknown> = {}) {
 }
 
 describe('POST /api/checkout/initiate', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    const { db } = await import('@/lib/db');
+    vi.mocked(db.query.productVariants.findMany).mockResolvedValue([mockVariant] as never);
+    vi.mocked(db.query.products.findMany).mockResolvedValue([mockProduct] as never);
   });
 
   it('validates stock before creating order', async () => {
@@ -186,9 +208,8 @@ describe('POST /api/checkout/initiate', () => {
     expect(json.success).toBe(false);
   });
 
-  it('handles idempotent re-submission within 30 sec for logged-in user', async () => {
+  it('returns the existing order for a repeated idempotencyKey', async () => {
     const { db } = await import('@/lib/db');
-    vi.mocked(db.query.productVariants.findMany).mockResolvedValue([mockVariant] as never);
     vi.mocked(db.query.orders.findFirst).mockResolvedValue({
       id: 'order-existing',
       orderNumber: 'DDK-20260514-0001',
@@ -202,13 +223,66 @@ describe('POST /api/checkout/initiate', () => {
     const req = new NextRequest('http://localhost/api/checkout/initiate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(basePickupBody()),
+      body: JSON.stringify(basePickupBody({
+        idempotencyKey: '550e8400-e29b-41d4-a716-446655440099',
+      })),
     });
 
     const res = await POST(req);
     const json = await res.json();
     expect(json.success).toBe(true);
     expect(json.data?.snapToken).toBe('existing-token');
+  });
+
+  it('ignores client-supplied discountAmount when no coupon is used', async () => {
+    const { db } = await import('@/lib/db');
+    vi.mocked(db.query.orders.findFirst).mockResolvedValue(undefined);
+
+    let capturedTotal: number | null = null;
+    vi.mocked(db.transaction).mockImplementation(async (fn) => {
+      const tx = {
+        insert: vi.fn().mockImplementation(() => ({
+          values: vi.fn().mockImplementation((values: Record<string, unknown>) => {
+            if (typeof values?.totalAmount === 'number') capturedTotal = values.totalAmount;
+            return {
+              onConflictDoUpdate: vi.fn().mockReturnValue({
+                returning: vi.fn().mockResolvedValue([{ newSequence: 1 }]),
+              }),
+              returning: vi.fn().mockResolvedValue([{ ...values, id: 'order-new', orderNumber: 'DDK-20260514-0001' }]),
+            };
+          }),
+        })),
+        select: vi.fn(),
+        update: vi.fn(),
+      };
+      return fn(tx as never);
+    });
+
+    const req = new NextRequest('http://localhost/api/checkout/initiate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(basePickupBody({ discountAmount: 199000 })),
+    });
+
+    await POST(req);
+    // subtotal 100000, shipping 0, no coupon → total must equal subtotal.
+    expect(capturedTotal).toBe(100000);
+  });
+
+  it('rejects inactive products/variants', async () => {
+    const { db } = await import('@/lib/db');
+    vi.mocked(db.query.productVariants.findMany).mockResolvedValue([
+      { ...mockVariant, isActive: false },
+    ] as never);
+
+    const req = new NextRequest('http://localhost/api/checkout/initiate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(basePickupBody()),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(409);
   });
 
   it('rejects tampered shipping cost on delivery', async () => {

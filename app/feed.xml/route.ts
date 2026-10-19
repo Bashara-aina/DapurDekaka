@@ -46,7 +46,7 @@ export async function GET() {
     });
   }
 
-  const baseUrl = 'https://dapurdekaka.com';
+  const baseUrl = 'https://www.dapurdekaka.com';
   const adminEmail = (await getSetting<string>('admin_email', 'string').catch(() => null)) ?? '';
 
   const rssItems = posts

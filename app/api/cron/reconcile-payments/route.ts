@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { orders, pointsHistory, users, couponUsages } from '@/lib/db/schema';
-import { eq, and, lt, sql } from 'drizzle-orm';
+import { orders, couponUsages } from '@/lib/db/schema';
+import { eq, and, lt } from 'drizzle-orm';
 import { success, serverError } from '@/lib/utils/api-response';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { logger } from '@/lib/utils/logger';
@@ -9,8 +9,12 @@ import { sendEmail } from '@/lib/resend/send-email';
 import { OrderConfirmationEmail } from '@/lib/resend/templates/OrderConfirmation';
 import { formatWIB } from '@/lib/utils/format-date';
 import { settleOrderTx, InsufficientStockError } from '@/lib/finance/settle-order';
+import { handleOversellAtSettlement } from '@/lib/finance/oversell';
+import { reverseRedeemedPointsTx } from '@/lib/finance/points-ledger';
+import { checkTransactionStatus } from '@/lib/midtrans/status';
 import { sendWhatsApp } from '@/lib/services/fonnte';
 import { flagNeedsAttention } from '@/lib/ops/needs-attention';
+import { scheduleBackground } from '@/lib/utils/background';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -51,7 +55,9 @@ export async function GET(req: NextRequest) {
         results.checked++;
         if (!order.midtransOrderId) continue;
 
-        const midtransStatus = await checkMidtransStatus(order.midtransOrderId);
+        // M9: shared helper respects MIDTRANS_IS_PRODUCTION (sandbox vs prod).
+        const midtrans = await checkTransactionStatus(order.midtransOrderId);
+        const midtransStatus = midtrans.transactionStatus;
 
         if (midtransStatus === 'settlement' || midtransStatus === 'capture') {
           outcome = await recoverSettlement(order.id);
@@ -66,7 +72,8 @@ export async function GET(req: NextRequest) {
           outcome = 'skip';
         } else if (err instanceof InsufficientStockError) {
           logger.error('[Reconcile] Oversell at recovery', { orderNumber: order.orderNumber, variantId: err.variantId });
-          notifyOps(`Oversell saat reconcile: ${order.orderNumber}. Perlu tindakan manual.`);
+          await handleOversellAtSettlement(order, err.message, order.midtransTransactionId);
+          notifyOps(`Oversell saat reconcile: ${order.orderNumber}. Refund otomatis masuk queue.`);
           outcome = 'error';
         } else {
           logger.error('[Reconcile] Error processing order', { orderNumber: order.orderNumber, error: message });
@@ -116,7 +123,8 @@ async function recoverSettlement(orderId: string): Promise<'settlement' | 'skip'
     'Settlement pulih via reconcile cron (webhook tidak pernah tiba)'
   );
 
-  sendEmail({
+  const orderForEmail = fullOrder as typeof fullOrder & { pointsEarned?: number };
+  scheduleBackground(sendEmail({
     to: fullOrder.recipientEmail,
     subject: `Pesanan ${fullOrder.orderNumber} telah dikonfirmasi!`,
     react: OrderConfirmationEmail({
@@ -141,8 +149,9 @@ async function recoverSettlement(orderId: string): Promise<'settlement' | 'skip'
       city: fullOrder.city ?? undefined,
       province: fullOrder.province ?? undefined,
       paidAt: formatWIB(fullOrder.paidAt ?? new Date()),
+      pointsEarned: orderForEmail.pointsEarned ?? 0,
     }),
-  }).catch((err) => logger.error('[Reconcile] confirmation email', { error: err instanceof Error ? err.message : String(err) }));
+  }), 'reconcile confirmation email');
 
   return 'settlement';
 }
@@ -165,29 +174,8 @@ async function cancelReconciled(orderId: string): Promise<void> {
 
     if (!updated) return;
 
-    if (order.userId && order.pointsUsed > 0) {
-      const redeemRecords = await tx
-        .select()
-        .from(pointsHistory)
-        .where(
-          and(
-            eq(pointsHistory.userId, order.userId),
-            eq(pointsHistory.type, 'redeem'),
-            eq(pointsHistory.orderId, order.id)
-          )
-        );
-
-      for (const redeem of redeemRecords) {
-        if (redeem.referencedEarnId) {
-          await tx.update(pointsHistory).set({ consumedAt: null }).where(eq(pointsHistory.id, redeem.referencedEarnId));
-        }
-      }
-
-      await tx
-        .update(users)
-        .set({ pointsBalance: sql`points_balance + ${order.pointsUsed}` })
-        .where(eq(users.id, order.userId));
-    }
+    // P1: reverse redeemed points through the shared ledger helper.
+    await reverseRedeemedPointsTx(tx, order);
 
     // Delete provisional couponUsages row; do NOT decrement used_count (never
     // incremented for an unpaid order).
@@ -210,24 +198,4 @@ function notifyOps(message: string): void {
   });
 }
 
-async function checkMidtransStatus(midtransOrderId: string): Promise<string> {
-  try {
-    const serverKey = process.env.MIDTRANS_SERVER_KEY ?? '';
-    const auth = Buffer.from(serverKey + ':').toString('base64');
 
-    const res = await fetch(`https://api.midtrans.com/v2/${midtransOrderId}/status`, {
-      headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
-    });
-
-    if (!res.ok) return 'unknown';
-    const data = (await res.json()) as { transaction_status?: string };
-    return data.transaction_status ?? 'unknown';
-  } catch (err) {
-    // Money path: a failed status check must be visible, not a silent 'unknown'.
-    logger.warn('[cron/reconcile] Midtrans status check failed', {
-      midtransOrderId,
-      error: err instanceof Error ? err.message : String(err),
-    });
-    return 'unknown';
-  }
-}

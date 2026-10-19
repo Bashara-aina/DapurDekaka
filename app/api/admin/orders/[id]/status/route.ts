@@ -1,20 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { db } from '@/lib/db';
-import { orders, orderItems, productVariants, inventoryLogs, coupons, pointsHistory, users, orderStatusHistory } from '@/lib/db/schema';
+import { orders, orderItems, productVariants, inventoryLogs, coupons, couponUsages, refunds, orderStatusHistory } from '@/lib/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { success, serverError, notFound, forbidden, conflict, validationError } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
-import { z, ZodError } from 'zod';
+import { z } from 'zod';
 import { sendEmail } from '@/lib/resend/send-email';
 import { cancelBiteshipOrder } from '@/lib/shipping/providers/biteship/orders';
 import { OrderShippedEmail } from '@/lib/resend/templates/OrderShipped';
 import { OrderDeliveredEmail } from '@/lib/resend/templates/OrderDelivered';
 import { OrderCancellationEmail } from '@/lib/resend/templates/OrderCancellation';
 import { formatWIB } from '@/lib/utils/format-date';
+import { sendPickupReadyNotification } from '@/lib/services/pickup-ready';
 import { logAdminActivity } from '@/lib/services/audit.service';
 import { refundTransaction } from '@/lib/midtrans/status';
-import { TRACKING_FORMATS, ALLOWED_COURIER_CODES } from '@/lib/constants/couriers';
+import { cancelTransaction } from '@/lib/midtrans/status';
+import { reverseRedeemedPointsTx, clawbackEarnedPointsTx } from '@/lib/finance/points-ledger';
+import { ALLOWED_COURIER_CODES } from '@/lib/constants/couriers';
 import { logger } from '@/lib/utils/logger';
+import { scheduleBackground } from '@/lib/utils/background';
 import { getClientIp, getUserAgent } from '@/lib/utils/request-meta';
 
 type OrderStatus = 'pending_payment' | 'paid' | 'processing' | 'packed' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
@@ -36,13 +41,9 @@ const statusUpdateSchema = z.object({
   { message: 'Kurir tidak valid — hanya kurir cold-chain yang diperbolehkan', path: ['courierCode'] }
 );
 
-const VALID_TRANSITIONS: Record<string, string[]> = {
-  pending_payment: ['cancelled'],
-  paid: ['processing', 'cancelled', 'refunded'],
-  processing: ['packed', 'cancelled'],
-  packed: ['shipped', 'cancelled'],
-  shipped: ['delivered', 'cancelled'],
-};
+import { ORDER_TRANSITIONS } from '@/lib/constants/orders';
+
+const VALID_TRANSITIONS: Record<string, string[]> = ORDER_TRANSITIONS.delivery;
 
 // Warehouse can only do packed→shipped
 const WAREHOUSE_TRANSITIONS = ['shipped'];
@@ -87,14 +88,10 @@ export async function PATCH(
     const currentStatus = order.status;
     const allowedTransitions = VALID_TRANSITIONS[currentStatus];
 
-    // Pickup orders skip packed/shipped statuses
+    // W10: pickup orders use the SAME state machine as delivery through
+    // `packed` (ready for pickup), then delivered.
     if (order.deliveryMethod === 'pickup') {
-      const PICKUP_VALID_TRANSITIONS: Record<string, string[]> = {
-        pending_payment: ['cancelled'],
-        paid: ['processing', 'cancelled'],
-        processing: ['delivered', 'cancelled'],
-      };
-      const allowedForPickup = PICKUP_VALID_TRANSITIONS[currentStatus] ?? [];
+      const allowedForPickup = ORDER_TRANSITIONS.pickup[currentStatus] ?? [];
       if (!allowedForPickup.includes(newStatus)) {
         return conflict(`Tidak dapat mengubah status pickup dari ${currentStatus} ke ${newStatus}`);
       }
@@ -124,7 +121,8 @@ export async function PATCH(
       updateData.cancelledAt = new Date();
     }
 
-    // If cancelling a shipped order, first cancel via Biteship API
+    // M5/W7: cancelling a shipped order requires the courier to be stopped.
+    // If Biteship refuses, do NOT cancel locally while the box is in transit.
     if (newStatus === 'cancelled' && currentStatus === 'shipped' && order.biteshipOrderId) {
       try {
         await cancelBiteshipOrder(
@@ -133,11 +131,14 @@ export async function PATCH(
           cancellationReason ?? 'Dibatalkan oleh admin'
         );
       } catch (biteshipErr) {
-        logger.error('[Biteship] Cancel failed', {
+        logger.error('[Biteship] Cancel failed — aborting order cancel', {
           orderId: order.id,
           biteshipOrderId: order.biteshipOrderId,
           error: biteshipErr instanceof Error ? biteshipErr.message : String(biteshipErr),
         });
+        return conflict(
+          'Gagal membatalkan pengiriman di Biteship. Hubungi kurir/Biteship sebelum membatalkan pesanan.'
+        );
       }
     }
 
@@ -204,103 +205,97 @@ export async function PATCH(
           }
         }
 
-        // P0-09: If order was paid via Midtrans and has a transaction ID, call refund API
-        // Only Midtrans orders can be refunded — Net-30 B2B orders have no Midtrans transaction
-        if (order.paymentMethod === 'midtrans' && order.midtransTransactionId && ['paid', 'processing', 'packed', 'shipped', 'delivered'].includes(currentStatus)) {
-          const refundResult = await refundTransaction(order.midtransTransactionId, order.totalAmount);
-          if (!refundResult.success) {
-            throw new Error(`REFUND_FAILED:${refundResult.error ?? 'Unknown error'}`);
-          }
-        }
-
-        // Points/coupon reversal is always safe to do (idempotent)
-        if (order.userId && order.pointsUsed > 0) {
-          // BUG-12: Find the original redeem record to unconsume FIFO earn records
-          const redeemRecords = await tx.query.pointsHistory.findMany({
-            where: and(
-              eq(pointsHistory.orderId, orderId),
-              eq(pointsHistory.type, 'redeem'),
-              sql`${pointsHistory.referencedEarnId} IS NOT NULL`
-            ),
+        // C4: refunds never block cancellation. Midtrans' API only supports
+        // card/GoPay/ShopeePay/QRIS refunds — VA cannot be refunded via API.
+        // Always create a refund obligation and let the Refunds page drive the
+        // API refund or a manual bank transfer.
+        const wasPaid = order.paidAt !== null;
+        if (wasPaid && order.totalAmount > 0) {
+          const existingRefund = await tx.query.refunds.findFirst({
+            where: eq(refunds.orderId, orderId),
+            columns: { id: true },
           });
-
-          // Unconsume FIFO earn records if referenced
-          for (const redeem of redeemRecords) {
-            if (redeem.referencedEarnId) {
-              await tx
-                .update(pointsHistory)
-                .set({ consumedAt: null })
-                .where(eq(pointsHistory.id, redeem.referencedEarnId));
-            }
-          }
-
-          const [updatedUser] = await tx
-            .update(users)
-            .set({ pointsBalance: sql`points_balance + ${order.pointsUsed}` })
-            .where(eq(users.id, order.userId))
-            .returning({ pointsBalance: users.pointsBalance });
-
-          const newBalance = updatedUser?.pointsBalance ?? 0;
-
-          await tx.insert(pointsHistory).values({
-            userId: order.userId,
-            type: 'adjust',
-            pointsAmount: order.pointsUsed,
-            pointsBalanceAfter: newBalance,
-            descriptionId: `Pembatalan pesanan ${order.orderNumber} — poin dikembalikan`,
-            descriptionEn: `Order ${order.orderNumber} cancelled — points returned`,
-            orderId: orderId,
-            expiresAt: null,
-            isExpired: false,
-          });
-        }
-
-        // Reverse pointsEarned if order was already paid (BUG-02)
-        const statusesThatEarnedPoints = ['paid', 'processing', 'packed', 'shipped', 'delivered'];
-        if (order.userId && order.pointsEarned > 0 && statusesThatEarnedPoints.includes(currentStatus)) {
-          const earnRecord = await tx.query.pointsHistory.findFirst({
-            where: and(
-              eq(pointsHistory.orderId, orderId),
-              eq(pointsHistory.type, 'earn'),
-              eq(pointsHistory.userId, order.userId),
-            ),
-          });
-
-          if (earnRecord && !earnRecord.consumedAt) {
-            const [updatedUser] = await tx
-              .update(users)
-              .set({ pointsBalance: sql`GREATEST(points_balance - ${order.pointsEarned}, 0)` })
-              .where(eq(users.id, order.userId))
-              .returning({ pointsBalance: users.pointsBalance });
-
-            await tx.insert(pointsHistory).values({
-              userId: order.userId,
-              type: 'adjust',
-              pointsAmount: -order.pointsEarned,
-              pointsBalanceAfter: updatedUser?.pointsBalance ?? 0,
-              descriptionId: `Poin dicabut — pembatalan pesanan ${order.orderNumber}`,
-              descriptionEn: `Points reversed — order ${order.orderNumber} cancelled`,
-              orderId: orderId,
+          if (!existingRefund) {
+            await tx.insert(refunds).values({
+              orderId,
+              amount: order.totalAmount,
+              reason: 'customer_request',
+              method:
+                order.paymentMethod === 'midtrans' && order.midtransOrderId
+                  ? 'midtrans'
+                  : 'manual',
+              status: 'pending',
+              initiatedBy: session.user.id,
+              notes: `Dibatalkan oleh admin: ${cancellationReason ?? 'tanpa alasan'}`,
+              // Method tells the Refunds UI how to settle it.
             });
-
-            await tx.update(pointsHistory)
-              .set({ consumedAt: new Date() })
-              .where(eq(pointsHistory.id, earnRecord.id));
           }
         }
 
-        // Reverse coupon usage
+        // P1: reverse points with ledger rows (idempotent helpers).
+        await reverseRedeemedPointsTx(tx, order);
+        if (wasPaid) {
+          await clawbackEarnedPointsTx(tx, order, {
+            ratio: 1,
+            reasonId: `Poin dicabut — pembatalan pesanan ${order.orderNumber}`,
+            reasonEn: `Points reversed — order ${order.orderNumber} cancelled`,
+          });
+        }
+
+        // M3/K4: used_count was only incremented at settlement. Decrement it
+        // only for paid orders; always remove the provisional usage row.
         if (order.couponId) {
-          await tx
-            .update(coupons)
-            .set({ usedCount: sql`GREATEST(used_count - 1, 0)` })
-            .where(eq(coupons.id, order.couponId));
+          if (wasPaid) {
+            await tx
+              .update(coupons)
+              .set({ usedCount: sql`GREATEST(used_count - 1, 0)` })
+              .where(eq(coupons.id, order.couponId));
+          }
+          await tx.delete(couponUsages).where(eq(couponUsages.orderId, orderId));
         }
       }
     });
 
-    if (newStatus === 'shipped' && trackingNumber) {
-      sendEmail({
+    // Post-commit side effects (never inside the DB transaction).
+    if (newStatus === 'cancelled') {
+      const wasPaid = order.paidAt !== null;
+      if (wasPaid && order.paymentMethod === 'midtrans' && order.midtransOrderId) {
+        // Best-effort API refund; a failure leaves the obligation pending for
+        // manual handling instead of blocking the cancellation. Midtrans'
+        // refund endpoint keys on order_id (not transaction_id).
+        const refundResult = await refundTransaction(order.midtransOrderId, order.totalAmount);
+        if (refundResult.success) {
+          await db
+            .update(refunds)
+            .set({
+              status: 'completed',
+              processedAt: new Date(),
+              midtransRefundId: refundResult.refundId ?? null,
+              updatedAt: new Date(),
+            })
+            .where(eq(refunds.orderId, orderId));
+        } else {
+          logger.warn('[admin/orders/status] Midtrans refund failed — left pending', {
+            orderNumber: order.orderNumber,
+            error: refundResult.error,
+          });
+        }
+      } else if (!wasPaid && order.midtransOrderId) {
+        // M4: stop the customer from paying a VA after the order was cancelled.
+        const cancelledTx = await cancelTransaction(order.midtransOrderId);
+        if (!cancelledTx.success) {
+          logger.warn('[admin/orders/status] Midtrans cancel failed', {
+            orderNumber: order.orderNumber,
+            error: cancelledTx.error,
+          });
+        }
+      }
+    }
+
+    // W8: when Biteship booked the shipment, dispatchOrder() already sent the
+    // shipped email — do not send a second one from the manual transition.
+    if (newStatus === 'shipped' && trackingNumber && !order.biteshipOrderId) {
+      scheduleBackground(sendEmail({
         to: order.recipientEmail,
         subject: `Pesanan ${order.orderNumber} sudah dikirim!`,
         react: OrderShippedEmail({
@@ -317,13 +312,16 @@ export async function PATCH(
           })),
           totalAmount: order.totalAmount,
         }),
-      }).catch((emailError) => {
-        logger.error('[Email] Failed to send shipped email', { error: emailError instanceof Error ? emailError.message : String(emailError) });
-      });
+      }), 'admin shipped email');
+    }
+
+    // W11/M12: pickup "ready" notification fires when the order is packed.
+    if (newStatus === 'packed' && order.deliveryMethod === 'pickup') {
+      await sendPickupReadyNotification(order);
     }
 
     if (newStatus === 'delivered') {
-      sendEmail({
+      scheduleBackground(sendEmail({
         to: order.recipientEmail,
         subject: `Pesanan ${order.orderNumber} sudah diterima! Terima kasih — Dapur Dekaka`,
         react: OrderDeliveredEmail({
@@ -338,15 +336,13 @@ export async function PATCH(
           totalAmount: order.totalAmount,
           deliveredAt: formatWIB(new Date()),
         }),
-      }).catch((emailError) => {
-        logger.error('[Email] Failed to send delivered email', { error: emailError instanceof Error ? emailError.message : String(emailError) });
-      });
+      }), 'admin delivered email');
     }
 
     if (newStatus === 'cancelled') {
       const reason = cancellationReason ?? 'Dibatalkan oleh admin';
-      const isPaidOrder = ['paid', 'processing', 'packed', 'shipped', 'delivered'].includes(currentStatus);
-      sendEmail({
+      const isPaidOrder = order.paidAt !== null;
+      scheduleBackground(sendEmail({
         to: order.recipientEmail,
         subject: `Pesanan ${order.orderNumber} dibatalkan`,
         react: OrderCancellationEmail({
@@ -368,9 +364,7 @@ export async function PATCH(
           refundAmount: isPaidOrder ? order.totalAmount : 0,
           refundInfo: isPaidOrder ? 'Refund akan diproses dalam 3-5 hari kerja ke metode pembayaran asal Anda.' : undefined,
         }),
-      }).catch((emailError) => {
-        logger.error('[Email] Failed to send cancellation email', { error: emailError instanceof Error ? emailError.message : String(emailError) });
-      });
+      }), 'admin cancellation email');
     }
 
     // Audit log — non-blocking, captures IP/UA for compliance.
@@ -393,13 +387,10 @@ export async function PATCH(
       deliveredAt: newStatus === 'delivered' ? new Date() : null,
     });
   } catch (error) {
+    Sentry.captureException(error);
     logger.error('[admin/orders/status]', { error: error instanceof Error ? error.message : String(error) });
     if (error instanceof Error && error.message === 'ORDER_STATUS_CHANGED_CONCURRENTLY') {
       return conflict('Status pesanan telah diubah oleh pengguna lain. Silakan refresh dan coba lagi.');
-    }
-    if (error instanceof Error && error.message.startsWith('REFUND_FAILED:')) {
-      const refundError = error.message.replace('REFUND_FAILED:', '');
-      return conflict('Refund gagal: ' + refundError + '. Pesanan tidak dibatalkan.');
     }
     return serverError(error);
   }

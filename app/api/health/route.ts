@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { sql } from 'drizzle-orm';
+
 export const runtime = 'nodejs';
+// HIGH-2: this must never be statically cached — an uptime monitor reading a
+// month-old timestamp is worse than no monitor.
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 /**
  * Health check endpoint for load balancers and monitoring.
@@ -36,7 +41,7 @@ export async function GET(_req: NextRequest) {
       },
       {
         headers: {
-          'Cache-Control': 's-maxage=60, stale-while-revalidate=30',
+          'Cache-Control': 'no-store, max-age=0',
         },
       }
     );

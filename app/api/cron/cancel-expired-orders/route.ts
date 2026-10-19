@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { orders, couponUsages, pointsHistory, users, orderStatusHistory } from '@/lib/db/schema';
-import { eq, and, lt, sql } from 'drizzle-orm';
+import { orders, couponUsages, orderStatusHistory } from '@/lib/db/schema';
+import { eq, and, lt } from 'drizzle-orm';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { checkTransactionStatus } from '@/lib/midtrans/status';
 import { serverError, success, unauthorized } from '@/lib/utils/api-response';
 import { logger } from '@/lib/utils/logger';
+import { reverseRedeemedPointsTx } from '@/lib/finance/points-ledger';
+import { cancelTransaction } from '@/lib/midtrans/status';
+import { sendEmail } from '@/lib/resend/send-email';
+import { OrderCancellationEmail } from '@/lib/resend/templates/OrderCancellation';
+import { formatWIB } from '@/lib/utils/format-date';
+import { scheduleBackground } from '@/lib/utils/background';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -34,6 +40,7 @@ export async function GET(req: NextRequest) {
         eq(orders.status, 'pending_payment'),
         lt(orders.paymentExpiresAt, now)
       ),
+      with: { items: true },
       limit: BATCH_LIMIT,
     });
 
@@ -54,11 +61,13 @@ export async function GET(req: NextRequest) {
               continue;
             }
           } catch (midtransError) {
-            // If we can't reach Midtrans, proceed with cancellation
-            // to avoid stuck pending orders
-            logger.warn('[CancelExpired] Could not verify Midtrans status — proceeding with cancel', {
+            // M14: if Midtrans is unreachable we cannot know whether the order
+            // was just paid — skip this run instead of risking a paid cancel.
+            logger.warn('[CancelExpired] Could not verify Midtrans status — skipping this run', {
               orderNumber: order.orderNumber,
+              error: midtransError instanceof Error ? midtransError.message : String(midtransError),
             });
+            continue;
           }
         }
 
@@ -95,32 +104,9 @@ export async function GET(req: NextRequest) {
           // deducted (settlement-only deduction model). Restoring it here would
           // inflate inventory. No stock op.
 
-          // Reverse points if used — full FIFO reversal from webhook handler
-          if (order.userId && order.pointsUsed > 0) {
-            // 1. Find redeem records for this order
-            const redeemRecords = await tx
-              .select()
-              .from(pointsHistory)
-              .where(and(
-                eq(pointsHistory.userId, order.userId),
-                eq(pointsHistory.type, 'redeem'),
-                eq(pointsHistory.orderId, order.id)
-              ));
-
-            // 2. Unconsume referenced earn records (FIFO reversal)
-            for (const redeem of redeemRecords) {
-              if (redeem.referencedEarnId) {
-                await tx.update(pointsHistory)
-                  .set({ consumedAt: null })
-                  .where(eq(pointsHistory.id, redeem.referencedEarnId));
-              }
-            }
-
-            // 3. Restore balance (pointsAmount is negative for redeem, so adding restores)
-            await tx.update(users)
-              .set({ pointsBalance: sql`points_balance + ${order.pointsUsed}` })
-              .where(eq(users.id, order.userId));
-          }
+          // P1: reverse points with a matching ledger row so the nightly
+          // reconcile cannot claw them back.
+          await reverseRedeemedPointsTx(tx, order);
 
           // Delete the provisional couponUsages row inserted at initiate. Do NOT
           // decrement used_count — it is only incremented at settlement, and this
@@ -129,6 +115,45 @@ export async function GET(req: NextRequest) {
             await tx.delete(couponUsages).where(eq(couponUsages.orderId, order.id));
           }
         });
+
+        // Cancel the (unpaid) Midtrans transaction so the VA can no longer be paid.
+        if (order.midtransOrderId) {
+          const cancelledTx = await cancelTransaction(order.midtransOrderId);
+          if (!cancelledTx.success) {
+            logger.warn('[CancelExpired] Midtrans cancel failed', {
+              orderNumber: order.orderNumber,
+              error: cancelledTx.error,
+            });
+          }
+        }
+
+        // M15: tell the customer the order was cancelled (with a re-order path).
+        scheduleBackground(
+          sendEmail({
+            to: order.recipientEmail,
+            subject: `Pesanan ${order.orderNumber} dibatalkan`,
+            react: OrderCancellationEmail({
+              orderNumber: order.orderNumber,
+              customerName: order.recipientName,
+              items: order.items.map((item) => ({
+                name: item.productNameId,
+                variant: item.variantNameId,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                subtotal: item.subtotal,
+              })),
+              subtotal: order.subtotal,
+              shippingCost: order.shippingCost,
+              discountAmount: order.discountAmount,
+              totalAmount: order.totalAmount,
+              reason: 'Pembayaran tidak diterima dalam batas waktu',
+              cancelledAt: formatWIB(now),
+              refundAmount: 0,
+              refundInfo: '',
+            }),
+          }),
+          'cancel-expired customer email'
+        );
 
         cancelled++;
         logger.info('[CancelExpired] Order cancelled', { orderNumber: order.orderNumber });

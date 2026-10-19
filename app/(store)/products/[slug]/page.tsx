@@ -66,12 +66,12 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
       'dapur dekaka',
     ].filter(Boolean) as string[],
     alternates: {
-      canonical: `https://dapurdekaka.com/products/${slug}`,
+      canonical: `https://www.dapurdekaka.com/products/${slug}`,
     },
     openGraph: {
       title: title,
       description: description ?? undefined,
-      url: `https://dapurdekaka.com/products/${slug}`,
+      url: `https://www.dapurdekaka.com/products/${slug}`,
       type: 'website',
       images: product.images[0] ? [
         {
@@ -225,7 +225,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     manufacturer: {
       '@type': 'Organization',
       name: 'Dapur Dekaka',
-      url: 'https://dapurdekaka.com',
+      url: 'https://www.dapurdekaka.com',
     },
     offers: {
       '@type': 'Offer',
@@ -239,7 +239,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         '@type': 'Organization',
         name: 'Dapur Dekaka',
       },
-      url: `https://dapurdekaka.com/products/${slug}`,
+      url: `https://www.dapurdekaka.com/products/${slug}`,
       shippingDetails,
     },
     additionalProperty: [

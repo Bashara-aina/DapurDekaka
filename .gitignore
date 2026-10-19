@@ -34,8 +34,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# drizzle
-/drizzle
+# drizzle — SQL migrations are versioned; generated journal snapshots are not.
+/drizzle/meta/
 
 # SQL exports & backups
 full_export.sql

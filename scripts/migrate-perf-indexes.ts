@@ -13,8 +13,9 @@ const { Pool } = pg;
 
 const FILES = [
   'drizzle/0051_drop_webhook_error_index.sql',
-  'drizzle/0052_widen_points_fifo_index.sql',
+  'drizzle/0054_widen_points_fifo_index.sql',
   'drizzle/0053_admin_search_trgm.sql',
+  'drizzle/0055_checkout_safety_points_ledger.sql',
 ];
 
 // Indexes that must exist afterwards (name → table).

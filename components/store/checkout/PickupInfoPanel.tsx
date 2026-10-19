@@ -1,6 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import { MapPin } from 'lucide-react';
 
 interface PickupInfoPanelProps {
   storeHours: {
@@ -8,6 +9,8 @@ interface PickupInfoPanelProps {
     openHours: string;
   };
   pickupAddress: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   onBack: () => void;
   onNext: () => void;
 }
@@ -15,10 +18,22 @@ interface PickupInfoPanelProps {
 export function PickupInfoPanel({
   storeHours,
   pickupAddress,
+  latitude,
+  longitude,
   onBack,
   onNext,
 }: PickupInfoPanelProps) {
   const t = useTranslations('checkout');
+  const hasCoords =
+    typeof latitude === 'number' &&
+    typeof longitude === 'number' &&
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude);
+  const mapUrl = hasCoords
+    ? `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
+    : pickupAddress
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(pickupAddress)}`
+      : null;
 
   return (
     <div className="bg-white rounded-card p-6 shadow-card">
@@ -30,12 +45,23 @@ export function PickupInfoPanel({
         <h3 className="font-semibold text-green-800 mb-2">{t('pickupLocationTitle')}</h3>
         <p className="text-sm text-green-700 mb-1">
           <strong>{t('storeName')}</strong><br/>
-          {t('storeAddressLine')}<br/>
+          {pickupAddress ?? t('storeAddressLine')}<br/>
           {t('storeCity')}
         </p>
         <p className="text-xs text-green-600 mt-2">
-          {t('storeHours', { days: storeHours.openDays, hours: storeHours.openHours })}<br/>
+          {t('storeHours', { days: storeHours.openDays, hours: storeHours.openHours })}
         </p>
+        {mapUrl && (
+          <a
+            href={mapUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-red hover:underline mt-3"
+          >
+            <MapPin className="w-4 h-4" />
+            {t('pickupMapLink')}
+          </a>
+        )}
       </div>
       <div className="flex gap-4 mt-4">
         <button

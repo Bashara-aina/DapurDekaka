@@ -174,22 +174,47 @@ export const authConfig = {
         if (u.role) t.role = u.role;
         if (typeof u.isActive === 'boolean') t.isActive = u.isActive;
         if (u.id) t.tokenVersion = await fetchTokenVersion(u.id);
+        t.checkedAt = Date.now();
       }
 
-      // When the client calls update() (e.g. after login), refresh role/isActive
-      // and tokenVersion from the DB so deactivation / password-reset takes
-      // effect on the next server round-trip.
-      if (trigger === 'update' && (token.sub || t.userId)) {
-        const userId = (token.sub || t.userId) as string;
-        const dbUser = await db.query.users.findFirst({
-          where: eq(users.id, userId),
-          columns: { role: true, isActive: true },
-        });
-        if (dbUser) {
+      // S1/S2: periodically re-read role/isActive/tokenVersion so deactivating
+      // staff or resetting a password takes effect within minutes instead of
+      // surviving in the JWT for its full 30-day lifetime. Runs on
+      // update() and at most once per REFRESH_INTERVAL.
+      const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+      const userId = (token.sub || t.userId) as string | undefined;
+      const checkedAt = typeof t.checkedAt === 'number' ? t.checkedAt : 0;
+      const needsRefresh = trigger === 'update' || Date.now() - checkedAt > REFRESH_INTERVAL_MS;
+
+      if (userId && needsRefresh) {
+        try {
+          const dbUser = await db.query.users.findFirst({
+            where: eq(users.id, userId),
+            columns: { role: true, isActive: true, tokenVersion: true },
+          });
+
+          if (!dbUser || !dbUser.isActive) {
+            // Returning null invalidates the session cookie.
+            return null;
+          }
+
+          if (typeof t.tokenVersion === 'number' && dbUser.tokenVersion !== t.tokenVersion) {
+            return null;
+          }
+
           t.role = dbUser.role;
           t.isActive = dbUser.isActive;
+          t.tokenVersion = dbUser.tokenVersion;
+          t.checkedAt = Date.now();
+        } catch (err) {
+          // Edge middleware can fail to reach the DB; never sign everyone out
+          // for an infrastructure hiccup — retry on the next interval.
+          logger.warn('[auth] periodic token refresh failed', {
+            userId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          t.checkedAt = Date.now();
         }
-        t.tokenVersion = await fetchTokenVersion(userId);
       }
 
       return token;

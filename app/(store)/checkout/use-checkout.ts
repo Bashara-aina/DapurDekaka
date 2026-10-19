@@ -113,6 +113,7 @@ export function useCheckout() {
   const [storeHours, setStoreHours] = useState<StoreHours>({ openDays: '', openHours: '' });
   const [pickupAddress, setPickupAddress] = useState<string | null>(null);
   const [storeLocation, setStoreLocation] = useState<StoreLocationDefaults>({ city: '', province: '' });
+  const [storeCoords, setStoreCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [formData, setFormData] = useState<CheckoutFormData>(INITIAL_FORM);
 
   const [couponDiscount, setCouponDiscount] = useState(0);
@@ -126,6 +127,13 @@ export function useCheckout() {
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string | null>(null);
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
+  // M10: one idempotency key per checkout attempt — double taps cannot create
+  // two orders; the server dedupes on this UUID.
+  const idempotencyKeyRef = useRef<string>(
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  );
 
   // Stable updater (setFormData is stable) — safe to list in effect deps.
   const updateForm = useCallback((updates: Partial<CheckoutFormData>) => {
@@ -312,6 +320,11 @@ export function useCheckout() {
             city: json.data.store_city ?? '',
             province: json.data.store_province ?? '',
           });
+          const lat = parseFloat(json.data.biteship_origin_lat ?? '');
+          const lng = parseFloat(json.data.biteship_origin_lng ?? '');
+          if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            setStoreCoords({ latitude: lat, longitude: lng });
+          }
         }
       } catch (err) {
         // Non-fatal: pickup panel falls back to empty defaults.
@@ -493,6 +506,7 @@ export function useCheckout() {
           subtotal: liveSubtotal,
           discountAmount: couponDiscount,
           pointsDiscount: livePointsDiscount,
+          idempotencyKey: idempotencyKeyRef.current,
         }),
       });
 
@@ -617,6 +631,7 @@ export function useCheckout() {
     storeHours,
     pickupAddress,
     storeLocation,
+    storeCoords,
     formData,
     updateForm,
     couponDiscount,

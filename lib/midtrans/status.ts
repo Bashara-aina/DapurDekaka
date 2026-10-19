@@ -51,6 +51,30 @@ export async function checkTransactionStatus(
 }
 
 /**
+ * Cancel an unpaid Midtrans transaction (e.g. the previous VA when the
+ * customer mints a new payment attempt). Best-effort: Midtrans may already
+ * report the transaction as expired/cancelled.
+ */
+export async function cancelTransaction(
+  orderId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await withTimeout(
+      async () => {
+        // @ts-ignore - midtrans-client types don't expose .transaction
+        return (coreApi as unknown as { transaction: { cancel(orderId: string): Promise<unknown> } }).transaction.cancel(orderId);
+      },
+      TIMEOUT_MS,
+      'Midtrans.cancelTransaction'
+    );
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { success: false, error: message };
+  }
+}
+
+/**
  * Refund a Midtrans transaction.
  * Only call this for paid orders that are being cancelled.
  * Returns true if refund was successful, false otherwise.

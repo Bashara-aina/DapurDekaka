@@ -40,6 +40,30 @@ export function isOrderStatus(value: unknown): value is OrderStatus {
   return typeof value === 'string' && (ORDER_STATUSES as string[]).includes(value);
 }
 
+/**
+ * Single source of truth for status transitions, keyed by delivery method.
+ * W10: pickup and delivery share the same machine through `packed`; pickup
+ * goes packed → delivered (handover), delivery goes packed → shipped.
+ */
+export const ORDER_TRANSITIONS: Record<'delivery' | 'pickup', Record<string, string[]>> = {
+  delivery: {
+    pending_payment: ['cancelled'],
+    paid: ['processing', 'cancelled', 'refunded'],
+    processing: ['packed', 'cancelled'],
+    packed: ['shipped', 'cancelled'],
+    shipped: ['delivered', 'cancelled'],
+    delivered: [],
+  },
+  pickup: {
+    pending_payment: ['cancelled'],
+    paid: ['processing', 'cancelled', 'refunded'],
+    processing: ['packed', 'cancelled'],
+    packed: ['delivered', 'cancelled'],
+    shipped: [],
+    delivered: [],
+  },
+};
+
 /** Terminal states: no further transitions expected. */
 export const TERMINAL_ORDER_STATUSES: OrderStatus[] = ['delivered', 'cancelled', 'refunded'];
 

@@ -25,6 +25,7 @@ export const POINTS_MIN_REDEEM = 100;
 export const POINTS_MAX_REDEEM_PCT = 50;
 
 /**
- * B2B points multiplier (2x)
+ * B2B points multiplier — kept at 1 (L2 Rule 10: same rate as retail).
+ * The setting exists for admin compatibility but is no longer applied.
  */
-export const B2B_POINTS_MULTIPLIER = 2;
+export const B2B_POINTS_MULTIPLIER = 1;

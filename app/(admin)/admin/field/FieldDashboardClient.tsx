@@ -167,11 +167,11 @@ async function bookCourier(orderId: string) {
   return json.data;
 }
 
-async function deliverPickup(orderId: string) {
+async function deliverPickup({ orderId, pickupCode }: { orderId: string; pickupCode: string }) {
   const res = await fetch(`/api/admin/field/orders/${orderId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status: 'delivered' }),
+    body: JSON.stringify({ status: 'delivered', pickupCode }),
   });
   const json = await res.json();
   if (!json.success) throw new Error(json.error);
@@ -612,7 +612,7 @@ function PickupTab() {
   });
 
   const { mutateAsync: deliverMutate, isPending: isDelivering } = useMutation({
-    mutationFn: (orderId: string) => deliverPickup(orderId),
+    mutationFn: (input: { orderId: string; pickupCode: string }) => deliverPickup(input),
     onSuccess: () => refetch(),
   });
 
@@ -626,7 +626,7 @@ function PickupTab() {
       setCodeError('Kode tidak cocok. Minta pelanggan tunjukkan kode yang benar.');
       return;
     }
-    await deliverMutate(selectedOrder.id);
+    await deliverMutate({ orderId: selectedOrder.id, pickupCode: inputCode });
     setSelectedOrder(null);
     setInputCode('');
     setCodeError('');

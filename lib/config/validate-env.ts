@@ -66,6 +66,27 @@ export function validateEnv(): EnvValidationResult {
 }
 
 /**
+ * BLOCKER 2: `NEXT_PUBLIC_*` is inlined at build time. A production build or
+ * runtime that still points at localhost breaks payment redirects, reset
+ * emails and sitemap URLs. This fails the Vercel production build fast.
+ */
+export function validateProductionAppUrl(): void {
+  const isVercelProduction =
+    process.env.VERCEL_ENV === 'production' && Boolean(process.env.VERCEL_DEPLOYMENT_ID);
+  const isProductionRuntime =
+    process.env.NODE_ENV === 'production' && process.env.STRICT_APP_URL_CHECK === 'true';
+
+  if (!isVercelProduction && !isProductionRuntime) return;
+
+  const url = process.env.NEXT_PUBLIC_APP_URL ?? '';
+  if (!url || url.includes('localhost') || url.startsWith('http://')) {
+    throw new Error(
+      `NEXT_PUBLIC_APP_URL must be the public https origin in production (got "${url || '(unset)'}").`
+    );
+  }
+}
+
+/**
  * Throws a descriptive error if required env vars are missing.
  * Use at the start of API routes or in a global initializer.
  */

@@ -10,12 +10,43 @@ vi.mock('@/lib/db', () => ({
         findFirst: vi.fn(),
       },
     },
-    transaction: vi.fn(),
+    transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => {
+      const chain = {
+        from: () => chain,
+        where: () => chain,
+        limit: async () => [],
+        values: async () => undefined,
+        set: () => chain,
+      };
+      const tx = {
+        select: () => chain,
+        insert: () => chain,
+        update: () => chain,
+        query: { refunds: { findFirst: vi.fn().mockResolvedValue(undefined) } },
+      };
+      return fn(tx);
+    }),
+    update: vi.fn(() => ({
+      set: () => ({
+        where: async () => undefined,
+      }),
+    })),
+    insert: vi.fn(() => ({
+      values: async () => undefined,
+    })),
   },
 }));
 
 vi.mock('@/lib/resend/send-email', () => ({
   sendEmail: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@/lib/ops/needs-attention', () => ({
+  flagNeedsAttention: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@/lib/utils/webhook-events', () => ({
+  recordWebhookEvent: vi.fn().mockResolvedValue(undefined),
 }));
 
 const TEST_SERVER_KEY = 'test-server-key';
@@ -115,6 +146,55 @@ describe('POST /api/webhooks/midtrans', () => {
     const json = await res.json();
     expect(json.success).toBe(true);
     expect(json.data.note).toBe('already_processed');
+  });
+
+  it('resolves an old VA transaction id via the retry suffix', async () => {
+    const { db } = await import('@/lib/db');
+    const order = {
+      id: 'order-1',
+      orderNumber: 'DDK-TEST-099',
+      status: 'paid',
+      totalAmount: 100000,
+      midtransOrderId: 'DDK-TEST-099-retry-2',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      userId: null,
+      recipientName: 'Budi',
+      recipientEmail: 'budi@example.com',
+      deliveryMethod: 'pickup' as const,
+      subtotal: 100000,
+      discountAmount: 0,
+      pointsDiscount: 0,
+      pointsUsed: 0,
+      pointsEarned: 0,
+      couponId: null,
+      paidAt: new Date(),
+    };
+
+    // Direct lookup by the old (pre-retry) id misses; canonical orderNumber hits.
+    vi.mocked(db.query.orders.findFirst)
+      .mockResolvedValueOnce(undefined as never)
+      .mockResolvedValueOnce(order as never);
+
+    const body = createValidWebhook({
+      order_id: 'DDK-TEST-099',
+      status_code: '200',
+      gross_amount: '100000',
+      transaction_status: 'settlement',
+    });
+
+    const req = new NextRequest('http://localhost/api/webhooks/midtrans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    const res = await POST(req);
+    const json = await res.json();
+    expect(json.success).toBe(true);
+    // Old VA settling after a newer Midtrans id paid the order = duplicate money.
+    expect(json.data.note).toBe('duplicate_settlement_manual_review');
+    expect(vi.mocked(db.query.orders.findFirst).mock.calls.length).toBe(2);
   });
 
   it('handles cancellation idempotency', async () => {

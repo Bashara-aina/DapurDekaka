@@ -122,6 +122,12 @@ export async function POST(req: NextRequest) {
       return validationError(parsed.error);
     }
 
+    // K8: free_shipping is rejected at checkout (L2 rule) — do not allow
+    // creating coupons that can never be redeemed.
+    if (parsed.data.type === 'free_shipping') {
+      return conflict('Kupon gratis ongkir belum tersedia (aturan L2)');
+    }
+
     const code = parsed.data.code.toUpperCase().trim();
     const existing = await db.query.coupons.findFirst({
       where: eq(coupons.code, code),

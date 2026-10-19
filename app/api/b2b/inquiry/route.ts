@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { b2bInquiries, systemSettings } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
-import { success, validationError, serverError, badRequest } from '@/lib/utils/api-response';
+import { and, eq, gte, sql } from 'drizzle-orm';
+import { success, validationError, serverError } from '@/lib/utils/api-response';
 import { sendEmail } from '@/lib/resend/send-email';
 import { B2BInquiryNotificationEmail } from '@/lib/resend/templates/B2BInquiryNotification';
 import { B2BInquiryAutoReplyEmail } from '@/lib/resend/templates/B2BInquiryAutoReply';
 import { formatWIB } from '@/lib/utils/format-date';
 import { logger } from '@/lib/utils/logger';
-import { checkRateLimitAsync } from '@/lib/utils/rate-limit';
+import { withRateLimit } from '@/lib/utils/rate-limit';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -21,6 +21,8 @@ const InquirySchema = z.object({
   companyType: z.string().optional(),
   message: z.string().min(10, 'Pesan minimal 10 karakter'),
   estimatedVolume: z.string().optional(),
+  // S3 honeypot — bots fill hidden fields; humans never see it.
+  website: z.string().optional(),
 });
 
 async function getAdminEmail(): Promise<string> {
@@ -44,13 +46,7 @@ async function getVolumeLabel(volumeId: string | null): Promise<string> {
   return volumeLabels[volumeId] ?? volumeId;
 }
 
-export async function POST(req: NextRequest) {
-  const ip = req.ip || req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
-  const rateLimit = await checkRateLimitAsync(ip, 'auth');
-  if (!rateLimit.success) {
-    return badRequest('Terlalu banyak permintaan. Silakan coba lagi nanti.');
-  }
-
+export const POST = withRateLimit(async (req: NextRequest) => {
   try {
     const body = await req.json();
     const parsed = InquirySchema.safeParse(body);
@@ -59,7 +55,13 @@ export async function POST(req: NextRequest) {
       return validationError(parsed.error);
     }
 
-    const { companyName, picName, picEmail, picPhone, companyType, message, estimatedVolume } = parsed.data;
+    const { companyName, picName, picEmail, picPhone, companyType, message, estimatedVolume, website } = parsed.data;
+
+    // S3 honeypot: pretend success so bots do not learn the filter.
+    if (website) {
+      logger.warn('[B2B Inquiry] honeypot triggered');
+      return success({ id: 'ignored', message: 'Permintaan berhasil dikirim' }, 201);
+    }
 
     // Insert inquiry into database
     const [inquiry] = await db.insert(b2bInquiries).values({
@@ -104,18 +106,36 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Send auto-reply to customer ────────────────────────────────
+    // S3: cap auto-replies per email/day so the endpoint cannot be abused as a
+    // spam relay that burns the Resend domain reputation.
     try {
-      const autoReplyHtml = B2BInquiryAutoReplyEmail({
-        companyName,
-        picName,
-        inquiryId: inquiry.id,
-      });
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const recentCount = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(b2bInquiries)
+        .where(
+          and(
+            eq(b2bInquiries.picEmail, picEmail.toLowerCase()),
+            gte(b2bInquiries.createdAt, oneDayAgo)
+          )
+        );
+      const autoReplyAllowed = (recentCount[0]?.count ?? 0) <= 3;
 
-      await sendEmail({
-        to: picEmail,
-        subject: `Kami telah menerima inquiry Anda — Dapur Dekaka 德卡`,
-        react: autoReplyHtml,
-      });
+      if (autoReplyAllowed) {
+        const autoReplyHtml = B2BInquiryAutoReplyEmail({
+          companyName,
+          picName,
+          inquiryId: inquiry.id,
+        });
+
+        await sendEmail({
+          to: picEmail,
+          subject: `Kami telah menerima inquiry Anda — Dapur Dekaka 德卡`,
+          react: autoReplyHtml,
+        });
+      } else {
+        logger.warn('[B2B Inquiry] auto-reply suppressed (daily cap)', { picEmail });
+      }
     } catch (emailError) {
       logger.error('[B2B Inquiry] Failed to send auto-reply', {
         error: emailError instanceof Error ? emailError.message : String(emailError),
@@ -134,4 +154,4 @@ export async function POST(req: NextRequest) {
     logger.error('[B2B Inquiry API Error]', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
-}
+}, 'public-strict');

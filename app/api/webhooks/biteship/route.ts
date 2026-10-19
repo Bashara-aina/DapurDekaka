@@ -23,7 +23,28 @@ export const POST = withRateLimit(
   async (req: NextRequest) => {
     try {
       const rawBody = await req.text();
-      const signature = req.headers.get('x-biteship-signature');
+
+      // W4: Biteship's dashboard sends a reachability ping when a webhook URL
+      // is registered. It has no signature and no payload — always return 200.
+      let pingBody: Record<string, unknown> = {};
+      try {
+        pingBody = rawBody ? (JSON.parse(rawBody) as Record<string, unknown>) : {};
+      } catch {
+        pingBody = {};
+      }
+      if (
+        Object.keys(pingBody).length === 0 ||
+        (pingBody.status === undefined &&
+          pingBody.event === undefined &&
+          pingBody.order_id === undefined &&
+          pingBody.reference_id === undefined)
+      ) {
+        return success({ received: true, note: 'registration_ok' });
+      }
+
+      const signature =
+        req.headers.get('x-biteship-signature') ??
+        req.headers.get(process.env.BITESHIP_WEBHOOK_HEADER ?? 'x-biteship-signature');
 
       if (!verifyBiteshipWebhookSignature(rawBody, signature)) {
         await recordWebhookEvent({
@@ -198,7 +219,7 @@ export const POST = withRateLimit(
           });
         });
 
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://dapurdekaka.com';
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.dapurdekaka.com';
         sendEmail({
           to: order.recipientEmail,
           subject: `Pesanan ${order.orderNumber} telah sampai!`,

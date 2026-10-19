@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
-import { Minus, Plus, ShoppingCart, ArrowLeft, X, ChevronRight } from 'lucide-react';
+import { Minus, Plus, ShoppingCart, ArrowLeft, X, ChevronRight, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCartStore } from '@/store/cart.store';
 import { formatIDR } from '@/lib/utils/format-currency';
@@ -314,6 +314,28 @@ export function ProductDetailClient({ product, relatedProducts, whatsappNumber =
               </a>
             </div>
           )}
+
+          {/* Part B #1: delivery-area expectations before checkout, with a WA
+              fallback for customers outside the instant-delivery zone. */}
+          <div className="mt-3 flex items-start gap-2 text-xs text-text-secondary">
+            <MapPin className="w-4 h-4 mt-0.5 shrink-0 text-brand-red" />
+            <span>
+              {t('deliveryNote')}
+              {whatsappNumber ? (
+                <>
+                  {' '}
+                  <a
+                    href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(t('oosWaMessage', { product: product.nameId }))}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-brand-red hover:underline"
+                  >
+                    WhatsApp
+                  </a>
+                </>
+              ) : null}
+            </span>
+          </div>
 
           {/* Description */}
           {product.descriptionId && (

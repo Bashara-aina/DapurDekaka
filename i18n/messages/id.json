@@ -102,6 +102,7 @@
     },
     "frozenHandling": "Dikirim beku dengan ice pack. Simpan di freezer maks. 1 jam setelah diterima.",
     "oosNotifyWa": "Beritahu saya kalau ready via WhatsApp",
+    "deliveryNote": "Pengiriman instant area Bandung & pickup di toko. Di luar area? Hubungi WhatsApp untuk opsi kurir.",
     "oosWaMessage": "Halo Dapur Dekaka, saya ingin diberitahu saat {product} tersedia lagi."
   },
   "about": {
@@ -411,6 +412,7 @@
     "courierLabel": "Kurir",
     "method": "Metode",
     "pickupLocation": "Ambil di Toko",
+    "pickupMapLink": "Lihat lokasi di Google Maps",
     "pickupInstructions": "Setelah pembayaran berhasil, kamu akan mendapat instruksi pengambilan. Tunjukkan nomor pesanan ke staff toko.",
     "pickupLocationTitle": "Lokasi Pengambilan",
     "storeName": "Dapur Dekaka",

@@ -1,3 +1,4 @@
+import { randomInt } from 'crypto';
 import { formatDateForOrder } from './format-date';
 
 /**
@@ -19,4 +20,17 @@ export function generateOrderNumber(sequenceNumber: number): string {
 export function getMidtransOrderId(orderNumber: string, retryCount: number): string {
   if (retryCount === 0) return orderNumber;
   return `${orderNumber}-retry-${retryCount}`;
+}
+
+/**
+ * Midtrans order ids carry a `-retry-N` suffix. Stripping it recovers the
+ * canonical order number so webhooks for an older VA still find the order.
+ */
+export function stripRetrySuffix(midtransOrderId: string): string {
+  return midtransOrderId.replace(/-retry-\d+$/, '');
+}
+
+/** Random 6-digit pickup handover code — never derived from the order number. */
+export function generatePickupCode(): string {
+  return String(randomInt(100000, 1000000));
 }

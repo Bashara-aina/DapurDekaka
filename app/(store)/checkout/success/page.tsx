@@ -15,7 +15,11 @@ export const dynamic = 'force-dynamic';
 function SuccessContent() {
   const t = useTranslations('checkout');
   const searchParams = useSearchParams();
-  const orderNumber = searchParams.get('order');
+  // H7: Midtrans redirects to the `finish` callback with `?order_id=…`, while
+  // in-app navigation uses `?order=…`. Accept both and strip the retry suffix.
+  const rawOrderNumber =
+    searchParams.get('order') ?? searchParams.get('order_id') ?? '';
+  const orderNumber = rawOrderNumber.replace(/-retry-\d+$/, '');
 
   // BUG-13: useQuery must come before useEffect that depends on it (React hook ordering rules)
   const { data: orderData, isLoading } = useQuery<{

@@ -70,7 +70,7 @@ export const b2bQuoteStatusEnum = pgEnum('b2b_quote_status_enum', [
 // ── Constitution enums (L1 / L2 / L4) ──────────────────────────────────────
 export const refundReasonEnum = pgEnum('refund_reason_enum', [
   'customer_request', 'cold_chain_failure', 'stock_out',
-  'fraud', 'other',
+  'fraud', 'other', 'late_settlement', 'payment_cancelled', 'oversell',
 ]);
 
 export const refundMethodEnum = pgEnum('refund_method_enum', [
@@ -358,6 +358,9 @@ export const orders = pgTable('orders', {
   midtransPaymentType: varchar('midtrans_payment_type', { length: 100 }),
   midtransVaNumber: varchar('midtrans_va_number', { length: 100 }),
   midtransSnapToken: text('midtrans_snap_token'),
+  // Client-generated UUID that makes checkout initiation idempotent without a
+  // Redis dependency. Unique per order; looked up before creating a new order.
+  idempotencyKey: varchar('idempotency_key', { length: 64 }),
   paymentExpiresAt: timestamp('payment_expires_at', { withTimezone: true }),
   paymentRetryCount: integer('payment_retry_count').notNull().default(0),
   trackingNumber: varchar('tracking_number', { length: 255 }),
@@ -402,6 +405,7 @@ export const orders = pgTable('orders', {
   userIdIdx: index('idx_orders_user_id').on(table.userId),
   statusExpiresIdx: index('idx_orders_status_expires').on(table.status, table.paymentExpiresAt),
   midtransOrderIdUnique: unique('uq_orders_midtrans_order_id').on(table.midtransOrderId),
+  idempotencyKeyUnique: unique('uq_orders_idempotency_key').on(table.idempotencyKey),
   orderNumberIdx: index('idx_orders_order_number').on(table.orderNumber),
   paidAtIdx: index('idx_orders_paid_at').on(table.paidAt),
   createdAtIdx: index('idx_orders_created_at').on(table.createdAt),
@@ -496,6 +500,10 @@ export const pointsHistory = pgTable('points_history', {
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   type: pointsTypeEnum('type').notNull(),
   pointsAmount: integer('points_amount').notNull(),
+  // Remaining unredeemed points on `earn` rows. FIFO redemption decrements
+  // this instead of consuming an entire row, so partial redemptions leave a
+  // usable remainder. Always 0 for non-earn rows.
+  pointsRemaining: integer('points_remaining').notNull().default(0),
   pointsBalanceAfter: integer('points_balance_after').notNull(),
   orderId: uuid('order_id').references(() => orders.id),
   descriptionId: varchar('description_id', { length: 255 }).notNull(),
@@ -512,7 +520,7 @@ export const pointsHistory = pgTable('points_history', {
   typeExpiresIdx: index('idx_points_type_expires').on(table.type, table.expiresAt),
   createdAtIdx: index('idx_points_created_at').on(table.createdAt),
   referencedEarnIdx: index('idx_points_history_referenced_earn').on(table.referencedEarnId),
-  expireCandidatesIdx: index('idx_points_expire_candidates').on(table.userId, table.expiresAt, table.createdAt).where(sql`${table.type} = 'earn' AND ${table.isExpired} = false AND ${table.consumedAt} IS NULL AND ${table.pointsAmount} > 0`),
+  expireCandidatesIdx: index('idx_points_expire_candidates').on(table.userId, table.expiresAt, table.createdAt).where(sql`${table.type} = 'earn' AND ${table.isExpired} = false AND ${table.pointsRemaining} > 0`),
 }));
 
 // ─────────────────────────────────────────

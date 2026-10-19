@@ -11,7 +11,9 @@ export type NeedsAttentionReason =
   | 'dispatch_failed'
   | 'gross_mismatch_spam'
   | 'refund_failed'
-  | 'reconcile_recovery';
+  | 'reconcile_recovery'
+  | 'duplicate_settlement'
+  | 'partial_refund_mismatch';
 
 /**
  * Flag an order for solo-operator review and ping WA (P3 backlog #5).

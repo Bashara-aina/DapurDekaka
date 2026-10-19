@@ -34,7 +34,7 @@ export default function CheckoutPage() {
     couponDiscount, couponType, couponBuyXgetY, isFreeShippingCoupon,
     shippingRates, loadingShipping, usePoints,
     savedAddresses, selectedSavedAddressId, showNewAddressForm, setShowNewAddressForm,
-    storeHours, pickupAddress, storeLocation,
+    storeHours, pickupAddress, storeLocation, storeCoords,
     snapToken, orderNumber, isLoading, couponError, setCouponError,
     activeSteps, itemCount, effectiveShippingCost, finalTotal, midtransCallbacks,
     handleIdentitySubmit, handleDeliveryMethodChange, handleMapPinConfirm,
@@ -153,6 +153,8 @@ export default function CheckoutPage() {
                     <PickupInfoPanel
                       storeHours={storeHours}
                       pickupAddress={pickupAddress}
+                      latitude={storeCoords?.latitude}
+                      longitude={storeCoords?.longitude}
                       onBack={handleBack}
                       onNext={() => setStep('payment')}
                     />

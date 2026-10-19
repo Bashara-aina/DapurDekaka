@@ -58,7 +58,7 @@ export default async function RootLayout({
   ]);
 
   const finalLogo = logoUrl ?? (SITE_URL ? `${SITE_URL}/assets/logo/logo.png` : '');
-  const url = SITE_URL || 'https://dapurdekaka.com';
+  const url = SITE_URL || 'https://www.dapurdekaka.com';
 
   const sameAs: string[] = [];
   if (instagramUrl) sameAs.push(instagramUrl);

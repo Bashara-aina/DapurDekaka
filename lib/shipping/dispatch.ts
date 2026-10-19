@@ -1,6 +1,7 @@
-import { eq } from 'drizzle-orm';
+import * as Sentry from '@sentry/nextjs';
+import { and, eq, inArray } from 'drizzle-orm';
 import { db } from '@/lib/db';
-import { orders, orderStatusHistory } from '@/lib/db/schema';
+import { orders, orderStatusHistory, productVariants } from '@/lib/db/schema';
 import { createBiteshipOrder } from '@/lib/shipping/providers/biteship/orders';
 import { buildRateItems } from '@/lib/shipping/providers/biteship/rates';
 import { getSetting } from '@/lib/settings/get-settings';
@@ -8,6 +9,7 @@ import { WAREHOUSE_ORIGIN_LAT, WAREHOUSE_ORIGIN_LNG } from '@/lib/shipping/const
 import { sendEmail } from '@/lib/resend/send-email';
 import { OrderShippedEmail } from '@/lib/resend/templates/OrderShipped';
 import { sendWhatsApp, dispatchMessage, opsDispatchFailedMessage } from '@/lib/services/fonnte';
+import { scheduleBackground } from '@/lib/utils/background';
 import { logger } from '@/lib/utils/logger';
 
 const ALLOWED_DISPATCH = ['pending', 'failed', 'retrying'] as const;
@@ -56,25 +58,79 @@ export async function dispatchOrder(
     return { ok: false, status: 'conflict', message: 'Order tidak siap untuk dispatch' };
   }
 
-  await db.update(orders).set({ dispatchStatus: 'booking', updatedAt: new Date() }).where(eq(orders.id, order.id));
+  // W2: claim the booking slot atomically. Two rapid clicks (or a click +
+  // retry cron) must not create two Biteship orders.
+  const [claimed] = await db
+    .update(orders)
+    .set({ dispatchStatus: 'booking', updatedAt: new Date() })
+    .where(
+      and(
+        eq(orders.id, order.id),
+        eq(orders.status, 'packed'),
+        inArray(orders.dispatchStatus, ['pending', 'failed', 'retrying'])
+      )
+    )
+    .returning({ id: orders.id });
+
+  if (!claimed) {
+    return { ok: false, status: 'conflict', message: 'Dispatch sedang diproses atau sudah dibooking' };
+  }
 
   const originLat = (await getSetting<number>('biteship_origin_lat', 'number')) ?? WAREHOUSE_ORIGIN_LAT;
   const originLng = (await getSetting<number>('biteship_origin_lng', 'number')) ?? WAREHOUSE_ORIGIN_LNG;
   const originAddress =
     (await getSetting<string>('biteship_origin_address', 'string')) ?? '';
+
+  // W1: booking with an empty origin address is rejected by Biteship or makes
+  // the pickup impossible. Refuse early with an actionable message.
+  if (!originAddress.trim()) {
+    await db
+      .update(orders)
+      .set({
+        dispatchStatus: 'failed',
+        dispatchLastError: 'biteship_origin_address belum diisi',
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, order.id));
+    return {
+      ok: false,
+      status: 'failed',
+      message: 'Alamat asal Biteship belum diisi. Lengkapi di Pengaturan → Pengiriman.',
+    };
+  }
+
   const dbStorePhone = await getSetting<string>('store_whatsapp_number').catch(() => null);
   const storePhone = dbStorePhone ?? '';
 
+  // W3: use the real variant dimensions stored on the order (same values the
+  // checkout quote used), otherwise Biteship re-prices the booking.
+  const variantIds = [...new Set(order.items.map((item) => item.variantId))];
+  const variantRows = variantIds.length
+    ? await db
+        .select({
+          id: productVariants.id,
+          lengthCm: productVariants.lengthCm,
+          widthCm: productVariants.widthCm,
+          heightCm: productVariants.heightCm,
+        })
+        .from(productVariants)
+        .where(inArray(productVariants.id, variantIds))
+    : [];
+  const variantDims = new Map(variantRows.map((v) => [v.id, v]));
+
   const rateItems = buildRateItems(
-    order.items.map((item) => ({
-      name: item.productNameId,
-      value: item.unitPrice,
-      weightGram: item.weightGram,
-      lengthCm: 30,
-      widthCm: 22,
-      heightCm: 12,
-      quantity: item.quantity,
-    }))
+    order.items.map((item) => {
+      const dims = variantDims.get(item.variantId);
+      return {
+        name: item.productNameId,
+        value: item.unitPrice,
+        weightGram: item.weightGram,
+        lengthCm: dims?.lengthCm ?? 30,
+        widthCm: dims?.widthCm ?? 22,
+        heightCm: dims?.heightCm ?? 12,
+        quantity: item.quantity,
+      };
+    })
   );
 
   try {
@@ -99,7 +155,7 @@ export async function dispatchOrder(
       items: rateItems,
     });
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://dapurdekaka.com';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.dapurdekaka.com';
     const customerTrackUrl = `${appUrl}/orders/track/${order.orderNumber}`;
     const trackUrl = result.trackingUrl ?? customerTrackUrl;
 
@@ -136,8 +192,8 @@ export async function dispatchOrder(
     });
 
     // Notify after booking succeeds — never fail dispatch on email/WA render errors
-    try {
-      void sendEmail({
+    scheduleBackground(
+      sendEmail({
         to: order.recipientEmail,
         subject: `Pesanan ${order.orderNumber} sudah dikirim!`,
         react: OrderShippedEmail({
@@ -154,26 +210,22 @@ export async function dispatchOrder(
           })),
           totalAmount: order.totalAmount,
         }),
-      }).catch((err) =>
-        logger.error('[dispatch] email failed', {
-          error: err instanceof Error ? err.message : String(err),
-        })
-      );
-    } catch (emailErr) {
-      logger.error('[dispatch] email render failed', {
-        error: emailErr instanceof Error ? emailErr.message : String(emailErr),
-      });
-    }
-
-    void sendWhatsApp({
-      phone: order.recipientPhone,
-      message: dispatchMessage({
-        orderNumber: order.orderNumber,
-        courier: order.courierName ?? order.courierCode ?? 'Kurir',
-        awb: result.waybillId ?? '-',
-        trackUrl: customerTrackUrl,
       }),
-    }).catch(() => undefined);
+      'dispatch shipped email'
+    );
+
+    scheduleBackground(
+      sendWhatsApp({
+        phone: order.recipientPhone,
+        message: dispatchMessage({
+          orderNumber: order.orderNumber,
+          courier: order.courierName ?? order.courierCode ?? 'Kurir',
+          awb: result.waybillId ?? '-',
+          trackUrl: customerTrackUrl,
+        }),
+      }),
+      'dispatch shipped WhatsApp'
+    );
 
     return {
       ok: true,
@@ -183,6 +235,7 @@ export async function dispatchOrder(
       trackingUrl: trackUrl,
     };
   } catch (dispatchError) {
+    Sentry.captureException(dispatchError);
     const errMsg = dispatchError instanceof Error ? dispatchError.message : 'Dispatch gagal';
     const attempts = (order.dispatchAttempts ?? 0) + 1;
 
@@ -197,10 +250,13 @@ export async function dispatchOrder(
       .where(eq(orders.id, order.id));
 
     if (storePhone) {
-      sendWhatsApp({
-        phone: storePhone,
-        message: opsDispatchFailedMessage({ orderNumber: order.orderNumber, error: errMsg }),
-      }).catch(() => undefined);
+      scheduleBackground(
+        sendWhatsApp({
+          phone: storePhone,
+          message: opsDispatchFailedMessage({ orderNumber: order.orderNumber, error: errMsg }),
+        }),
+        'dispatch failure WhatsApp'
+      );
     }
 
     return { ok: false, status: 'failed', message: `Dispatch gagal: ${errMsg}` };
