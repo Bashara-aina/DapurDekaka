@@ -105,6 +105,42 @@ export const POST = withRateLimit(async (req: NextRequest) => {
     // H6: dedup per (transaction_id, transaction_status), NOT transaction_id
     // alone — refund/chargeback notifications share the original transaction.
     if (order.status === 'paid' && transaction_status === 'settlement') {
+      // Stale Snap/VA from a retry can still settle after the order is paid on
+      // a newer midtransOrderId — that is a second payment, not a no-op.
+      const webhookMidtransId = order_id ?? '';
+      const currentMidtransId = order.midtransOrderId ?? '';
+      if (
+        webhookMidtransId &&
+        currentMidtransId &&
+        webhookMidtransId !== currentMidtransId
+      ) {
+        logger.warn('[Midtrans Webhook] Duplicate settlement on alternate Midtrans id', {
+          orderNumber: order.orderNumber,
+          webhookMidtransId,
+          currentMidtransId,
+        });
+        await createRefundObligation(
+          order.id,
+          order.totalAmount,
+          order.orderNumber,
+          'late_settlement',
+          `duplicate_settlement:${webhookMidtransId}`
+        );
+        await flagNeedsAttention(
+          order.id,
+          'duplicate_settlement',
+          `paid twice: ${webhookMidtransId} vs ${currentMidtransId}`
+        );
+        await recordWebhookEvent({
+          source: 'midtrans',
+          eventType: 'duplicate_settlement',
+          externalId: order_id ?? null,
+          payload: body,
+          errorMessage: 'duplicate_settlement_manual_review',
+        });
+        await markProcessed(eventId);
+        return success({ received: true, note: 'duplicate_settlement_manual_review' });
+      }
       await markProcessed(eventId);
       return success({ received: true, note: 'already_processed' });
     }
@@ -367,6 +403,8 @@ async function handleRefundNotification(
     (typeof body.refund_key === 'string' && body.refund_key) ||
     null;
 
+  let partialMismatchNote: string | null = null;
+
   await db.transaction(async (tx) => {
     const existing = await tx.query.refunds.findFirst({
       where: eq(refunds.orderId, order.id),
@@ -374,16 +412,22 @@ async function handleRefundNotification(
     });
 
     if (existing) {
+      // Only auto-complete when Midtrans amount covers the stored obligation.
+      // A smaller partial_refund must not close a full-order refund row.
+      const coversObligation = refundAmount >= existing.amount;
       await tx
         .update(refunds)
         .set({
-          status: 'completed',
-          processedAt: new Date(),
+          status: coversObligation ? 'completed' : existing.status,
+          processedAt: coversObligation ? new Date() : existing.processedAt,
           midtransRefundId: refundId ?? existing.midtransRefundId,
-          notes: `${existing.notes ?? ''}\nMidtrans ${transactionStatus} notification received`.trim(),
+          notes: `${existing.notes ?? ''}\nMidtrans ${transactionStatus} amount=${refundAmount}${coversObligation ? '' : ' (partial — obligation still open)'}`.trim(),
           updatedAt: new Date(),
         })
         .where(eq(refunds.id, existing.id));
+      if (!coversObligation) {
+        partialMismatchNote = `Midtrans refunded ${refundAmount} but obligation is ${existing.amount}`;
+      }
     } else if (refundAmount > 0) {
       await tx.insert(refunds).values({
         orderId: order.id,
@@ -411,6 +455,10 @@ async function handleRefundNotification(
       });
     }
   });
+
+  if (partialMismatchNote) {
+    await flagNeedsAttention(order.id, 'partial_refund_mismatch', partialMismatchNote);
+  }
 }
 
 function notifyOps(message: string): void {

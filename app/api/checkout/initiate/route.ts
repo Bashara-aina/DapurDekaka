@@ -447,6 +447,7 @@ export const POST = withRateLimit(
     if (idempotencyKey) {
       const existingOrder = await db.query.orders.findFirst({
         where: eq(orders.idempotencyKey, idempotencyKey),
+        with: { items: true },
       });
       if (existingOrder?.midtransSnapToken) {
         return success({
@@ -454,6 +455,64 @@ export const POST = withRateLimit(
           orderNumber: existingOrder.orderNumber,
           snapToken: existingOrder.midtransSnapToken,
         });
+      }
+      // Key already claimed but Snap never persisted — resume Midtrans instead
+      // of inserting again (unique index on idempotency_key would 500).
+      if (existingOrder && existingOrder.status === 'pending_payment') {
+        const resumeItems = existingOrder.items.map((item) => ({
+          id: item.variantId,
+          price: item.unitPrice,
+          quantity: item.quantity,
+          name: (item.productNameId || item.variantNameId || 'Item').slice(0, 50),
+        }));
+        // Midtrans requires item_details to sum to gross_amount — include
+        // shipping/discount lines already baked into totalAmount via a single
+        // adjustment row when unit prices alone don't match.
+        const itemsSum = resumeItems.reduce((s, i) => s + i.price * i.quantity, 0);
+        const delta = existingOrder.totalAmount - itemsSum;
+        if (delta !== 0) {
+          resumeItems.push({
+            id: 'adjust',
+            price: delta,
+            quantity: 1,
+            name: delta > 0 ? 'Biaya lain' : 'Diskon',
+          });
+        }
+        try {
+          const midtransResult = await createMidtransTransaction({
+            orderNumber: existingOrder.orderNumber,
+            retryCount: existingOrder.paymentRetryCount ?? 0,
+            grossAmount: existingOrder.totalAmount,
+            customerName: existingOrder.recipientName,
+            customerEmail: existingOrder.recipientEmail,
+            customerPhone: existingOrder.recipientPhone,
+            items: resumeItems,
+          });
+          await db
+            .update(orders)
+            .set({
+              midtransOrderId: midtransResult.midtransOrderId,
+              midtransSnapToken: midtransResult.snapToken,
+              updatedAt: new Date(),
+            })
+            .where(eq(orders.id, existingOrder.id));
+          return success({
+            orderId: existingOrder.id,
+            orderNumber: existingOrder.orderNumber,
+            snapToken: midtransResult.snapToken,
+          });
+        } catch (resumeErr) {
+          logger.error('[checkout/initiate] idempotency resume failed', {
+            orderId: existingOrder.id,
+            error: resumeErr instanceof Error ? resumeErr.message : String(resumeErr),
+          });
+          return conflict(
+            'Pesanan sudah dibuat tetapi pembayaran belum siap. Muat ulang dan coba lagi.'
+          );
+        }
+      }
+      if (existingOrder) {
+        return conflict('Pesanan dengan kunci ini sudah ada.');
       }
     }
 

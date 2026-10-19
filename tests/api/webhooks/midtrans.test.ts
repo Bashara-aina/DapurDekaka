@@ -10,12 +10,43 @@ vi.mock('@/lib/db', () => ({
         findFirst: vi.fn(),
       },
     },
-    transaction: vi.fn(),
+    transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => {
+      const chain = {
+        from: () => chain,
+        where: () => chain,
+        limit: async () => [],
+        values: async () => undefined,
+        set: () => chain,
+      };
+      const tx = {
+        select: () => chain,
+        insert: () => chain,
+        update: () => chain,
+        query: { refunds: { findFirst: vi.fn().mockResolvedValue(undefined) } },
+      };
+      return fn(tx);
+    }),
+    update: vi.fn(() => ({
+      set: () => ({
+        where: async () => undefined,
+      }),
+    })),
+    insert: vi.fn(() => ({
+      values: async () => undefined,
+    })),
   },
 }));
 
 vi.mock('@/lib/resend/send-email', () => ({
   sendEmail: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@/lib/ops/needs-attention', () => ({
+  flagNeedsAttention: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@/lib/utils/webhook-events', () => ({
+  recordWebhookEvent: vi.fn().mockResolvedValue(undefined),
 }));
 
 const TEST_SERVER_KEY = 'test-server-key';
@@ -161,7 +192,8 @@ describe('POST /api/webhooks/midtrans', () => {
     const res = await POST(req);
     const json = await res.json();
     expect(json.success).toBe(true);
-    expect(json.data.note).toBe('already_processed');
+    // Old VA settling after a newer Midtrans id paid the order = duplicate money.
+    expect(json.data.note).toBe('duplicate_settlement_manual_review');
     expect(vi.mocked(db.query.orders.findFirst).mock.calls.length).toBe(2);
   });
 
