@@ -1,12 +1,8 @@
-import createMiddleware from 'next-intl/middleware';
-import { routing } from '@/i18n/routing';
 import { auth } from '@/lib/auth';
 import { isFlagEnabled, type FlagName } from '@/lib/config/feature-flags';
 import { isMaintenanceMode } from '@/lib/ops/maintenance';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-
-const intlMiddleware = createMiddleware(routing);
 
 // NOTE: SAMEORIGIN (not DENY) to match next.config.mjs — Midtrans Snap
 // renders inside an iframe/overlay on checkout and DENY would break it.
@@ -46,17 +42,12 @@ function isStorefrontPath(pathname: string): boolean {
 }
 
 export default async function middleware(req: NextRequest) {
-  // Step 1: Run next-intl locale detection (handles redirect if locale prefix needed)
-  const intlResponse = intlMiddleware(req);
+  // Locale is cookie-based (NEXT_LOCALE, read in i18n/request.ts) and the app
+  // has no [locale] route segment. next-intl's routing middleware would
+  // rewrite `/` → `/id`, which matches no route and 404s every page — so it
+  // must NOT run here.
+  const response = NextResponse.next();
 
-  // If intl middleware issued a redirect (e.g. to add locale prefix), return it
-  // WITH security headers (previously returned bare).
-  if (intlResponse.status === 307 || intlResponse.status === 308) {
-    return withSecurityHeaders(intlResponse);
-  }
-  const response = intlResponse;
-
-  // Step 2: Run auth on the same request (intl already processed locale)
   const { pathname } = req.nextUrl;
   const session = await auth() as { user?: { isActive?: boolean; role?: string; id?: string } } | null;
 
@@ -126,7 +117,7 @@ export default async function middleware(req: NextRequest) {
     }
   }
 
-  // Add security headers (preserve any headers set by intlMiddleware)
+  // Add security headers
   return withSecurityHeaders(response);
 }
 
