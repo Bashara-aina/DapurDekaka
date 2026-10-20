@@ -4,7 +4,8 @@ import { routing } from '@/i18n/routing';
 import { CheckCircle2, X } from 'lucide-react';
 import { loadCmsOrNull, CmsProseSections } from '@/components/store/cms/CmsProseSections';
 
-export const revalidate = 3600;
+/** Short TTL so Midtrans / trust-policy copy edits surface quickly in production. */
+export const revalidate = 60;
 
 export async function generateMetadata(): Promise<Metadata> {
   setRequestLocale(routing.defaultLocale);

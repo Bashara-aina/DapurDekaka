@@ -927,7 +927,7 @@
       "4": "Shipping rates that match public courier lists — our rate covers frozen handling on top.",
       "5": "Shipping to destinations outside our coverage area (hard block, not \"try anyway\").",
       "6": "Same-day delivery on public holidays or outside operating hours.",
-      "7": "Cash on delivery (COD) outside eligible local delivery areas.",
+      "7": "Cash on delivery (COD) — not available; all payments are via Midtrans only.",
       "8": "Compensation for courier-only delays (we escalate; refund decisions are case-by-case).",
       "9": "Address changes after the courier has been booked.",
       "10": "Permanent stock availability — real-time stock can sell out.",

@@ -96,12 +96,7 @@ export function ProductCard({ product, variant, className }: ProductCardProps) {
         {/* Badges */}
         {!isOutOfStock && (
           <div className="absolute top-2 right-2 flex flex-col gap-1 pointer-events-none">
-            <HalalBadge />
-            {product.isHalal && (
-              <span className="text-[8px] text-text-disabled bg-white/60 px-1 rounded text-center">
-                {t('muiCertification')}
-              </span>
-            )}
+            {product.isHalal ? <HalalBadge /> : null}
           </div>
         )}
         {/* Out of stock overlay */}
