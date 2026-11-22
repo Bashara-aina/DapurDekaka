@@ -16,6 +16,7 @@ interface Order {
   orderNumber: string;
   status: string;
   deliveryMethod: string;
+  pickupCode?: string | null;
   createdAt: string;
   recipientName?: string;
   recipientPhone?: string;
@@ -316,10 +317,20 @@ export function OrderTrackingClient({
                   </>
                 )}
                 {order.deliveryMethod === 'pickup' && (
-                  <div className="flex justify-between">
-                    <span className="text-text-secondary">{t('method')}</span>
-                    <span className="font-medium">{t('pickupMethod')}</span>
-                  </div>
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-text-secondary">{t('method')}</span>
+                      <span className="font-medium">{t('pickupMethod')}</span>
+                    </div>
+                    {order.pickupCode ? (
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-text-secondary">{t('pickupCode')}</span>
+                        <span className="font-mono font-bold text-brand-red tracking-wider">
+                          {order.pickupCode}
+                        </span>
+                      </div>
+                    ) : null}
+                  </>
                 )}
               </div>
             </div>

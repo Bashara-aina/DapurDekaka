@@ -74,11 +74,12 @@ export default async function OrderPickupPage({ params }: Props) {
             Tunjukkan Kode Ini di Toko
           </h1>
           <p className="text-text-secondary">
-            Pembayaran terkonfirmasi — pesanan Anda sedang disiapkan. Tunjukkan kode {order.orderNumber} ke staff toko.
+            Pembayaran terkonfirmasi — pesanan Anda sedang disiapkan. Tunjukkan kode pengambilan ke staff toko.
           </p>
         </div>
 
         <PickupInvitation
+          pickupCode={order.pickupCode ?? order.orderNumber}
           orderNumber={order.orderNumber}
           storeAddress={address}
           googleMapsUrl={mapsUrl}
