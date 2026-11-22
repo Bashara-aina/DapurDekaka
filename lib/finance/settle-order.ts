@@ -82,8 +82,10 @@ export async function settleOrderTx(
       ...(opts.paymentType !== undefined && { midtransPaymentType: opts.paymentType }),
       ...(opts.vaNumber !== undefined && { midtransVaNumber: opts.vaNumber }),
       ...(opts.transactionId !== undefined && { midtransTransactionId: opts.transactionId }),
+      // Preserve pickupCode set at initiate (generatePickupCode). Never overwrite
+      // with orderNumber — that made the code prove nothing on receipts/handover.
       ...(order.deliveryMethod === 'pickup'
-        ? { pickupCode: order.orderNumber, dispatchStatus: 'not_required' as const }
+        ? { dispatchStatus: 'not_required' as const }
         : { dispatchStatus: 'pending' as const }),
     })
     .where(and(eq(orders.id, order.id), eq(orders.status, 'pending_payment')))

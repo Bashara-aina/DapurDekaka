@@ -118,6 +118,14 @@ export default function ProductsClient({ allProducts }: ProductsClientProps) {
 
   return (
     <>
+      <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800">
+        <p className="font-medium">Katalog launch (owner)</p>
+        <p className="mt-1 text-slate-600">
+          Per produk: buka edit → upload foto → set harga/berat/dimensi per varian → aktifkan hanya yang siap jual.
+          Stok harian &amp; packing ada di <Link href="/admin/field" className="font-medium text-brand-red underline underline-offset-2">Gudang Ops</Link>, bukan di sini.
+        </p>
+      </div>
+
       {/* Bulk Action Bar */}
       {selectedIds.size > 0 && (
         <div className="sticky top-14 z-10 bg-admin-sidebar text-white p-3 flex items-center gap-4 rounded-lg shadow-lg">

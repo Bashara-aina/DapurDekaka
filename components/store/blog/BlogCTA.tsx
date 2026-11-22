@@ -1,8 +1,15 @@
 import Link from 'next/link';
 import { ArrowRight, MessageCircle } from 'lucide-react';
+import { resolveStoreWhatsAppNumber } from '@/lib/utils/store-whatsapp';
 
-export function BlogCTA() {
-  const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '6289673737886';
+/**
+ * End-of-post CTA. Resolves WhatsApp from DB settings with env fallback.
+ */
+export async function BlogCTA() {
+  const waNumber = await resolveStoreWhatsAppNumber();
+  const waHref = waNumber
+    ? `https://wa.me/${waNumber}?text=${encodeURIComponent('Halo! Saya tertarik dengan produk Dapur Dekaka')}`
+    : '/products';
 
   return (
     <div className="my-8 overflow-hidden rounded-2xl border border-brand-red/20 bg-gradient-to-br from-brand-red/[0.07] via-white to-brand-cream">
@@ -25,9 +32,9 @@ export function BlogCTA() {
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
           <a
-            href={`https://wa.me/${waNumber}?text=${encodeURIComponent('Halo! Saya tertarik dengan produk Dapur Dekaka')}`}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={waHref}
+            target={waNumber ? '_blank' : undefined}
+            rel={waNumber ? 'noopener noreferrer' : undefined}
             className="inline-flex h-11 items-center gap-2 px-5 bg-whatsapp-green text-white text-sm font-semibold rounded-button hover:bg-whatsapp-green-dark transition-colors"
           >
             <MessageCircle className="h-4 w-4" aria-hidden="true" />

@@ -13,6 +13,7 @@ import { formatIDR } from '@/lib/utils/format-currency';
 import { StockBadge } from '@/components/store/common/StockBadge';
 import { HalalBadge } from '@/components/store/common/HalalBadge';
 import { cn } from '@/lib/utils/cn';
+import { SAFETY_STOCK } from '@/lib/constants/inventory';
 import type { Product, ProductVariant } from '@/lib/db/schema';
 import { productImages } from '@/lib/db/schema';
 
@@ -86,7 +87,8 @@ export function ProductDetailClient({ product, relatedProducts, whatsappNumber =
 
   const selectedVariant = product.variants[selectedVariantIndex];
   const primaryImage = product.images[0];
-  const isOutOfStock = selectedVariant?.stock === 0;
+  const isOutOfStock =
+    selectedVariant !== undefined && selectedVariant.stock <= SAFETY_STOCK;
 
   const handleAddToCart = async () => {
     if (isOutOfStock || !selectedVariant) return;
@@ -234,12 +236,12 @@ export function ProductDetailClient({ product, relatedProducts, whatsappNumber =
                     setSelectedVariantIndex(i);
                     setQuantity(1);
                   }}
-                  disabled={variant.stock === 0}
+                  disabled={variant.stock <= SAFETY_STOCK}
                   className={cn(
                     'px-4 py-2 rounded-button border text-sm font-medium transition-colors',
                     i === selectedVariantIndex
                       ? 'border-brand-red bg-brand-red text-white'
-                      : variant.stock === 0
+                      : variant.stock <= SAFETY_STOCK
                       ? 'border-gray-200 bg-gray-50 text-text-disabled cursor-not-allowed'
                       : 'border-brand-cream-dark text-text-primary hover:border-brand-red'
                   )}

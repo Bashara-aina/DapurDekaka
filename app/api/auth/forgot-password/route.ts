@@ -88,7 +88,15 @@ export const POST = withRateLimit(
           logger.error('[auth/forgot-password] Email send failed', { error: err });
         });
 
-        logger.info('[auth/forgot-password] Reset email dispatched', { email: normalizedEmail, ip });
+        const emailHash = crypto
+          .createHash('sha256')
+          .update(normalizedEmail)
+          .digest('hex')
+          .slice(0, 12);
+        logger.info('[auth/forgot-password] Reset email dispatched', {
+          emailHash,
+          ip,
+        });
       } else {
         // FRESH-AUDIT-05 BUG-05 fix: normalize timing across the "user-not-found" path.
         // Happy path: bcrypt (~100ms) + sendEmail HTTP (~200-500ms) ≈ 300-600ms.

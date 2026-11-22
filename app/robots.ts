@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next';
+import { isFlagEnabled } from '@/lib/config/feature-flags';
 
 const BASE_URL = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.dapurdekaka.com').replace(
   /\/$/,
@@ -6,10 +7,21 @@ const BASE_URL = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.dapurdekaka.co
 );
 
 /**
- * SEO3: single robots source. `public/robots.txt` and `next-sitemap` were
- * removed — this route (plus app/sitemap.ts) owns crawl directives.
+ * SEO3: single robots source. Soft launch blocks indexing until announce.
  */
 export default function robots(): MetadataRoute.Robots {
+  if (isFlagEnabled('softLaunch')) {
+    return {
+      rules: [
+        {
+          userAgent: '*',
+          disallow: '/',
+        },
+      ],
+      sitemap: `${BASE_URL}/sitemap.xml`,
+    };
+  }
+
   return {
     rules: [
       {
@@ -24,8 +36,6 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
       {
-        // AI training crawlers may index storefront content but not scrape
-        // training data from the whole site.
         userAgent: 'GPTBot',
         allow: ['/blog/', '/products/'],
         disallow: '/',

@@ -11,6 +11,7 @@ import { applyMarkup } from './markup';
 import { pickRecommendedOptionId, rankOptions } from './ranking';
 import { computeCartDimensions } from './weight-dims';
 import { fetchBiteshipRates, buildRateItems } from './providers/biteship/rates';
+import { withStampedeLock } from '@/lib/cache/redis-cache';
 import type {
   QuoteOption,
   ShippingItemInput,
@@ -18,6 +19,9 @@ import type {
   ShippingTier,
   TierQuotes,
 } from './types';
+
+/** Redis TTL for Biteship quote bundles — shields Neon + vendor quota. */
+const SHIPPING_RATES_CACHE_TTL_SEC = 900;
 
 export interface GetRatesInput {
   originLat?: number;
@@ -118,52 +122,76 @@ async function fetchTierQuotes(
   };
 }
 
+function buildRatesCacheKey(input: GetRatesInput, totalWeightGram: number): string {
+  const originLat = input.originLat ?? WAREHOUSE_ORIGIN_LAT;
+  const originLng = input.originLng ?? WAREHOUSE_ORIGIN_LNG;
+  const fingerprint = crypto
+    .createHash('sha256')
+    .update(
+      JSON.stringify({
+        origin: [originLat, originLng],
+        dest: [input.destLat, input.destLng],
+        weight: totalWeightGram,
+        subtotal: input.subtotal,
+        items: input.items.map((i) => `${i.variantId}:${i.quantity}`).sort(),
+      })
+    )
+    .digest('hex')
+    .slice(0, 24);
+  return `shipping:rates:${fingerprint}`;
+}
+
 /**
  * Fetch all tier quotes from Biteship with eligibility and markup applied.
+ * Results are Redis-cached (15 min) when Upstash is configured.
  */
 export async function getShippingRates(
   input: GetRatesInput
 ): Promise<ShippingRatesResult> {
   const dims = computeCartDimensions(input.items);
-  const rateItems = buildRateItems(
-    input.items.map((item) => ({
-      name: item.name,
-      value: item.value,
-      weightGram: item.weightGram,
-      lengthCm: item.lengthCm,
-      widthCm: item.widthCm,
-      heightCm: item.heightCm,
-      quantity: item.quantity,
-    }))
-  );
+  const cacheKey = buildRatesCacheKey(input, dims.totalWeightGram);
 
-  const tierResults = await Promise.all(
-    TIER_COURIER_CONFIG.map((cfg) =>
-      fetchTierQuotes(cfg, input, dims, rateItems)
-    )
-  );
+  return withStampedeLock(cacheKey, SHIPPING_RATES_CACHE_TTL_SEC, async () => {
+    const rateItems = buildRateItems(
+      input.items.map((item) => ({
+        name: item.name,
+        value: item.value,
+        weightGram: item.weightGram,
+        lengthCm: item.lengthCm,
+        widthCm: item.widthCm,
+        heightCm: item.heightCm,
+        quantity: item.quantity,
+      }))
+    );
 
-  const express = tierResults[0] ?? { options: [], recommendedOptionId: null };
-  const frozenSameDay = tierResults[1] ?? { options: [], recommendedOptionId: null };
-  const frozenExpress = tierResults[2] ?? { options: [], recommendedOptionId: null };
+    const tierResults = await Promise.all(
+      TIER_COURIER_CONFIG.map((cfg) =>
+        fetchTierQuotes(cfg, input, dims, rateItems)
+      )
+    );
 
-  const fingerprint = crypto
-    .createHash('sha256')
-    .update(
-      JSON.stringify({
-        dest: [input.destLat, input.destLng],
-        weight: dims.totalWeightGram,
-        items: input.items.map((i) => `${i.variantId}:${i.quantity}`),
-      })
-    )
-    .digest('hex')
-    .slice(0, 16);
+    const express = tierResults[0] ?? { options: [], recommendedOptionId: null };
+    const frozenSameDay = tierResults[1] ?? { options: [], recommendedOptionId: null };
+    const frozenExpress = tierResults[2] ?? { options: [], recommendedOptionId: null };
 
-  return {
-    tiers: { express, frozenSameDay, frozenExpress },
-    totalWeightGram: dims.totalWeightGram,
-    quoteFingerprint: fingerprint,
-  };
+    const fingerprint = crypto
+      .createHash('sha256')
+      .update(
+        JSON.stringify({
+          dest: [input.destLat, input.destLng],
+          weight: dims.totalWeightGram,
+          items: input.items.map((i) => `${i.variantId}:${i.quantity}`),
+        })
+      )
+      .digest('hex')
+      .slice(0, 16);
+
+    return {
+      tiers: { express, frozenSameDay, frozenExpress },
+      totalWeightGram: dims.totalWeightGram,
+      quoteFingerprint: fingerprint,
+    };
+  });
 }
 
 /**

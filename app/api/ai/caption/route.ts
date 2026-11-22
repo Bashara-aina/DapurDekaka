@@ -4,11 +4,13 @@ import { generateProductCaption } from '@/lib/services/minimax';
 import { IntegrationError } from '@/lib/utils/integration-helpers';
 import { success, serverError, unauthorized, forbidden, validationError } from '@/lib/utils/api-response';
 import { z } from 'zod';
+import { withRateLimit } from '@/lib/utils/rate-limit';
 import { logger } from '@/lib/utils/logger';
+
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export async function POST(req: NextRequest) {
+export const POST = withRateLimit(async (req: NextRequest) => {
   try {
     const session = await auth();
     if (!session?.user) {
@@ -34,10 +36,12 @@ export async function POST(req: NextRequest) {
 
     return success({ caption });
   } catch (error) {
-    logger.error('[AI Caption POST]', { error: error instanceof Error ? error.message : String(error) });
+    logger.error('[AI Caption POST]', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     if (error instanceof IntegrationError || (error as Error).message.includes('Minimax')) {
       return serverError(new Error('AI service unavailable, please try again later'));
     }
     return serverError(error);
   }
-}
+}, 'admin');

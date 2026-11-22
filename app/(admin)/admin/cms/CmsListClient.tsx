@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import AdminPlainGuide from '@/components/admin/AdminPlainGuide';
 
 interface CmsPageRow {
   id: string;
@@ -158,6 +159,17 @@ export default function CmsListClient() {
           <Plus className="w-4 h-4" /> Halaman Baru
         </button>
       </div>
+
+      <AdminPlainGuide title="Cara edit halaman (non-teknis)">
+        <p>
+          1) Klik judul halaman (mis. Syarat &amp; Ketentuan / Kebijakan Privasi). 2) Ubah teks di
+          setiap bagian. 3) Centang <strong>Published</strong> supaya tampil di website. 4) Simpan.
+        </p>
+        <p>
+          Halaman legal wajib ada sebelum go-live. Jangan hapus slug legal kecuali diganti halaman baru
+          dengan slug yang sama.
+        </p>
+      </AdminPlainGuide>
 
       {isLoading ? (
         <div className="space-y-3">

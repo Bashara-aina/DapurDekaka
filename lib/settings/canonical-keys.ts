@@ -43,6 +43,13 @@ export const SETTING_KEYS = {
   BITESHIP_ORIGIN_LNG: 'biteship_origin_lng',
   BITESHIP_ORIGIN_ADDRESS: 'biteship_origin_address',
   BITESHIP_ORIGIN_POSTAL_CODE: 'biteship_origin_postal_code',
+  /** phase0 | phase1 | phase2 — intent for frozen-tier unlock */
+  SHIPPING_PHASE: 'shipping_phase',
+  /**
+   * When true + soft launch banner on, honor shipping_phase without waiting
+   * for the 50-order metrics gate (soft-launch broader delivery).
+   */
+  SHIPPING_PHASE_SOFT_OVERRIDE: 'shipping_phase_soft_override',
   SEO_LOGO_URL: 'seo_logo_url',
   TOKOPEDIA_URL: 'tokopedia_url',
   SHOPEE_URL: 'shopee_url',
@@ -127,6 +134,8 @@ export const SETTING_GROUPS: Record<string, { label: string; keys: SettingKey[] 
     label: 'Pengiriman',
     keys: [
       SETTING_KEYS.FREE_SHIPPING_THRESHOLD,
+      SETTING_KEYS.SHIPPING_PHASE,
+      SETTING_KEYS.SHIPPING_PHASE_SOFT_OVERRIDE,
       SETTING_KEYS.BITESHIP_ORIGIN_LAT,
       SETTING_KEYS.BITESHIP_ORIGIN_LNG,
       SETTING_KEYS.BITESHIP_ORIGIN_ADDRESS,

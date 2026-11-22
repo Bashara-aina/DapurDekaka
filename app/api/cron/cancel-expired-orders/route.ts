@@ -3,11 +3,14 @@ import { db } from '@/lib/db';
 import { orders, couponUsages, orderStatusHistory } from '@/lib/db/schema';
 import { eq, and, lt } from 'drizzle-orm';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
-import { checkTransactionStatus } from '@/lib/midtrans/status';
+import {
+  checkTransactionStatus,
+  cancelTransaction,
+  isMidtransTransactionMissing,
+} from '@/lib/midtrans/status';
 import { serverError, success, unauthorized } from '@/lib/utils/api-response';
 import { logger } from '@/lib/utils/logger';
 import { reverseRedeemedPointsTx } from '@/lib/finance/points-ledger';
-import { cancelTransaction } from '@/lib/midtrans/status';
 import { sendEmail } from '@/lib/resend/send-email';
 import { OrderCancellationEmail } from '@/lib/resend/templates/OrderCancellation';
 import { formatWIB } from '@/lib/utils/format-date';
@@ -17,7 +20,7 @@ export const runtime = 'nodejs';
 
 /**
  * Cancel orders that have exceeded payment expiry time.
- * Runs every 30 minutes via Vercel Cron so unpaid orders release their reserved stock promptly.
+ * Invoked from `/api/cron/hourly` (single Neon wake). Direct route kept for manual runs.
  * Checks Midtrans as fallback to avoid cancelling orders that paid concurrently.
  */
 export async function GET(req: NextRequest) {
@@ -61,13 +64,19 @@ export async function GET(req: NextRequest) {
               continue;
             }
           } catch (midtransError) {
-            // M14: if Midtrans is unreachable we cannot know whether the order
-            // was just paid — skip this run instead of risking a paid cancel.
-            logger.warn('[CancelExpired] Could not verify Midtrans status — skipping this run', {
-              orderNumber: order.orderNumber,
-              error: midtransError instanceof Error ? midtransError.message : String(midtransError),
-            });
-            continue;
+            // 404 / "doesn't exist" = never paid → safe to cancel (stops forever-wake loops).
+            // Network/5xx → skip this run; do not risk cancelling a just-paid order.
+            if (isMidtransTransactionMissing(midtransError)) {
+              logger.info('[CancelExpired] Midtrans txn missing — proceeding to cancel', {
+                orderNumber: order.orderNumber,
+              });
+            } else {
+              logger.warn('[CancelExpired] Could not verify Midtrans status — skipping this run', {
+                orderNumber: order.orderNumber,
+                error: midtransError instanceof Error ? midtransError.message : String(midtransError),
+              });
+              continue;
+            }
           }
         }
 
@@ -128,32 +137,41 @@ export async function GET(req: NextRequest) {
         }
 
         // M15: tell the customer the order was cancelled (with a re-order path).
-        scheduleBackground(
-          sendEmail({
-            to: order.recipientEmail,
-            subject: `Pesanan ${order.orderNumber} dibatalkan`,
-            react: OrderCancellationEmail({
-              orderNumber: order.orderNumber,
-              customerName: order.recipientName,
-              items: order.items.map((item) => ({
-                name: item.productNameId,
-                variant: item.variantNameId,
-                quantity: item.quantity,
-                unitPrice: item.unitPrice,
-                subtotal: item.subtotal,
-              })),
-              subtotal: order.subtotal,
-              shippingCost: order.shippingCost,
-              discountAmount: order.discountAmount,
-              totalAmount: order.totalAmount,
-              reason: 'Pembayaran tidak diterima dalam batas waktu',
-              cancelledAt: formatWIB(now),
-              refundAmount: 0,
-              refundInfo: '',
+        // Email must never undo a successful cancel — wrap so template/runtime
+        // failures don't report the order as failed after DB commit.
+        try {
+          scheduleBackground(
+            sendEmail({
+              to: order.recipientEmail,
+              subject: `Pesanan ${order.orderNumber} dibatalkan`,
+              react: OrderCancellationEmail({
+                orderNumber: order.orderNumber,
+                customerName: order.recipientName,
+                items: order.items.map((item) => ({
+                  name: item.productNameId,
+                  variant: item.variantNameId,
+                  quantity: item.quantity,
+                  unitPrice: item.unitPrice,
+                  subtotal: item.subtotal,
+                })),
+                subtotal: order.subtotal,
+                shippingCost: order.shippingCost,
+                discountAmount: order.discountAmount,
+                totalAmount: order.totalAmount,
+                reason: 'Pembayaran tidak diterima dalam batas waktu',
+                cancelledAt: formatWIB(now),
+                refundAmount: 0,
+                refundInfo: '',
+              }),
             }),
-          }),
-          'cancel-expired customer email'
-        );
+            'cancel-expired customer email'
+          );
+        } catch (emailErr) {
+          logger.warn('[CancelExpired] customer email enqueue failed', {
+            orderNumber: order.orderNumber,
+            error: emailErr instanceof Error ? emailErr.message : String(emailErr),
+          });
+        }
 
         cancelled++;
         logger.info('[CancelExpired] Order cancelled', { orderNumber: order.orderNumber });

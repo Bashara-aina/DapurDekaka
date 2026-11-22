@@ -23,7 +23,6 @@ export interface ShippingSelection {
   insuranceType: InsuranceType;
   insuranceFee: number;
   courierInstantAck: boolean;
-  cashOnDelivery: boolean;
 }
 
 interface CheckoutShippingStepProps {
@@ -88,7 +87,6 @@ export function CheckoutShippingStep({
       insuranceType,
       insuranceFee,
       courierInstantAck: activeTier === 'express' ? instantAck : false,
-      cashOnDelivery: false,
     });
   };
 

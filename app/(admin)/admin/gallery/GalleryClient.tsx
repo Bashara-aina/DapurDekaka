@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { Plus, Edit2, Trash2, X } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import CloudinaryUploader from '@/components/admin/common/CloudinaryUploader';
+import AdminPlainGuide from '@/components/admin/AdminPlainGuide';
 
 type GalleryUsage = 'instagram_feed' | 'about_hero' | 'og' | 'general';
 
@@ -193,6 +194,14 @@ export default function GalleryClient() {
 
   return (
     <div className="space-y-5">
+      <AdminPlainGuide title="Cara kelola galeri foto">
+        <p>
+          Tambah → upload foto lewat tombol Cloudinary → isi teks alternatif (Bahasa Indonesia) →
+          pilih penggunaan (Instagram / About / OG / Umum) → aktifkan. Soft-delete dulu jika ragu;
+          hard-delete hanya jika foto salah upload.
+        </p>
+      </AdminPlainGuide>
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">Galeri</h1>

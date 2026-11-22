@@ -80,13 +80,11 @@ export default function ShipmentsClient({ initialOrders }: ShipmentsClientProps)
   return (
     <div className="space-y-6">
       <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        <p className="font-medium">Booking kurir otomatis (Biteship)</p>
+        <p className="font-medium">Urutan pengiriman</p>
         <p className="mt-1 text-amber-800">
-          Gunakan{' '}
-          <a href="/admin/field" className="font-semibold underline underline-offset-2 hover:text-amber-950">
-            Field → tab Kirim
-          </a>{' '}
-          untuk Book Courier. Halaman ini hanya fallback input nomor resi manual.
+          1) <a href="/admin/field" className="font-semibold underline underline-offset-2 hover:text-amber-950">Gudang Ops → Packing</a>
+          {' '}→ 2) tab <strong>Kirim</strong> → <strong>Book Kurir (Biteship)</strong>.
+          Halaman ini hanya fallback jika book gagal — input nomor resi manual.
         </p>
       </div>
 

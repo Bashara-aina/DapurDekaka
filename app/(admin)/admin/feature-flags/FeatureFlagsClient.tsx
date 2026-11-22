@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Flag, Info, Save } from 'lucide-react';
 import { formatWIB } from '@/lib/utils/format-date';
 import { Switch } from '@/components/ui/switch';
+import AdminPlainGuide from '@/components/admin/AdminPlainGuide';
 
 type FlagConfig = {
   readonly default: boolean;
@@ -122,13 +123,20 @@ export default function FeatureFlagsClient({
         </div>
       </div>
 
+      <AdminPlainGuide title="Jangan nyalakan sembarangan">
+        <p>
+          Soft launch: biarkan B2B portal, Blog CMS, AI content, Voucher, Insurance tetap{' '}
+          <strong>OFF</strong>. Soft launch banner dikontrol dari Pengaturan Toko + env soft launch.
+          Hanya founder yang boleh mengaktifkan flag baru setelah QA.
+        </p>
+      </AdminPlainGuide>
+
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3">
         <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
         <div className="text-xs text-amber-800">
-          <p className="font-medium mb-1">Catatan Kill List (L4)</p>
+          <p className="font-medium mb-1">Kill list (90 hari)</p>
           <p>
-            Daftar di bawah mengikuti registri terpusat di <code className="bg-amber-100 px-1 rounded">lib/config/feature-flags.ts</code>.
-            Flag yang bernilai <code>false</code> untuk sementara waktu terikat kill list dan tidak boleh diaktifkan tanpa keputusan founder.
+            Flag OFF mengikuti keputusan launch. Jangan ON tanpa approval Bashara.
           </p>
         </div>
       </div>

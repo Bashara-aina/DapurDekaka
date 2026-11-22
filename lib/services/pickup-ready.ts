@@ -23,7 +23,13 @@ export async function sendPickupReadyNotification(order: PickupReadyOrder): Prom
       getSetting<string>('store_address', 'string').catch(() => null),
       getSetting<string>('store_opening_hours', 'string').catch(() => null),
     ]);
-    const pickupCode = order.pickupCode ?? order.orderNumber;
+    const pickupCode = order.pickupCode?.trim();
+    if (!pickupCode) {
+      logger.error('[pickup-ready] missing pickupCode — skipping customer notify', {
+        orderNumber: order.orderNumber,
+      });
+      return;
+    }
 
     scheduleBackground(
       sendEmail({

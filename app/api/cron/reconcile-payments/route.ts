@@ -11,10 +11,14 @@ import { formatWIB } from '@/lib/utils/format-date';
 import { settleOrderTx, InsufficientStockError } from '@/lib/finance/settle-order';
 import { handleOversellAtSettlement } from '@/lib/finance/oversell';
 import { reverseRedeemedPointsTx } from '@/lib/finance/points-ledger';
-import { checkTransactionStatus } from '@/lib/midtrans/status';
+import {
+  checkTransactionStatus,
+  isMidtransTransactionMissing,
+} from '@/lib/midtrans/status';
 import { sendWhatsApp } from '@/lib/services/fonnte';
 import { flagNeedsAttention } from '@/lib/ops/needs-attention';
 import { scheduleBackground } from '@/lib/utils/background';
+import { resolveStoreWhatsAppNumber } from '@/lib/utils/store-whatsapp';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -23,7 +27,7 @@ export const runtime = 'nodejs';
  * Payment reconciliation cron job.
  * Finds pending orders older than 30 minutes and checks Midtrans status.
  * Handles the case where Midtrans says paid but our DB still shows pending_payment.
- * Runs hourly via Vercel Cron (backstop for missed webhooks; hourly keeps Neon asleep longer).
+ * Invoked from `/api/cron/hourly` (single Neon wake). Direct route kept for manual runs.
  *
  * P0#3: settlement recovery uses the SAME `settleOrderTx()` as the webhook so
  * stock IS deducted and points are recomputed net-of-discount (never the stale
@@ -75,6 +79,14 @@ export async function GET(req: NextRequest) {
           await handleOversellAtSettlement(order, err.message, order.midtransTransactionId);
           notifyOps(`Oversell saat reconcile: ${order.orderNumber}. Refund otomatis masuk queue.`);
           outcome = 'error';
+        } else if (isMidtransTransactionMissing(err)) {
+          // Ghost pending orders (sandbox purged / never created) — cancel so
+          // hourly cron stops paying Midtrans + Neon wake tax forever.
+          logger.info('[Reconcile] Midtrans txn missing — cancelling pending order', {
+            orderNumber: order.orderNumber,
+          });
+          await cancelReconciled(order.id);
+          outcome = 'cancel';
         } else {
           logger.error('[Reconcile] Error processing order', { orderNumber: order.orderNumber, error: message });
           outcome = 'error';
@@ -186,14 +198,17 @@ async function cancelReconciled(orderId: string): Promise<void> {
 }
 
 function notifyOps(message: string): void {
-  const storePhone = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
-  if (!storePhone) {
-    logger.warn('[cron/reconcile] WhatsApp number not configured, ops alert dropped', { message });
-    return;
-  }
-  sendWhatsApp({ phone: storePhone, message }).catch((err: unknown) => {
-    logger.error('[cron/reconcile] ops WhatsApp alert failed', {
-      error: err instanceof Error ? err.message : String(err),
+  void resolveStoreWhatsAppNumber().then((storePhone) => {
+    if (!storePhone) {
+      logger.warn('[cron/reconcile] WhatsApp number not configured, ops alert dropped', {
+        message,
+      });
+      return;
+    }
+    sendWhatsApp({ phone: storePhone, message }).catch((err: unknown) => {
+      logger.error('[cron/reconcile] ops WhatsApp alert failed', {
+        error: err instanceof Error ? err.message : String(err),
+      });
     });
   });
 }

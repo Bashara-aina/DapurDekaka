@@ -199,7 +199,8 @@ export default function TeamDashboardClient() {
       if (!json.success) throw new Error(json.error);
       return json.data;
     },
-    refetchInterval: 60000,
+    refetchInterval: 180000,
+    refetchIntervalInBackground: false,
   });
 
   const { data: actionOrders } = useQuery<ActionOrder[]>({
@@ -210,7 +211,8 @@ export default function TeamDashboardClient() {
       if (!json.success) throw new Error(json.error);
       return json.data;
     },
-    refetchInterval: 60000,
+    refetchInterval: 180000,
+    refetchIntervalInBackground: false,
   });
 
   const { data: topProducts } = useQuery<TopProduct[]>({
@@ -232,7 +234,8 @@ export default function TeamDashboardClient() {
       if (!json.success) throw new Error(json.error);
       return json.data;
     },
-    refetchInterval: 120000,
+    refetchInterval: 300000,
+    refetchIntervalInBackground: false,
   });
 
   const { data: b2bPipeline } = useQuery<B2BPipeline>({

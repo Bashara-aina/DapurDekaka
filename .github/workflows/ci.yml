@@ -15,7 +15,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: npm
 
       - run: npm ci
@@ -31,6 +31,9 @@ jobs:
         env:
           AUTH_SECRET: ci-only-insecure-secret-min-32-chars-long!
 
+      # Full `next build` needs a real DB + secrets matrix; keep type-check + tests
+      # as the gate. Run `npm run build` locally/preview before live flip.
+
       - name: Duplication gate (jscpd, informational)
         run: npx -y jscpd app lib components --threshold 5 --reporters console || true
 
@@ -38,4 +41,5 @@ jobs:
         # Fails if lib/db/schema.ts drifted from generated migrations.
         # Standalone perf migrations (drizzle/00*.sql outside the journal)
         # are applied manually — see drizzle/0051-0053 + AUDIT-AI-SLOP-100.md.
+        # Requires drizzle/meta journal in repo for a meaningful check.
         run: npx drizzle-kit check

@@ -3,7 +3,9 @@ import { z } from 'zod';
 import { generateSignedUploadParams } from '@/lib/cloudinary/upload';
 import { success, unauthorized, serverError, forbidden } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
+import { withRateLimit } from '@/lib/utils/rate-limit';
 import { logger } from '@/lib/utils/logger';
+
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -16,7 +18,7 @@ const uploadParamsSchema = z.object({
  * Generate signed upload parameters for client-side upload.
  * Authenticated admin/owner/superadmin only.
  */
-export async function POST(req: NextRequest) {
+export const POST = withRateLimit(async (req: NextRequest) => {
   try {
     const session = await auth();
 
@@ -24,7 +26,7 @@ export async function POST(req: NextRequest) {
       return unauthorized('Silakan login terlebih dahulu');
     }
 
-    const role = (session.user as { role?: string }).role;
+    const role = session.user.role;
     if (!role || !['superadmin', 'owner'].includes(role)) {
       return forbidden('Anda tidak memiliki akses untuk upload');
     }
@@ -47,4 +49,4 @@ export async function POST(req: NextRequest) {
     logger.error('[Upload] Error generating signed params', { error });
     return serverError(error);
   }
-}
+}, 'admin');

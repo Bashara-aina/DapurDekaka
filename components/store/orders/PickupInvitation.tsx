@@ -4,6 +4,8 @@ import { MapPin, Phone, Clock, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 interface PickupInvitationProps {
+  /** Random handover code — never the public order number. */
+  pickupCode: string;
   orderNumber: string;
   storeAddress?: string;
   googleMapsUrl?: string;
@@ -13,13 +15,14 @@ interface PickupInvitationProps {
 }
 
 export function PickupInvitation({
+  pickupCode,
   orderNumber,
   storeAddress = '',
   googleMapsUrl = '',
   openingHours = '',
   whatsappNumber = '',
   className,
-}: PickupInvitationProps) {
+}: PickupInvitationProps): React.JSX.Element {
   const waNumber = whatsappNumber;
   const waUrl = waNumber ? `https://wa.me/${waNumber.replace(/^0/, '62')}` : undefined;
 
@@ -28,7 +31,10 @@ export function PickupInvitation({
       <div className="text-center mb-6">
         <p className="text-xs text-text-secondary mb-2">Kode Pengambilan</p>
         <p className="font-mono font-bold text-3xl text-brand-red tracking-wider">
-          {orderNumber}
+          {pickupCode}
+        </p>
+        <p className="mt-2 text-xs text-text-muted">
+          Pesanan <span className="font-mono">{orderNumber}</span>
         </p>
       </div>
 
@@ -38,7 +44,7 @@ export function PickupInvitation({
             1
           </div>
           <p className="text-sm text-text-primary">
-            Tunjukkan kode <strong>{orderNumber}</strong> ke staff toko
+            Tunjukkan kode <strong>{pickupCode}</strong> ke staff toko
           </p>
         </div>
         <div className="flex items-start gap-3">

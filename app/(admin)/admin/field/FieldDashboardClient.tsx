@@ -67,38 +67,21 @@ interface InventoryItem {
 }
 
 interface TodaySummary {
-  packedCount: number;
-  trackingCount: number;
-  pickupCount: number;
-  inventoryUpdateCount: number;
-  date: string;
+  packedToday: number;
+  shippedToday: number;
+  pendingPickup: number;
+  generatedAt: string;
 }
 
-interface WorkerActivity {
-  orderActivity: Array<{
-    id: string;
-    orderId: string;
-    orderNumber?: string;
-    fromStatus: string | null;
-    toStatus: string;
-    changedByUserId: string | null;
-    changedByType: string;
-    note: string | null;
-    createdAt: Date;
+interface WorkerActivityGroup {
+  userId: string;
+  userName: string;
+  actions: Array<{
+    action: string;
+    entityType: string;
+    entityId: string | null;
+    timestamp: Date;
   }>;
-  inventoryActivity: Array<{
-    id: string;
-    variantId: string;
-    variantName?: string;
-    changedByUserId: string | null;
-    changeType: string;
-    quantityBefore: number;
-    quantityAfter: number;
-    quantityDelta: number;
-    note: string | null;
-    createdAt: Date;
-  }>;
-  date: string;
 }
 
 // ── API helpers ──────────────────────────────────────────────────────────────
@@ -131,7 +114,7 @@ async function fetchTodaySummary(): Promise<TodaySummary> {
   return json.data;
 }
 
-async function fetchWorkerActivity(): Promise<WorkerActivity> {
+async function fetchWorkerActivity(): Promise<WorkerActivityGroup[]> {
   const res = await fetch('/api/admin/field/worker-activity');
   const json = await res.json();
   if (!json.success) throw new Error(json.error);
@@ -189,7 +172,11 @@ async function restockInventory(data: { variantId: string; quantityAdded: number
   return json.data;
 }
 
-async function adjustInventory(data: { variantId: string; newQuantity: number; reason: string }) {
+async function adjustInventory(data: {
+  variantId: string;
+  delta: number;
+  reason: string;
+}) {
   const res = await fetch('/api/admin/field/inventory/adjust', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -334,7 +321,8 @@ function PackingTab() {
   const { data: orders, isLoading, refetch } = useQuery({
     queryKey: ['field', 'packing-queue'],
     queryFn: fetchPackingQueue,
-    refetchInterval: 30000,
+    refetchInterval: 180000,
+    refetchIntervalInBackground: false,
   });
 
   const { mutateAsync: packMutate, isPending: isPacking } = useMutation({
@@ -379,9 +367,12 @@ function PackingTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold">Antrian Packing
-          <span className="ml-2 text-sm font-normal text-gray-500">({orders?.length ?? 0} pesanan)</span>
-        </h2>
+        <div>
+          <h2 className="text-base font-semibold">Antrian Packing
+            <span className="ml-2 text-sm font-normal text-gray-500">({orders?.length ?? 0} pesanan)</span>
+          </h2>
+          <p className="text-xs text-gray-500 mt-0.5">Pesanan sudah dibayar — belum dikemas. Setelah ini: delivery → tab Kirim, pickup → tab Pickup.</p>
+        </div>
         <Button variant="outline" size="sm" onClick={() => refetch()}>
           <RefreshCw className="w-4 h-4 mr-1" /> Refresh
         </Button>
@@ -392,7 +383,7 @@ function PackingTab() {
           <CardContent className="py-10 text-center">
             <CheckCircle className="w-12 h-12 mx-auto mb-3 text-green-400" />
             <p className="font-medium text-gray-600">Semua pesanan sudah dikemas!</p>
-            <p className="text-sm text-gray-400 mt-1">Kamu bisa cek inventori atau istirahat dulu ☕</p>
+            <p className="text-sm text-gray-400 mt-1">Delivery: cek tab Kirim. Pickup: cek tab Pickup. Stok: tab Stok.</p>
           </CardContent>
         </Card>
       ) : (
@@ -496,7 +487,8 @@ function DispatchTab() {
   const { data: orders, isLoading, refetch } = useQuery({
     queryKey: ['field', 'tracking-queue'],
     queryFn: fetchTrackingQueue,
-    refetchInterval: 30000,
+    refetchInterval: 180000,
+    refetchIntervalInBackground: false,
   });
 
   const { mutateAsync: dispatchMutate, isPending: isDispatching } = useMutation({
@@ -527,10 +519,13 @@ function DispatchTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold">
-          Book Courier
-          <span className="ml-2 text-sm font-normal text-gray-500">({orders?.length ?? 0} pesanan)</span>
-        </h2>
+        <div>
+          <h2 className="text-base font-semibold">
+            Book Kurir (Biteship)
+            <span className="ml-2 text-sm font-normal text-gray-500">({orders?.length ?? 0} pesanan)</span>
+          </h2>
+          <p className="text-xs text-gray-500 mt-0.5">Sudah dikemas & delivery. Jika gagal → Pengiriman (resi manual).</p>
+        </div>
         <Button variant="outline" size="sm" onClick={() => refetch()}>
           <RefreshCw className="w-4 h-4 mr-1" /> Refresh
         </Button>
@@ -540,7 +535,8 @@ function DispatchTab() {
         <Card>
           <CardContent className="py-10 text-center">
             <Truck className="w-12 h-12 mx-auto mb-3 text-green-400" />
-            <p className="font-medium text-gray-600">Tidak ada pesanan menunggu dispatch</p>
+            <p className="font-medium text-gray-600">Tidak ada pesanan menunggu book kurir</p>
+            <p className="text-sm text-gray-400 mt-1">Kemas dulu di tab Packing, lalu kembali ke sini.</p>
           </CardContent>
         </Card>
       ) : (
@@ -548,7 +544,7 @@ function DispatchTab() {
           <OrderCard
             key={order.id}
             order={order}
-            actionLabel="🚚 Book Courier"
+            actionLabel="🚚 Book Kurir"
             actionIcon={Truck}
             onAction={(o) => {
               setSelectedOrder(o as DispatchOrder);
@@ -561,7 +557,7 @@ function DispatchTab() {
       <BottomSheet
         open={!!selectedOrder}
         onClose={() => setSelectedOrder(null)}
-        title={`Book Courier — ${selectedOrder?.orderNumber}`}
+        title={`Book Kurir — ${selectedOrder?.orderNumber}`}
       >
         <div className="space-y-4">
           <div className="text-sm text-gray-600 space-y-1">
@@ -583,7 +579,7 @@ function DispatchTab() {
               onClick={handleBook}
               disabled={isDispatching}
             >
-              {isDispatching ? 'Booking…' : '🚚 Book Courier'}
+              {isDispatching ? 'Booking…' : '🚚 Book Kurir (Biteship)'}
             </Button>
           </div>
           {waNumber && (
@@ -593,7 +589,7 @@ function DispatchTab() {
               rel="noopener noreferrer"
               className="block text-center text-sm text-brand-red underline"
             >
-              Hubungi ops via WhatsApp jika gagal
+              Gagal? Hubungi ops via WhatsApp, lalu isi resi di Pengiriman
             </a>
           )}
         </div>
@@ -608,7 +604,8 @@ function PickupTab() {
   const { data: orders, isLoading, refetch } = useQuery({
     queryKey: ['field', 'pickup-queue'],
     queryFn: fetchPickupQueue,
-    refetchInterval: 30000,
+    refetchInterval: 180000,
+    refetchIntervalInBackground: false,
   });
 
   const { mutateAsync: deliverMutate, isPending: isDelivering } = useMutation({
@@ -622,11 +619,19 @@ function PickupTab() {
 
   const handleDeliver = async () => {
     if (!selectedOrder) return;
-    if (selectedOrder.pickupCode && inputCode.trim().toUpperCase() !== selectedOrder.pickupCode.toUpperCase()) {
+    const code = inputCode.trim();
+    if (!code) {
+      setCodeError('Masukkan kode ambil dari pelanggan terlebih dahulu.');
+      return;
+    }
+    if (
+      selectedOrder.pickupCode &&
+      code.toUpperCase() !== selectedOrder.pickupCode.toUpperCase()
+    ) {
       setCodeError('Kode tidak cocok. Minta pelanggan tunjukkan kode yang benar.');
       return;
     }
-    await deliverMutate({ orderId: selectedOrder.id, pickupCode: inputCode });
+    await deliverMutate({ orderId: selectedOrder.id, pickupCode: code });
     setSelectedOrder(null);
     setInputCode('');
     setCodeError('');
@@ -639,9 +644,12 @@ function PickupTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold">Pesanan Ambil Sendiri
-          <span className="ml-2 text-sm font-normal text-gray-500">({orders?.length ?? 0} pesanan)</span>
-        </h2>
+        <div>
+          <h2 className="text-base font-semibold">Pesanan Ambil Sendiri
+            <span className="ml-2 text-sm font-normal text-gray-500">({orders?.length ?? 0} pesanan)</span>
+          </h2>
+          <p className="text-xs text-gray-500 mt-0.5">Sudah dikemas. Serahkan hanya setelah kode ambil cocok.</p>
+        </div>
         <Button variant="outline" size="sm" onClick={() => refetch()}>
           <RefreshCw className="w-4 h-4 mr-1" /> Refresh
         </Button>
@@ -652,6 +660,7 @@ function PickupTab() {
           <CardContent className="py-10 text-center">
             <ShoppingBag className="w-12 h-12 mx-auto mb-3 text-gray-300" />
             <p className="font-medium text-gray-600">Tidak ada pesanan pickup saat ini</p>
+            <p className="text-sm text-gray-400 mt-1">Pickup muncul di sini setelah dikemas di tab Packing.</p>
           </CardContent>
         </Card>
       ) : (
@@ -676,24 +685,28 @@ function PickupTab() {
               Minta pelanggan menunjukkan kode ambil mereka, lalu masukkan di bawah.
             </p>
           </div>
-          {selectedOrder?.pickupCode && (
-            <div>
-              <Label htmlFor="pickupCode" className="text-xs font-semibold text-gray-500 uppercase">Kode Ambil Pelanggan</Label>
-              <Input
-                id="pickupCode"
-                value={inputCode}
-                onChange={e => { setInputCode(e.target.value); setCodeError(''); }}
-                placeholder="Masukkan kode dari pelanggan"
-                className="mt-1 font-mono text-base uppercase"
-              />
-              {codeError && (
-                <div className="flex items-center gap-2 mt-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
-                  {codeError}
-                </div>
-              )}
-            </div>
-          )}
+          <div>
+            <Label htmlFor="pickupCode" className="text-xs font-semibold text-gray-500 uppercase">Kode Ambil Pelanggan</Label>
+            <Input
+              id="pickupCode"
+              value={inputCode}
+              onChange={e => { setInputCode(e.target.value); setCodeError(''); }}
+              placeholder="Masukkan kode dari pelanggan"
+              className="mt-1 font-mono text-base uppercase"
+              required
+            />
+            {codeError && (
+              <div className="flex items-center gap-2 mt-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                {codeError}
+              </div>
+            )}
+            {!selectedOrder?.pickupCode && (
+              <p className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
+                Kode ambil tidak ada di sistem untuk order ini — hubungi admin sebelum menyerahkan.
+              </p>
+            )}
+          </div>
           <div className="flex gap-3 pt-2">
             <Button variant="outline" className="flex-1" onClick={() => setSelectedOrder(null)}>
               Batal
@@ -701,7 +714,7 @@ function PickupTab() {
             <Button
               className="flex-1 min-h-[48px] font-semibold"
               onClick={handleDeliver}
-              disabled={isDelivering}
+              disabled={isDelivering || !inputCode.trim() || !selectedOrder?.pickupCode}
             >
               {isDelivering ? 'Menyimpan…' : '✅ Konfirmasi Serahkan'}
             </Button>
@@ -746,11 +759,29 @@ function InventoryTab() {
 
   const handleSubmit = async () => {
     if (!selectedItem || !quantity) return;
+    const parsedQty = parseInt(quantity, 10);
+    if (Number.isNaN(parsedQty) || parsedQty < 0) return;
     if (actionType === 'restock') {
-      await restockMutate({ variantId: selectedItem.id, quantityAdded: parseInt(quantity), note: reason || undefined });
+      await restockMutate({
+        variantId: selectedItem.id,
+        quantityAdded: parsedQty,
+        note: reason || undefined,
+      });
     } else if (actionType === 'adjust') {
-      if (!reason) return;
-      await adjustMutate({ variantId: selectedItem.id, newQuantity: parseInt(quantity), reason });
+      if (!reason.trim()) return;
+      const delta = parsedQty - selectedItem.stock;
+      if (delta === 0) {
+        setSelectedItem(null);
+        setActionType(null);
+        setQuantity('');
+        setReason('');
+        return;
+      }
+      await adjustMutate({
+        variantId: selectedItem.id,
+        delta,
+        reason: reason.trim(),
+      });
     }
     setSelectedItem(null);
     setActionType(null);
@@ -771,7 +802,10 @@ function InventoryTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold">Stok Produk</h2>
+        <div>
+          <h2 className="text-base font-semibold">Stok Produk</h2>
+          <p className="text-xs text-gray-500 mt-0.5">+ = barang masuk. ↻ = koreksi (alasan wajib). Harga/foto: minta owner di Produk.</p>
+        </div>
         <Button variant="outline" size="sm" onClick={() => refetch()}>
           <RefreshCw className="w-4 h-4 mr-1" /> Refresh
         </Button>
@@ -951,16 +985,26 @@ function CompletedTab() {
     );
   }
 
+  const flatActions = (activity ?? []).flatMap((group) =>
+    group.actions.map((action, idx) => ({
+      key: `${group.userId}-${action.timestamp}-${idx}`,
+      userName: group.userName,
+      ...action,
+    }))
+  );
+
   return (
     <div className="space-y-5">
-      <h2 className="text-base font-semibold">Rekap Hari Ini</h2>
+      <div>
+        <h2 className="text-base font-semibold">Rekap Hari Ini</h2>
+        <p className="text-xs text-gray-500 mt-0.5">Bukan antrian kerja — ringkasan yang sudah selesai hari ini.</p>
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         {[
-          { icon: Package, label: 'Dikemas', value: summary?.packedCount ?? 0, color: 'text-blue-500' },
-          { icon: Truck, label: 'Diresi', value: summary?.trackingCount ?? 0, color: 'text-green-500' },
-          { icon: CheckCircle, label: 'Pickup Selesai', value: summary?.pickupCount ?? 0, color: 'text-emerald-500' },
-          { icon: Warehouse, label: 'Update Stok', value: summary?.inventoryUpdateCount ?? 0, color: 'text-purple-500' },
+          { icon: Package, label: 'Dikemas hari ini', value: summary?.packedToday ?? 0, color: 'text-blue-500' },
+          { icon: Truck, label: 'Dikirim hari ini', value: summary?.shippedToday ?? 0, color: 'text-green-500' },
+          { icon: ShoppingBag, label: 'Menunggu pickup', value: summary?.pendingPickup ?? 0, color: 'text-emerald-500' },
         ].map(({ icon: Icon, label, value, color }) => (
           <Card key={label}>
             <CardContent className="p-4 text-center">
@@ -973,43 +1017,28 @@ function CompletedTab() {
       </div>
 
       <div>
-        <h3 className="text-sm font-semibold text-gray-600 mb-3">Aktivitas Terakhir</h3>
+        <h3 className="text-sm font-semibold text-gray-600 mb-3">Aktivitas Tim Hari Ini</h3>
         <Card>
           <CardContent className="p-4">
-            {activity?.orderActivity.length === 0 && activity?.inventoryActivity.length === 0 ? (
-              <p className="text-center text-gray-400 py-4 text-sm">Belum ada aktivitas hari ini</p>
+            {flatActions.length === 0 ? (
+              <p className="text-center text-gray-400 py-4 text-sm">Belum ada aktivitas tercatat hari ini</p>
             ) : (
               <div className="space-y-3">
-                {activity?.orderActivity.map(item => (
-                  <div key={item.id} className="flex items-start gap-3 text-sm">
+                {flatActions.slice(0, 20).map((item) => (
+                  <div key={item.key} className="flex items-start gap-3 text-sm">
                     <div className="mt-0.5 shrink-0">
-                      {item.toStatus === 'packed' ? (
-                        <Package className="w-4 h-4 text-blue-500" />
-                      ) : (
-                        <Truck className="w-4 h-4 text-green-500" />
-                      )}
+                      <CheckCircle className="w-4 h-4 text-green-500" />
                     </div>
                     <div className="flex-1">
                       <p className="text-gray-700">
-                        {item.orderNumber && <span className="font-mono font-semibold text-xs text-gray-500">{item.orderNumber} — </span>}
-                        Status → <span className="font-medium">{item.toStatus}</span>
+                        <span className="font-medium">{item.userName}</span>
+                        {' — '}
+                        {item.action}
+                        {item.entityType ? (
+                          <span className="text-gray-400"> ({item.entityType})</span>
+                        ) : null}
                       </p>
-                      <p className="text-xs text-gray-400">{formatWIB(new Date(item.createdAt))}</p>
-                    </div>
-                  </div>
-                ))}
-                {activity?.inventoryActivity.map(item => (
-                  <div key={item.id} className="flex items-start gap-3 text-sm">
-                    <div className="mt-0.5 shrink-0">
-                      <Warehouse className="w-4 h-4 text-purple-500" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-gray-700">
-                        {item.variantName && <span className="font-medium">{item.variantName} — </span>}
-                        Stok {item.changeType}: {item.quantityBefore} → {item.quantityAfter}
-                        {item.note && <span className="text-gray-400"> ({item.note})</span>}
-                      </p>
-                      <p className="text-xs text-gray-400">{formatWIB(new Date(item.createdAt))}</p>
+                      <p className="text-xs text-gray-400">{formatWIB(new Date(item.timestamp))}</p>
                     </div>
                   </div>
                 ))}
@@ -1029,7 +1058,7 @@ const TABS = [
   { key: 'tracking', label: 'Kirim', icon: Truck, summaryKey: 'trackingQueue' },
   { key: 'pickup', label: 'Pickup', icon: ShoppingBag, summaryKey: 'pickupQueue' },
   { key: 'inventory', label: 'Stok', icon: Warehouse },
-  { key: 'completed', label: 'Selesai', icon: CheckCircle },
+  { key: 'completed', label: 'Rekap', icon: CheckCircle },
 ];
 
 export default function FieldDashboardClient() {
@@ -1038,25 +1067,29 @@ export default function FieldDashboardClient() {
   const { data: summary } = useQuery({
     queryKey: ['field', 'today-summary'],
     queryFn: fetchTodaySummary,
-    refetchInterval: 60000,
+    refetchInterval: 180000,
+    refetchIntervalInBackground: false,
   });
 
   const { data: packingQueue } = useQuery({
     queryKey: ['field', 'packing-queue'],
     queryFn: fetchPackingQueue,
-    refetchInterval: 30000,
+    refetchInterval: 180000,
+    refetchIntervalInBackground: false,
   });
 
   const { data: trackingQueue } = useQuery({
     queryKey: ['field', 'tracking-queue'],
     queryFn: fetchTrackingQueue,
-    refetchInterval: 30000,
+    refetchInterval: 180000,
+    refetchIntervalInBackground: false,
   });
 
   const { data: pickupQueue } = useQuery({
     queryKey: ['field', 'pickup-queue'],
     queryFn: fetchPickupQueue,
-    refetchInterval: 30000,
+    refetchInterval: 180000,
+    refetchIntervalInBackground: false,
   });
 
   const today = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -1065,8 +1098,9 @@ export default function FieldDashboardClient() {
     <div className="space-y-4 max-w-xl mx-auto pb-24">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-text-primary">🍜 Dashboard Gudang</h1>
+          <h1 className="text-xl font-bold text-text-primary">Dashboard Gudang</h1>
           <p className="text-xs text-gray-500">{today}</p>
+          <p className="text-xs text-gray-500 mt-1">Urutan: Packing → Kirim (delivery) / Pickup → Stok bila perlu.</p>
         </div>
       </div>
 
@@ -1092,8 +1126,8 @@ export default function FieldDashboardClient() {
               onClick={() => setActiveTab('completed')}
               className="hover:opacity-80 transition-opacity"
             >
-              <p className="text-2xl font-bold text-green-700">{summary?.packedCount ?? 0}</p>
-              <p className="text-xs text-green-600">✅ Selesai</p>
+              <p className="text-2xl font-bold text-green-700">{summary?.packedToday ?? 0}</p>
+              <p className="text-xs text-green-600">📋 Rekap Hari Ini</p>
             </button>
           </div>
           {(packingQueue?.length ?? 0) > 0 && (

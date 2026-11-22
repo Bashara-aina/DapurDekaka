@@ -24,7 +24,7 @@ export default async function TermsPage() {
           <h1 className="font-display text-3xl font-bold text-text-primary mb-2">
             {cms.title || 'Syarat & Ketentuan'}
           </h1>
-          <p className="text-text-secondary text-sm mb-8">{t('privacyLastUpdated')}</p>
+          <p className="text-text-secondary text-sm mb-8">{t('termsLastUpdated')}</p>
           <div className="bg-white rounded-card shadow-card p-6 md:p-8">
             <CmsProseSections page={cms} />
           </div>
@@ -39,7 +39,7 @@ export default async function TermsPage() {
         <h1 className="font-display text-3xl font-bold text-text-primary mb-2">
           Syarat & Ketentuan
         </h1>
-        <p className="text-text-secondary text-sm mb-8">{t('privacyLastUpdated')}</p>
+        <p className="text-text-secondary text-sm mb-8">{t('termsLastUpdated')}</p>
         <div className="bg-white rounded-card shadow-card p-6 md:p-8 text-text-secondary text-sm">
           <p>Konten syarat &amp; ketentuan sedang disiapkan.</p>
         </div>

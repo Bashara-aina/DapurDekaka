@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth';
 import { isFlagEnabled, type FlagName } from '@/lib/config/feature-flags';
-import { isMaintenanceMode } from '@/lib/ops/maintenance';
+import { isMaintenanceModeEnv } from '@/lib/ops/maintenance';
 import { isSameOriginRequest } from '@/lib/utils/same-origin';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
@@ -26,6 +26,8 @@ const FLAG_GUARDS: ReadonlyArray<{ prefix: string; flag: FlagName }> = [
   { prefix: '/admin/b2b-inquiries', flag: 'b2bPortal' },
   { prefix: '/admin/b2b-quotes', flag: 'b2bPortal' },
   { prefix: '/admin/b2b-profiles', flag: 'b2bPortal' },
+  // Portal account UI — landing `/b2b` stays public for WA inquiry.
+  { prefix: '/b2b/account', flag: 'b2bPortal' },
 ];
 
 const WAREHOUSE_PATHS = ['/admin/inventory', '/admin/shipments', '/admin/field', '/admin/orders'];
@@ -59,6 +61,17 @@ export default async function middleware(req: NextRequest) {
         );
       }
     }
+    // B2B portal APIs stay off when the portal flag is off. Public inquiry remains.
+    const isB2bPortalApi =
+      pathname.startsWith('/api/b2b/') && !pathname.startsWith('/api/b2b/inquiry');
+    if (isB2bPortalApi && !isFlagEnabled('b2bPortal')) {
+      return withSecurityHeaders(
+        NextResponse.json(
+          { success: false, error: 'Fitur B2B portal belum tersedia', code: 'FORBIDDEN' },
+          { status: 403 }
+        )
+      );
+    }
     return withSecurityHeaders(NextResponse.next());
   }
 
@@ -66,9 +79,20 @@ export default async function middleware(req: NextRequest) {
   // has no [locale] route segment. next-intl's routing middleware would
   // rewrite `/` → `/id`, which matches no route and 404s every page — so it
   // must NOT run here.
-  const response = NextResponse.next();
+  // Forward pathname so Node layouts can skip DB maintenance redirect on
+  // /maintenance without opening Neon from Edge.
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set('x-pathname', pathname);
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
 
-  const session = await auth() as { user?: { isActive?: boolean; role?: string; id?: string } } | null;
+  const session = await auth() as {
+    user?: {
+      isActive?: boolean;
+      role?: string;
+      id?: string;
+      requiresTwoFactorSetup?: boolean;
+    };
+  } | null;
 
   // Inactive user check
   if (session?.user?.isActive === false) {
@@ -87,6 +111,10 @@ export default async function middleware(req: NextRequest) {
     if (!role || !['superadmin', 'owner', 'warehouse'].includes(role)) {
       return redirectWithHeaders(req, '/');
     }
+    // Force 2FA enrollment before any admin surface.
+    if (session.user.requiresTwoFactorSetup) {
+      return redirectWithHeaders(req, '/account/profile?setup2fa=1');
+    }
     if (role === 'warehouse' && !WAREHOUSE_PATHS.some((p) => pathname.startsWith(p))) {
       return redirectWithHeaders(req, '/admin/inventory');
     }
@@ -95,28 +123,19 @@ export default async function middleware(req: NextRequest) {
   // Feature kill-list guards (L4) — check if the route should be hidden
   for (const { prefix, flag } of FLAG_GUARDS) {
     if (pathname.startsWith(prefix) && !isFlagEnabled(flag)) {
-      return redirectWithHeaders(req, '/admin');
+      const fallback = prefix.startsWith('/b2b') ? '/b2b' : '/admin';
+      return redirectWithHeaders(req, fallback);
     }
   }
 
-  // Maintenance mode guard (L4 circuit breaker) — block storefront when active.
-  // Checks BOTH the env var (fast path, set at deploy time) AND the DB setting
-  // (5-min cache, togglable from admin panel).
-  // PERF: prefilter storefront paths BEFORE the (cached) DB read so admin and
-  // account traffic never pays for the lookup.
-  // EDGE-SAFETY: middleware runs on the Edge runtime where the WS-backed Pool
-  // can fail; on DB error fall back to the env fast-path (fail-open = keep
-  // serving) rather than 500ing every storefront request.
-  if (isStorefrontPath(pathname) && !pathname.startsWith('/maintenance')) {
-    let maintenance = process.env.MAINTENANCE_MODE === 'true';
-    try {
-      if (!maintenance) maintenance = await isMaintenanceMode();
-    } catch {
-      maintenance = process.env.MAINTENANCE_MODE === 'true';
-    }
-    if (maintenance) {
-      return redirectWithHeaders(req, '/maintenance');
-    }
+  // Maintenance emergency kill-switch — env only on Edge (no Neon wake).
+  // Admin DB toggle is enforced in app/(store)/layout.tsx (Node runtime).
+  if (
+    isStorefrontPath(pathname) &&
+    !pathname.startsWith('/maintenance') &&
+    isMaintenanceModeEnv()
+  ) {
+    return redirectWithHeaders(req, '/maintenance');
   }
 
   // Account guard
@@ -126,8 +145,8 @@ export default async function middleware(req: NextRequest) {
     }
   }
 
-  // B2B account guard
-  if (pathname.startsWith('/b2b/account')) {
+  // B2B account guard (FLAG_GUARDS already redirects when portal flag is off)
+  if (pathname.startsWith('/b2b/account') && isFlagEnabled('b2bPortal')) {
     if (!session?.user) {
       return redirectWithHeaders(req, `/login?callbackUrl=${encodeURIComponent(pathname)}`);
     }

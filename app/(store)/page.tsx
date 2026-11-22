@@ -7,11 +7,18 @@ import { CategoryChips } from '@/components/store/home/CategoryChips';
 import { PromoBanner } from '@/components/store/home/PromoBanner';
 import { WhyDapurDekaka } from '@/components/store/home/WhyDapurDekaka';
 import { InstagramFeed } from '@/components/store/home/InstagramFeed';
-import { Testimonials } from '@/components/store/home/Testimonials';
+import { Testimonials, type TestimonialItem } from '@/components/store/home/Testimonials';
 import { HomePageCTA } from '@/components/store/home/HomePageCTA';
 import { db } from '@/lib/db';
-import { products, productVariants, productImages, categories, carouselSlides, systemSettings } from '@/lib/db/schema';
-import { eq, and, desc, isNull, sql } from 'drizzle-orm';
+import {
+  products,
+  productVariants,
+  categories,
+  carouselSlides,
+  systemSettings,
+  testimonials,
+} from '@/lib/db/schema';
+import { eq, and, desc, isNull, sql, asc } from 'drizzle-orm';
 import { getCmsPage, getGalleryByUsage, pickSection, sectionText } from '@/lib/cms/get-page';
 import { getStoreContactSettings } from '@/lib/settings/runtime-rules';
 import { getSetting } from '@/lib/settings/get-settings';
@@ -160,13 +167,33 @@ async function getPromoSettings() {
     where: sql`${systemSettings.key} IN ('promo_code', 'promo_title', 'promo_subtitle', 'promo_active', 'carousel_speed_ms')`,
   });
   const byKey = Object.fromEntries(settings.map((s) => [s.key, s.value]));
+  const promoActive = byKey.promo_active === 'true';
   return {
-    promoCode: byKey.promo_code ?? 'SELAMATDATANG',
-    promoTitle: byKey.promo_title ?? 'Untuk pembelian pertama kamu',
-    promoSubtitle: byKey.promo_subtitle ?? 'Gunakan kode:',
-    promoActive: byKey.promo_active !== 'false',
+    // No hardcoded launch codes — only show promo when settings + active flag are set.
+    promoCode: promoActive ? (byKey.promo_code ?? '') : '',
+    promoTitle: byKey.promo_title ?? '',
+    promoSubtitle: byKey.promo_subtitle ?? '',
+    promoActive,
     carouselSpeedMs: parseInt(byKey.carousel_speed_ms ?? '5000', 10),
   };
+}
+
+async function getHomepageTestimonials(): Promise<TestimonialItem[]> {
+  const rows = await db.query.testimonials.findMany({
+    where: and(eq(testimonials.isActive, true), isNull(testimonials.deletedAt)),
+    orderBy: [asc(testimonials.sortOrder), asc(testimonials.createdAt)],
+    limit: 100,
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    customerName: row.customerName,
+    customerLocation: row.customerLocation,
+    avatarUrl: row.avatarUrl,
+    rating: row.rating,
+    contentId: row.contentId,
+    contentEn: row.contentEn,
+    sortOrder: row.sortOrder,
+  }));
 }
 
 export default async function HomePage() {
@@ -182,15 +209,16 @@ export default async function HomePage() {
     contact,
     priceMin,
     priceMax,
+    homepageTestimonials,
   ] = await Promise.all([
     getFeaturedProducts().catch(() => [] as Awaited<ReturnType<typeof getFeaturedProducts>>),
     getCategories().catch(() => [] as Awaited<ReturnType<typeof getCategories>>),
     getActiveCarouselSlides().catch(() => [] as Awaited<ReturnType<typeof getActiveCarouselSlides>>),
     getPromoSettings().catch(() => ({
-      promoCode: 'SELAMATDATANG',
-      promoTitle: 'Untuk pembelian pertama kamu',
-      promoSubtitle: 'Gunakan kode:',
-      promoActive: true,
+      promoCode: '',
+      promoTitle: '',
+      promoSubtitle: '',
+      promoActive: false,
       carouselSpeedMs: 5000,
     })),
     getCmsPage('home-why').catch(() => null),
@@ -204,6 +232,7 @@ export default async function HomePage() {
     })),
     getSetting<number>(SETTING_KEYS.PRICE_RANGE_MIN, 'integer').catch(() => 30000),
     getSetting<number>(SETTING_KEYS.PRICE_RANGE_MAX, 'integer').catch(() => 200000),
+    getHomepageTestimonials().catch(() => [] as TestimonialItem[]),
   ]);
 
   const whyTitle = sectionText(pickSection(whyPage, 'title'), 'id', 'title');
@@ -246,7 +275,7 @@ export default async function HomePage() {
 
       <FeaturedProducts products={featuredProducts} />
 
-      {promoSettings.promoActive !== false && (
+      {promoSettings.promoActive && promoSettings.promoCode && (
         <PromoBanner
           promoCode={promoSettings.promoCode}
           promoTitle={promoSettings.promoTitle}
@@ -268,7 +297,7 @@ export default async function HomePage() {
         }))}
       />
 
-      <Testimonials />
+      <Testimonials testimonials={homepageTestimonials} />
 
       <HomePageCTA
         heroTitle={sectionText(ctaHero, 'id', 'title') || undefined}

@@ -22,9 +22,15 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
   try {
     const redis = await getRedis();
     if (!redis) return null;
-    const val = await (redis as { get: (k: string) => Promise<string | null> }).get(`${CACHE_PREFIX}${key}`);
-    if (!val) return null;
-    return JSON.parse(val) as T;
+    const val = await (redis as { get: (k: string) => Promise<unknown> }).get(
+      `${CACHE_PREFIX}${key}`
+    );
+    if (val === null || val === undefined) return null;
+    // Upstash may return already-parsed JSON; string payloads need parse.
+    if (typeof val === 'string') {
+      return JSON.parse(val) as T;
+    }
+    return val as T;
   } catch (err) {
     logger.warn('[cache] get failed', { key, error: err instanceof Error ? err.message : String(err) });
     return null;

@@ -6,10 +6,10 @@ import { ClipboardList, Box, Truck, ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 const WAREHOUSE_TABS = [
-  { href: '/admin/field', label: 'Gudang', Icon: ClipboardList },
-  { href: '/admin/inventory', label: 'Inventori', Icon: Box },
-  { href: '/admin/shipments', label: 'Kirim', Icon: Truck },
-  { href: '/admin/orders', label: 'Pesanan', Icon: ShoppingCart },
+  { href: '/admin/field', label: 'Gudang', Icon: ClipboardList, ariaLabel: 'Gudang Ops — packing dan book kurir' },
+  { href: '/admin/inventory', label: 'Inventori', Icon: Box, ariaLabel: 'Inventori — koreksi stok' },
+  { href: '/admin/shipments', label: 'Resi', Icon: Truck, ariaLabel: 'Resi manual — fallback jika book kurir gagal' },
+  { href: '/admin/orders', label: 'Pesanan', Icon: ShoppingCart, ariaLabel: 'Daftar pesanan' },
 ];
 
 export function AdminBottomNav({ role }: { role: string }) {
@@ -23,12 +23,13 @@ export function AdminBottomNav({ role }: { role: string }) {
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="grid grid-cols-4">
-        {WAREHOUSE_TABS.map(({ href, label, Icon }) => {
+        {WAREHOUSE_TABS.map(({ href, label, Icon, ariaLabel }) => {
           const isActive = pathname === href || pathname.startsWith(`${href}/`);
           return (
             <Link
               key={href}
               href={href}
+              aria-label={ariaLabel}
               aria-current={isActive ? 'page' : undefined}
               className={cn(
                 'flex flex-col items-center justify-center gap-0.5 min-h-[64px] py-2 text-[11px] font-medium',

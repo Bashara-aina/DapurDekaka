@@ -14,6 +14,7 @@
 
 import { db } from '@/lib/db';
 import { systemSettings } from '@/lib/db/schema';
+import { cacheGet, cacheSet, cacheDelete } from '@/lib/cache/redis-cache';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -22,6 +23,8 @@ export type SettingType = 'string' | 'integer' | 'boolean' | 'number';
 // ── Snapshot cache ───────────────────────────────────────────────────────────
 
 const SNAPSHOT_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const REDIS_SETTINGS_KEY = 'settings:snapshot';
+const REDIS_SETTINGS_TTL_SEC = 300;
 
 /** Raw string values keyed by setting key (type coercion happens on read). */
 let snapshot: Map<string, string> = new Map();
@@ -32,22 +35,39 @@ function isSnapshotValid(): boolean {
   return snapshotExpiresAt > Date.now();
 }
 
+function mapFromRecord(record: Record<string, string>): Map<string, string> {
+  return new Map(Object.entries(record));
+}
+
+function recordFromMap(map: Map<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of map) out[k] = v;
+  return out;
+}
+
 async function loadSnapshot(): Promise<Map<string, string>> {
   if (isSnapshotValid()) return snapshot;
   if (!inflight) {
-    inflight = db
-      .select({ key: systemSettings.key, value: systemSettings.value })
-      .from(systemSettings)
-      .then((rows) => {
-        const next = new Map<string, string>();
-        for (const row of rows) next.set(row.key, row.value);
-        snapshot = next;
+    inflight = (async () => {
+      const redisHit = await cacheGet<Record<string, string>>(REDIS_SETTINGS_KEY);
+      if (redisHit) {
+        snapshot = mapFromRecord(redisHit);
         snapshotExpiresAt = Date.now() + SNAPSHOT_TTL_MS;
-        return next;
-      })
-      .finally(() => {
-        inflight = null;
-      });
+        return snapshot;
+      }
+
+      const rows = await db
+        .select({ key: systemSettings.key, value: systemSettings.value })
+        .from(systemSettings);
+      const next = new Map<string, string>();
+      for (const row of rows) next.set(row.key, row.value);
+      snapshot = next;
+      snapshotExpiresAt = Date.now() + SNAPSHOT_TTL_MS;
+      await cacheSet(REDIS_SETTINGS_KEY, recordFromMap(next), REDIS_SETTINGS_TTL_SEC);
+      return next;
+    })().finally(() => {
+      inflight = null;
+    });
   }
   return inflight;
 }
@@ -95,6 +115,7 @@ export async function getSettings(
  */
 export function invalidateSetting(_key: string): void {
   snapshotExpiresAt = 0;
+  void cacheDelete(REDIS_SETTINGS_KEY);
 }
 
 /**
@@ -102,6 +123,7 @@ export function invalidateSetting(_key: string): void {
  */
 export function invalidateAllSettings(): void {
   snapshotExpiresAt = 0;
+  void cacheDelete(REDIS_SETTINGS_KEY);
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────

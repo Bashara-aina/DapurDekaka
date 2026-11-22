@@ -9,8 +9,8 @@ type DbType = ReturnType<typeof drizzle<typeof schema>>;
 // 30 call sites (checkout, webhooks, cron, admin) were broken at runtime.
 // `neon-serverless` Pool supports real interactive transactions (row locks,
 // FOR UPDATE, multi-statement atomicity) over WebSocket. All API routes run
-// on Node.js by default, so Pool is safe there; the single Edge caller
-// (middleware → isMaintenanceMode) is guarded with try/catch + env fallback.
+// on Node.js by default, so Pool is safe there. Edge middleware must NOT
+// import this module (maintenance is env-only on Edge; DB check is Node layout).
 // (No fetchConnectionCache flag: @neondatabase/serverless ≥0.10 enables
 // connection caching unconditionally; setting it logs a deprecation warning.)
 // Singleton Pool — created once and reused across HMR reloads and
@@ -34,11 +34,9 @@ function getPool(): Pool {
     throw new Error('DATABASE_URL environment variable is not set');
   }
   if (!_pool) {
-    // Capped well below the default (10): serverless instances are short-lived
-    // and each Neon connection costs compute. Not 1-2: a handler that holds a
-    // transaction client and then queries outside it needs a second slot, or
-    // two such requests on one instance deadlock waiting on each other.
-    _pool = new Pool({ connectionString: url, max: 5 });
+    // Capped for Neon bill: short-lived serverless instances × connections
+    // keep compute awake. Floor 3: tx client + outer query + concurrent slot.
+    _pool = new Pool({ connectionString: url, max: 3 });
   }
   return _pool;
 }

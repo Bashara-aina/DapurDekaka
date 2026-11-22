@@ -59,7 +59,6 @@ export interface CheckoutFormData {
   insuranceType: 'none' | 'basic' | 'premium';
   insuranceFee: number;
   courierInstantAck: boolean;
-  cashOnDelivery: boolean;
   couponCode: string;
   pointsUsed: number;
   customerNote: string;
@@ -92,7 +91,6 @@ export const INITIAL_FORM: CheckoutFormData = {
   insuranceType: 'none',
   insuranceFee: 0,
   courierInstantAck: false,
-  cashOnDelivery: false,
   couponCode: '',
   pointsUsed: 0,
   customerNote: '',
@@ -424,7 +422,6 @@ export function useCheckout() {
       insuranceType: selection.insuranceType,
       insuranceFee: selection.insuranceFee,
       courierInstantAck: selection.courierInstantAck,
-      cashOnDelivery: selection.cashOnDelivery,
     });
     setStep('payment');
   }, [updateForm]);

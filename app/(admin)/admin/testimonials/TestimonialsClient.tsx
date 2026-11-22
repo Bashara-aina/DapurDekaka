@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import AdminPlainGuide from '@/components/admin/AdminPlainGuide';
 
 interface Testimonial {
   id: string;
@@ -273,6 +274,14 @@ export default function TestimonialsClient() {
           <Plus className="w-4 h-4" /> Tambah
         </button>
       </div>
+
+      <AdminPlainGuide title="Cara kelola testimoni">
+        <p>
+          Tambah → isi nama pelanggan, kota (opsional), bintang, teks Bahasa Indonesia. Aktifkan
+          agar muncul di homepage. Nonaktifkan dulu jika belum siap, jangan biarkan kosong di
+          beranda.
+        </p>
+      </AdminPlainGuide>
 
       {isLoading ? (
         <div className="space-y-3">
