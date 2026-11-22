@@ -58,13 +58,31 @@ export const FLAGS = {
 export type FlagName = keyof typeof FLAGS;
 
 /**
+ * Static `process.env.NEXT_PUBLIC_*` reads — Next.js only inlines these into
+ * the client/edge bundles when the key is a string literal. Dynamic
+ * `process.env[flag.envKey]` silently returns undefined in the browser, which
+ * left soft-launch banner/noindex stuck off even when Vercel env was true.
+ */
+const FLAG_ENV_VALUES: Record<FlagName, string | undefined> = {
+  insuranceUI: process.env.NEXT_PUBLIC_FLAG_INSURANCE_UI,
+  b2bPortal: process.env.NEXT_PUBLIC_FLAG_B2B_PORTAL,
+  blogCMS: process.env.NEXT_PUBLIC_FLAG_BLOG_CMS,
+  aiContent: process.env.NEXT_PUBLIC_FLAG_AI_CONTENT,
+  vouchersPage: process.env.NEXT_PUBLIC_FLAG_VOUCHERS,
+  softLaunch: process.env.NEXT_PUBLIC_FLAG_SOFT_LAUNCH,
+  samplerPromo: process.env.NEXT_PUBLIC_FLAG_SAMPLER_PROMO,
+};
+
+function parseFlagEnv(env: string | undefined, fallback: boolean): boolean {
+  if (env === undefined) return fallback;
+  return env === '1' || env.toLowerCase() === 'true';
+}
+
+/**
  * Resolve a flag's effective value: env wins over default.
  */
 export function isFlagEnabled(name: FlagName): boolean {
-  const flag = FLAGS[name];
-  const env = process.env[flag.envKey];
-  if (env === undefined) return flag.default;
-  return env === '1' || env.toLowerCase() === 'true';
+  return parseFlagEnv(FLAG_ENV_VALUES[name], FLAGS[name].default);
 }
 
 /**
