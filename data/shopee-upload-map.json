@@ -1,0 +1,174 @@
+{
+  "ayam-katsu-keju": {
+    "publicIds": [
+      "dapurdekaka/products/ayam-katsu-keju"
+    ],
+    "urls": [
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/ayam-katsu-keju"
+    ]
+  },
+  "dimsum-adek-mini": {
+    "publicIds": [
+      "dapurdekaka/products/dimsum-adek-mini"
+    ],
+    "urls": [
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-adek-mini"
+    ]
+  },
+  "dimsum-campur": {
+    "publicIds": [
+      "dapurdekaka/products/dimsum-campur",
+      "dapurdekaka/products/dimsum-campur-2",
+      "dapurdekaka/products/dimsum-campur-3"
+    ],
+    "urls": [
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-campur",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-campur-2",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-campur-3"
+    ]
+  },
+  "dimsum-full-jamur": {
+    "publicIds": [
+      "dapurdekaka/products/dimsum-full-jamur",
+      "dapurdekaka/products/dimsum-full-jamur-2",
+      "dapurdekaka/products/dimsum-full-jamur-3"
+    ],
+    "urls": [
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-full-jamur",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-full-jamur-2",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-full-jamur-3"
+    ]
+  },
+  "dimsum-full-tuna": {
+    "publicIds": [
+      "dapurdekaka/products/dimsum-full-tuna",
+      "dapurdekaka/products/dimsum-full-tuna-2",
+      "dapurdekaka/products/dimsum-full-tuna-3"
+    ],
+    "urls": [
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-full-tuna",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-full-tuna-2",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-full-tuna-3"
+    ]
+  },
+  "dimsum-full-wortel": {
+    "publicIds": [
+      "dapurdekaka/products/dimsum-full-wortel",
+      "dapurdekaka/products/dimsum-full-wortel-2",
+      "dapurdekaka/products/dimsum-full-wortel-3"
+    ],
+    "urls": [
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-full-wortel",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-full-wortel-2",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-full-wortel-3"
+    ]
+  },
+  "dimsum-goreng-keju": {
+    "publicIds": [
+      "dapurdekaka/products/dimsum-goreng-keju",
+      "dapurdekaka/products/dimsum-goreng-keju-2"
+    ],
+    "urls": [
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-goreng-keju",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-goreng-keju-2"
+    ]
+  },
+  "dimsum-mix-siomay": {
+    "publicIds": [
+      "dapurdekaka/products/dimsum-mix-siomay",
+      "dapurdekaka/products/dimsum-mix-siomay-2",
+      "dapurdekaka/products/dimsum-mix-siomay-3"
+    ],
+    "urls": [
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-mix-siomay",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-mix-siomay-2",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-mix-siomay-3"
+    ]
+  },
+  "dimsum-nori": {
+    "publicIds": [
+      "dapurdekaka/products/dimsum-nori",
+      "dapurdekaka/products/dimsum-nori-2",
+      "dapurdekaka/products/dimsum-nori-3"
+    ],
+    "urls": [
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-nori",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-nori-2",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-nori-3"
+    ]
+  },
+  "dimsum-pedas": {
+    "publicIds": [
+      "dapurdekaka/products/dimsum-pedas",
+      "dapurdekaka/products/dimsum-pedas-2",
+      "dapurdekaka/products/dimsum-pedas-3"
+    ],
+    "urls": [
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-pedas",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-pedas-2",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-pedas-3"
+    ]
+  },
+  "dimsum-rambutan": {
+    "publicIds": [
+      "dapurdekaka/products/dimsum-rambutan",
+      "dapurdekaka/products/dimsum-rambutan-2",
+      "dapurdekaka/products/dimsum-rambutan-3"
+    ],
+    "urls": [
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-rambutan",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-rambutan-2",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-rambutan-3"
+    ]
+  },
+  "dimsum-smoked-beef": {
+    "publicIds": [
+      "dapurdekaka/products/dimsum-smoked-beef",
+      "dapurdekaka/products/dimsum-smoked-beef-2",
+      "dapurdekaka/products/dimsum-smoked-beef-3"
+    ],
+    "urls": [
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-smoked-beef",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-smoked-beef-2",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/dimsum-smoked-beef-3"
+    ]
+  },
+  "lumpia-kulit-tahu": {
+    "publicIds": [
+      "dapurdekaka/products/lumpia-kulit-tahu",
+      "dapurdekaka/products/lumpia-kulit-tahu-2",
+      "dapurdekaka/products/lumpia-kulit-tahu-3"
+    ],
+    "urls": [
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/lumpia-kulit-tahu",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/lumpia-kulit-tahu-2",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/lumpia-kulit-tahu-3"
+    ]
+  },
+  "pangsit-ayam": {
+    "publicIds": [
+      "dapurdekaka/products/pangsit-ayam",
+      "dapurdekaka/products/pangsit-ayam-2",
+      "dapurdekaka/products/pangsit-ayam-3"
+    ],
+    "urls": [
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/pangsit-ayam",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/pangsit-ayam-2",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/products/pangsit-ayam-3"
+    ]
+  },
+  "saos-mentai-mayo": {
+    "publicIds": [
+      "dapurdekaka/sauces/saos-mentai-mayo",
+      "dapurdekaka/sauces/saos-mentai-mayo-2",
+      "dapurdekaka/sauces/saos-mentai-mayo-3",
+      "dapurdekaka/sauces/saos-mentai-mayo-4"
+    ],
+    "urls": [
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/sauces/saos-mentai-mayo",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/sauces/saos-mentai-mayo-2",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/sauces/saos-mentai-mayo-3",
+      "https://res.cloudinary.com/dsnhwfuxh/image/upload/f_webp,q_auto,w_800/dapurdekaka/sauces/saos-mentai-mayo-4"
+    ]
+  }
+}

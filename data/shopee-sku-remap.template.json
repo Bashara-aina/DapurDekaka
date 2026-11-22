@@ -1,0 +1,233 @@
+{
+  "_instructions": [
+    "Fill shopeeSku from Seller Centre",
+    "Save as data/shopee-sku-remap.json",
+    "Run npx tsx --env-file=.env scripts/remap-shopee-skus.ts"
+  ],
+  "mappings": [
+    {
+      "tempSku": "DDK-MIX-25",
+      "shopeeSku": "",
+      "productSlug": "dimsum-mix-siomay",
+      "variantName": "25 pcs",
+      "price": 78000
+    },
+    {
+      "tempSku": "DDK-MIX-50",
+      "shopeeSku": "",
+      "productSlug": "dimsum-mix-siomay",
+      "variantName": "50 pcs",
+      "price": 143300
+    },
+    {
+      "tempSku": "DDK-SAOS-MENT-100",
+      "shopeeSku": "",
+      "productSlug": "saos-mentai-mayo",
+      "variantName": "100 ml Mentai",
+      "price": 25115
+    },
+    {
+      "tempSku": "DDK-SAOS-TART-100",
+      "shopeeSku": "",
+      "productSlug": "saos-mentai-mayo",
+      "variantName": "100 ml Tartar",
+      "price": 25115
+    },
+    {
+      "tempSku": "DDK-SAOS-KEJU-100",
+      "shopeeSku": "",
+      "productSlug": "saos-mentai-mayo",
+      "variantName": "100 ml Mayo Keju",
+      "price": 25115
+    },
+    {
+      "tempSku": "DDK-SAOS-MENT-250",
+      "shopeeSku": "",
+      "productSlug": "saos-mentai-mayo",
+      "variantName": "250 ml Mentai",
+      "price": 40120
+    },
+    {
+      "tempSku": "DDK-SAOS-TART-250",
+      "shopeeSku": "",
+      "productSlug": "saos-mentai-mayo",
+      "variantName": "250 ml Tartar",
+      "price": 40120
+    },
+    {
+      "tempSku": "DDK-SAOS-KEJU-250",
+      "shopeeSku": "",
+      "productSlug": "saos-mentai-mayo",
+      "variantName": "250 ml Mayo Keju",
+      "price": 40120
+    },
+    {
+      "tempSku": "DDK-GORKEJ-3",
+      "shopeeSku": "",
+      "productSlug": "dimsum-goreng-keju",
+      "variantName": "3 pcs",
+      "price": 26795
+    },
+    {
+      "tempSku": "DDK-GORKEJ-5",
+      "shopeeSku": "",
+      "productSlug": "dimsum-goreng-keju",
+      "variantName": "5 pcs",
+      "price": 39795
+    },
+    {
+      "tempSku": "DDK-LUMP-25",
+      "shopeeSku": "",
+      "productSlug": "lumpia-kulit-tahu",
+      "variantName": "25 pcs",
+      "price": 83000
+    },
+    {
+      "tempSku": "DDK-LUMP-50",
+      "shopeeSku": "",
+      "productSlug": "lumpia-kulit-tahu",
+      "variantName": "50 pcs",
+      "price": 154000
+    },
+    {
+      "tempSku": "DDK-ADEX-70",
+      "shopeeSku": "",
+      "productSlug": "dimsum-adek-mini",
+      "variantName": "70 pcs",
+      "price": 150000
+    },
+    {
+      "tempSku": "DDK-NORI-25",
+      "shopeeSku": "",
+      "productSlug": "dimsum-nori",
+      "variantName": "25 pcs",
+      "price": 80000
+    },
+    {
+      "tempSku": "DDK-NORI-50",
+      "shopeeSku": "",
+      "productSlug": "dimsum-nori",
+      "variantName": "50 pcs",
+      "price": 151000
+    },
+    {
+      "tempSku": "DDK-KATSU-1",
+      "shopeeSku": "",
+      "productSlug": "ayam-katsu-keju",
+      "variantName": "Default",
+      "price": 40000
+    },
+    {
+      "tempSku": "DDK-PANG-25",
+      "shopeeSku": "",
+      "productSlug": "pangsit-ayam",
+      "variantName": "25 pcs",
+      "price": 77000
+    },
+    {
+      "tempSku": "DDK-PANG-50",
+      "shopeeSku": "",
+      "productSlug": "pangsit-ayam",
+      "variantName": "50 pcs",
+      "price": 138000
+    },
+    {
+      "tempSku": "DDK-CAMP-IBU",
+      "shopeeSku": "",
+      "productSlug": "dimsum-campur",
+      "variantName": "Paket Ibu",
+      "price": 75000
+    },
+    {
+      "tempSku": "DDK-CAMP-BAPAK",
+      "shopeeSku": "",
+      "productSlug": "dimsum-campur",
+      "variantName": "Paket Bapak",
+      "price": 75000
+    },
+    {
+      "tempSku": "DDK-RAMB-25",
+      "shopeeSku": "",
+      "productSlug": "dimsum-rambutan",
+      "variantName": "25 pcs",
+      "price": 78000
+    },
+    {
+      "tempSku": "DDK-RAMB-50",
+      "shopeeSku": "",
+      "productSlug": "dimsum-rambutan",
+      "variantName": "50 pcs",
+      "price": 143000
+    },
+    {
+      "tempSku": "DDK-WORT-25",
+      "shopeeSku": "",
+      "productSlug": "dimsum-full-wortel",
+      "variantName": "25 pcs",
+      "price": 75000
+    },
+    {
+      "tempSku": "DDK-WORT-50",
+      "shopeeSku": "",
+      "productSlug": "dimsum-full-wortel",
+      "variantName": "50 pcs",
+      "price": 138000
+    },
+    {
+      "tempSku": "DDK-SMOK-25",
+      "shopeeSku": "",
+      "productSlug": "dimsum-smoked-beef",
+      "variantName": "25 pcs",
+      "price": 75000
+    },
+    {
+      "tempSku": "DDK-SMOK-50",
+      "shopeeSku": "",
+      "productSlug": "dimsum-smoked-beef",
+      "variantName": "50 pcs",
+      "price": 138000
+    },
+    {
+      "tempSku": "DDK-JAMU-25",
+      "shopeeSku": "",
+      "productSlug": "dimsum-full-jamur",
+      "variantName": "25 pcs",
+      "price": 75000
+    },
+    {
+      "tempSku": "DDK-JAMU-50",
+      "shopeeSku": "",
+      "productSlug": "dimsum-full-jamur",
+      "variantName": "50 pcs",
+      "price": 138000
+    },
+    {
+      "tempSku": "DDK-PEDA-25",
+      "shopeeSku": "",
+      "productSlug": "dimsum-pedas",
+      "variantName": "25 pcs",
+      "price": 78000
+    },
+    {
+      "tempSku": "DDK-PEDA-50",
+      "shopeeSku": "",
+      "productSlug": "dimsum-pedas",
+      "variantName": "50 pcs",
+      "price": 143000
+    },
+    {
+      "tempSku": "DDK-TUNA-25",
+      "shopeeSku": "",
+      "productSlug": "dimsum-full-tuna",
+      "variantName": "25 pcs",
+      "price": 75000
+    },
+    {
+      "tempSku": "DDK-TUNA-50",
+      "shopeeSku": "",
+      "productSlug": "dimsum-full-tuna",
+      "variantName": "50 pcs",
+      "price": 138000
+    }
+  ]
+}

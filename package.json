@@ -40,7 +40,10 @@
     "db:migrate:0055": "psql $DATABASE_URL -f drizzle/0055_checkout_safety_points_ledger.sql",
     "db:migrate:perf:0053": "psql $DATABASE_URL -f drizzle/0053_admin_search_trgm.sql",
     "db:migrate:perf": "tsx --env-file=.env scripts/migrate-perf-indexes.ts",
-    "smoke:db-transaction": "tsx --env-file=.env scripts/smoke-db-transaction.ts"
+    "smoke:db-transaction": "tsx --env-file=.env scripts/smoke-db-transaction.ts",
+    "sync:shopee": "tsx --env-file=.env scripts/sync-shopee-catalog.ts",
+    "remap:shopee-skus": "tsx --env-file=.env scripts/remap-shopee-skus.ts",
+    "export:shopee-catalog": "tsx --env-file=.env scripts/export-shopee-catalog-from-db.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.7.0",

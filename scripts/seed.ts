@@ -360,7 +360,7 @@ async function seed() {
   console.log('Creating product variants...');
 
   // Base prices per product type (in IDR, integer)
-  // Following PRD: website prices 15-20% below Shopee
+  // Website prices match Shopee normal/base (see data/shopee-catalog.json + sync-shopee-catalog.ts)
   const productBasePrices: Record<string, number> = {
     'dimsum-crabstick': 65000,
     'dimsum-jamur': 55000,

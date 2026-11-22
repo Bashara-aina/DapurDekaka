@@ -127,7 +127,7 @@ Upload to Cloudinary folder `dapurdekaka/products/`, then set image on each prod
 ### C4. Visual smoke (browser)
 
 - [ ] Homepage carousel/gallery: no broken images
-- [ ] Catalog + each PDP: real product photo
+- [x] Catalog + each PDP: real product photo (Shopee listing images → Cloudinary, Nov 2026 sync)
 - [ ] Cart thumbnails OK
 - [ ] Logo + halal badge + favicon on production/preview
 
@@ -135,39 +135,25 @@ Upload to Cloudinary folder `dapurdekaka/products/`, then set image on each prod
 
 ## Phase D — Catalog truth (admin — replace seed prices/stock)
 
-Seed defaults are **placeholders** (e.g. stock 50/30, prices ~52k–85k base). Replace with real business numbers.
+**Synced 2026-11-22/23 from live Shopee shop** (`npm run sync:shopee`). Website prices = Shopee normal/base. Canonical SKUs = `DDK-*` (see `docs/SHOPEE-SKU-REMAP-CHECKLIST.md` + `data/shopee-model-crosswalk.json`).
 
-### D1. Per-product checklist (repeat for each SKU)
+### D1. Per-product checklist
 
-For every product below, in `/admin/products` + `/admin/inventory`:
+Active catalog is the **15 Shopee listings** (not the old 11 studio-only seed names). Off-Shopee products deactivated.
 
-| Product | Slug | Real price 25pcs | Real price 50pcs | Stock 25 | Stock 50 | Weight g | L×W×H cm | Featured? | Desc ID | Desc EN | Active? |
-|---------|------|------------------|------------------|----------|----------|----------|----------|-----------|---------|---------|---------|
-| Dimsum Crabstick | dimsum-crabstick | | | | | | | | | | |
-| Dimsum Jamur | dimsum-jamur | | | | | | | | | | |
-| Dimsum Mozarella | dimsum-mozarella | | | | | | | | | | |
-| Dimsum Tuna | dimsum-tuna | | | | | | | | | | |
-| Dimsum Golden | dimsum-golden | | | | | | | | | | |
-| Dimsum Pedas | dimsum-pedas | | | | | | | | | | |
-| Lumpia Kulit Tahu | lumpia-kulit-tahu | | | | | | | | | | |
-| Dimsum Nori | dimsum-nori | | | | | | | | | | |
-| Dimsum Rambutan | dimsum-rambutan | | | | | | | | | | |
-| Ekado | ekado | | | | | | | | | | |
-| Pangsit Ayam | pangsit-ayam | | | | | | | | | | |
-
-- [ ] All rows filled with **real** prices (integer IDR, not seed).
-- [ ] Physical warehouse count entered (not seed 50/30).
-- [ ] Weight + dimensions filled (required for accurate Biteship quotes).
-- [ ] Long description ID (and EN if you support EN) — seed only has short blurbs.
-- [ ] Halal flag correct; Shopee URL real or cleared.
-- [ ] B2B variant prices set **or** leave B2B portal flag off.
-- [ ] Unfinished products set `isActive=false` (hidden from store).
-- [ ] Featured products chosen intentionally for homepage.
+- [x] All active rows filled with **real** prices (integer IDR from Shopee base).
+- [x] Stock seeded from Shopee listing stock (re-count warehouse in `/admin/inventory` before hard launch if needed).
+- [x] Weight set per variant from sync defaults (re-verify dims for Biteship if quotes look off).
+- [x] Long description ID + EN from Shopee copy.
+- [x] Halal flag + real `shopee_url` per product.
+- [x] B2B prices = 85% of retail (auto); portal flag left on.
+- [x] Unfinished / off-Shopee products `isActive=false`.
+- [x] Featured products set from sync (Mix, Lumpia, Nori, Pangsit, Katsu, etc.).
 
 ### D2. Categories
 
-- [ ] Category names/order match how you sell (Dimsum Premium / Klasik / Spesial / Lumpia & Ekado / Pangsit).
-- [ ] No empty categories shown on storefront.
+- [x] Categories match sell set: Dimsum Premium / Klasik / Spesial / Lumpia & Ekado / Pangsit / **Saus & Dressing**.
+- [x] Empty off-catalog products hidden; sauce category active.
 
 ---
 
