@@ -78,7 +78,7 @@ What may dapurdekaka.com honestly promise at checkout, on the tracking page, and
 8. Jika produk tiba tidak layak (basi/cair karena kegagalan kirim kami), kami **ganti atau refund penuh** — tanpa debat.
 9. Semua pembayaran diproses Midtrans; kami tidak pernah minta transfer manual di luar sistem.
 10. Pertanyaan WA dijawab dalam jam operasional, maksimal H+1.
-11. Harga website selalu di bawah harga Shopee untuk produk yang sama.
+11. Harga produk website mengikuti harga normal Shopee (bukan harga flash sale).
 12. Pembatalan sebelum dikirim = refund penuh (diproses 1–7 hari kerja).
 
 **We do NOT promise (max 12):**

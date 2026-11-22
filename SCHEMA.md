@@ -1561,7 +1561,7 @@ const SEED_COUPONS = [
   },
 ];
 
-// 5. Products (19 SKUs from Shopee — prices set 15-20% below Shopee reference)
+// 5. Products (synced from Shopee shop — prices = Shopee normal/base)
 // Scraped from: https://shopee.co.id/dapurdekaka
 // To be populated with actual scraped data
 ```

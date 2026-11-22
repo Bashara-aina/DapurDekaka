@@ -1,0 +1,679 @@
+{
+  "scrapedAt": "2026-11-22T13:50:00.000Z",
+  "shopId": 20069111,
+  "shopUrl": "https://shopee.co.id/dapurdekaka",
+  "pricingRule": "exact_base_price",
+  "notes": "Synced from live Shopee shop. Prices = Shopee normal/base. DDK-* SKUs are canonical (Shopee model_sku blank; see data/shopee-model-crosswalk.json).",
+  "products": [
+    {
+      "itemId": 25581765608,
+      "slug": "dimsum-mix-siomay",
+      "nameId": "Dimsum Mix (Siomay)",
+      "nameEn": "Dimsum Mix (Siomay)",
+      "rawName": "Dimsum Mix (Siomay)",
+      "shopeeUrl": "https://shopee.co.id/product/20069111/25581765608",
+      "categorySlug": "dimsum-klasik",
+      "isPreOrder": false,
+      "isHalal": true,
+      "isFeatured": true,
+      "descriptionId": "Supplier Dimsum Frozen dari Kota Bandung. HALAL. TANPA PENGAWET.\n\nHanya bisa pengiriman Instant, Same Day, dan Next Day.\nPengiriman ke Pulau Jawa bisa menggunakan Paxel (chat admin).\n\nTidak ada hari libur. Pesanan langsung dikirim.\n\n1 box = 50 pcs, Dapet sampel chili oil 50 gr atau saos sambal 60 gr, tergantung stok\n\nTopping: wortel, jamur, crabstick, tuna, dan smoked beef.\nBisa request full 1 topping (chat admin terlebih dahulu).\n\nSaran penyajian: Kukus.\n\nTanggal pada kemasan adalah tanggal produksi.",
+      "descriptionEn": "Frozen dimsum supplier from Bandung. HALAL. No preservatives.\n\nInstant, Same Day, and Next Day delivery only.\nJava island shipping available via Paxel (chat admin).\n\nNo days off. Orders ship immediately.\n\n1 box = 50 pcs, sample chili oil 50g or sambal 60g depending on stock.\n\nToppings: carrot, mushroom, crabstick, tuna, and smoked beef.\nFull single-topping requests available (chat admin first).\n\nServing suggestion: Steam.\n\nDate on packaging is production date.",
+      "shortDescriptionId": "Mix siomay frozen halal tanpa pengawet — topping wortel, jamur, crabstick, tuna, smoked beef",
+      "shortDescriptionEn": "Halal frozen mix siomay — carrot, mushroom, crabstick, tuna, smoked beef toppings",
+      "imageIds": [
+        "dapurdekaka/products/dimsum-mix-siomay",
+        "dapurdekaka/products/dimsum-mix-siomay-2",
+        "dapurdekaka/products/dimsum-mix-siomay-3"
+      ],
+      "cloudinaryFolder": "products",
+      "weightGramDefault": 600,
+      "variants": [
+        {
+          "nameId": "25 pcs",
+          "nameEn": "25 pcs",
+          "tempSku": "DDK-MIX-25",
+          "price": 78000,
+          "stock": 14,
+          "weightGram": 300,
+          "modelId": 0
+        },
+        {
+          "nameId": "50 pcs",
+          "nameEn": "50 pcs",
+          "tempSku": "DDK-MIX-50",
+          "price": 143300,
+          "stock": 71,
+          "weightGram": 600,
+          "modelId": 0
+        }
+      ]
+    },
+    {
+      "itemId": 26874623835,
+      "slug": "saos-mentai-mayo",
+      "nameId": "Saos Mentai Mayo, Mayo Keju & Tartar",
+      "nameEn": "Mentai Mayo, Cheese Mayo & Tartar Sauce",
+      "rawName": "Saos Mentai Mayo, Mayo Keju & Tartar",
+      "shopeeUrl": "https://shopee.co.id/product/20069111/26874623835",
+      "categorySlug": "sauce",
+      "isPreOrder": false,
+      "isHalal": true,
+      "isFeatured": false,
+      "descriptionId": "Berbahan dasar mayo. Terdapat 3 jenis saos: saos mentai, mayo keju, dan saos tartar. Rasanya asam segar.",
+      "descriptionEn": "Mayo-based sauces in 3 flavors: mentai, cheese mayo, and tartar. Fresh tangy taste.",
+      "shortDescriptionId": "Saos mentai, mayo keju, dan tartar — 100 ml / 250 ml",
+      "shortDescriptionEn": "Mentai, cheese mayo, and tartar sauces — 100 ml / 250 ml",
+      "imageIds": [
+        "dapurdekaka/sauces/saos-mentai-mayo",
+        "dapurdekaka/sauces/saos-mentai-mayo-2",
+        "dapurdekaka/sauces/saos-mentai-mayo-3",
+        "dapurdekaka/sauces/saos-mentai-mayo-4"
+      ],
+      "cloudinaryFolder": "sauces",
+      "weightGramDefault": 150,
+      "variants": [
+        {
+          "nameId": "100 ml Mentai",
+          "nameEn": "100 ml Mentai",
+          "tempSku": "DDK-SAOS-MENT-100",
+          "price": 25115,
+          "stock": 5,
+          "weightGram": 120,
+          "modelId": 0
+        },
+        {
+          "nameId": "100 ml Tartar",
+          "nameEn": "100 ml Tartar",
+          "tempSku": "DDK-SAOS-TART-100",
+          "price": 25115,
+          "stock": 2,
+          "weightGram": 120,
+          "modelId": 0
+        },
+        {
+          "nameId": "100 ml Mayo Keju",
+          "nameEn": "100 ml Cheese Mayo",
+          "tempSku": "DDK-SAOS-KEJU-100",
+          "price": 25115,
+          "stock": 3,
+          "weightGram": 120,
+          "modelId": 0
+        },
+        {
+          "nameId": "250 ml Mentai",
+          "nameEn": "250 ml Mentai",
+          "tempSku": "DDK-SAOS-MENT-250",
+          "price": 40120,
+          "stock": 5,
+          "weightGram": 280,
+          "modelId": 0
+        },
+        {
+          "nameId": "250 ml Tartar",
+          "nameEn": "250 ml Tartar",
+          "tempSku": "DDK-SAOS-TART-250",
+          "price": 40120,
+          "stock": 9,
+          "weightGram": 280,
+          "modelId": 0
+        },
+        {
+          "nameId": "250 ml Mayo Keju",
+          "nameEn": "250 ml Cheese Mayo",
+          "tempSku": "DDK-SAOS-KEJU-250",
+          "price": 40120,
+          "stock": 1,
+          "weightGram": 280,
+          "modelId": 0
+        }
+      ]
+    },
+    {
+      "itemId": 40671907674,
+      "slug": "dimsum-goreng-keju",
+      "nameId": "Dimsum Goreng Keju Lumer",
+      "nameEn": "Fried Cheese Dimsum",
+      "rawName": "Dimsum Goreng Keju Lumer",
+      "shopeeUrl": "https://shopee.co.id/product/20069111/40671907674",
+      "categorySlug": "dimsum-premium",
+      "isPreOrder": true,
+      "isHalal": true,
+      "isFeatured": false,
+      "descriptionId": "Sudah dikukus matang, tinggal goreng. Dimsum goreng dengan keju lumer yang creamy.",
+      "descriptionEn": "Pre-steamed — just fry. Fried dimsum with creamy melted cheese.",
+      "shortDescriptionId": "Dimsum goreng keju lumer — sudah dikukus, tinggal goreng",
+      "shortDescriptionEn": "Fried cheese dimsum — pre-steamed, just fry",
+      "imageIds": [
+        "dapurdekaka/products/dimsum-goreng-keju",
+        "dapurdekaka/products/dimsum-goreng-keju-2"
+      ],
+      "cloudinaryFolder": "products",
+      "weightGramDefault": 200,
+      "variants": [
+        {
+          "nameId": "3 pcs",
+          "nameEn": "3 pcs",
+          "tempSku": "DDK-GORKEJ-3",
+          "price": 26795,
+          "stock": 4,
+          "weightGram": 120,
+          "modelId": 0
+        },
+        {
+          "nameId": "5 pcs",
+          "nameEn": "5 pcs",
+          "tempSku": "DDK-GORKEJ-5",
+          "price": 39795,
+          "stock": 2,
+          "weightGram": 200,
+          "modelId": 0
+        }
+      ]
+    },
+    {
+      "itemId": 26412833872,
+      "slug": "lumpia-kulit-tahu",
+      "nameId": "Lumpia (Kulit Tahu)",
+      "nameEn": "Lumpia (Tofu Skin)",
+      "rawName": "Lumpia (Kulit Tahu)",
+      "shopeeUrl": "https://shopee.co.id/product/20069111/26412833872",
+      "categorySlug": "lumpia-ekado",
+      "isPreOrder": false,
+      "isHalal": true,
+      "isFeatured": true,
+      "descriptionId": "Supplier Dimsum Frozen dari Kota Bandung. HALAL. TANPA PENGAWET.\n\nHanya bisa pengiriman Instant, Same Day, dan Next Day.\nPengiriman ke Pulau Jawa bisa menggunakan Paxel (chat admin).\n\nTidak ada hari libur. Pesanan langsung dikirim.\n\n1 box = 50 pcs, Dapet sampel chili oil 50 gr atau saos sambal 60 gr, tergantung stok\n\nSaran penyajian: Kukus atau goreng.\n\nTanggal pada kemasan adalah tanggal produksi.",
+      "descriptionEn": "Frozen food supplier from Bandung. HALAL. No preservatives.\n\nInstant, Same Day, and Next Day delivery only.\nJava island shipping via Paxel (chat admin).\n\n1 box = 50 pcs with sample chili oil or sambal.\n\nServing suggestion: Steam or fry.\n\nDate on packaging is production date.",
+      "shortDescriptionId": "Lumpia kulit tahu tipis, renyah — kukus atau goreng",
+      "shortDescriptionEn": "Crispy thin tofu-skin lumpia — steam or fry",
+      "imageIds": [
+        "dapurdekaka/products/lumpia-kulit-tahu",
+        "dapurdekaka/products/lumpia-kulit-tahu-2",
+        "dapurdekaka/products/lumpia-kulit-tahu-3"
+      ],
+      "cloudinaryFolder": "products",
+      "weightGramDefault": 500,
+      "variants": [
+        {
+          "nameId": "25 pcs",
+          "nameEn": "25 pcs",
+          "tempSku": "DDK-LUMP-25",
+          "price": 83000,
+          "stock": 0,
+          "weightGram": 250,
+          "modelId": 0
+        },
+        {
+          "nameId": "50 pcs",
+          "nameEn": "50 pcs",
+          "tempSku": "DDK-LUMP-50",
+          "price": 154000,
+          "stock": 2,
+          "weightGram": 500,
+          "modelId": 0
+        }
+      ]
+    },
+    {
+      "itemId": 47753160723,
+      "slug": "dimsum-adek-mini",
+      "nameId": "Dimsum Adek Ukuran Mini",
+      "nameEn": "Little Sister Mini Dimsum",
+      "rawName": "Dimsum Adek Ukuran Mini",
+      "shopeeUrl": "https://shopee.co.id/product/20069111/47753160723",
+      "categorySlug": "dimsum-klasik",
+      "isPreOrder": true,
+      "isHalal": true,
+      "isFeatured": false,
+      "descriptionId": "Dimsum adek ukuran mini 70 pcs. Ukuran 20–22 gram/pcs. Frozen.",
+      "descriptionEn": "Mini dimsum 70 pcs. 20–22 grams each. Frozen.",
+      "shortDescriptionId": "Dimsum mini 70 pcs — 20–22 gram per pcs",
+      "shortDescriptionEn": "Mini dimsum 70 pcs — 20–22g each",
+      "imageIds": [
+        "dapurdekaka/products/dimsum-adek-mini"
+      ],
+      "cloudinaryFolder": "products",
+      "weightGramDefault": 700,
+      "variants": [
+        {
+          "nameId": "70 pcs",
+          "nameEn": "70 pcs",
+          "tempSku": "DDK-ADEX-70",
+          "price": 150000,
+          "stock": 4,
+          "weightGram": 700,
+          "modelId": 0
+        }
+      ]
+    },
+    {
+      "itemId": 27468928367,
+      "slug": "dimsum-nori",
+      "nameId": "Dimsum Nori",
+      "nameEn": "Dimsum Nori",
+      "rawName": "Dimsum Nori",
+      "shopeeUrl": "https://shopee.co.id/product/20069111/27468928367",
+      "categorySlug": "dimsum-klasik",
+      "isPreOrder": false,
+      "isHalal": true,
+      "isFeatured": true,
+      "descriptionId": "Supplier Dimsum Frozen dari Kota Bandung. HALAL. TANPA PENGAWET.\n\nHanya bisa pengiriman Instant, Same Day, dan Next Day.\nPengiriman ke Pulau Jawa bisa menggunakan Paxel (chat admin).\n\nTidak ada hari libur. Pesanan langsung dikirim.\n\n1 box = 50 pcs, Dapet sampel chili oil 50 gr atau saos sambal 60 gr, tergantung stok\n\nSaran penyajian: Kukus.\n\nTanggal pada kemasan adalah tanggal produksi.\n\nFOTO HANYA ILUSTRASI",
+      "descriptionEn": "Frozen dimsum from Bandung. HALAL. No preservatives.\n\nInstant / Same Day / Next Day delivery.\n1 box = 50 pcs with sample chili oil or sambal.\nServing: Steam.\nPhotos are for illustration only.",
+      "shortDescriptionId": "Dimsum dengan lapisan nori umami — frozen 25/50 pcs",
+      "shortDescriptionEn": "Umami nori-topped dimsum — frozen 25/50 pcs",
+      "imageIds": [
+        "dapurdekaka/products/dimsum-nori",
+        "dapurdekaka/products/dimsum-nori-2",
+        "dapurdekaka/products/dimsum-nori-3"
+      ],
+      "cloudinaryFolder": "products",
+      "weightGramDefault": 550,
+      "variants": [
+        {
+          "nameId": "25 pcs",
+          "nameEn": "25 pcs",
+          "tempSku": "DDK-NORI-25",
+          "price": 80000,
+          "stock": 0,
+          "weightGram": 275,
+          "modelId": 0
+        },
+        {
+          "nameId": "50 pcs",
+          "nameEn": "50 pcs",
+          "tempSku": "DDK-NORI-50",
+          "price": 151000,
+          "stock": 1,
+          "weightGram": 550,
+          "modelId": 0
+        }
+      ]
+    },
+    {
+      "itemId": 50320955463,
+      "slug": "ayam-katsu-keju",
+      "nameId": "Ayam Katsu Keju",
+      "nameEn": "Chicken Cheese Katsu",
+      "rawName": "Ayam Katsu Keju",
+      "shopeeUrl": "https://shopee.co.id/product/20069111/50320955463",
+      "categorySlug": "dimsum-premium",
+      "isPreOrder": false,
+      "isHalal": true,
+      "isFeatured": true,
+      "descriptionId": "Dimsum yang dibalut tepung roti yang crispy dan diisi keju yang meleleh. Frozen & Halal.",
+      "descriptionEn": "Breaded crispy dimsum filled with melted cheese. Frozen & Halal.",
+      "shortDescriptionId": "Ayam katsu keju crispy — frozen & halal",
+      "shortDescriptionEn": "Crispy chicken cheese katsu — frozen & halal",
+      "imageIds": [
+        "dapurdekaka/products/ayam-katsu-keju"
+      ],
+      "cloudinaryFolder": "products",
+      "weightGramDefault": 250,
+      "variants": [
+        {
+          "nameId": "Default",
+          "nameEn": "Default",
+          "tempSku": "DDK-KATSU-1",
+          "price": 40000,
+          "stock": 4,
+          "weightGram": 250,
+          "modelId": 0
+        }
+      ]
+    },
+    {
+      "itemId": 26921600828,
+      "slug": "pangsit-ayam",
+      "nameId": "Pangsit Ayam",
+      "nameEn": "Chicken Pangsit",
+      "rawName": "Pangsit Ayam",
+      "shopeeUrl": "https://shopee.co.id/product/20069111/26921600828",
+      "categorySlug": "pangsit",
+      "isPreOrder": false,
+      "isHalal": true,
+      "isFeatured": true,
+      "descriptionId": "Supplier Dimsum Frozen dari Kota Bandung. HALAL. TANPA PENGAWET.\n\nHanya bisa pengiriman Instant, Same Day, dan Next Day.\nPengiriman ke Pulau Jawa bisa menggunakan Paxel (chat admin).\n\nTidak ada hari libur. Pesanan langsung dikirim.\n\n1 box = 50 pcs, Dapet sampel chili oil 50 gr atau saos sambal 60 gr, tergantung stok\n\nSaran penyajian: Kukus, goreng, atau rebus.\n\nTanggal pada kemasan adalah tanggal produksi.",
+      "descriptionEn": "Frozen pangsit from Bandung. HALAL. No preservatives.\nServing: Steam, fry, or boil.\n1 box = 50 pcs with sample chili oil or sambal.",
+      "shortDescriptionId": "Pangsit ayam kulit tipis — kukus, goreng, atau rebus",
+      "shortDescriptionEn": "Thin-skinned chicken pangsit — steam, fry, or boil",
+      "imageIds": [
+        "dapurdekaka/products/pangsit-ayam",
+        "dapurdekaka/products/pangsit-ayam-2",
+        "dapurdekaka/products/pangsit-ayam-3"
+      ],
+      "cloudinaryFolder": "products",
+      "weightGramDefault": 450,
+      "variants": [
+        {
+          "nameId": "25 pcs",
+          "nameEn": "25 pcs",
+          "tempSku": "DDK-PANG-25",
+          "price": 77000,
+          "stock": 1,
+          "weightGram": 225,
+          "modelId": 0
+        },
+        {
+          "nameId": "50 pcs",
+          "nameEn": "50 pcs",
+          "tempSku": "DDK-PANG-50",
+          "price": 138000,
+          "stock": 4,
+          "weightGram": 450,
+          "modelId": 0
+        }
+      ]
+    },
+    {
+      "itemId": 53350143544,
+      "slug": "dimsum-campur",
+      "nameId": "Dimsum Campur 3 Varian",
+      "nameEn": "Mixed Dimsum 3 Variants",
+      "rawName": "Dimsum Campur 3 Varian",
+      "shopeeUrl": "https://shopee.co.id/product/20069111/53350143544",
+      "categorySlug": "dimsum-klasik",
+      "isPreOrder": false,
+      "isHalal": true,
+      "isFeatured": false,
+      "descriptionId": "Paket Ibu:\n- 5 pcs dimsum mix\n- 5 pcs lumpia\n- 5 pcs pangsit ayam\n\nPaket Bapak:\n- 5 pcs dimsum mix\n- 5 pcs dimsum rambutan\n- 5 pcs dimsum nori",
+      "descriptionEn": "Ibu pack:\n- 5 pcs dimsum mix\n- 5 pcs lumpia\n- 5 pcs chicken pangsit\n\nBapak pack:\n- 5 pcs dimsum mix\n- 5 pcs dimsum rambutan\n- 5 pcs dimsum nori",
+      "shortDescriptionId": "Paket campur 15 pcs — pilihan Paket Ibu atau Paket Bapak",
+      "shortDescriptionEn": "15-pc mixed pack — Ibu or Bapak assortment",
+      "imageIds": [
+        "dapurdekaka/products/dimsum-campur",
+        "dapurdekaka/products/dimsum-campur-2",
+        "dapurdekaka/products/dimsum-campur-3"
+      ],
+      "cloudinaryFolder": "products",
+      "weightGramDefault": 300,
+      "variants": [
+        {
+          "nameId": "Paket Ibu",
+          "nameEn": "Ibu Pack",
+          "tempSku": "DDK-CAMP-IBU",
+          "price": 75000,
+          "stock": 1,
+          "weightGram": 300,
+          "modelId": 0
+        },
+        {
+          "nameId": "Paket Bapak",
+          "nameEn": "Bapak Pack",
+          "tempSku": "DDK-CAMP-BAPAK",
+          "price": 75000,
+          "stock": 2,
+          "weightGram": 300,
+          "modelId": 0
+        }
+      ]
+    },
+    {
+      "itemId": 28521596581,
+      "slug": "dimsum-rambutan",
+      "nameId": "Dimsum Rambutan",
+      "nameEn": "Dimsum Rambutan",
+      "rawName": "Dimsum Rambutan",
+      "shopeeUrl": "https://shopee.co.id/product/20069111/28521596581",
+      "categorySlug": "dimsum-spesial",
+      "isPreOrder": true,
+      "isHalal": true,
+      "isFeatured": false,
+      "descriptionId": "Supplier Dimsum Frozen dari Kota Bandung. HALAL. TANPA PENGAWET.\n\nHanya bisa pengiriman Instant, Same Day, dan Next Day.\nPengiriman ke Pulau Jawa bisa menggunakan Paxel (chat admin).\n\nTidak ada hari libur. Pesanan langsung dikirim.\n\n1 box = 50 pcs, Dapet sampel chili oil 50 gr atau saos sambal 60 gr, tergantung stok\n\nSaran penyajian: goreng.\n\nTanggal pada kemasan adalah tanggal produksi.",
+      "descriptionEn": "Frozen rambutan dimsum from Bandung. HALAL. No preservatives.\nServing: Fry.\n1 box = 50 pcs with sample chili oil or sambal.",
+      "shortDescriptionId": "Dimsum rambutan frozen — saran goreng",
+      "shortDescriptionEn": "Frozen rambutan dimsum — best fried",
+      "imageIds": [
+        "dapurdekaka/products/dimsum-rambutan",
+        "dapurdekaka/products/dimsum-rambutan-2",
+        "dapurdekaka/products/dimsum-rambutan-3"
+      ],
+      "cloudinaryFolder": "products",
+      "weightGramDefault": 600,
+      "variants": [
+        {
+          "nameId": "25 pcs",
+          "nameEn": "25 pcs",
+          "tempSku": "DDK-RAMB-25",
+          "price": 78000,
+          "stock": 0,
+          "weightGram": 300,
+          "modelId": 0
+        },
+        {
+          "nameId": "50 pcs",
+          "nameEn": "50 pcs",
+          "tempSku": "DDK-RAMB-50",
+          "price": 143000,
+          "stock": 4,
+          "weightGram": 600,
+          "modelId": 0
+        }
+      ]
+    },
+    {
+      "itemId": 45906270502,
+      "slug": "dimsum-full-wortel",
+      "nameId": "Dimsum Full Wortel",
+      "nameEn": "Dimsum Full Carrot",
+      "rawName": "Dimsum Full Wortel",
+      "shopeeUrl": "https://shopee.co.id/product/20069111/45906270502",
+      "categorySlug": "dimsum-klasik",
+      "isPreOrder": true,
+      "isHalal": true,
+      "isFeatured": false,
+      "descriptionId": "Dimsum dengan topping custom: wortel. Pre-order.",
+      "descriptionEn": "Custom topping dimsum: carrot. Pre-order.",
+      "shortDescriptionId": "Dimsum full wortel — pre-order",
+      "shortDescriptionEn": "Full carrot dimsum — pre-order",
+      "imageIds": [
+        "dapurdekaka/products/dimsum-full-wortel",
+        "dapurdekaka/products/dimsum-full-wortel-2",
+        "dapurdekaka/products/dimsum-full-wortel-3"
+      ],
+      "cloudinaryFolder": "products",
+      "weightGramDefault": 600,
+      "variants": [
+        {
+          "nameId": "25 pcs",
+          "nameEn": "25 pcs",
+          "tempSku": "DDK-WORT-25",
+          "price": 75000,
+          "stock": 5,
+          "weightGram": 300,
+          "modelId": 0
+        },
+        {
+          "nameId": "50 pcs",
+          "nameEn": "50 pcs",
+          "tempSku": "DDK-WORT-50",
+          "price": 138000,
+          "stock": 5,
+          "weightGram": 600,
+          "modelId": 0
+        }
+      ]
+    },
+    {
+      "itemId": 40528795957,
+      "slug": "dimsum-smoked-beef",
+      "nameId": "Dimsum Smoked Beef",
+      "nameEn": "Dimsum Smoked Beef",
+      "rawName": "Dimsum Smoked Beef",
+      "shopeeUrl": "https://shopee.co.id/product/20069111/40528795957",
+      "categorySlug": "dimsum-spesial",
+      "isPreOrder": true,
+      "isHalal": true,
+      "isFeatured": false,
+      "descriptionId": "Dimsum siomay custom dengan topping smoked beef. Pre-order.",
+      "descriptionEn": "Custom siomay with smoked beef topping. Pre-order.",
+      "shortDescriptionId": "Dimsum smoked beef — pre-order",
+      "shortDescriptionEn": "Smoked beef dimsum — pre-order",
+      "imageIds": [
+        "dapurdekaka/products/dimsum-smoked-beef",
+        "dapurdekaka/products/dimsum-smoked-beef-2",
+        "dapurdekaka/products/dimsum-smoked-beef-3"
+      ],
+      "cloudinaryFolder": "products",
+      "weightGramDefault": 500,
+      "variants": [
+        {
+          "nameId": "25 pcs",
+          "nameEn": "25 pcs",
+          "tempSku": "DDK-SMOK-25",
+          "price": 75000,
+          "stock": 4,
+          "weightGram": 250,
+          "modelId": 0
+        },
+        {
+          "nameId": "50 pcs",
+          "nameEn": "50 pcs",
+          "tempSku": "DDK-SMOK-50",
+          "price": 138000,
+          "stock": 5,
+          "weightGram": 500,
+          "modelId": 0
+        }
+      ]
+    },
+    {
+      "itemId": 56056239263,
+      "slug": "dimsum-full-jamur",
+      "nameId": "Dimsum Full Jamur",
+      "nameEn": "Dimsum Full Mushroom",
+      "rawName": "Dimsum Full Jamur",
+      "shopeeUrl": "https://shopee.co.id/product/20069111/56056239263",
+      "categorySlug": "dimsum-klasik",
+      "isPreOrder": true,
+      "isHalal": true,
+      "isFeatured": false,
+      "descriptionId": "Dimsum dengan topping custom: jamur. Pre-order.",
+      "descriptionEn": "Custom topping dimsum: mushroom. Pre-order.",
+      "shortDescriptionId": "Dimsum full jamur — pre-order",
+      "shortDescriptionEn": "Full mushroom dimsum — pre-order",
+      "imageIds": [
+        "dapurdekaka/products/dimsum-full-jamur",
+        "dapurdekaka/products/dimsum-full-jamur-2",
+        "dapurdekaka/products/dimsum-full-jamur-3"
+      ],
+      "cloudinaryFolder": "products",
+      "weightGramDefault": 500,
+      "variants": [
+        {
+          "nameId": "25 pcs",
+          "nameEn": "25 pcs",
+          "tempSku": "DDK-JAMU-25",
+          "price": 75000,
+          "stock": 0,
+          "weightGram": 250,
+          "modelId": 0
+        },
+        {
+          "nameId": "50 pcs",
+          "nameEn": "50 pcs",
+          "tempSku": "DDK-JAMU-50",
+          "price": 138000,
+          "stock": 1,
+          "weightGram": 500,
+          "modelId": 0
+        }
+      ]
+    },
+    {
+      "itemId": 23464654803,
+      "slug": "dimsum-pedas",
+      "nameId": "Dimsum Pedas",
+      "nameEn": "Spicy Dimsum",
+      "rawName": "Dimsum Pedas",
+      "shopeeUrl": "https://shopee.co.id/product/20069111/23464654803",
+      "categorySlug": "dimsum-spesial",
+      "isPreOrder": false,
+      "isHalal": true,
+      "isFeatured": false,
+      "descriptionId": "Supplier Dimsum Frozen dari Kota Bandung. HALAL. TANPA PENGAWET.\n\nHanya bisa pengiriman Instant, Same Day, dan Next Day.\nPengiriman ke Pulau Jawa bisa menggunakan Paxel (chat admin).\n\nTidak ada hari libur. Pesanan langsung dikirim.\n\n1 box = 50 pcs, Dapet sampel chili oil 50 gr atau saos sambal 60 gr, tergantung stok\n\nSaran penyajian: Kukus.\nSEKARANG SUDAH TIDAK MENGGUNAKAN KULIT DIMSUM WARNA MERAH\n\nTanggal pada kemasan adalah tanggal produksi.",
+      "descriptionEn": "Spicy frozen dimsum from Bandung. HALAL. No preservatives.\nServing: Steam.\nNo longer uses red dumpling wrappers.\n1 box = 50 pcs with sample chili oil or sambal.",
+      "shortDescriptionId": "Dimsum pedas frozen — tidak pakai kulit merah",
+      "shortDescriptionEn": "Spicy frozen dimsum — no red wrapper",
+      "imageIds": [
+        "dapurdekaka/products/dimsum-pedas",
+        "dapurdekaka/products/dimsum-pedas-2",
+        "dapurdekaka/products/dimsum-pedas-3"
+      ],
+      "cloudinaryFolder": "products",
+      "weightGramDefault": 530,
+      "variants": [
+        {
+          "nameId": "25 pcs",
+          "nameEn": "25 pcs",
+          "tempSku": "DDK-PEDA-25",
+          "price": 78000,
+          "stock": 0,
+          "weightGram": 265,
+          "modelId": 0
+        },
+        {
+          "nameId": "50 pcs",
+          "nameEn": "50 pcs",
+          "tempSku": "DDK-PEDA-50",
+          "price": 143000,
+          "stock": 5,
+          "weightGram": 530,
+          "modelId": 0
+        }
+      ]
+    },
+    {
+      "itemId": 44128796111,
+      "slug": "dimsum-full-tuna",
+      "nameId": "Dimsum Full Tuna",
+      "nameEn": "Dimsum Full Tuna",
+      "rawName": "Dimsum Full Tuna",
+      "shopeeUrl": "https://shopee.co.id/product/20069111/44128796111",
+      "categorySlug": "dimsum-premium",
+      "isPreOrder": true,
+      "isHalal": true,
+      "isFeatured": false,
+      "descriptionId": "Dimsum dengan topping custom: tuna. Pre-order.",
+      "descriptionEn": "Custom topping dimsum: tuna. Pre-order.",
+      "shortDescriptionId": "Dimsum full tuna — pre-order",
+      "shortDescriptionEn": "Full tuna dimsum — pre-order",
+      "imageIds": [
+        "dapurdekaka/products/dimsum-full-tuna",
+        "dapurdekaka/products/dimsum-full-tuna-2",
+        "dapurdekaka/products/dimsum-full-tuna-3"
+      ],
+      "cloudinaryFolder": "products",
+      "weightGramDefault": 520,
+      "variants": [
+        {
+          "nameId": "25 pcs",
+          "nameEn": "25 pcs",
+          "tempSku": "DDK-TUNA-25",
+          "price": 75000,
+          "stock": 5,
+          "weightGram": 260,
+          "modelId": 0
+        },
+        {
+          "nameId": "50 pcs",
+          "nameEn": "50 pcs",
+          "tempSku": "DDK-TUNA-50",
+          "price": 138000,
+          "stock": 5,
+          "weightGram": 520,
+          "modelId": 0
+        }
+      ]
+    }
+  ],
+  "deactivateSlugsNotOnShopee": [
+    "dimsum-crabstick",
+    "dimsum-jamur",
+    "dimsum-mozarella",
+    "dimsum-golden",
+    "dimsum-tuna",
+    "ekado",
+    "chili-oil",
+    "dimsum-full-crabstick",
+    "dimsum-mix-luar-kota"
+  ]
+}

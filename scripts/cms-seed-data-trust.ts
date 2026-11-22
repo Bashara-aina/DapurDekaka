@@ -16,7 +16,7 @@ const WE_PROMISE_ID = [
   'Jika produk tiba tidak layak (basi/cair karena kegagalan kirim kami), kami ganti atau refund penuh — langsung.',
   'Semua pembayaran diproses Midtrans; kami tidak pernah minta transfer manual di luar sistem.',
   'Pertanyaan WA dijawab dalam jam operasional, maksimal H+1.',
-  'Harga website selalu di bawah harga Shopee untuk produk yang sama.',
+  'Harga produk website mengikuti harga normal Shopee (bukan harga flash sale).',
   'Pembatalan sebelum dikirim = refund penuh (diproses 1–7 hari kerja).',
 ] as const;
 
@@ -31,7 +31,7 @@ const WE_PROMISE_EN = [
   'If your order arrives damaged or thawed due to our shipping failure, we replace or refund in full — no debate.',
   'All payments are processed by Midtrans; we never ask for manual transfers outside the system.',
   'WhatsApp questions are answered within operating hours, by the next business day at the latest.',
-  'Our website price is always below Shopee for the same product.',
+  'Website product prices match Shopee normal/base prices (not flash-sale prices).',
   'Cancellations before dispatch = full refund (processed within 1–7 business days).',
 ] as const;
 
@@ -146,9 +146,9 @@ export const TRUST_PAGE: CmsPageSeed = {
       titleId: 'Kenapa ongkir lebih mahal dari Shopee?',
       titleEn: 'Why is shipping more expensive than Shopee?',
       bodyId:
-        'Ongkir kami sudah termasuk packing frozen (ice gel + insulasi) dan hanya pakai layanan yang aman untuk frozen. Total harga produk + ongkir tetap lebih murah dari Shopee.',
+        'Ongkir kami sudah termasuk packing frozen (ice gel + insulasi) dan hanya pakai layanan yang aman untuk frozen — fokus kami kualitas cold-chain, bukan perang harga ongkir marketplace.',
       bodyEn:
-        'Our shipping includes frozen handling (ice gel + insulation) and only uses couriers proven safe for frozen. Total product + shipping is still below Shopee.',
+        'Our shipping includes frozen handling (ice gel + insulation) and only uses couriers proven safe for frozen — we prioritize cold-chain quality, not marketplace shipping price wars.',
     },
     {
       sectionKey: 'dispute_lost',

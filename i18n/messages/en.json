@@ -917,7 +917,7 @@
       "8": "If your order arrives damaged or thawed due to our shipping failure, we replace or refund in full — no debate.",
       "9": "All payments are processed by Midtrans; we never ask for manual transfers outside the system.",
       "10": "WhatsApp questions are answered within operating hours, by the next business day at the latest.",
-      "11": "Our website price is always below Shopee for the same product.",
+      "11": "Website product prices match Shopee normal/base prices (not flash-sale prices).",
       "12": "Cancellations before dispatch = full refund (processed within 1–7 business days)."
     },
     "weDoNotPromise": {
@@ -941,7 +941,7 @@
       },
       "ongkir": {
         "title": "Why is shipping more expensive than Shopee?",
-        "stance": "Our shipping includes frozen handling (ice gel + insulation) and only uses couriers proven safe for frozen. Total product + shipping is still below Shopee."
+        "stance": "Our shipping includes frozen handling (ice gel + insulation) and only uses couriers proven safe for frozen — we prioritize cold-chain quality, not marketplace shipping price wars."
       },
       "lost": {
         "title": "Package hasn't arrived, no tracking movement",

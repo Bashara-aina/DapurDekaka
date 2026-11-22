@@ -594,7 +594,7 @@ Each product variant has:
 ### 7.5 Product Seeding
 At project initialization, seed the database with all 19 SKUs scraped from the Dapur Dekaka Shopee store (https://shopee.co.id/dapurdekaka). For each product include:
 - Product name (Bahasa Indonesia)
-- All variants with Shopee prices as reference (website prices set 15-20% below Shopee)
+- All variants synced to Shopee normal/base prices (exact match; flash-sale prices ignored)
 - Weight estimate based on product type
 - Category assignment
 - Placeholder Cloudinary URL for image (to be replaced by admin)
