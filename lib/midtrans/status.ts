@@ -21,6 +21,26 @@ export interface TransactionStatusResult {
 const TIMEOUT_MS = 15000;
 
 /**
+ * True when Midtrans confirms the Snap/Core order_id was never created
+ * (or was already purged). Safe to treat as unpaid for cancel/reconcile.
+ * Network/5xx failures must NOT match — those stay "skip / retry later".
+ */
+export function isMidtransTransactionMissing(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  const lower = message.toLowerCase();
+  const has404 =
+    lower.includes('http status code: 404') ||
+    lower.includes('"status_code":"404"') ||
+    lower.includes('status_code":"404');
+  const missingTxn =
+    lower.includes("doesn't exist") ||
+    lower.includes('does not exist') ||
+    lower.includes('transaction not found') ||
+    lower.includes('no transaction found');
+  return has404 || missingTxn;
+}
+
+/**
  * Check Midtrans transaction status using Core API.
  * Used by cancel-expired-orders cron as fallback check.
  */

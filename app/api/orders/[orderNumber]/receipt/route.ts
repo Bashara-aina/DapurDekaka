@@ -3,25 +3,25 @@ import { renderToBuffer } from '@react-pdf/renderer';
 import { db } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { orders } from '@/lib/db/schema';
-import { success, serverError, notFound, unauthorized } from '@/lib/utils/api-response';
+import { serverError, notFound, unauthorized } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
 import { OrderReceiptPDF } from '@/components/email/OrderReceiptPDF';
 import { getSetting } from '@/lib/settings/get-settings';
 import { cloudinaryUrl } from '@/lib/seo/cloudinary-url';
+import { withRateLimit } from '@/lib/utils/rate-limit';
 import { logger } from '@/lib/utils/logger';
+
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-interface Props {
+interface RouteParams {
   params: Promise<{ orderNumber: string }>;
 }
 
-export async function GET(
-  req: NextRequest,
-  { params }: Props
-) {
+export const GET = withRateLimit(async (req: NextRequest, context?: RouteParams) => {
   try {
-    const { orderNumber } = await params;
+    if (!context) return notFound('Order tidak ditemukan');
+    const { orderNumber } = await context.params;
     const searchParams = req.nextUrl.searchParams;
     const guestEmail = searchParams.get('email');
 
@@ -68,7 +68,6 @@ export async function GET(
       return notFound('Order tidak ditemukan');
     }
 
-    // Verify access: logged-in owner/admin, or guest with matching email
     let verified = false;
     if (session?.user?.id) {
       const isAdmin = session.user.role === 'superadmin' || session.user.role === 'owner';
@@ -106,17 +105,22 @@ export async function GET(
       },
     });
   } catch (error) {
-    logger.error('[orders/[orderNumber]/receipt]', { error: error instanceof Error ? error.message : String(error) });
+    logger.error('[orders/[orderNumber]/receipt]', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     const isTimeout = error instanceof Error && error.message === 'PDF_TIMEOUT';
     if (isTimeout) {
       return new Response(
-        JSON.stringify({ success: false, error: 'PDF generation timed out. Silakan coba beberapa saat lagi.' }),
+        JSON.stringify({
+          success: false,
+          error: 'PDF generation timed out. Silakan coba beberapa saat lagi.',
+        }),
         { status: 503, headers: { 'Content-Type': 'application/json' } }
       );
     }
     return serverError(error);
   }
-}
+}, 'public');
 
 async function buildLogoUrl(): Promise<string> {
   const logoPublicId = await getSetting<string>('seo_logo_url').catch(() => null);

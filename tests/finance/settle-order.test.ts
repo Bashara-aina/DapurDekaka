@@ -157,4 +157,21 @@ describe('settleOrderTx — P0#3/#4 shared settlement', () => {
     // 120_000 net → 120 points → one pointsHistory earn row.
     expect(rec.pointsInserts).toBe(1);
   });
+
+  it('settles pickup orders without throwing (pickupCode preserved at DB layer)', async () => {
+    const rec: Recorder = { inventoryInserts: 0, statusInserts: 0, couponIncrements: 0, pointsInserts: 0 };
+    const tx = makeTx(
+      { orderGuard: [{ id: 'order-1' }], variantRows: [[{ newStock: 8 }]], userBalance: 0 },
+      rec
+    );
+
+    const settled = await settleOrderTx(
+      tx as never,
+      { ...baseOrder, deliveryMethod: 'pickup' },
+      { source: 'webhook', note: 'paid' }
+    );
+
+    expect(settled).toBe(true);
+    expect(rec.statusInserts).toBe(1);
+  });
 });

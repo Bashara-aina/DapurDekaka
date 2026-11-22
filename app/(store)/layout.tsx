@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { Navbar } from '@/components/store/layout/Navbar';
 import { BottomNav } from '@/components/store/layout/BottomNav';
 import Footer from '@/components/store/layout/Footer';
@@ -6,6 +8,7 @@ import { WhatsAppButton } from '@/components/store/layout/WhatsAppButton';
 import { SoftLaunchBanner } from '@/components/store/layout/SoftLaunchBanner';
 import { getSetting } from '@/lib/settings/get-settings';
 import { isFlagEnabled } from '@/lib/config/feature-flags';
+import { isMaintenanceMode } from '@/lib/ops/maintenance';
 import { resolveWhatsAppNumber } from '@/lib/utils/whatsapp-number';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -24,6 +27,16 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function StoreLayout({ children }: { children: React.ReactNode }) {
+  // DB-backed admin toggle (Node). Env kill-switch is handled in middleware.
+  // Skip /maintenance to avoid redirect loops. DB errors fail-open.
+  const pathname = (await headers()).get('x-pathname') ?? '';
+  if (
+    !pathname.startsWith('/maintenance') &&
+    (await isMaintenanceMode().catch(() => false))
+  ) {
+    redirect('/maintenance');
+  }
+
   const [dbWhatsapp, softLaunchEnabled, softLaunchMsg] = await Promise.all([
     getSetting<string>('store_whatsapp_number').catch(() => null),
     getSetting<boolean>('soft_launch_banner_enabled', 'boolean').catch(() => true),

@@ -1,14 +1,10 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
-import { db } from '@/lib/db';
-import { products, productVariants, productImages, categories } from '@/lib/db/schema';
-import { eq, and, isNull, desc, lt } from 'drizzle-orm';
 import { ProductCatalog } from '@/components/store/products/ProductCatalog';
 import { getSetting } from '@/lib/settings/get-settings';
 import { cloudinaryUrl } from '@/lib/seo/cloudinary-url';
-
-const PRODUCTS_PER_PAGE = 20;
+import { getCatalogPage, getCatalogCategories } from '@/lib/store/get-catalog';
 
 interface ProductsPageProps {
   searchParams: Promise<{ category?: string; q?: string; cursor?: string }>;
@@ -55,53 +51,15 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const params = await searchParams;
   const { category: categorySlug, q, cursor } = params;
 
-  const cursorClause = cursor
-    ? lt(products.createdAt, new Date(cursor))
-    : undefined;
-
-  const conditions = [eq(products.isActive, true), isNull(products.deletedAt)];
-  if (categorySlug) {
-    const category = await db.query.categories.findFirst({
-      where: eq(categories.slug, categorySlug),
-    });
-    if (category) {
-      conditions.push(eq(products.categoryId, category.id));
-    }
-  }
-
-  const productsList = await db.query.products.findMany({
-    where: cursor
-      ? and(...conditions, cursorClause)
-      : and(...conditions),
-    with: {
-      variants: { where: eq(productVariants.isActive, true) },
-      images: { orderBy: (images, { asc }) => [asc(images.sortOrder)] },
-      category: true,
-    },
-    limit: PRODUCTS_PER_PAGE,
-    orderBy: [desc(products.createdAt)],
-  });
-
-  const nextCursor = productsList.length === PRODUCTS_PER_PAGE
-    ? productsList[productsList.length - 1]?.createdAt.toISOString()
-    : null;
-
-  const allActiveProducts = await db.query.products.findMany({
-    where: and(eq(products.isActive, true), isNull(products.deletedAt)),
-    columns: { categoryId: true },
-  });
-  const categoryIdsWithProducts = new Set(allActiveProducts.map(p => p.categoryId));
-
-  const allCategoriesRaw = await db.query.categories.findMany({
-    where: eq(categories.isActive, true),
-    orderBy: [categories.sortOrder],
-  });
-  const allCategories = allCategoriesRaw.filter(cat => categoryIdsWithProducts.has(cat.id));
+  const [{ productsList, nextCursor }, allCategories] = await Promise.all([
+    getCatalogPage(categorySlug, cursor),
+    getCatalogCategories(),
+  ]);
 
   return (
     <ProductCatalog
       products={productsList}
-      categories={allCategories.map(c => ({ id: c.id, nameId: c.nameId, slug: c.slug }))}
+      categories={allCategories}
       initialCategory={categorySlug || ''}
       initialSearch={q || ''}
       nextCursor={nextCursor}

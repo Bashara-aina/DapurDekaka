@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { orders } from '@/lib/db/schema';
 import { sendWhatsApp } from '@/lib/services/fonnte';
+import { resolveStoreWhatsAppNumber } from '@/lib/utils/store-whatsapp';
 import { logger } from '@/lib/utils/logger';
 
 export type NeedsAttentionReason =
@@ -37,8 +38,14 @@ export async function flagNeedsAttention(
     columns: { orderNumber: true },
   });
 
-  const wa = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
-  if (!wa) return;
+  const wa = await resolveStoreWhatsAppNumber();
+  if (!wa) {
+    logger.error('[needs-attention] skipped WA — no store WhatsApp configured', {
+      orderId,
+      reason,
+    });
+    return;
+  }
 
   const msg = `[DDK Ops] ${order?.orderNumber ?? orderId}: ${reason} — ${detail}`;
   try {

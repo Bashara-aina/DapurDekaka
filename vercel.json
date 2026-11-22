@@ -5,8 +5,8 @@
   ],
   "crons": [
     {
-      "path": "/api/cron/cancel-expired-orders",
-      "schedule": "*/30 * * * *"
+      "path": "/api/cron/hourly",
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/expire-points",
@@ -19,14 +19,6 @@
     {
       "path": "/api/cron/reconcile-points",
       "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/cron/reconcile-payments",
-      "schedule": "0 * * * *"
-    },
-    {
-      "path": "/api/cron/retry-dispatch",
-      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/pickup-release",

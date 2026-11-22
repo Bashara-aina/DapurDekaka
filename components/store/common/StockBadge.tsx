@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils/cn';
 import { useCartStore } from '@/store/cart.store';
 import { useTranslations } from 'next-intl';
+import { SAFETY_STOCK } from '@/lib/constants/inventory';
 
 interface StockBadgeProps {
   /** Direct stock value — used for product pages (static display) */
@@ -14,14 +15,13 @@ interface StockBadgeProps {
 
 export function StockBadge({ stock: directStock, variantId, className }: StockBadgeProps) {
   const t = useTranslations('product');
-  // Always call the hook — derive the value from the result
   const cartStock = useCartStore((s) =>
     variantId ? s.items.find((i) => i.variantId === variantId)?.stock : undefined
   );
 
   const stock = cartStock ?? directStock;
 
-  if (stock === undefined || stock === 0) {
+  if (stock === undefined || stock <= SAFETY_STOCK) {
     return (
       <span
         className={cn(

@@ -18,6 +18,8 @@ interface InventoryVariant {
 
 interface InventoryClientProps {
   initialVariants: InventoryVariant[];
+  /** Controls whether "Edit Produk" is shown — warehouse cannot open products. */
+  role: 'superadmin' | 'owner' | 'warehouse' | string;
 }
 
 function StockCell({
@@ -31,7 +33,7 @@ function StockCell({
   const [value, setValue] = useState(String(variant.stock));
   const [saving, setSaving] = useState(false);
 
-  async function handleSave() {
+  async function handleSave(): Promise<void> {
     const newStock = parseInt(value, 10);
     if (isNaN(newStock) || newStock < 0) {
       toast.error('Stok harus berupa angka positif');
@@ -48,6 +50,15 @@ function StockCell({
       return;
     }
 
+    const reason = window.prompt(
+      'Alasan penyesuaian stok (wajib)',
+      'Koreksi stok dari halaman Inventori'
+    );
+    if (!reason || !reason.trim()) {
+      toast.error('Alasan penyesuaian wajib diisi');
+      return;
+    }
+
     setSaving(true);
     try {
       const res = await fetch('/api/admin/field/inventory/adjust', {
@@ -56,12 +67,12 @@ function StockCell({
         body: JSON.stringify({
           variantId: variant.id,
           delta,
-          reason: 'Inline adjustment from inventory page',
+          reason: reason.trim(),
         }),
       });
 
       if (!res.ok) {
-        const err = await res.json();
+        const err = await res.json() as { error?: string };
         throw new Error(err.error || 'Gagal menyimpan stok');
       }
 
@@ -75,8 +86,8 @@ function StockCell({
     }
   }
 
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Enter') handleSave();
+  function handleKeyDown(e: React.KeyboardEvent): void {
+    if (e.key === 'Enter') void handleSave();
     if (e.key === 'Escape') {
       setValue(String(variant.stock));
       setEditing(false);
@@ -98,7 +109,7 @@ function StockCell({
           autoFocus
         />
         <button
-          onClick={handleSave}
+          onClick={() => void handleSave()}
           disabled={saving}
           className="min-h-[48px] min-w-[48px] px-3 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
         >
@@ -133,12 +144,16 @@ function StockCell({
   );
 }
 
-export default function InventoryClient({ initialVariants }: InventoryClientProps) {
+export default function InventoryClient({
+  initialVariants,
+  role,
+}: InventoryClientProps): React.JSX.Element {
   const [variants, setVariants] = useState(initialVariants);
   const [search, setSearch] = useState('');
   const [sortStockFirst, setSortStockFirst] = useState(false);
+  const canEditProduct = role === 'superadmin' || role === 'owner';
 
-  const handleUpdate = (variantId: string, newStock: number) => {
+  const handleUpdate = (variantId: string, newStock: number): void => {
     setVariants((prev) =>
       prev.map((v) => (v.id === variantId ? { ...v, stock: newStock } : v))
     );
@@ -148,7 +163,7 @@ export default function InventoryClient({ initialVariants }: InventoryClientProp
   const outOfStock = variants.filter((v) => v.stock === 0).length;
   const lowStock = variants.filter((v) => v.stock > 0 && v.stock < 10).length;
 
-  const filtered = variants.filter(v =>
+  const filtered = variants.filter((v) =>
     !search ||
     v.sku.toLowerCase().includes(search.toLowerCase()) ||
     v.product.nameId.toLowerCase().includes(search.toLowerCase()) ||
@@ -161,8 +176,23 @@ export default function InventoryClient({ initialVariants }: InventoryClientProp
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Inventaris</h1>
+      <div>
+        <h1 className="text-2xl font-bold">Inventori</h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Koreksi stok cepat (desktop). Urutan harian packing &amp; kurir:{' '}
+          <Link href="/admin/field" className="font-medium text-brand-red underline underline-offset-2">
+            Gudang Ops
+          </Link>
+          .
+        </p>
+      </div>
+
+      <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+        <p className="font-medium">Alur jelas</p>
+        <p className="mt-1 text-blue-800">
+          Packing → Book Kurir / Pickup ada di <strong>Gudang Ops</strong>.
+          Halaman ini hanya untuk ubah angka stok. Harga &amp; foto produk diubah owner di menu Produk.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -199,7 +229,7 @@ export default function InventoryClient({ initialVariants }: InventoryClientProp
           )}
         </div>
         <button
-          onClick={() => setSortStockFirst(v => !v)}
+          onClick={() => setSortStockFirst((v) => !v)}
           className={`h-9 px-3 text-xs font-medium rounded-lg border transition-colors flex items-center gap-1.5 ${
             sortStockFirst
               ? 'bg-slate-900 text-white border-slate-900'
@@ -234,19 +264,25 @@ export default function InventoryClient({ initialVariants }: InventoryClientProp
                     <StockCell variant={variant} onUpdate={handleUpdate} />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <Link
-                      href={`/admin/products/${variant.productId}`}
-                      className="text-brand-red hover:underline"
-                    >
-                      Edit Produk
-                    </Link>
+                    {canEditProduct ? (
+                      <Link
+                        href={`/admin/products/${variant.productId}`}
+                        className="text-brand-red hover:underline"
+                      >
+                        Edit Produk
+                      </Link>
+                    ) : (
+                      <span className="text-xs text-gray-400">Harga/foto: hubungi owner</span>
+                    )}
                   </td>
                 </tr>
               ))}
-              {variants.length === 0 && (
+              {sorted.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                    Belum ada varian produk
+                    {variants.length === 0
+                      ? 'Belum ada varian produk'
+                      : 'Tidak ada hasil untuk pencarian ini'}
                   </td>
                 </tr>
               )}

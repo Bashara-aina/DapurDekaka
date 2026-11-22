@@ -9,12 +9,14 @@ declare module 'next-auth' {
       email?: string | null;
       image?: string | null;
       isActive?: boolean;
+      requiresTwoFactorSetup?: boolean;
     };
   }
 
   interface User {
     role?: UserRole;
     isActive?: boolean;
+    requiresTwoFactorSetup?: boolean;
   }
 }
 
@@ -23,5 +25,6 @@ declare module 'next-auth/jwt' {
     id?: string;
     role?: UserRole;
     isActive?: boolean;
+    requiresTwoFactorSetup?: boolean;
   }
 }

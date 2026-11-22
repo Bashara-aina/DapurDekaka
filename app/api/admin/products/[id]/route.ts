@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { logAdminActivity } from '@/lib/services/audit.service';
 import { getClientIp, getUserAgent } from '@/lib/utils/request-meta';
 import { logger } from '@/lib/utils/logger';
+import { revalidateCatalog } from '@/lib/store/revalidate-catalog';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -155,6 +156,7 @@ export async function PATCH(
       userAgent: getUserAgent(req),
     });
 
+    revalidateCatalog();
     return success(updated);
   } catch (error) {
     logger.error('[Admin/Products/PATCH id]', { error: error instanceof Error ? error.message : String(error) });
@@ -204,6 +206,7 @@ export async function DELETE(
       userAgent: getUserAgent(req),
     });
 
+    revalidateCatalog();
     return success({ message: 'Produk berhasil dihapus' });
   } catch (error) {
     logger.error('[Admin/Products/DELETE id]', { error: error instanceof Error ? error.message : String(error) });

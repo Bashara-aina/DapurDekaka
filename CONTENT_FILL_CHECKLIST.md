@@ -1,5 +1,8 @@
 # Track D — Content Fill Checklist
 
+> **Prefer the full human launch checklist:** [`docs/HUMAN-LAUNCH-CHECKLIST.md`](docs/HUMAN-LAUNCH-CHECKLIST.md)  
+> (sandbox Midtrans/Biteship UAT, per-SKU prices/photos, legal, vendors, live flip.)
+
 Post-code checklist for filling real business content via admin dashboard and Cloudinary. Complete after Tracks A–C (CMS schema, wiring fixes, storefront consumers) are deployed.
 
 ## 1. Cloudinary assets

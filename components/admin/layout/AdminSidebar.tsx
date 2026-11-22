@@ -25,7 +25,7 @@ type NavItem = NavLinkItem | NavSeparator;
 const NAV_ITEMS: NavItem[] = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['superadmin'] },
   { href: '/admin/team-dashboard', label: 'Tim Dashboard', icon: BarChart3, roles: ['superadmin'] },
-  { href: '/admin/field', label: 'Gudang', icon: ClipboardList, roles: ['superadmin', 'owner', 'warehouse'] },
+  { href: '/admin/field', label: 'Gudang Ops', icon: ClipboardList, roles: ['superadmin', 'owner', 'warehouse'] },
   { separator: true },
   { href: '/admin/orders', label: 'Pesanan', icon: ShoppingCart, roles: ['superadmin', 'owner', 'warehouse'] },
   { href: '/admin/products', label: 'Produk', icon: Package, roles: ['superadmin', 'owner'] },

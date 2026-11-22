@@ -93,6 +93,24 @@ export const authConfig = {
         // invalidates stored 2FA secrets (they are envelope-encrypted with it)
         // — affected users must re-enroll via backup-code… which also fails.
         // Keep an offline superadmin recovery path before rotating.
+        const isAdminRole = ADMIN_ROLES.has(user.role);
+        // Admin/staff must enroll 2FA. Allow password login once so they can
+        // reach /account/profile to set it up; middleware blocks /admin until done.
+        if (isAdminRole && !user.twoFactorEnabled) {
+          logger.warn('[auth] admin login without 2FA — setup required', {
+            userId: user.id,
+            role: user.role,
+          });
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            isActive: user.isActive,
+            requiresTwoFactorSetup: true,
+          };
+        }
+
         if (user.twoFactorEnabled) {
           const { decryptTotpSecret, verifyTotpCode, consumeBackupCode } =
             await import('@/lib/auth/two-factor');
@@ -141,16 +159,19 @@ export const authConfig = {
           name: user.name,
           role: user.role,
           isActive: user.isActive,
+          requiresTwoFactorSetup: false,
         };
       },
     }),
   ],
   // Credentials provider in NextAuth v5 requires JWT strategy.
   // Drizzle adapter still handles Google OAuth account linking at sign-in.
+  // Customer sessions: 30 days. Admin/staff capped to 12h in the jwt callback.
   session: { strategy: 'jwt', maxAge: 60 * 60 * 24 * 30, secure: process.env.NODE_ENV === 'production' },
   callbacks: {
     async jwt({ token, user, trigger, session: updateData }) {
       const t = token as Record<string, unknown>;
+      const ADMIN_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 
       async function fetchTokenVersion(userId: string): Promise<number | undefined> {
         try {
@@ -169,12 +190,16 @@ export const authConfig = {
       // can surface them.  tokenVersion lets us invalidate all existing sessions
       // when the user resets their password.
       if (user) {
-        const u = user as AppSessionUser;
+        const u = user as AppSessionUser & { requiresTwoFactorSetup?: boolean };
         if (u.id) token.sub = u.id;
         if (u.role) t.role = u.role;
         if (typeof u.isActive === 'boolean') t.isActive = u.isActive;
+        if (typeof u.requiresTwoFactorSetup === 'boolean') {
+          t.requiresTwoFactorSetup = u.requiresTwoFactorSetup;
+        }
         if (u.id) t.tokenVersion = await fetchTokenVersion(u.id);
         t.checkedAt = Date.now();
+        t.issuedAt = Date.now();
       }
 
       // S1/S2: periodically re-read role/isActive/tokenVersion so deactivating
@@ -190,7 +215,12 @@ export const authConfig = {
         try {
           const dbUser = await db.query.users.findFirst({
             where: eq(users.id, userId),
-            columns: { role: true, isActive: true, tokenVersion: true },
+            columns: {
+              role: true,
+              isActive: true,
+              tokenVersion: true,
+              twoFactorEnabled: true,
+            },
           });
 
           if (!dbUser || !dbUser.isActive) {
@@ -205,6 +235,8 @@ export const authConfig = {
           t.role = dbUser.role;
           t.isActive = dbUser.isActive;
           t.tokenVersion = dbUser.tokenVersion;
+          t.requiresTwoFactorSetup =
+            ADMIN_ROLES.has(dbUser.role) && !dbUser.twoFactorEnabled;
           t.checkedAt = Date.now();
         } catch (err) {
           // Edge middleware can fail to reach the DB; never sign everyone out
@@ -214,6 +246,20 @@ export const authConfig = {
             error: err instanceof Error ? err.message : String(err),
           });
           t.checkedAt = Date.now();
+        }
+      }
+
+      const role = typeof t.role === 'string' ? t.role : undefined;
+      if (role && ADMIN_ROLES.has(role)) {
+        const issuedAt =
+          typeof t.issuedAt === 'number'
+            ? t.issuedAt
+            : typeof token.iat === 'number'
+              ? token.iat * 1000
+              : Date.now();
+        if (Date.now() - issuedAt > ADMIN_MAX_AGE_MS) {
+          logger.info('[auth] admin session expired (12h cap)', { userId, role });
+          return null;
         }
       }
 
@@ -230,6 +276,9 @@ export const authConfig = {
       }
       if (typeof t.isActive === 'boolean') {
         session.user.isActive = t.isActive;
+      }
+      if (typeof t.requiresTwoFactorSetup === 'boolean') {
+        session.user.requiresTwoFactorSetup = t.requiresTwoFactorSetup;
       }
       return session;
     },

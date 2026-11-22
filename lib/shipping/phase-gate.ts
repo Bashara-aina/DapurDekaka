@@ -104,11 +104,19 @@ export async function computePhaseMetrics(): Promise<PhaseMetrics> {
 }
 
 /**
- * Force the configured phase back to phase0 until phase1 criteria are met.
+ * Honor configured phase when soft-launch override is on (broader soft launch).
+ * Otherwise force phase0 until phase1 metrics criteria are met.
  */
 export async function resolveEffectivePhase(): Promise<ShippingPhase> {
   const configured = await readShippingPhase();
   if (configured === 'phase0') return 'phase0';
+
+  const softOverride =
+    (await getSetting<boolean>('shipping_phase_soft_override', 'boolean')) === true;
+  const softLaunchOn =
+    (await getSetting<boolean>('soft_launch_banner_enabled', 'boolean')) === true;
+  if (softOverride && softLaunchOn) return configured;
+
   const metrics = await computePhaseMetrics();
   return gatePhase1(metrics) ? configured : 'phase0';
 }

@@ -5,6 +5,7 @@ import { products, orderItems } from '@/lib/db/schema';
 import { inArray, and, isNotNull } from 'drizzle-orm';
 import { success, unauthorized, forbidden, serverError, conflict, validationError } from '@/lib/utils/api-response';
 import { logger } from '@/lib/utils/logger';
+import { revalidateCatalog } from '@/lib/store/revalidate-catalog';
 import { z } from 'zod';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -75,6 +76,7 @@ export async function PATCH(req: NextRequest) {
       await db.update(products).set({ deletedAt: now }).where(inArray(products.id, ids));
     }
 
+    revalidateCatalog();
     return success({ updated: ids.length });
   } catch (error) {
     logger.error('[Admin Products Bulk PATCH]', { error: error instanceof Error ? error.message : String(error) });
@@ -100,6 +102,7 @@ export async function DELETE(req: NextRequest) {
     const now = new Date();
     await db.update(products).set({ deletedAt: now }).where(inArray(products.id, ids));
 
+    revalidateCatalog();
     return success({ deleted: ids.length });
   } catch (error) {
     logger.error('[Admin Products Bulk DELETE]', { error: error instanceof Error ? error.message : String(error) });

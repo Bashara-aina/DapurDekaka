@@ -1,5 +1,13 @@
+import { timingSafeEqual } from 'crypto';
 import { NextRequest } from 'next/server';
 import { logger } from '@/lib/utils/logger';
+
+function safeEqualString(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
 
 /**
  * Verify cron job authentication using Bearer token.
@@ -19,14 +27,12 @@ export function verifyCronAuth(req: NextRequest): boolean {
 
   const authHeader = req.headers.get('authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    // Warn without logging the header value (secret-adjacent).
     logger.warn('[cron-auth] missing or invalid Authorization header');
     return false;
   }
 
   const token = authHeader.slice(7);
-  if (token !== cronSecret) {
-    // Never log the presented token.
+  if (!safeEqualString(token, cronSecret)) {
     logger.warn('[cron-auth] invalid cron token');
     return false;
   }

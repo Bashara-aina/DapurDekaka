@@ -12,6 +12,7 @@ import { formatIDR } from '@/lib/utils/format-currency';
 import { StockBadge } from '@/components/store/common/StockBadge';
 import { HalalBadge } from '@/components/store/common/HalalBadge';
 import { cn } from '@/lib/utils/cn';
+import { SAFETY_STOCK } from '@/lib/constants/inventory';
 import type { Product, ProductVariant } from '@/lib/db/schema';
 
 interface ProductCardProps {
@@ -42,7 +43,7 @@ export function ProductCard({ product, variant, className }: ProductCardProps) {
   const addItem = useCartStore((s) => s.addItem);
   const syncToDb = useCartStore((s) => s.syncToDb);
   const router = useRouter();
-  const isOutOfStock = variant.stock === 0;
+  const isOutOfStock = variant.stock <= SAFETY_STOCK;
 
   const syncIfLoggedIn = async () => {
     if (session?.user) {

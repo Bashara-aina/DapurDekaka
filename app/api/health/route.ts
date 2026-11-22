@@ -12,6 +12,7 @@ export const revalidate = 0;
 /**
  * Health check endpoint for load balancers and monitoring.
  * Verifies database connectivity and critical service status.
+ * Neon cost: probe at ≥5 minute intervals only (see docs/NEON-COST.md).
  *
  * NOTE: This endpoint intentionally returns { status, checks, timestamp }
  * rather than the standard { success, data/error } format used by other API

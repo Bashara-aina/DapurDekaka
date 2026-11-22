@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import AdminPlainGuide from '@/components/admin/AdminPlainGuide';
 
 interface Props {
   slides: CarouselSlide[];
@@ -53,6 +54,13 @@ export default function CarouselGridClient({ slides }: Props) {
           <Plus className="w-4 h-4" /> Buat Slide
         </Link>
       </div>
+
+      <AdminPlainGuide title="Cara kelola banner homepage">
+        <p>
+          Buat Slide → upload gambar (lewat tombol upload) → isi judul + tombol CTA → atur tanggal
+          mulai/akhir jika promo terbatas → aktifkan. Hapus slide lama yang sudah tidak dipakai.
+        </p>
+      </AdminPlainGuide>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {slides.map((slide) => {

@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { orders, users } from '@/lib/db/schema';
-import { desc, eq } from 'drizzle-orm';
-import { success, forbidden, serverError } from '@/lib/utils/api-response';
+import { orders } from '@/lib/db/schema';
+import { desc } from 'drizzle-orm';
+import { forbidden, serverError } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
 import { formatWIB } from '@/lib/utils/format-date';
+import { logAdminActivity } from '@/lib/services/audit.service';
+import { withRateLimit } from '@/lib/utils/rate-limit';
+
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export async function GET(req: NextRequest) {
+export const GET = withRateLimit(async (req: NextRequest) => {
   try {
     const session = await auth();
     if (!session?.user) {
@@ -21,6 +24,14 @@ export async function GET(req: NextRequest) {
     if (!role || !['superadmin', 'owner'].includes(role)) {
       return forbidden('Anda tidak memiliki akses');
     }
+
+    await logAdminActivity({
+      userId: session.user.id,
+      action: 'export.orders',
+      targetType: 'orders',
+      ipAddress: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
+      userAgent: req.headers.get('user-agent'),
+    });
 
     const allOrders = await db.query.orders.findMany({
       orderBy: [desc(orders.createdAt)],
@@ -65,4 +76,4 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     return serverError(error);
   }
-}
+}, 'admin');

@@ -30,6 +30,7 @@ import { flagNeedsAttention } from '@/lib/ops/needs-attention';
 import { stripRetrySuffix } from '@/lib/utils/generate-order-number';
 import { scheduleBackground } from '@/lib/utils/background';
 import { isAlreadyProcessed, markProcessed, buildWebhookIdempotencyKey } from '@/lib/utils/webhook-idempotency';
+import { resolveStoreWhatsAppNumber } from '@/lib/utils/store-whatsapp';
 
 export const runtime = 'nodejs';
 
@@ -67,9 +68,20 @@ export const POST = withRateLimit(async (req: NextRequest) => {
     // ── P0#1: verify Midtrans body signature (NOT a header) ──────────────
     // S10: verify before the Redis idempotency lookup so unauthenticated
     // requests cannot probe which events have been processed.
-    const valid = verifyMidtransSignature(
-      { orderId: order_id, statusCode: status_code, grossAmount: gross_amount, signatureKey: signature_key },
-      process.env.MIDTRANS_SERVER_KEY
+    // Midtrans Oct 2026+: Signature Secret Key may differ from Server Key.
+    // Accept either so rotation / legacy DEFAULT keys still verify.
+    const signatureSecrets = [
+      process.env.MIDTRANS_SIGNATURE_SECRET,
+      process.env.MIDTRANS_SERVER_KEY,
+    ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+    const signatureInput = {
+      orderId: order_id,
+      statusCode: status_code,
+      grossAmount: gross_amount,
+      signatureKey: signature_key,
+    };
+    const valid = signatureSecrets.some((secret) =>
+      verifyMidtransSignature(signatureInput, secret)
     );
     if (!valid) {
       logger.warn('[Midtrans Webhook] Invalid or missing signature', { orderId: order_id });
@@ -462,9 +474,13 @@ async function handleRefundNotification(
 }
 
 function notifyOps(message: string): void {
-  const storePhone = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
-  if (!storePhone) return;
-  sendWhatsApp({ phone: storePhone, message }).catch(() => undefined);
+  void resolveStoreWhatsAppNumber().then((storePhone) => {
+    if (!storePhone) {
+      logger.error('[Midtrans Webhook] ops WA skipped — no number configured');
+      return;
+    }
+    sendWhatsApp({ phone: storePhone, message }).catch(() => undefined);
+  });
 }
 
 /**
@@ -668,7 +684,7 @@ async function sendSettlementNotifications(order: WebhookOrder): Promise<void> {
       );
     }
 
-    const storePhone = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
+    const storePhone = await resolveStoreWhatsAppNumber();
     if (storePhone) {
       scheduleBackground(
         sendWhatsApp({

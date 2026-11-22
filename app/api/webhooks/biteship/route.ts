@@ -16,6 +16,7 @@ import { logger } from '@/lib/utils/logger';
 import { withRateLimit } from '@/lib/utils/rate-limit';
 import { recordWebhookEvent } from '@/lib/utils/webhook-events';
 import { isAlreadyProcessed, markProcessed, buildWebhookIdempotencyKey } from '@/lib/utils/webhook-idempotency';
+import { resolveStoreWhatsAppNumber } from '@/lib/utils/store-whatsapp';
 
 export const runtime = 'nodejs';
 
@@ -152,7 +153,7 @@ export const POST = withRateLimit(
           });
         });
 
-        const storePhone = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '';
+        const storePhone = await resolveStoreWhatsAppNumber();
         if (storePhone) {
           sendWhatsApp({
             phone: storePhone,

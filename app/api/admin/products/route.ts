@@ -9,6 +9,7 @@ import { withRateLimit } from '@/lib/utils/rate-limit';
 import { logger } from '@/lib/utils/logger';
 import { logAdminActivity } from '@/lib/services/audit.service';
 import { getClientIp, getUserAgent } from '@/lib/utils/request-meta';
+import { revalidateCatalog } from '@/lib/store/revalidate-catalog';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -207,6 +208,7 @@ export const POST = withRateLimit(async (req: NextRequest) => {
       userAgent: getUserAgent(req),
     });
 
+    revalidateCatalog();
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch (error) {
     logger.error('[Admin Products POST]', { error: error instanceof Error ? error.message : String(error) });

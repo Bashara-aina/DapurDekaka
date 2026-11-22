@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils/cn';
 
-interface Testimonial {
+export interface TestimonialItem {
   id: string;
   customerName: string;
   customerLocation: string | null;
@@ -16,30 +16,23 @@ interface Testimonial {
   sortOrder: number;
 }
 
-export function Testimonials() {
+interface TestimonialsProps {
+  testimonials: TestimonialItem[];
+}
+
+export function Testimonials({ testimonials }: TestimonialsProps) {
   const t = useTranslations('testimonials');
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
-  const [hasError, setHasError] = useState(false);
 
-  useEffect(() => {
-    async function fetchTestimonials() {
-      try {
-        const res = await fetch('/api/testimonials/public');
-        const json = await res.json();
-        if (json.success && json.data?.length > 0) {
-          setTestimonials(json.data);
-        }
-      } catch {
-        setHasError(true);
-      }
-    }
-    fetchTestimonials();
-  }, []);
-
-  const next = useCallback(() => setCurrent((prev) => (prev + 1) % testimonials.length), [testimonials.length]);
-  const prev = useCallback(() => setCurrent((prev) => (prev - 1 + testimonials.length) % testimonials.length), [testimonials.length]);
+  const next = useCallback(
+    () => setCurrent((prev) => (prev + 1) % testimonials.length),
+    [testimonials.length]
+  );
+  const prev = useCallback(
+    () => setCurrent((prev) => (prev - 1 + testimonials.length) % testimonials.length),
+    [testimonials.length]
+  );
 
   useEffect(() => {
     if (isPaused || testimonials.length === 0) return;
@@ -48,24 +41,8 @@ export function Testimonials() {
   }, [isPaused, testimonials.length, next]);
 
   if (testimonials.length === 0) {
-    if (hasError) {
-      return (
-        <section className="py-12 px-4 bg-white">
-          <div className="container mx-auto text-center">
-            <h2 className="font-display text-2xl md:text-3xl font-semibold text-center mb-8">
-              {t('errorTitle')}
-            </h2>
-            <p className="text-text-secondary text-sm">
-              {t('errorDesc')}
-            </p>
-          </div>
-        </section>
-      );
-    }
     return null;
   }
-
-  const testimonial = testimonials[current];
 
   return (
     <section
@@ -105,7 +82,6 @@ export function Testimonials() {
             </div>
           </div>
 
-          {/* Navigation arrows */}
           <button
             onClick={prev}
             className="absolute left-0 top-1/2 -translate-y-1/2 w-11 h-11 bg-white rounded-full shadow flex items-center justify-center text-brand-red hover:bg-brand-cream transition-colors"
@@ -122,7 +98,6 @@ export function Testimonials() {
           </button>
         </div>
 
-        {/* Dots */}
         <div className="flex justify-center gap-1 mt-6">
           {testimonials.map((_, index) => (
             <button

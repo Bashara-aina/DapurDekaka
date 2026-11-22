@@ -49,8 +49,9 @@ export default function SuperadminDashboardClient() {
       if (dateRange.to) params.set('to', dateRange.to);
       return safeFetchJson<KPIData>(`/api/admin/dashboard/kpis?${params.toString()}`);
     },
-    staleTime: 60000,
-    refetchInterval: 30000,
+    staleTime: 120000,
+    refetchInterval: 180000,
+    refetchIntervalInBackground: false,
   });
 
   const alertsQuery = useQuery<DashboardAlert[] | null>({
@@ -62,13 +63,15 @@ export default function SuperadminDashboardClient() {
   const funnelQuery = useQuery<OrderFunnel | null>({
     queryKey: ['order-funnel'],
     queryFn: () => safeFetchJson<OrderFunnel>('/api/admin/dashboard/order-funnel'),
-    refetchInterval: 60000,
+    refetchInterval: 180000,
+    refetchIntervalInBackground: false,
   });
 
   const actionsQuery = useQuery<ActionQueueItem[] | null>({
     queryKey: ['action-queue'],
     queryFn: () => safeFetchJson<ActionQueueItem[]>('/api/admin/dashboard/action-queue'),
-    refetchInterval: 120000,
+    refetchInterval: 300000,
+    refetchIntervalInBackground: false,
   });
 
   const liveFeedQuery = useQuery<{ orders: LiveOrder[]; count: number } | null>({
@@ -77,13 +80,15 @@ export default function SuperadminDashboardClient() {
       safeFetchJson<{ orders: LiveOrder[]; count: number }>(
         '/api/admin/dashboard/live-feed?limit=20'
       ),
-    refetchInterval: 30000,
+    refetchInterval: 180000,
+    refetchIntervalInBackground: false,
   });
 
   const inventoryQuery = useQuery<InventoryFlash | null>({
     queryKey: ['inventory-flash'],
     queryFn: () => safeFetchJson<InventoryFlash>('/api/admin/dashboard/inventory-flash'),
-    refetchInterval: 120000,
+    refetchInterval: 300000,
+    refetchIntervalInBackground: false,
   });
 
   const auditQuery = useQuery<{ logs: DashboardAuditLog[]; total: number } | null>({

@@ -1,10 +1,17 @@
 ````markdown
 # SCHEMA.md — Database Schema
 # DapurDekaka.com
-**Version:** 1.0
-**Last Updated:** May 2026
+**Version:** 1.1
+**Last Updated:** Nov 2026
 **Author:** Bashara (Technical Lead)
-**Status:** Active — Pre-Development
+**Status:** Active — Source of truth is `lib/db/schema.ts` + `drizzle/*.sql`
+
+> **Doc drift note (Nov 2026):** This markdown is behind the live Drizzle schema.
+> Additional tables/columns in code include: `saved_carts`, `stock_adjustments`,
+> `order_daily_counters`, `b2b_quote_counters`, `blog_post_views`, CMS tables
+> (`cms_pages`, `cms_page_sections`, `cms_gallery_images`), `refunds`, `disputes`,
+> `webhook_events`, users `two_factor_*`, points `points_remaining`, and Shipping V2 /
+> Biteship order fields. Prefer `lib/db/schema.ts` when implementing.
 
 ---
 

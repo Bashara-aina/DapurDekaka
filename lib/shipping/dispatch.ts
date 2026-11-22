@@ -10,6 +10,7 @@ import { sendEmail } from '@/lib/resend/send-email';
 import { OrderShippedEmail } from '@/lib/resend/templates/OrderShipped';
 import { sendWhatsApp, dispatchMessage, opsDispatchFailedMessage } from '@/lib/services/fonnte';
 import { scheduleBackground } from '@/lib/utils/background';
+import { resolveStoreWhatsAppNumber } from '@/lib/utils/store-whatsapp';
 import { logger } from '@/lib/utils/logger';
 
 const ALLOWED_DISPATCH = ['pending', 'failed', 'retrying'] as const;
@@ -99,8 +100,7 @@ export async function dispatchOrder(
     };
   }
 
-  const dbStorePhone = await getSetting<string>('store_whatsapp_number').catch(() => null);
-  const storePhone = dbStorePhone ?? '';
+  const storePhone = await resolveStoreWhatsAppNumber();
 
   // W3: use the real variant dimensions stored on the order (same values the
   // checkout quote used), otherwise Biteship re-prices the booking.
@@ -133,11 +133,29 @@ export async function dispatchOrder(
     })
   );
 
+  const courierCompany = order.courierCode?.trim();
+  const courierType = order.courierService?.trim();
+  if (!courierCompany || !courierType) {
+    await db
+      .update(orders)
+      .set({
+        dispatchStatus: 'failed',
+        dispatchLastError: 'courierCode/courierService kosong — tidak boleh fallback REG',
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, order.id));
+    return {
+      ok: false,
+      status: 'failed',
+      message: 'Layanan kurir tidak lengkap pada order. Minta customer checkout ulang.',
+    };
+  }
+
   try {
     const result = await createBiteshipOrder({
       referenceId: order.orderNumber,
-      courierCompany: order.courierCode ?? 'sicepat',
-      courierType: order.courierService ?? 'REG',
+      courierCompany,
+      courierType,
       originLatitude: originLat,
       originLongitude: originLng,
       originAddress,
@@ -150,8 +168,7 @@ export async function dispatchOrder(
       destinationContactPhone: order.recipientPhone,
       destinationPostalCode: order.postalCode ?? undefined,
       insuranceValue: order.insuranceType && order.insuranceType !== 'none' ? order.subtotal : undefined,
-      cashOnDeliveryValue: order.cashOnDelivery ? order.totalAmount : undefined,
-      cashOnDeliveryType: '7_days',
+      // COD is never offered — Midtrans-only.
       items: rateItems,
     });
 

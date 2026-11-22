@@ -30,8 +30,9 @@ Copy from `.env.example`. Set **Production** env in Vercel (not just Preview).
 
 | Variable | What to fill | Where to get it |
 |----------|--------------|-----------------|
-| `DATABASE_URL` | Neon pooled connection string | [neon.tech](https://neon.tech) dashboard |
-| `DATABASE_URL_UNPOOLED` | Neon direct connection (migrations) | Same Neon project |
+| `DATABASE_URL` | Neon **pooled** URL (`-pooler.…neon.tech`) for the app | [neon.tech](https://neon.tech) → Connection details → Pooled |
+| `DATABASE_URL_UNPOOLED` | Neon **direct** URL (no `-pooler`) for migrations only | Same project → Direct connection |
+
 | `AUTH_SECRET` | Random 32+ chars, mixed entropy | `openssl rand -base64 32` |
 | `MIDTRANS_SERVER_KEY` | **Production** server key (no `SB-` prefix) | [Midtrans Dashboard](https://dashboard.midtrans.com) → Settings → Access Keys |
 | `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY` | **Production** client key | Same |
@@ -146,19 +147,14 @@ Copy from `.env.example`. Set **Production** env in Vercel (not just Preview).
 
 - [ ] **Custom domain** `dapurdekaka.com` connected, SSL active
 - [ ] **All env vars** set for Production environment (not only Preview)
-- [ ] **Cron jobs** in `vercel.json` deployed (Vercel sends `Authorization: Bearer <CRON_SECRET>`):
-  - `/api/cron/cancel-expired-orders` — every 15 min
-  - `/api/cron/reconcile-payments` — every 10 min
+- [ ] **Cron jobs** in `vercel.json` deployed (Vercel sends `Authorization: Bearer <CRON_SECRET>`). Cadence is Neon bill-aware — see `docs/NEON-COST.md`:
+  - `/api/cron/hourly` — hourly bundle (cancel-expired + reconcile-payments + retry-dispatch)
   - `/api/cron/expire-points` — daily
   - `/api/cron/points-expiry-warning` — daily 09:00
   - `/api/cron/reconcile-points` — daily 03:00
   - `/api/cron/cleanup-counters` — daily 02:00
   - `/api/cron/cleanup-audit-logs` — weekly
-- [ ] **Add retry-dispatch cron** (not yet in `vercel.json` — do before launch if you want auto-retry):
-  ```json
-  { "path": "/api/cron/retry-dispatch", "schedule": "*/30 * * * *" }
-  ```
-  > Note: retry cron currently calls dispatch API without session auth — verify it works or wire an internal service token before relying on it.
+  - `/api/cron/pickup-release` — daily 10:00
 
 ---
 

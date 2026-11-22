@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import AdminPlainGuide from '@/components/admin/AdminPlainGuide';
 
 const TABS = [
   { id: 'all', label: 'Semua' },
@@ -164,6 +165,18 @@ export function SettingsClient({ initialSettings, initialRole }: Props) {
 
   return (
     <div className="space-y-6">
+      <AdminPlainGuide title="Pengaturan untuk admin non-teknis">
+        <p>
+          Tab <strong>Toko</strong>: WhatsApp, alamat, jam buka, soft launch banner. Tab{' '}
+          <strong>Pengiriman</strong>: fase pengiriman (`phase0` / `phase1` / `phase2`) + override soft
+          launch + alamat gudang Biteship. Jangan ubah key teknis di tab Semua kecuali diminta.
+        </p>
+        <p>
+          Soft launch sekarang: <code>shipping_phase=phase2</code> (broader) dengan soft override ON.
+          Matikan override setelah 50+ order sukses.
+        </p>
+      </AdminPlainGuide>
+
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h1 className="text-2xl font-bold">Pengaturan Sistem</h1>
         <div className="flex items-center gap-3">

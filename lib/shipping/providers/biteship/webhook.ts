@@ -31,9 +31,16 @@ export function verifyBiteshipSignature(
   rawBody: string,
   signature: string | null
 ): boolean {
-  const secret =
-    process.env.BITESHIP_WEBHOOK_SECRET ?? process.env.BITESHIP_API_KEY;
-  if (!secret || !signature) return false;
+  const secret = process.env.BITESHIP_WEBHOOK_SECRET?.trim();
+  // Never fall back to BITESHIP_API_KEY — that couples booking credentials to
+  // webhook auth and silently weakens verification when the secret is unset.
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('BITESHIP_WEBHOOK_SECRET must be set in production');
+    }
+    return false;
+  }
+  if (!signature) return false;
 
   const expected = crypto
     .createHmac('sha256', secret)

@@ -6,8 +6,8 @@ import { requireRole } from '@/lib/auth/check-role';
 
 export const dynamic = 'force-dynamic';
 
-export default async function InventoryPage() {
-  await requireRole(['superadmin', 'owner', 'warehouse']);
+export default async function InventoryPage(): Promise<React.JSX.Element> {
+  const session = await requireRole(['superadmin', 'owner', 'warehouse']);
   const variants = await db.query.productVariants.findMany({
     where: eq(productVariants.isActive, true),
     with: {
@@ -28,5 +28,10 @@ export default async function InventoryPage() {
     },
   }));
 
-  return <InventoryClient initialVariants={serialized} />;
+  return (
+    <InventoryClient
+      initialVariants={serialized}
+      role={session.user.role ?? 'warehouse'}
+    />
+  );
 }

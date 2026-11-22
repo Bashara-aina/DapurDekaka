@@ -9,6 +9,18 @@ if (process.env.NODE_ENV === 'production') {
   process.exit(1);
 }
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
+if (/dapurdekaka\.com/i.test(appUrl) && !appUrl.includes('localhost')) {
+  console.error('ABORT: Refusing to seed against a production host URL.');
+  process.exit(1);
+}
+
+const seedAdminPassword = process.env.SEED_ADMIN_PASSWORD;
+if (!seedAdminPassword || seedAdminPassword.length < 12) {
+  console.error('ABORT: SEED_ADMIN_PASSWORD must be set and at least 12 characters.');
+  process.exit(1);
+}
+
 const sql = neon(process.env.DATABASE_URL!);
 const db = drizzle(sql, { schema });
 
@@ -17,8 +29,7 @@ async function seed() {
 
   // 1. Create superadmin user (idempotent — skip if exists)
   console.log('Ensuring superadmin user exists...');
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD || 'adminpassword123';
-  const passwordHash = await bcrypt.hash(adminPassword, 12);
+  const passwordHash = await bcrypt.hash(seedAdminPassword as string, 12);
 
   let adminId: string;
 
@@ -98,6 +109,8 @@ async function seed() {
     { key: 'admin_email', value: process.env.SEED_ADMIN_EMAIL || 'bashara@dapurdekaka.com', type: 'string' },
     { key: 'soft_launch_banner_enabled', value: 'true', type: 'boolean' },
     { key: 'soft_launch_wa_message', value: 'Halo Dapur Dekaka, saya ingin tahu promo soft launch.', type: 'string' },
+    { key: 'shipping_phase', value: 'phase2', type: 'string' },
+    { key: 'shipping_phase_soft_override', value: 'true', type: 'boolean' },
     { key: 'wa_default_message', value: 'Halo Dapur Dekaka! Saya ingin bertanya tentang produk.', type: 'string' },
     { key: 'founding_year', value: '2020', type: 'integer' },
     { key: 'price_range_min', value: '30000', type: 'integer' },
