@@ -17,6 +17,7 @@ import { applyRefundCompletionTx } from '@/lib/finance/complete-refund';
 import { flagNeedsAttention } from '@/lib/ops/needs-attention';
 import { logAdminActivity } from '@/lib/services/audit.service';
 import { getClientIp, getUserAgent } from '@/lib/utils/request-meta';
+import { withRateLimit } from '@/lib/utils/rate-limit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -67,11 +68,12 @@ export async function GET(
   }
 }
 
-export async function PATCH(
+export const PATCH = withRateLimit(async (
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  context?: { params: Promise<{ id: string }> }
+) => {
   try {
+    const params = context?.params ?? Promise.resolve({ id: '' });
     const session = await auth();
     if (!session?.user) return unauthorized('Silakan login');
     if (!['superadmin', 'owner'].includes(session.user.role ?? '')) {
@@ -164,7 +166,7 @@ export async function PATCH(
     logger.error('[admin/refunds/[id] PATCH]', { error: error instanceof Error ? error.message : String(error) });
     return serverError(error);
   }
-}
+}, 'admin');
 
 export async function DELETE(
   _req: NextRequest,

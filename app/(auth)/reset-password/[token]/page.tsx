@@ -50,8 +50,13 @@ function ResetPasswordForm() {
       return;
     }
 
-    if (formData.password.length < 8) {
-      setError('Password minimal 8 karakter');
+    if (
+      formData.password.length < 8 ||
+      !/[A-Z]/.test(formData.password) ||
+      !/[a-z]/.test(formData.password) ||
+      !/[0-9]/.test(formData.password)
+    ) {
+      setError('Password minimal 8 karakter, harus ada huruf besar, kecil, dan angka');
       setIsLoading(false);
       return;
     }

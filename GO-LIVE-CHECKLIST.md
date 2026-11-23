@@ -216,7 +216,7 @@ npx vitest run tests/shipping tests/api/checkout/initiate.test.ts
 - [ ] **Coupon + points** (logged-in) calculate correctly
 - [ ] **Midtrans Snap** opens and payment completes
 - [ ] **Webhook** fires → order status `paid`, stock deducted, points awarded (logged-in)
-- [ ] **Pickup order** → auto-ready, pickup code = order number, email + WA sent
+- [ ] **Pickup order** → auto-ready, pickup code = random generatePickupCode() (never order number), email + WA sent
 - [ ] **Delivery order** → field dashboard shows in packing queue
 - [ ] Warehouse marks **packed** → taps **Book Courier** → Biteship order created
 - [ ] **Tracking page** `/orders/track/[orderNumber]` shows live status

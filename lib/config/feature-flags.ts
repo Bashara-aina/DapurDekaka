@@ -52,7 +52,7 @@ export const FLAGS = {
     default: false,
     envKey: 'NEXT_PUBLIC_FLAG_SAMPLER_PROMO',
     note:
-      'UNUSED until wired in checkout/initiate — keep false for soft launch (no isFlagEnabled consumer yet)',
+      'Deferred kill-list flag — intentionally UNUSED (no consumer). Keep false; delete only after founder confirms sampler promo cancelled permanently.',
   },
 } as const satisfies Record<string, FlagConfig>;
 

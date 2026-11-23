@@ -1,19 +1,23 @@
 import { z } from 'zod';
 
+/** Shared strong-password rule — register, reset, profile, admin create-user. */
+export const strongPasswordSchema = z
+  .string()
+  .min(8, 'Password minimal 8 karakter')
+  .max(128, 'Password maksimal 128 karakter')
+  .regex(/[A-Z]/, 'Password harus mengandung minimal 1 huruf besar')
+  .regex(/[a-z]/, 'Password harus mengandung minimal 1 huruf kecil')
+  .regex(/[0-9]/, 'Password harus mengandung minimal 1 angka');
+
 export const loginSchema = z.object({
   email: z.string().email('Format email tidak valid'),
-  password: z.string().min(6, 'Password minimal 6 karakter'),
+  password: z.string().min(1, 'Password wajib diisi'),
 });
 
 export const registerSchema = z.object({
   name: z.string().min(2, 'Nama minimal 2 karakter').max(100, 'Nama maksimal 100 karakter'),
   email: z.string().email('Format email tidak valid'),
-  password: z
-    .string()
-    .min(8, 'Password minimal 8 karakter')
-    .regex(/[A-Z]/, 'Password harus mengandung minimal 1 huruf besar')
-    .regex(/[a-z]/, 'Password harus mengandung minimal 1 huruf kecil')
-    .regex(/[0-9]/, 'Password harus mengandung minimal 1 angka'),
+  password: strongPasswordSchema,
   phone: z
     .string()
     .transform((val) => val.replace(/[\s-]/g, ''))
@@ -36,23 +40,23 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = z.object({
   token: z.string().min(1, 'Token tidak valid'),
-  password: z
-    .string()
-    .min(8, 'Password minimal 8 karakter')
-    .regex(/[A-Z]/, 'Password harus mengandung minimal 1 huruf besar')
-    .regex(/[a-z]/, 'Password harus mengandung minimal 1 huruf kecil')
-    .regex(/[0-9]/, 'Password harus mengandung minimal 1 angka'),
+  password: strongPasswordSchema,
 });
 
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Password saat ini wajib diisi'),
-  newPassword: z
-    .string()
-    .min(8, 'Password baru minimal 8 karakter')
-    .regex(/[A-Z]/, 'Password baru harus mengandung minimal 1 huruf besar')
-    .regex(/[a-z]/, 'Password baru harus mengandung minimal 1 huruf kecil')
-    .regex(/[0-9]/, 'Password baru harus mengandung minimal 1 angka'),
+  newPassword: strongPasswordSchema,
 });
+
+export const setPasswordSchema = z
+  .object({
+    newPassword: strongPasswordSchema,
+    confirmPassword: z.string().min(1, 'Konfirmasi password diperlukan'),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Konfirmasi password tidak cocok',
+    path: ['confirmPassword'],
+  });
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;

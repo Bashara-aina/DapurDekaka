@@ -123,7 +123,7 @@ Styling:        Tailwind CSS + shadcn/ui
 State:          Zustand (cart) + TanStack Query (server state)
 Forms:          react-hook-form + zod + @hookform/resolvers
 Payments:       Midtrans Snap.js (sandbox → production)
-Shipping:       RajaOngkir API v1
+Shipping:       Biteship Shipping V2 (RajaOngkir removed)
 Email:          Resend + React Email
 Images:         Cloudinary (signed uploads, server-side)
 AI:             Minimax M2.7 (caption/blog generation, superadmin only)
@@ -283,7 +283,7 @@ lib/
 ├── validations/                # Zod schemas (shared client + server)
 ├── services/
 │   ├── midtrans.ts             # Midtrans server-side helpers
-│   ├── rajaongkir.ts           # RajaOngkir API helpers
+│   ├── shipping/               # Biteship rates/dispatch/webhooks
 │   ├── cloudinary.ts           # Signed upload helpers
 │   ├── resend.ts               # Email sending helpers
 │   └── minimax.ts              # AI generation helpers
@@ -379,7 +379,7 @@ warehouse "partial" = can only set packed→shipped by entering tracking number
 3. Selects delivery method: Delivery or Pickup
 4. If Delivery:
    a. Selects or enters address (province → city → details)
-   b. GET /api/checkout/shipping-rates (RajaOngkir, cold-chain only)
+   b. POST /api/shipping/rates (Biteship, cold-chain only)
    c. Selects courier from returned options
 5. Enters coupon code (optional) → POST /api/checkout/validate-coupon
 6. Redeems points (optional, max 50% of subtotal, logged-in only)
@@ -533,8 +533,9 @@ MIDTRANS_SERVER_KEY=             # Server key (never NEXT_PUBLIC)
 NEXT_PUBLIC_MIDTRANS_CLIENT_KEY= # Client key (safe for browser)
 MIDTRANS_IS_PRODUCTION=false     # Switch to true for go-live
 
-# RajaOngkir
-RAJAONGKIR_API_KEY=              # From rajaongkir.com dashboard
+# Biteship
+BITESHIP_API_KEY=                # biteship_test.* until go-live
+BITESHIP_WEBHOOK_SECRET=         # Dedicated webhook HMAC secret
 
 # Cloudinary
 NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=  # Cloud name (safe for browser)
@@ -682,7 +683,7 @@ formatIDR(120000)         →  "Rp 120.000"
 generateOrderNumber()     →  "DDK-20260512-0047"
 getMidtransOrderId(n, 0)  →  "DDK-20260512-0047"
 getMidtransOrderId(n, 1)  →  "DDK-20260512-0047-retry-1"
-Origin city ID            →  "23" (Bandung, RajaOngkir)
+Warehouse origin           →  lat/lng + Biteship area (Bandung)
 Payment expiry            →  15 minutes
 Points earn rate          →  1 pt / Rp 1.000 subtotal
 Points expiry             →  365 days

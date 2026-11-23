@@ -8,6 +8,7 @@ import { success, unauthorized, serverError, validationError } from '@/lib/utils
 import { withRateLimit } from '@/lib/utils/rate-limit';
 import { isSameOriginRequest, sameOriginRejected } from '@/lib/utils/same-origin';
 import { z } from 'zod';
+import { strongPasswordSchema, setPasswordSchema } from '@/lib/validations/auth.schema';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -98,16 +99,10 @@ export async function PATCH(req: NextRequest) {
 
 const ChangePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Password saat ini diperlukan'),
-  newPassword: z.string().min(8, 'Password baru minimal 8 karakter').max(128),
+  newPassword: strongPasswordSchema,
 });
 
-const SetPasswordSchema = z.object({
-  newPassword: z.string().min(8, 'Password baru minimal 8 karakter').max(128),
-  confirmPassword: z.string().min(1, 'Konfirmasi password diperlukan'),
-}).refine(data => data.newPassword === data.confirmPassword, {
-  message: 'Konfirmasi password tidak cocok',
-  path: ['confirmPassword'],
-});
+const SetPasswordSchema = setPasswordSchema;
 
 export const PUT = withRateLimit(async (req: NextRequest) => {
   try {
