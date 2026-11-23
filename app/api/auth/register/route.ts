@@ -5,21 +5,10 @@ import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
-import { z } from 'zod';
 import { success, validationError, serverError, conflict } from '@/lib/utils/api-response';
 import { withRateLimit } from '@/lib/utils/rate-limit';
 import { logger } from '@/lib/utils/logger';
-
-const registerSchema = z.object({
-  name: z.string().min(2, 'Nama minimal 2 karakter'),
-  email: z.string().email('Format email tidak valid'),
-  password: z
-    .string()
-    .min(8, 'Password minimal 8 karakter')
-    .regex(/[A-Z]/, 'Password harus memiliki minimal 1 huruf besar')
-    .regex(/[a-z]/, 'Password harus memiliki minimal 1 huruf kecil')
-    .regex(/[0-9]/, 'Password harus memiliki minimal 1 angka'),
-});
+import { registerSchema } from '@/lib/validations/auth.schema';
 
 export const POST = withRateLimit(
   async (req: NextRequest) => {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { desc } from 'drizzle-orm';
+import { desc, isNull } from 'drizzle-orm';
 import { success, unauthorized, forbidden, serverError, validationError, conflict } from '@/lib/utils/api-response';
 import { withRateLimit } from '@/lib/utils/rate-limit';
 import { auth } from '@/lib/auth';
@@ -7,29 +7,31 @@ import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
+import { strongPasswordSchema } from '@/lib/validations/auth.schema';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const CreateUserSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
-  password: z.string().min(8),
+  password: strongPasswordSchema,
   role: z.enum(['warehouse', 'owner', 'b2b', 'superadmin']),
 });
 
-export async function GET(req: NextRequest) {
+export const GET = withRateLimit(async (_req: NextRequest) => {
   try {
     const session = await auth();
     if (!session?.user) {
       return unauthorized('Silakan login terlebih dahulu');
     }
 
-    const role = (session.user as { role?: string }).role;
+    const role = session.user.role;
     if (!role || !['superadmin'].includes(role)) {
       return forbidden('Anda tidak memiliki akses');
     }
 
     const allUsers = await db.query.users.findMany({
+      where: isNull(users.deletedAt),
       orderBy: [desc(users.createdAt)],
       limit: 100,
       columns: {
@@ -48,7 +50,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     return serverError(error);
   }
-}
+}, 'admin');
 
 export const POST = withRateLimit(async (req: NextRequest) => {
   try {
@@ -76,7 +78,7 @@ export const POST = withRateLimit(async (req: NextRequest) => {
       return conflict('Email sudah terdaftar');
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 12);
     const [created] = await db.insert(users).values({
       name,
       email,

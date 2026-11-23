@@ -1,3 +1,5 @@
+> **ARCHIVED / STALE (2026-11-23)** — RajaOngkir-era checklist. Use `docs/HUMAN-LAUNCH-CHECKLIST.md` + Production Readiness 20×10 plan. Shipping is **Biteship**, not RajaOngkir.
+
 # PRODUCTION_CHECKLIST.md — Production Readiness Guide
 # DapurDekaka.com v2
 **Version:** 1.0

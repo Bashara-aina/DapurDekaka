@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MapPin, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { AreaSearchInput, type AreaSuggestion } from '@/components/store/checkout/AreaSearchInput';
 
 export interface MapPinValue {
   latitude: number;
@@ -186,8 +187,30 @@ export function AddressMapPicker({
     });
   };
 
+  const applyAreaSuggestion = (area: AreaSuggestion): void => {
+    // Biteship name is typically "District, City, Province, Country"
+    const parts = area.name.split(',').map((p) => p.trim()).filter(Boolean);
+    if (parts.length >= 3) {
+      setDistrict(parts[0] ?? '');
+      setCity(parts[1] ?? '');
+      setProvince(parts[2] ?? '');
+    } else if (parts.length === 2) {
+      setCity(parts[0] ?? '');
+      setProvince(parts[1] ?? '');
+    }
+    if (area.postal_code) {
+      setPostalCode(String(area.postal_code).padStart(5, '0').slice(0, 5));
+      setPostalError('');
+    }
+    if (!addressLine.trim()) {
+      setAddressLine(area.name);
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className={cn('space-y-4', className)}>
+      <AreaSearchInput onSelect={applyAreaSuggestion} />
+
       {!mapsLoadFailed ? (
         <>
           <div

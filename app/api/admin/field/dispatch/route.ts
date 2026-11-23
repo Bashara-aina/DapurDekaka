@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { success, forbidden, notFound, conflict, validationError, serverError } from '@/lib/utils/api-response';
 import { dispatchOrder } from '@/lib/shipping/dispatch';
+import { withRateLimit } from '@/lib/utils/rate-limit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -15,7 +16,7 @@ const dispatchSchema = z.object({
  * Warehouse-only: book courier via Biteship after order is packed.
  * Delegates the booking to `dispatchOrder()` (shared with the retry cron).
  */
-export async function POST(req: NextRequest) {
+export const POST = withRateLimit(async (req: NextRequest) => {
   try {
     const session = await auth();
     if (!session?.user) return forbidden('Anda harus login');
@@ -45,4 +46,4 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     return serverError(error);
   }
-}
+}, 'admin');

@@ -1,3 +1,5 @@
+> **Shipping canon (2026-11-23):** Runtime shipping is **Biteship Shipping V2** (`lib/shipping/`, `/api/shipping/rates`). RajaOngkir APIs/env are **removed**. Ignore RajaOngkir sections below as historical.
+
 ````markdown
 # TECH_STACK.md — Architecture & Technology Stack
 # DapurDekaka.com

@@ -1,14 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { signIn } from 'next-auth/react';
+import { signIn, useSession } from 'next-auth/react';
 import { logger } from '@/lib/utils/logger';
 import { readLocalCartItems, clearLocalCart } from '@/lib/utils/local-cart';
+import { strongPasswordSchema } from '@/lib/validations/auth.schema';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
@@ -18,6 +20,12 @@ export default function RegisterPage() {
     password: '',
     confirmPassword: '',
   });
+
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user) {
+      router.replace('/account');
+    }
+  }, [status, session?.user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,8 +38,9 @@ export default function RegisterPage() {
       return;
     }
 
-    if (formData.password.length < 8) {
-      setError('Password minimal 8 karakter');
+    const pw = strongPasswordSchema.safeParse(formData.password);
+    if (!pw.success) {
+      setError(pw.error.issues[0]?.message ?? 'Password tidak memenuhi syarat');
       setIsLoading(false);
       return;
     }

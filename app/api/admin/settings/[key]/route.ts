@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { logAdminActivity } from '@/lib/services/audit.service';
 import { invalidateSetting } from '@/lib/settings/get-settings';
 import { logger } from '@/lib/utils/logger';
+import { withRateLimit } from '@/lib/utils/rate-limit';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -15,17 +16,18 @@ const UpdateSettingSchema = z.object({
   value: z.union([z.string(), z.number(), z.boolean()]),
 });
 
-export async function PATCH(
+export const PATCH = withRateLimit(async (
   req: NextRequest,
-  { params }: { params: Promise<{ key: string }> }
-) {
+  context?: { params: Promise<{ key: string }> }
+) => {
   try {
+    const params = context?.params ?? Promise.resolve({ key: '' });
     const session = await auth();
     if (!session?.user) {
       return unauthorized('Silakan login terlebih dahulu');
     }
 
-    const role = (session.user as { role?: string }).role;
+    const role = session.user.role;
     if (!role || !['superadmin', 'owner'].includes(role)) {
       return forbidden('Hanya superadmin/owner yang dapat mengubah pengaturan sistem');
     }
@@ -109,7 +111,7 @@ export async function PATCH(
   } catch (error) {
     return serverError(error);
   }
-}
+}, 'admin');
 
 export async function DELETE(
   _req: NextRequest,

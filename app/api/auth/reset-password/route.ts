@@ -12,7 +12,13 @@ import { logger } from '@/lib/utils/logger';
 
 const resetPasswordSchema = z.object({
   token: z.string().min(1, 'Token diperlukan'),
-  password: z.string().min(8, 'Password minimal 8 karakter'),
+  password: z
+    .string()
+    .min(8, 'Password minimal 8 karakter')
+    .max(128)
+    .regex(/[A-Z]/, 'Password harus mengandung minimal 1 huruf besar')
+    .regex(/[a-z]/, 'Password harus mengandung minimal 1 huruf kecil')
+    .regex(/[0-9]/, 'Password harus mengandung minimal 1 angka'),
 });
 
 export const POST = withRateLimit(
