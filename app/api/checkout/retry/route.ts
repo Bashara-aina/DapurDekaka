@@ -2,7 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { eq, and, sql, inArray } from 'drizzle-orm';
 import { orders, couponUsages, orderStatusHistory, productVariants } from '@/lib/db/schema';
-import { success, serverError, notFound, conflict, unauthorized, forbidden, validationError, tooManyRequests } from '@/lib/utils/api-response';
+import {
+  success,
+  serverError,
+  notFound,
+  conflict,
+  unauthorized,
+  forbidden,
+  validationError,
+  tooManyRequests,
+  serviceUnavailable,
+} from '@/lib/utils/api-response';
 import { withRateLimit } from '@/lib/utils/rate-limit';
 import { isSameOriginRequest, sameOriginRejected } from '@/lib/utils/same-origin';
 import { z } from 'zod';
@@ -14,6 +24,7 @@ import { getSetting } from '@/lib/settings/get-settings';
 import { auth } from '@/lib/auth';
 import { requireActiveUser } from '@/lib/auth/require-active';
 import { logger } from '@/lib/utils/logger';
+import { isMaintenanceMode } from '@/lib/ops/maintenance';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -30,6 +41,10 @@ export const POST = withRateLimit(async (req: NextRequest) => {
     if (session?.user?.id) {
       const active = await requireActiveUser();
       if (!active) return unauthorized('Akun Anda dinonaktifkan');
+    }
+
+    if (await isMaintenanceMode()) {
+      return serviceUnavailable('Toko sedang dalam mode pemeliharaan. Silakan coba lagi nanti.', 'MAINTENANCE_MODE');
     }
 
     const body = await req.json();

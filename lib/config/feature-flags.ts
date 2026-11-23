@@ -51,7 +51,8 @@ export const FLAGS = {
   samplerPromo: {
     default: false,
     envKey: 'NEXT_PUBLIC_FLAG_SAMPLER_PROMO',
-    note: 'Free SKU add-on for orders ≥ Rp 150k (L5 Decision 3 + SAMPLER_MIN)',
+    note:
+      'UNUSED until wired in checkout/initiate — keep false for soft launch (no isFlagEnabled consumer yet)',
   },
 } as const satisfies Record<string, FlagConfig>;
 

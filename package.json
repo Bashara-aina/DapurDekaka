@@ -43,7 +43,10 @@
     "smoke:db-transaction": "tsx --env-file=.env scripts/smoke-db-transaction.ts",
     "sync:shopee": "tsx --env-file=.env scripts/sync-shopee-catalog.ts",
     "remap:shopee-skus": "tsx --env-file=.env scripts/remap-shopee-skus.ts",
-    "export:shopee-catalog": "tsx --env-file=.env scripts/export-shopee-catalog-from-db.ts"
+    "export:shopee-catalog": "tsx --env-file=.env scripts/export-shopee-catalog-from-db.ts",
+    "audit:inventory": "tsx --env-file=.env scripts/audit-inventory.ts",
+    "audit:cms": "tsx --env-file=.env scripts/audit-cms-content.ts",
+    "ops:soft-launch": "tsx --env-file=.env scripts/soft-launch-ops-pass.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.7.0",

@@ -124,7 +124,9 @@ export default function CouponEditClient({ couponId }: CouponEditClientProps) {
           initialData={{
             id: coupon.id,
             code: coupon.code,
-            type: coupon.type as 'percentage' | 'fixed' | 'free_shipping' | 'buy_x_get_y',
+            type: (coupon.type === 'percentage' || coupon.type === 'fixed' || coupon.type === 'buy_x_get_y'
+              ? coupon.type
+              : 'percentage') as 'percentage' | 'fixed' | 'buy_x_get_y',
             nameId: coupon.nameId,
             nameEn: coupon.nameEn,
             descriptionId: coupon.descriptionId ?? undefined,

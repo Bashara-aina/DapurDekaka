@@ -43,6 +43,11 @@ export const POST = withRateLimit(
         return conflict('Kupon tidak valid');
       }
 
+      // Align with checkout/initiate L2 Rule 6 — reject before UI shows a false discount.
+      if (coupon.type === 'free_shipping') {
+        return conflict('Kupon gratis ongkir belum tersedia. Gunakan kupon diskon nominal atau persen.');
+      }
+
       const now = new Date();
       if (coupon.expiresAt && coupon.expiresAt < now) {
         return conflict('Kupon tidak valid');

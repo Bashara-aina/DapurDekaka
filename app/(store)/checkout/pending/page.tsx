@@ -9,11 +9,23 @@ import { toast } from 'sonner';
 import { logger } from '@/lib/utils/logger';
 import { Clock, RefreshCw, ArrowRight, Copy, CheckCircle } from 'lucide-react';
 import { getSnapUrl } from '@/lib/midtrans/snap-url';
-import { cn } from '@/lib/utils/cn';
 import { formatIDR } from '@/lib/utils/format-currency';
 import { formatWIB } from '@/lib/utils/format-date';
+import { Input } from '@/components/ui/input';
 
 export const dynamic = 'force-dynamic';
+
+function readDraftEmail(): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+  try {
+    const raw = sessionStorage.getItem('checkout-draft');
+    if (!raw) return undefined;
+    const draft = JSON.parse(raw) as { recipientEmail?: string };
+    return draft.recipientEmail?.trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 function PendingContent() {
   const t = useTranslations('checkout');
@@ -24,6 +36,9 @@ function PendingContent() {
   const [retrying, setRetrying] = useState(false);
   const [snapLoaded, setSnapLoaded] = useState(false);
   const [countdown, setCountdown] = useState<string | null>(null);
+  const [guestEmail, setGuestEmail] = useState<string>('');
+  const [emailInput, setEmailInput] = useState('');
+  const [needsEmailForm, setNeedsEmailForm] = useState(false);
   const [orderDetails, setOrderDetails] = useState<{
     totalAmount?: number;
     vaNumber?: string | null;
@@ -32,9 +47,15 @@ function PendingContent() {
     status?: string;
   } | null>(null);
 
-  // FIX 6: Poll order status with backoff — stop immediately on paid.
-  // Circuit-breaker: after 10 consecutive poll failures, stop hammering the
-  // API and surface the error once (previously failed silently forever).
+  useEffect(() => {
+    const draft = readDraftEmail();
+    if (draft) {
+      setGuestEmail(draft);
+      setEmailInput(draft);
+    }
+  }, []);
+
+  // Poll with verified email so guests receive VA / total (P0 privacy gate).
   useEffect(() => {
     if (!orderNumber) return;
 
@@ -45,12 +66,19 @@ function PendingContent() {
     const fetchOrderDetails = async () => {
       if (stopped) return;
       try {
-        const res = await fetch(`/api/orders/${orderNumber}`);
+        const email = guestEmail || readDraftEmail();
+        const qs = email ? `?email=${encodeURIComponent(email)}` : '';
+        const res = await fetch(`/api/orders/${orderNumber}${qs}`);
         const json = await res.json();
         if (stopped) return;
         consecutiveFailures = 0;
         if (json.success && json.data?.order) {
           const order = json.data.order;
+          if (json.data.requiresEmailVerification && !json.data.verified) {
+            setNeedsEmailForm(true);
+          } else {
+            setNeedsEmailForm(false);
+          }
           setOrderDetails({
             totalAmount: order.totalAmount,
             vaNumber: order.midtransVaNumber,
@@ -59,7 +87,6 @@ function PendingContent() {
             status: order.status,
           });
 
-          // If order is paid, stop polling and redirect immediately
           if (order.status === 'paid') {
             stopped = true;
             router.push(`/checkout/success?order=${orderNumber}`);
@@ -75,21 +102,20 @@ function PendingContent() {
           });
           toast.error(t('retryTokenError'));
         }
-        // else: transient blip — backoff retry stays silent
       }
     };
 
     let pollCount = 0;
     const pollWithBackoff = () => {
       if (stopped) return;
-      fetchOrderDetails();
+      void fetchOrderDetails();
       pollCount++;
       const delay = Math.min(2000 * Math.pow(1.4, pollCount - 1), 30000);
       setTimeout(pollWithBackoff, delay);
     };
     pollWithBackoff();
     return () => { stopped = true; };
-  }, [orderNumber, router, t]);
+  }, [orderNumber, router, t, guestEmail]);
 
   // Countdown timer — wrapped in useCallback to prevent recreation on each render
   const updateCountdown = useCallback(() => {
@@ -125,20 +151,7 @@ function PendingContent() {
     setRetrying(true);
 
     try {
-      // Guest orders require checkout email for retry auth (P0). Reuse the
-      // session draft email when available so guests don't have to retype it.
-      let email: string | undefined = retryEmail;
-      if (!email && typeof window !== 'undefined') {
-        try {
-          const raw = sessionStorage.getItem('checkout-draft');
-          if (raw) {
-            const draft = JSON.parse(raw) as { recipientEmail?: string };
-            if (draft.recipientEmail) email = draft.recipientEmail;
-          }
-        } catch {
-          // ignore — server will request email explicitly
-        }
-      }
+      const email = retryEmail || guestEmail || readDraftEmail();
       const res = await fetch('/api/checkout/retry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -152,15 +165,9 @@ function PendingContent() {
         } else {
           toast.error(t('midtransNotLoaded'));
         }
-      } else if (res.status === 401 && !retryEmail) {
-        // Guest email required — ask once, then retry with email.
-        const input = window.prompt('Masukkan email yang digunakan saat checkout untuk verifikasi:');
-        if (input) {
-          setRetrying(false);
-          await handleRetry(input.trim());
-          return;
-        }
-        toast.error(data.error || t('retryTokenError'));
+      } else if (res.status === 401 && !email) {
+        setNeedsEmailForm(true);
+        toast.error(t('pendingEmailRequired'));
       } else {
         toast.error(data.error || t('retryTokenError'));
       }
@@ -173,6 +180,16 @@ function PendingContent() {
     }
 
     setRetrying(false);
+  };
+
+  const handleVerifyEmail = () => {
+    const next = emailInput.trim();
+    if (!next || !next.includes('@')) {
+      toast.error(t('pendingEmailRequired'));
+      return;
+    }
+    setGuestEmail(next);
+    setNeedsEmailForm(false);
   };
 
   const handleCopyOrderNumber = () => {
@@ -291,6 +308,27 @@ function PendingContent() {
             {t('saveOrderReference')}
           </p>
         </div>
+
+        {needsEmailForm && (
+          <div className="bg-white rounded-card p-4 shadow-card max-w-sm mx-auto mb-6 text-left">
+            <p className="text-sm text-text-secondary mb-3">{t('pendingEmailRequired')}</p>
+            <Input
+              type="email"
+              value={emailInput}
+              onChange={(e) => setEmailInput(e.target.value)}
+              placeholder="nama@email.com"
+              className="mb-3"
+              aria-label={t('pendingEmailRequired')}
+            />
+            <button
+              type="button"
+              onClick={handleVerifyEmail}
+              className="w-full h-11 bg-brand-red text-white font-bold rounded-button hover:bg-brand-red-dark"
+            >
+              {t('pendingVerifyEmail')}
+            </button>
+          </div>
+        )}
 
         <div className="space-y-3 max-w-sm mx-auto">
           <button

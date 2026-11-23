@@ -41,7 +41,20 @@ if (!AUTH_SECRET || AUTH_SECRET.length < 32) {
 // so we set strategy: 'jwt' below and read role/isActive from the token.
 // Lazily built: constructing it calls getDb(), which must not run during
 // env-less `next build` route collection (hasDbUrl() is false there).
-const adapter = (hasDbUrl() ? DrizzleAdapter(getDb()) : undefined) as Adapter | undefined;
+// Must pass our plural table names — Auth.js defaults to singular `user`/`account`
+// which do not exist in Neon (prod error: relation "account" does not exist).
+// Schema cast: our tables use UUID PKs + snake_case columns; adapter types expect
+// Auth.js defaults. Runtime uses our Drizzle column refs correctly.
+const adapter = (
+  hasDbUrl()
+    ? DrizzleAdapter(getDb(), {
+        usersTable: users,
+        accountsTable: accounts,
+        sessionsTable: sessions,
+        verificationTokensTable: verificationTokens,
+      } as never)
+    : undefined
+) as Adapter | undefined;
 
 // Shape we attach to the JWT and surface on session.user
 interface AppSessionUser {
@@ -185,10 +198,8 @@ export const authConfig = {
         }
       }
 
-      // On sign-in (both Credentials and OAuth) the `user` arg is populated.
-      // Copy role, isActive, tokenVersion into the JWT so the session callback
-      // can surface them.  tokenVersion lets us invalidate all existing sessions
-      // when the user resets their password.
+      // On sign-in (Credentials + OAuth) copy identity into the JWT.
+      // OAuth adapter `user` often omits role — always re-read from DB.
       if (user) {
         const u = user as AppSessionUser & { requiresTwoFactorSetup?: boolean };
         if (u.id) token.sub = u.id;
@@ -197,7 +208,32 @@ export const authConfig = {
         if (typeof u.requiresTwoFactorSetup === 'boolean') {
           t.requiresTwoFactorSetup = u.requiresTwoFactorSetup;
         }
-        if (u.id) t.tokenVersion = await fetchTokenVersion(u.id);
+        if (u.id) {
+          t.tokenVersion = await fetchTokenVersion(u.id);
+          try {
+            const dbUser = await db.query.users.findFirst({
+              where: eq(users.id, u.id),
+              columns: {
+                role: true,
+                isActive: true,
+                twoFactorEnabled: true,
+                deletedAt: true,
+              },
+            });
+            if (!dbUser || !dbUser.isActive || dbUser.deletedAt) {
+              return null;
+            }
+            t.role = dbUser.role;
+            t.isActive = dbUser.isActive;
+            t.requiresTwoFactorSetup =
+              ADMIN_ROLES.has(dbUser.role) && !dbUser.twoFactorEnabled;
+          } catch (err) {
+            logger.warn('[auth] sign-in role hydrate failed', {
+              userId: u.id,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
         t.checkedAt = Date.now();
         t.issuedAt = Date.now();
       }
@@ -220,10 +256,11 @@ export const authConfig = {
               isActive: true,
               tokenVersion: true,
               twoFactorEnabled: true,
+              deletedAt: true,
             },
           });
 
-          if (!dbUser || !dbUser.isActive) {
+          if (!dbUser || !dbUser.isActive || dbUser.deletedAt) {
             // Returning null invalidates the session cookie.
             return null;
           }

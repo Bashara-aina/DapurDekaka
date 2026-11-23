@@ -2,6 +2,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { POST } from '@/app/api/coupons/validate/route';
 import { NextRequest } from 'next/server';
 
+vi.mock('@/lib/utils/rate-limit', () => ({
+  withRateLimit: (handler: unknown) => handler,
+}));
+
 vi.mock('@/lib/db', () => ({
   db: {
     query: {
@@ -49,6 +53,43 @@ describe('POST /api/coupons/validate', () => {
     const json = await res.json();
     expect(json.success).toBe(false);
     expect(['Kupon tidak valid', 'Kupon tidak valid untuk pesanan ini']).toContain(json.error);
+  });
+
+  it('rejects free_shipping coupons to match initiate L2 rule', async () => {
+    const { db } = await import('@/lib/db');
+    vi.mocked(db.query.coupons.findFirst).mockResolvedValue({
+      id: 'c-fs',
+      code: 'GRATISONGKIR',
+      type: 'free_shipping' as const,
+      discountValue: 0,
+      isActive: true,
+      minOrderAmount: 0,
+      usedCount: 0,
+      expiresAt: null,
+      deletedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      startsAt: null,
+      maxUses: null,
+      maxUsesPerUser: null,
+      applicableProductIds: null,
+      applicableCategoryIds: null,
+      freeShipping: true,
+      nameId: 'Gratis',
+      nameEn: 'Free ship',
+      createdBy: 'system',
+    } as any);
+
+    const req = new NextRequest('http://localhost/api/coupons/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: 'GRATISONGKIR', subtotal: 200000 }),
+    });
+
+    const res = await POST(req);
+    const json = await res.json();
+    expect(json.success).toBe(false);
+    expect(String(json.error)).toMatch(/gratis ongkir|tidak valid/i);
   });
 
   it('rejects inactive coupon with generic message', async () => {

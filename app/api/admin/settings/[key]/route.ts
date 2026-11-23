@@ -26,11 +26,41 @@ export async function PATCH(
     }
 
     const role = (session.user as { role?: string }).role;
-    if (!role || !['superadmin'].includes(role)) {
-      return forbidden('Hanya superadmin yang dapat mengubah pengaturan sistem');
+    if (!role || !['superadmin', 'owner'].includes(role)) {
+      return forbidden('Hanya superadmin/owner yang dapat mengubah pengaturan sistem');
     }
 
     const { key } = await params;
+
+    // Owner may edit store/shipping/promo ops keys; secrets & payment remain superadmin.
+    const OWNER_EDITABLE_PREFIXES = [
+      'store_',
+      'biteship_origin_',
+      'promo_',
+      'instagram_',
+      'wa_',
+      'soft_launch_',
+      'carousel_',
+      'shipping_phase',
+      'free_shipping_threshold',
+      'og_image_',
+      'seo_',
+      'founding_',
+      'price_range_',
+      'tokopedia_',
+      'shopee_',
+      'admin_email',
+      'points_',
+      'b2b_points_',
+    ] as const;
+    if (role === 'owner') {
+      const allowed = OWNER_EDITABLE_PREFIXES.some(
+        (p) => key === p || key.startsWith(p)
+      );
+      if (!allowed) {
+        return forbidden('Owner hanya dapat mengubah pengaturan toko/pengiriman/promo');
+      }
+    }
     const body = await req.json();
     const parsed = UpdateSettingSchema.safeParse(body);
 
