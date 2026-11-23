@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { eq, and } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { success, notFound, unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { users, sessions } from '@/lib/db/schema';
+import { users } from '@/lib/db/schema';
 import { z } from 'zod';
 import { logAdminActivity } from '@/lib/services/audit.service';
 import { getClientIp, getUserAgent } from '@/lib/utils/request-meta';
@@ -66,21 +66,22 @@ export async function PATCH(
     const oldRole = existing.role;
     const oldIsActive = existing.isActive;
 
+    const roleChanged = parsed.data.role !== undefined && parsed.data.role !== oldRole;
+    const activeChanged =
+      parsed.data.isActive !== undefined && parsed.data.isActive !== oldIsActive;
+    // JWT strategy — bump tokenVersion so existing cookies die on next refresh.
+    const mustInvalidateJwt = roleChanged || activeChanged;
+
     const [updated] = await db
       .update(users)
       .set({
         ...(parsed.data.role !== undefined && { role: parsed.data.role }),
         ...(parsed.data.isActive !== undefined && { isActive: parsed.data.isActive }),
+        ...(mustInvalidateJwt && { tokenVersion: sql`token_version + 1` }),
         updatedAt: new Date(),
       })
       .where(eq(users.id, id))
       .returning();
-
-    // Invalidate all sessions when role changes
-    const roleChanged = parsed.data.role !== undefined && parsed.data.role !== oldRole;
-    if (roleChanged) {
-      await db.delete(sessions).where(eq(sessions.userId, id));
-    }
 
     const newIsActive = parsed.data.isActive ?? oldIsActive;
     const ip = getClientIp(req);

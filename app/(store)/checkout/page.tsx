@@ -33,7 +33,8 @@ export default function CheckoutPage() {
     step, setStep, formData, updateForm,
     couponDiscount, couponType, couponBuyXgetY, isFreeShippingCoupon,
     shippingRates, loadingShipping, usePoints,
-    savedAddresses, selectedSavedAddressId, showNewAddressForm, setShowNewAddressForm,
+    savedAddresses, selectedSavedAddressId, setSelectedSavedAddressId,
+    showNewAddressForm, setShowNewAddressForm,
     storeHours, pickupAddress, storeLocation, storeCoords,
     snapToken, orderNumber, isLoading, couponError, setCouponError,
     activeSteps, itemCount, effectiveShippingCost, finalTotal, midtransCallbacks,
@@ -113,18 +114,22 @@ export default function CheckoutPage() {
                   pickupAddress={pickupAddress ?? undefined}
                 />
 
-                {session?.user && savedAddresses.length > 0 && !showNewAddressForm && (
+                {formData.deliveryMethod === 'delivery' && session?.user && savedAddresses.length > 0 && (
                   <div className="mb-4">
                     <SavedAddressPicker
                       addresses={savedAddresses}
                       selectedId={selectedSavedAddressId}
                       onSelect={handleSavedAddressSelect}
-                      onAddNew={() => setShowNewAddressForm(true)}
+                      onAddNew={() => {
+                        setShowNewAddressForm(true);
+                        setSelectedSavedAddressId(null);
+                      }}
                     />
                   </div>
                 )}
 
-                {formData.deliveryMethod === 'delivery' && (
+                {formData.deliveryMethod === 'delivery' &&
+                  (showNewAddressForm || !selectedSavedAddressId) && (
                   <div className="mt-4 bg-white rounded-card p-4 shadow-card">
                     {loadingShipping ? (
                       <p className="text-center py-8 text-text-secondary">{t('calculatingShipping')}</p>
@@ -145,6 +150,25 @@ export default function CheckoutPage() {
                         defaultProvince={storeLocation.province}
                       />
                     )}
+                  </div>
+                )}
+
+                {formData.deliveryMethod === 'delivery' &&
+                  selectedSavedAddressId &&
+                  !showNewAddressForm &&
+                  !loadingShipping && (
+                  <div className="mt-4 bg-white rounded-card p-4 shadow-card space-y-3">
+                    <p className="text-sm text-text-secondary">
+                      {formData.addressLine}, {formData.district}, {formData.city}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => setShowNewAddressForm(true)}
+                    >
+                      {t('editAddress')}
+                    </Button>
                   </div>
                 )}
 
@@ -175,7 +199,7 @@ export default function CheckoutPage() {
 
             {step === 'courier' && !shippingRates && (
               <div className="bg-white rounded-card p-6 shadow-card space-y-4">
-                <p className="text-text-secondary text-sm">{t('courierRatesMissing')}</p>
+                <p className="text-text-secondary text-sm">{t('courierRatesEmpty')}</p>
                 <Button
                   type="button"
                   className="w-full bg-brand-red hover:bg-brand-red-dark"

@@ -73,6 +73,7 @@ export function AddressMapPicker({
   const [loadingGeo, setLoadingGeo] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [mapsLoadFailed, setMapsLoadFailed] = useState(false);
+  const [postalError, setPostalError] = useState('');
 
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -168,6 +169,12 @@ export function AddressMapPicker({
       e.currentTarget.querySelector<HTMLInputElement>('#addressLine')?.reportValidity();
       return;
     }
+    const postal = postalCode.trim();
+    if (!/^\d{5}$/.test(postal)) {
+      setPostalError(t('postalCodeInvalid'));
+      return;
+    }
+    setPostalError('');
     onConfirm({
       latitude: lat,
       longitude: lng,
@@ -175,7 +182,7 @@ export function AddressMapPicker({
       district: district.trim() || city,
       city: city.trim() || defaultCity,
       province: province.trim() || defaultProvince,
-      postalCode: postalCode.trim(),
+      postalCode: postal,
     });
   };
 
@@ -213,7 +220,7 @@ export function AddressMapPicker({
         </>
       ) : (
         <div className="bg-warning-light border border-warning/30 rounded-card p-4 text-sm text-warning">
-          <p>Peta tidak dapat dimuat. Silakan masukkan alamat secara manual.</p>
+          <p>{t('mapLoadFailedManual')}</p>
         </div>
       )}
 
@@ -225,6 +232,7 @@ export function AddressMapPicker({
           onChange={(e) => setAddressLine(e.target.value)}
           required
           className="mt-1"
+          placeholder={t('addressSearchPlaceholder')}
         />
       </div>
 
@@ -246,7 +254,20 @@ export function AddressMapPicker({
         </div>
         <div>
           <Label htmlFor="postalCode">{t('postalCode')}</Label>
-          <Input id="postalCode" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} className="mt-1" />
+          <Input
+            id="postalCode"
+            value={postalCode}
+            onChange={(e) => {
+              setPostalCode(e.target.value);
+              setPostalError('');
+            }}
+            required
+            inputMode="numeric"
+            pattern="\d{5}"
+            maxLength={5}
+            className="mt-1"
+          />
+          {postalError ? <p className="text-xs text-error mt-1">{postalError}</p> : null}
         </div>
       </div>
 

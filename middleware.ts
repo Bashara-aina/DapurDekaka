@@ -23,11 +23,12 @@ function redirectWithHeaders(req: NextRequest, to: string): NextResponse {
 const FLAG_GUARDS: ReadonlyArray<{ prefix: string; flag: FlagName }> = [
   { prefix: '/admin/blog', flag: 'blogCMS' },
   { prefix: '/admin/ai-content', flag: 'aiContent' },
-  { prefix: '/admin/b2b-inquiries', flag: 'b2bPortal' },
+  // Inquiries admin stays available while portal is off — public /b2b inquiry still lands in DB.
   { prefix: '/admin/b2b-quotes', flag: 'b2bPortal' },
   { prefix: '/admin/b2b-profiles', flag: 'b2bPortal' },
   // Portal account UI — landing `/b2b` stays public for WA inquiry.
   { prefix: '/b2b/account', flag: 'b2bPortal' },
+  { prefix: '/account/vouchers', flag: 'vouchersPage' },
 ];
 
 const WAREHOUSE_PATHS = ['/admin/inventory', '/admin/shipments', '/admin/field', '/admin/orders'];

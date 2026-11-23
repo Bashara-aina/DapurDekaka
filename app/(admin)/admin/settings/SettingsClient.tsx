@@ -38,7 +38,10 @@ export function SettingsClient({ initialSettings, initialRole }: Props) {
   const [newDesc, setNewDesc] = useState('');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [targetDelete, setTargetDelete] = useState<SystemSettingRow | null>(null);
-  const readOnly = initialRole !== 'superadmin';
+  // Owner can edit store/shipping/promo; create/delete stay superadmin-only.
+  const canEdit = initialRole === 'superadmin' || initialRole === 'owner';
+  const readOnly = !canEdit;
+  const canCreateDelete = initialRole === 'superadmin';
 
   const deletableKeys = useMemo(() => {
     const canonical = new Set<string>(Object.values(SETTING_KEYS));
@@ -181,7 +184,7 @@ export function SettingsClient({ initialSettings, initialRole }: Props) {
         <h1 className="text-2xl font-bold">Pengaturan Sistem</h1>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-500">{settings.length} pengaturan</span>
-          {!readOnly && (
+          {canCreateDelete && (
             <button
               type="button"
               onClick={() => setShowCreate((v) => !v)}
@@ -225,7 +228,7 @@ export function SettingsClient({ initialSettings, initialRole }: Props) {
         </div>
       )}
 
-      {showCreate && !readOnly && (
+      {showCreate && canCreateDelete && (
         <div className="bg-white border rounded-lg p-4 space-y-3">
           <p className="text-sm font-semibold">Buat pengaturan baru</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -274,7 +277,7 @@ export function SettingsClient({ initialSettings, initialRole }: Props) {
         editValue={editValue}
         isSubmitting={isSubmitting}
         readOnly={readOnly}
-        deletableKeys={deletableKeys}
+        deletableKeys={canCreateDelete ? deletableKeys : new Set<string>()}
         onEditValueChange={setEditValue}
         onStartEdit={(s) => {
           setEditingKey(s.key);

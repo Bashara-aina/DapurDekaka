@@ -41,7 +41,7 @@ import { enforceShippingPhaseGates, resolveEffectivePhase } from '@/lib/shipping
 import { isServiceable } from '@/lib/shipping/geo-policy';
 import { MIN_ORDER_FOR_COUPON_IDR, B2B_CREDIT_ENABLED_DEFAULT } from '@/lib/constants/financial-rules';
 import { isFlagEnabled } from '@/lib/config/feature-flags';
-import { isMaintenanceModeEnv } from '@/lib/ops/maintenance';
+import { isMaintenanceMode } from '@/lib/ops/maintenance';
 import { enforceCouponCap } from '@/lib/finance/points-calculator';
 import { parseQuoteId } from '@/lib/shipping/get-rates';
 import { requireActiveUser } from '@/lib/auth/require-active';
@@ -134,7 +134,7 @@ export const POST = withRateLimit(
         if (!active) return unauthorized('Akun Anda dinonaktifkan');
       }
 
-      if (isMaintenanceModeEnv()) {
+      if (await isMaintenanceMode()) {
         return serviceUnavailable('Toko sedang dalam mode pemeliharaan. Silakan coba lagi nanti.', 'MAINTENANCE_MODE');
       }
 

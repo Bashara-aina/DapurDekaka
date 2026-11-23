@@ -21,7 +21,7 @@ interface CouponFormProps {
   initialData?: {
     id?: string;
     code?: string;
-    type?: 'percentage' | 'fixed' | 'free_shipping' | 'buy_x_get_y';
+    type?: 'percentage' | 'fixed' | 'buy_x_get_y';
     nameId?: string;
     nameEn?: string;
     descriptionId?: string;
@@ -53,7 +53,7 @@ const COUPON_TYPES = [
 
 const CouponSchema = z.object({
   code: z.string().min(1, 'Kode kupon wajib diisi').max(50),
-  type: z.enum(['percentage', 'fixed', 'free_shipping', 'buy_x_get_y']),
+  type: z.enum(['percentage', 'fixed', 'buy_x_get_y']),
   nameId: z.string().min(1, 'Nama ID wajib diisi').max(255),
   nameEn: z.string().min(1, 'Nama EN wajib diisi').max(255),
   descriptionId: z.string().optional(),
@@ -89,7 +89,12 @@ export function CouponForm({ initialData, onSubmit, isSubmitting }: CouponFormPr
     resolver: zodResolver(CouponSchema),
     defaultValues: {
       code: initialData?.code ?? '',
-      type: initialData?.type ?? 'percentage',
+      type:
+        initialData?.type === 'percentage' ||
+        initialData?.type === 'fixed' ||
+        initialData?.type === 'buy_x_get_y'
+          ? initialData.type
+          : 'percentage',
       nameId: initialData?.nameId ?? '',
       nameEn: initialData?.nameEn ?? '',
       descriptionId: initialData?.descriptionId ?? '',
@@ -129,7 +134,7 @@ export function CouponForm({ initialData, onSubmit, isSubmitting }: CouponFormPr
           <Label htmlFor="type">Tipe Kupon</Label>
           <Select
             value={form.watch('type')}
-            onValueChange={(v) => form.setValue('type', v as 'percentage' | 'fixed' | 'free_shipping' | 'buy_x_get_y')}
+            onValueChange={(v) => form.setValue('type', v as 'percentage' | 'fixed' | 'buy_x_get_y')}
           >
             <SelectTrigger className="w-full">
               <SelectValue />

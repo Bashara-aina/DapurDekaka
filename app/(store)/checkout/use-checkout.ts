@@ -265,16 +265,14 @@ export function useCheckout() {
 
   const pointsBalance = pointsData?.balance ?? 0;
 
-  // Runs when the session arrives AND while still on identity: pre-fills the
-  // form once, then advances. `step` in deps is loop-safe (guard requires
-  // 'identity', which this effect itself leaves).
+  // Prefill identity for logged-in users but do NOT skip the step — phone
+  // must still be confirmed before delivery (server also validates).
   useEffect(() => {
     if (session?.user && step === 'identity') {
       updateForm({
         recipientName: session.user.name || '',
         recipientEmail: session.user.email || '',
       });
-      setStep('delivery');
       const syncCart = useCartStore.getState().syncToDb;
       syncCart();
     }
@@ -451,7 +449,8 @@ export function useCheckout() {
       setCouponType(data.data.type ?? null);
       setCouponBuyXgetY(data.data.buyXgetY ?? null);
       setCouponError('');
-      setIsFreeShippingCoupon(data.data.type === 'free_shipping');
+      // free_shipping rejected server-side — never zero shipping on client
+      setIsFreeShippingCoupon(false);
     } catch (err) {
       logger.warn('[checkout] coupon validation failed', {
         error: err instanceof Error ? err.message : String(err),
@@ -574,23 +573,43 @@ export function useCheckout() {
   const handleSavedAddressSelect = useCallback(async (address: SavedAddress | null) => {
     if (!address) {
       setShowNewAddressForm(true);
+      setSelectedSavedAddressId(null);
       return;
     }
     setSelectedSavedAddressId(address.id);
+    const hasCoords =
+      typeof address.latitude === 'number' &&
+      typeof address.longitude === 'number' &&
+      Number.isFinite(address.latitude) &&
+      Number.isFinite(address.longitude) &&
+      !(address.latitude === 0 && address.longitude === 0);
+    if (!hasCoords) {
+      toast.error(t('savedAddressNeedsPin'));
+      setShowNewAddressForm(true);
+      updateForm({
+        addressLine: address.addressLine ?? '',
+        district: address.district ?? '',
+        city: address.city ?? '',
+        province: address.province ?? '',
+        postalCode: address.postalCode ?? '',
+        latitude: 0,
+        longitude: 0,
+      });
+      return;
+    }
+    setShowNewAddressForm(false);
     const updates: Partial<CheckoutFormData> = {
       addressLine: address.addressLine ?? '',
       district: address.district ?? '',
       city: address.city ?? '',
       province: address.province ?? '',
       postalCode: address.postalCode ?? '',
-      latitude: address.latitude ?? 0,
-      longitude: address.longitude ?? 0,
+      latitude: address.latitude as number,
+      longitude: address.longitude as number,
     };
     updateForm(updates);
-    if (address.latitude && address.longitude) {
-      await requestShippingRates(address.latitude, address.longitude, updates);
-    }
-  }, [updateForm, requestShippingRates]);
+    await requestShippingRates(address.latitude as number, address.longitude as number, updates);
+  }, [updateForm, requestShippingRates, t]);
 
   const itemCount = items.reduce((acc, i) => acc + i.quantity, 0);
 
@@ -642,6 +661,7 @@ export function useCheckout() {
     usePoints,
     savedAddresses,
     selectedSavedAddressId,
+    setSelectedSavedAddressId,
     showNewAddressForm,
     setShowNewAddressForm,
     activeSteps,

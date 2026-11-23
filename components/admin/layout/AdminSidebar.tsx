@@ -71,8 +71,9 @@ function SidebarNav({ pathname, userRole, onMobileClose }: SidebarNavProps) {
     return item.roles.includes(userRole);
   }).filter((item) => {
     if ('separator' in item) return true;
-    if (item.href === '/admin/b2b-inquiries' && !isFlagEnabled('b2bPortal')) return false;
+    // Inquiries stay visible while portal is off (public /b2b inquiry still works).
     if (item.href === '/admin/b2b-quotes' && !isFlagEnabled('b2bPortal')) return false;
+    if (item.href === '/admin/b2b-profiles' && !isFlagEnabled('b2bPortal')) return false;
     if (item.href === '/admin/blog' && !isFlagEnabled('blogCMS')) return false;
     if (item.href === '/admin/ai-content' && !isFlagEnabled('aiContent')) return false;
     return true;

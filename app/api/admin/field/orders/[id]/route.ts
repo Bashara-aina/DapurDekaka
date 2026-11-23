@@ -144,7 +144,9 @@ export async function PATCH(
     if (role === 'warehouse') {
       const warehouseAllowed = WAREHOUSE_RESTRICTED_TRANSITIONS[currentStatus];
       if (!warehouseAllowed?.includes(newStatus)) {
-        return forbidden('Warehouse role hanya dapat mengubah status packed ke shipped');
+        return forbidden(
+          'Warehouse role hanya boleh transisi field: processing/packed/shipped/delivered sesuai antrian Gudang'
+        );
       }
     }
 

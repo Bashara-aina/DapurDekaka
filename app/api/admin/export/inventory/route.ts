@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { productVariants } from '@/lib/db/schema';
 import { asc, eq } from 'drizzle-orm';
-import { success, forbidden, serverError } from '@/lib/utils/api-response';
+import { forbidden, serverError } from '@/lib/utils/api-response';
 import { auth } from '@/lib/auth';
+import { logAdminActivity } from '@/lib/services/audit.service';
+import { getClientIp, getUserAgent } from '@/lib/utils/request-meta';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -18,6 +20,14 @@ export async function GET(req: NextRequest) {
     if (!role || !['superadmin', 'owner', 'warehouse'].includes(role)) {
       return forbidden('Anda tidak memiliki akses');
     }
+
+    void logAdminActivity({
+      userId: session.user.id,
+      action: 'export.inventory',
+      targetType: 'inventory',
+      ipAddress: getClientIp(req),
+      userAgent: getUserAgent(req),
+    });
 
     const variants = await db.query.productVariants.findMany({
       orderBy: [asc(productVariants.sku)],

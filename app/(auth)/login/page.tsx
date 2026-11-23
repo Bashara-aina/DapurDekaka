@@ -54,6 +54,10 @@ function LoginForm() {
       setSuccessMessage('Akun berhasil dibuat! Silakan masuk.');
     }
 
+    if (searchParams.get('inactive') === '1') {
+      setError('Akun kamu dinonaktifkan. Hubungi WhatsApp Dapur Dekaka untuk bantuan.');
+    }
+
     if (session) {
       const callbackUrl = getSafeCallbackUrl(searchParams.get('callbackUrl'));
       router.push(callbackUrl);

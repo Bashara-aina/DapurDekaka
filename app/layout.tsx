@@ -21,7 +21,10 @@ const inter = Inter({
   display: 'swap',
 });
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'https://www.dapurdekaka.com';
+
 export const metadata: Metadata = {
+  metadataBase: new URL(APP_URL),
   title: {
     default: 'Dapur Dekaka | Frozen Food Premium dari Bandung',
     template: '%s | Dapur Dekaka',
